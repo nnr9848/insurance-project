@@ -1,0 +1,83 @@
+-- V1: Initial Core Schema for Aadhiraksha Insurance Platform
+
+CREATE TABLE IF NOT EXISTS roles (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id BIGSERIAL PRIMARY KEY,
+    full_name VARCHAR(120) NOT NULL,
+    email VARCHAR(120) UNIQUE NOT NULL,
+    phone_number VARCHAR(20) UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_roles (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role_id BIGINT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, role_id)
+);
+
+CREATE TABLE IF NOT EXISTS agent_profiles (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    pan_number VARCHAR(20) NOT NULL,
+    aadhaar_number VARCHAR(20),
+    city VARCHAR(100),
+    state VARCHAR(100),
+    experience_years INT DEFAULT 0,
+    status VARCHAR(30) DEFAULT 'PENDING', -- PENDING, APPROVED, REJECTED
+    applied_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    approved_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE IF NOT EXISTS insurance_categories (
+    id BIGSERIAL PRIMARY KEY,
+    slug VARCHAR(60) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    icon_name VARCHAR(50),
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS quote_inquiries (
+    id BIGSERIAL PRIMARY KEY,
+    category_slug VARCHAR(60) NOT NULL,
+    full_name VARCHAR(120) NOT NULL,
+    phone_number VARCHAR(20) NOT NULL,
+    email VARCHAR(120),
+    city VARCHAR(100),
+    plan_details JSONB,
+    status VARCHAR(30) DEFAULT 'NEW', -- NEW, CONTACTED, IN_PROGRESS, CLOSED
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS network_hospitals (
+    id BIGSERIAL PRIMARY KEY,
+    hospital_name VARCHAR(200) NOT NULL,
+    address TEXT NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    state VARCHAR(100) NOT NULL,
+    pincode VARCHAR(20),
+    contact_number VARCHAR(30),
+    cashless_available BOOLEAN DEFAULT TRUE,
+    specialties TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS claims (
+    id BIGSERIAL PRIMARY KEY,
+    policy_number VARCHAR(100) NOT NULL,
+    claimant_name VARCHAR(120) NOT NULL,
+    contact_phone VARCHAR(20) NOT NULL,
+    claim_type VARCHAR(50) NOT NULL, -- HEALTH, MOTOR, LIFE, TRAVEL, BUSINESS
+    hospital_or_garage VARCHAR(200),
+    incident_date DATE,
+    description TEXT,
+    status VARCHAR(30) DEFAULT 'SUBMITTED', -- SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED, SETTLED
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
