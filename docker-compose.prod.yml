@@ -36,7 +36,7 @@ services:
     networks:
       - insurance-network
 
-  # 3. React Frontend + Nginx Web Server (Reverse Proxy)
+  # 3. React Frontend + Nginx Web Server (Exposed on safe Port 3001)
   frontend:
     build:
       context: .
@@ -44,8 +44,7 @@ services:
     container_name: insurance-frontend
     restart: always
     ports:
-      - "80:80"
-      - "443:443"
+      - "3001:80"
     depends_on:
       - backend
     networks:
