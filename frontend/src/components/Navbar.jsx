@@ -65,75 +65,254 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer - Opens from Right */}
       {isMobileOpen && (
         <div className="mobile-backdrop" onClick={() => setIsMobileOpen(false)} />
       )}
       <div className={`mobile-drawer ${isMobileOpen ? 'open' : ''}`}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
-          <span style={{ color: '#fff', fontWeight: 800, fontSize: '1.1rem' }}>Menu Navigation</span>
+        {/* Header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingBottom: '1.25rem',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          marginBottom: '1rem'
+        }}>
+          <span style={{
+            color: '#f59e0b',
+            fontWeight: 800,
+            fontSize: '0.85rem',
+            letterSpacing: '1px',
+            textTransform: 'uppercase'
+          }}>
+            Menu Navigation
+          </span>
           <button 
             onClick={() => setIsMobileOpen(false)}
-            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}
+            aria-label="Close navigation menu"
+            style={{
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '8px',
+              color: '#ffffff',
+              cursor: 'pointer',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.2s'
+            }}
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <Link to="/" onClick={() => setIsMobileOpen(false)} className="nav-item">
-            🏠 HOME
-          </Link>
-          <Link to="/new-policy-support" onClick={() => setIsMobileOpen(false)} className="nav-item">
+        {/* Links List */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <NavLink 
+            to="/new-policy-support" 
+            onClick={() => setIsMobileOpen(false)} 
+            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            style={{ padding: '0.65rem 0.85rem', borderRadius: '8px' }}
+          >
             NEW POLICY SUPPORT
-          </Link>
-          <Link to="/renewal-port" onClick={() => setIsMobileOpen(false)} className="nav-item">
-            RENEWAL / PORT POLICY
-          </Link>
-          <Link to="/claim-support" onClick={() => setIsMobileOpen(false)} className="nav-item">
-            CLAIM SUPPORT
-          </Link>
-          <Link to="/network-hospitals" onClick={() => setIsMobileOpen(false)} className="nav-item">
-            NETWORK HOSPITALS
-          </Link>
-          <Link to="/become-posp" onClick={() => setIsMobileOpen(false)} className="nav-item">
-            BECOME POSP AGENT
-          </Link>
-          <Link to="/loans" onClick={() => setIsMobileOpen(false)} className="nav-item nav-item-highlight">
-            LOANS
-          </Link>
+          </NavLink>
 
-          <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+          <NavLink 
+            to="/renewal-port" 
+            onClick={() => setIsMobileOpen(false)} 
+            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            style={{ padding: '0.65rem 0.85rem', borderRadius: '8px' }}
+          >
+            RENEWAL / PORT POLICY
+          </NavLink>
+
+          <NavLink 
+            to="/claim-support" 
+            onClick={() => setIsMobileOpen(false)} 
+            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            style={{ padding: '0.65rem 0.85rem', borderRadius: '8px' }}
+          >
+            CLAIM SUPPORT
+          </NavLink>
+
+          <NavLink 
+            to="/network-hospitals" 
+            onClick={() => setIsMobileOpen(false)} 
+            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            style={{ padding: '0.65rem 0.85rem', borderRadius: '8px' }}
+          >
+            NETWORK HOSPITALS
+          </NavLink>
+
+          <NavLink 
+            to="/become-posp" 
+            onClick={() => setIsMobileOpen(false)} 
+            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            style={{ padding: '0.65rem 0.85rem', borderRadius: '8px' }}
+          >
+            BECOME POSP AGENT
+          </NavLink>
+
+          <NavLink 
+            to="/loans" 
+            onClick={() => setIsMobileOpen(false)} 
+            className={({ isActive }) => `nav-item nav-item-highlight ${isActive ? 'active' : ''}`}
+            style={{ padding: '0.65rem 0.85rem', borderRadius: '8px', color: '#f59e0b', fontWeight: 800 }}
+          >
+            LOANS
+          </NavLink>
+        </div>
+
+        {/* Partner & Staff Portals Section */}
+        <div style={{ marginTop: '1.75rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <div style={{
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            color: '#f59e0b',
+            letterSpacing: '0.6px',
+            textTransform: 'uppercase',
+            marginBottom: '0.85rem'
+          }}>
+            Partner & Staff Portals
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
             {isAuthenticated ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {isAdmin && (
+              <>
+                {isAdmin ? (
                   <Link 
                     to="/admin" 
                     onClick={() => setIsMobileOpen(false)}
-                    className="btn-portal btn-portal-agent"
-                    style={{ width: '100%', justifyContent: 'center' }}
+                    style={{
+                      background: 'rgba(16, 185, 129, 0.15)',
+                      border: '1px solid #10b981',
+                      color: '#34d399',
+                      padding: '0.65rem 1rem',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '0.88rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      textDecoration: 'none'
+                    }}
                   >
                     <LayoutDashboard size={16} /> Admin Dashboard
                   </Link>
+                ) : (
+                  <Link 
+                    to="/become-posp" 
+                    onClick={() => setIsMobileOpen(false)}
+                    style={{
+                      background: 'rgba(245, 158, 11, 0.15)',
+                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      color: '#f59e0b',
+                      padding: '0.65rem 1rem',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '0.88rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      textDecoration: 'none'
+                    }}
+                  >
+                    ⭐ POSP Agent Portal
+                  </Link>
                 )}
+
                 <button 
                   onClick={() => { setIsMobileOpen(false); handleLogout(); }}
-                  className="btn-portal btn-portal-staff"
-                  style={{ width: '100%', justifyContent: 'center' }}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#fca5a5',
+                    padding: '0.65rem 1rem',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    cursor: 'pointer'
+                  }}
                 >
-                  <LogOut size={16} /> Logout
+                  <LogOut size={16} /> Logout ({user?.fullName?.split(' ')[0] || 'User'})
                 </button>
-              </div>
+              </>
             ) : (
-              <Link 
-                to="/login" 
-                onClick={() => setIsMobileOpen(false)}
-                className="btn-portal btn-portal-agent"
-                style={{ width: '100%', justifyContent: 'center' }}
-              >
-                <LogIn size={16} /> Sign In / Portals
-              </Link>
+              <>
+                <Link 
+                  to="/login" 
+                  onClick={() => setIsMobileOpen(false)}
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    border: '1px solid rgba(52, 211, 153, 0.35)',
+                    color: '#a7f3d0',
+                    padding: '0.7rem 1rem',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    textDecoration: 'none'
+                  }}
+                >
+                  ⭐ POSP Agent Login
+                </Link>
+
+                <Link 
+                  to="/login" 
+                  onClick={() => setIsMobileOpen(false)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#ffffff',
+                    padding: '0.7rem 1rem',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    textDecoration: 'none'
+                  }}
+                >
+                  👤 Staff / Admin Portal
+                </Link>
+              </>
             )}
+
+            {/* Quick Call Support Pill */}
+            <a 
+              href="tel:+91814205679"
+              style={{
+                marginTop: '0.5rem',
+                background: '#f59e0b',
+                color: '#04281f',
+                padding: '0.75rem 1rem',
+                borderRadius: '8px',
+                fontWeight: 800,
+                fontSize: '0.88rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                textDecoration: 'none',
+                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)'
+              }}
+            >
+              📞 Call Support: +91 814205679
+            </a>
           </div>
         </div>
       </div>

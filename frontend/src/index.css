@@ -633,30 +633,31 @@ h1, h2, h3, h4, h5, h6 {
   transition: var(--transition-fast);
 }
 
-/* Mobile Drawer */
+/* Mobile Drawer (Right-side Offcanvas like aadhirakshainsurance.com) */
 .mobile-drawer {
   position: fixed;
   top: 0;
-  left: -300px;
-  width: 280px;
+  right: -320px;
+  width: 300px;
   height: 100vh;
-  background: var(--primary-navy-dark);
+  background: #04281f; /* Deep Forest Green */
   z-index: 1000;
-  transition: transform 0.3s ease;
-  padding: 1.5rem;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 1.5rem 1.25rem;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-xl);
+  box-shadow: -8px 0 25px rgba(0, 0, 0, 0.4);
+  overflow-y: auto;
 }
 
 .mobile-drawer.open {
-  transform: translateX(300px);
+  transform: translateX(-320px);
 }
 
 .mobile-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(4px);
   z-index: 999;
 }
