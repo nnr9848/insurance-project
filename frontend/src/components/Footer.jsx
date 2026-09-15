@@ -1,80 +1,160 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, Phone, Mail, MapPin, CheckCircle2 } from 'lucide-react';
+import { MapPin, Phone, Mail, Globe, Shield } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="main-footer">
-      <div className="container">
-        <div className="footer-grid">
-          {/* Brand Info */}
+    <footer style={{ background: '#04281f', color: '#ffffff', paddingTop: '4rem', paddingBottom: '2.5rem' }}>
+      <div className="container" style={{ maxWidth: '1240px' }}>
+        {/* Top Info Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '3rem',
+          alignItems: 'start',
+          paddingBottom: '3.5rem',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+        }}>
+          {/* Left Column: Brand Box & Address */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-              <Shield size={28} color="#f59e0b" />
-              <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff' }}>AADHIRAKSHA</span>
-            </div>
-            <p style={{ fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '1.25rem' }}>
-              Aadhiraksha Insurance & Financial Services Pvt Ltd is committed to delivering complete financial security, term protection, health shields, and credit solutions across India.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.85rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Phone size={15} color="#f59e0b" />
-                <span>+91 8367415156 / +91 814205679</span>
+            {/* White Brand Card */}
+            <div style={{
+              background: '#ffffff',
+              padding: '0.85rem 1.4rem',
+              borderRadius: '12px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              boxShadow: '0 4px 15px rgba(0, 0, 0, 0.25)',
+              marginBottom: '1.75rem'
+            }}>
+              <div style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '8px',
+                background: '#f0fdf4',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Shield size={22} color="#064e3b" />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Mail size={15} color="#f59e0b" />
-                <span>support@aadhirakshainsurance.com</span>
+              <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
+                <span style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 900,
+                  letterSpacing: '0.5px',
+                  color: '#064e3b',
+                  fontFamily: 'var(--font-heading)'
+                }}>
+                  AADHIRAKSHA
+                </span>
+                <span style={{
+                  fontSize: '0.62rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.3px',
+                  color: '#d97706',
+                  whiteSpace: 'nowrap'
+                }}>
+                  INSURANCE MARKETING & FINANCIAL SERVICES PVT LTD.
+                </span>
+              </div>
+            </div>
+
+            {/* Communication Address */}
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+              <MapPin size={22} color="#f59e0b" style={{ flexShrink: 0, marginTop: '0.2rem' }} />
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '1rem', color: '#f8fafc', marginBottom: '0.35rem' }}>
+                  Communication Address:
+                </div>
+                <div style={{ color: '#cbd5e1', fontSize: '0.92rem', lineHeight: '1.6', maxWidth: '340px' }}>
+                  4th Floor, Mytri Constructions,<br />
+                  Opp: ECIL Busstop, ECIL, Hyderabad.
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Insurance Plans */}
-          <div>
-            <h4 className="footer-col-title">Insurance Plans</h4>
-            <ul className="footer-links">
-              <li><Link to="/new-policy-support">Health Insurance (100% Cashless)</Link></li>
-              <li><Link to="/new-policy-support">Life & Term Protection</Link></li>
-              <li><Link to="/new-policy-support">Zero-Dep Motor Insurance</Link></li>
-              <li><Link to="/new-policy-support">Corporate & SME Shields</Link></li>
-              <li><Link to="/new-policy-support">Overseas Travel Insurance</Link></li>
-            </ul>
-          </div>
+          {/* Right Column: Contact Links */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem',
+            justifyContent: 'center',
+            paddingTop: '0.5rem'
+          }}>
+            {/* Website */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <Globe size={19} color="#f59e0b" style={{ flexShrink: 0 }} />
+              <div style={{ fontSize: '0.95rem', color: '#cbd5e1' }}>
+                Website:{' '}
+                <a 
+                  href="https://www.aadhirakshainsurance.com" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  style={{ color: '#ffffff', fontWeight: 700, textDecoration: 'none' }}
+                >
+                  www.aadhirakshainsurance.com
+                </a>
+              </div>
+            </div>
 
-          {/* Quick Support */}
-          <div>
-            <h4 className="footer-col-title">Customer Support</h4>
-            <ul className="footer-links">
-              <li><Link to="/claim-support">Instant Claim Assistance</Link></li>
-              <li><Link to="/renewal-port">Port / Renew Policy</Link></li>
-              <li><Link to="/network-hospitals">Find Cashless Hospitals</Link></li>
-              <li><Link to="/become-posp">Become a POSP Agent</Link></li>
-              <li><Link to="/loans">Fast Loan Financing</Link></li>
-            </ul>
-          </div>
+            {/* Contact No */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <Phone size={19} color="#f59e0b" style={{ flexShrink: 0 }} />
+              <div style={{ fontSize: '0.95rem', color: '#cbd5e1' }}>
+                Contact No:{' '}
+                <a 
+                  href="tel:+918367415156" 
+                  style={{ color: '#ffffff', fontWeight: 700, textDecoration: 'none' }}
+                >
+                  +91 8367415156
+                </a>
+              </div>
+            </div>
 
-          {/* Portals & Legal */}
-          <div>
-            <h4 className="footer-col-title">Partner & Admin</h4>
-            <ul className="footer-links">
-              <li><Link to="/login">POSP Partner Login</Link></li>
-              <li><Link to="/login">Staff / Admin Portal</Link></li>
-              <li><a href="#privacy">Privacy Policy</a></li>
-              <li><a href="#terms">Terms & Conditions</a></li>
-              <li><a href="#disclaimer">IRDAI Guidelines Notice</a></li>
-            </ul>
+            {/* Mail Id */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <Mail size={19} color="#f59e0b" style={{ flexShrink: 0 }} />
+              <div style={{ fontSize: '0.95rem', color: '#cbd5e1' }}>
+                Mail Id:{' '}
+                <a 
+                  href="mailto:info@aadhirakshainsurance.com" 
+                  style={{ color: '#ffffff', fontWeight: 700, textDecoration: 'none' }}
+                >
+                  info@aadhirakshainsurance.com
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="footer-bottom">
+        {/* Bottom Bar */}
+        <div style={{
+          paddingTop: '2rem',
+          display: 'flex',
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '1.25rem',
+          fontSize: '0.85rem',
+          color: '#94a3b8'
+        }}>
           <div>
-            &copy; {new Date().getFullYear()} Aadhiraksha Insurance & Financial Services Pvt Ltd. All rights reserved.
+            &copy; {new Date().getFullYear()} Aadhiraksha Insurance & Financial Services Pvt Ltd. All Rights Reserved. | Designed by <span style={{ color: '#f59e0b', fontWeight: 700 }}>EsaleMedia</span>
           </div>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <span>🔒 256-Bit SSL Encrypted Platform</span>
-            <span>⚡ Certified POSP Network</span>
+
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+            <Link to="/renewal-port" style={{ color: '#cbd5e1', transition: 'color 0.2s' }}>Privacy Policy</Link>
+            <Link to="/claim-support" style={{ color: '#cbd5e1', transition: 'color 0.2s' }}>Terms of Service</Link>
+            <Link to="/network-hospitals" style={{ color: '#cbd5e1', transition: 'color 0.2s' }}>IRDAI Disclaimer</Link>
           </div>
         </div>
       </div>
     </footer>
   );
 }
+
