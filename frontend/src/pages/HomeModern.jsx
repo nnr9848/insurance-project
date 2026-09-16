@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import HeroSection from '../components/HeroSection';
 import { portalService } from '../services/api';
 import {
   HeartPulse,
@@ -244,9 +245,12 @@ export default function HomeModern() {
   return (
     <div style={{ background: '#f8fafc', minHeight: '100vh', color: '#0f172a' }}>
       
-      {/* 1. Hero Section: PolicyBazaar Visual Category Grid */}
+      {/* 1. Hero Slider & Quick Quote Form */}
+      <HeroSection />
+
+      {/* 2. PolicyBazaar Visual Product Category Grid */}
       <section style={{
-        background: 'linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%)',
+        background: '#ffffff',
         padding: '3.5rem 0 4.5rem 0',
         borderBottom: '1px solid #e2e8f0'
       }}>
