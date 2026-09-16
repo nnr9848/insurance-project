@@ -307,13 +307,39 @@ export default function HomeClassic() {
             {partners.map((partner, idx) => (
               <div
                 key={idx}
-                className="partner-card-modern"
+                style={{
+                  background: '#ffffff',
+                  borderRadius: '12px',
+                  padding: '1.25rem 1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                  minHeight: '88px',
+                  cursor: 'pointer'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-3px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.04)';
+                }}
                 title={partner.name}
               >
                 <img 
                   src={partner.logo} 
                   alt={partner.name}
-                  className="partner-logo-img"
+                  style={{
+                    maxHeight: '44px',
+                    maxWidth: '130px',
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: 'contain'
+                  }}
                   loading="lazy"
                 />
               </div>

@@ -72,7 +72,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile Drawer - Opens from Right */}
+      {/* Mobile Drawer - Opens from Right (Classic View) */}
       {isMobileOpen && (
         <div className="mobile-backdrop" onClick={() => setIsMobileOpen(false)} />
       )}
