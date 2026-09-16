@@ -502,52 +502,119 @@ export default function HeaderModern() {
         </div>
       </header>
 
-      {/* Mobile Drawer Navigation */}
+      {/* Modern Left-Side Mobile Drawer Navigation (PolicyBazaar Style) */}
       {isMobileOpen && (
         <div className="mobile-backdrop" onClick={() => setIsMobileOpen(false)} />
       )}
-      <div className={`mobile-drawer ${isMobileOpen ? 'open' : ''}`}>
+      <div className={`mobile-drawer-left ${isMobileOpen ? 'open' : ''}`}>
+        
+        {/* Drawer Header */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingBottom: '1.25rem',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          marginBottom: '1rem'
+          paddingBottom: '1rem',
+          borderBottom: '1px solid #e2e8f0',
+          marginBottom: '0.5rem'
         }}>
-          <span style={{ color: '#f59e0b', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase' }}>
-            Menu Navigation
-          </span>
+          <Link to="/" onClick={() => setIsMobileOpen(false)} style={{ display: 'flex', alignItems: 'center' }}>
+            <img src={logoImg} alt="Aadhiraksha" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
+          </Link>
           <button 
             onClick={() => setIsMobileOpen(false)}
-            style={{ background: 'rgba(255, 255, 255, 0.1)', border: 'none', borderRadius: '8px', color: '#fff', padding: '6px', cursor: 'pointer' }}
+            style={{
+              background: '#f1f5f9',
+              border: 'none',
+              borderRadius: '50%',
+              width: '36px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#64748b',
+              cursor: 'pointer'
+            }}
+            aria-label="Close menu"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <NavLink to="/new-policy-support" onClick={() => setIsMobileOpen(false)} className="nav-item">
-            NEW POLICY SUPPORT
-          </NavLink>
-          <NavLink to="/renewal-port" onClick={() => setIsMobileOpen(false)} className="nav-item">
-            RENEWAL / PORT POLICY
-          </NavLink>
-          <NavLink to="/claim-support" onClick={() => setIsMobileOpen(false)} className="nav-item">
-            CLAIM SUPPORT
-          </NavLink>
-          <NavLink to="/network-hospitals" onClick={() => setIsMobileOpen(false)} className="nav-item">
-            NETWORK HOSPITALS
-          </NavLink>
-          <NavLink to="/become-posp" onClick={() => setIsMobileOpen(false)} className="nav-item">
-            BECOME POSP AGENT
-          </NavLink>
-          <NavLink to="/loans" onClick={() => setIsMobileOpen(false)} className="nav-item" style={{ color: '#f59e0b', fontWeight: 800 }}>
-            LOANS
-          </NavLink>
+        {/* Scrollable Menu Items */}
+        <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
+          
+          {/* Section 1: Insurance Products */}
+          <div className="mobile-menu-section-title">
+            Insurance Products
+          </div>
+          {[
+            { title: 'Health Insurance', icon: <HeartPulse size={16} color="#059669" />, bg: '#ecfdf5', link: '/new-policy-support' },
+            { title: 'Term Life Insurance', icon: <ShieldCheck size={16} color="#0284c7" />, bg: '#e0f2fe', link: '/new-policy-support' },
+            { title: 'Car & 2-Wheeler Insurance', icon: <Car size={16} color="#d97706" />, bg: '#fef3c7', link: '/new-policy-support' },
+            { title: 'Family Health Floater', icon: <Users size={16} color="#db2777" />, bg: '#fdf2f8', link: '/new-policy-support' },
+            { title: 'Corporate / SME Insurance', icon: <Briefcase size={16} color="#2563eb" />, bg: '#eff6ff', link: '/new-policy-support' },
+            { title: 'Travel Insurance', icon: <Plane size={16} color="#0891b2" />, bg: '#ecfeff', link: '/new-policy-support' }
+          ].map((item, idx) => (
+            <NavLink
+              key={idx}
+              to={item.link}
+              onClick={() => setIsMobileOpen(false)}
+              className="mobile-menu-link-item"
+            >
+              <div className="mobile-menu-icon-box" style={{ background: item.bg }}>
+                {item.icon}
+              </div>
+              <span>{item.title}</span>
+            </NavLink>
+          ))}
+
+          {/* Section 2: Renewals & Claims */}
+          <div className="mobile-menu-section-title">
+            Renewals & Claims Desk
+          </div>
+          {[
+            { title: 'Renewal / Port Policy', icon: <FileCheck size={16} color="#059669" />, bg: '#ecfdf5', link: '/renewal-port' },
+            { title: 'Claim Support & Status', icon: <ShieldCheck size={16} color="#0284c7" />, bg: '#e0f2fe', link: '/claim-support' },
+            { title: 'Network Hospitals (Cashless)', icon: <Hospital size={16} color="#d97706" />, bg: '#fef3c7', link: '/network-hospitals' }
+          ].map((item, idx) => (
+            <NavLink
+              key={idx}
+              to={item.link}
+              onClick={() => setIsMobileOpen(false)}
+              className="mobile-menu-link-item"
+            >
+              <div className="mobile-menu-icon-box" style={{ background: item.bg }}>
+                {item.icon}
+              </div>
+              <span>{item.title}</span>
+            </NavLink>
+          ))}
+
+          {/* Section 3: Financial Growth */}
+          <div className="mobile-menu-section-title">
+            Growth & Financing
+          </div>
+          {[
+            { title: 'Business & Home Loans', icon: <Building2 size={16} color="#ea580c" />, bg: '#fff7ed', link: '/loans' },
+            { title: 'Become POSP Agent', icon: <UserCheck size={16} color="#7c3aed" />, bg: '#f5f3ff', link: '/become-posp' }
+          ].map((item, idx) => (
+            <NavLink
+              key={idx}
+              to={item.link}
+              onClick={() => setIsMobileOpen(false)}
+              className="mobile-menu-link-item"
+            >
+              <div className="mobile-menu-icon-box" style={{ background: item.bg }}>
+                {item.icon}
+              </div>
+              <span>{item.title}</span>
+            </NavLink>
+          ))}
+
         </div>
 
-        <div style={{ marginTop: 'auto', paddingTop: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+        {/* Drawer Footer Actions */}
+        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
           <a
             href="tel:+918367415156"
             style={{
@@ -555,18 +622,44 @@ export default function HeaderModern() {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '8px',
-              background: '#f59e0b',
-              color: '#04281f',
+              background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+              color: '#ffffff',
               padding: '12px',
-              borderRadius: '10px',
-              fontWeight: 800,
+              borderRadius: '12px',
+              fontWeight: 700,
+              fontSize: '0.88rem',
               textDecoration: 'none',
-              marginBottom: '10px'
+              marginBottom: '8px',
+              boxShadow: '0 4px 12px rgba(5, 150, 105, 0.2)'
             }}
           >
             <Phone size={16} /> Talk to Expert (+91 8367415156)
           </a>
+
+          {!isAuthenticated && (
+            <Link
+              to="/login"
+              onClick={() => setIsMobileOpen(false)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                background: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                color: '#0f2b48',
+                padding: '10px',
+                borderRadius: '12px',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                textDecoration: 'none'
+              }}
+            >
+              <LogIn size={16} /> Partner & Staff Login
+            </Link>
+          )}
         </div>
+
       </div>
     </>
   );

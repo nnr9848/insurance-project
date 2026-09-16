@@ -1257,5 +1257,67 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* Modern Left-Side Mobile Drawer (PolicyBazaar InsurTech UX) */
+.mobile-drawer-left {
+  position: fixed;
+  top: 0;
+  left: -340px;
+  width: 320px;
+  max-width: 85vw;
+  height: 100vh;
+  background: #ffffff;
+  z-index: 10000;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 10px 0 35px rgba(0, 0, 0, 0.25);
+  overflow-y: auto;
+  font-family: var(--font-sans);
+}
+
+.mobile-drawer-left.open {
+  transform: translateX(340px);
+}
+
+.mobile-menu-section-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin: 1.25rem 0 0.5rem 0;
+  padding-left: 0.5rem;
+}
+
+.mobile-menu-link-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #0f2b48;
+  font-weight: 600;
+  font-size: 0.88rem;
+  text-decoration: none;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.mobile-menu-link-item:hover, .mobile-menu-link-item.active {
+  background: #f1f5f9;
+  color: #059669;
+}
+
+.mobile-menu-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+
 
 
