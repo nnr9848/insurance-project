@@ -31,6 +31,7 @@ export default function HeaderModern() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [mobileAccordion, setMobileAccordion] = useState('products');
   const dropdownRef = useRef(null);
+  const hoverTimeoutRef = useRef(null);
   const navigate = useNavigate();
 
   // Close dropdown on click outside
@@ -41,8 +42,26 @@ export default function HeaderModern() {
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    };
   }, []);
+
+  const handleMouseEnter = (name) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setActiveDropdown(name);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = setTimeout(() => {
+      setActiveDropdown(null);
+    }, 120);
+  };
 
   const handleLogout = () => {
     logout();
@@ -66,6 +85,14 @@ export default function HeaderModern() {
 
   return (
     <>
+      {/* PolicyBazaar-style Translucent Grey Backdrop Overlay */}
+      {activeDropdown && (
+        <div 
+          className="header-backdrop-overlay" 
+          onClick={() => setActiveDropdown(null)} 
+        />
+      )}
+
       <header style={{
         background: '#ffffff',
         borderBottom: '1px solid #e2e8f0',
@@ -122,7 +149,11 @@ export default function HeaderModern() {
             }}
           >
             {/* 1. Insurance Products Dropdown */}
-            <div style={{ position: 'relative' }}>
+            <div 
+              style={{ position: 'relative' }}
+              onMouseEnter={() => handleMouseEnter('products')}
+              onMouseLeave={handleMouseLeave}
+            >
               <button
                 onClick={() => toggleDropdown('products')}
                 style={{
@@ -199,7 +230,11 @@ export default function HeaderModern() {
             </div>
 
             {/* 2. Renew Your Policy Dropdown */}
-            <div style={{ position: 'relative' }}>
+            <div 
+              style={{ position: 'relative' }}
+              onMouseEnter={() => handleMouseEnter('renewal')}
+              onMouseLeave={handleMouseLeave}
+            >
               <button
                 onClick={() => toggleDropdown('renewal')}
                 style={{
@@ -265,7 +300,11 @@ export default function HeaderModern() {
             </div>
 
             {/* 3. Claim Support Dropdown */}
-            <div style={{ position: 'relative' }}>
+            <div 
+              style={{ position: 'relative' }}
+              onMouseEnter={() => handleMouseEnter('claims')}
+              onMouseLeave={handleMouseLeave}
+            >
               <button
                 onClick={() => toggleDropdown('claims')}
                 style={{
@@ -384,7 +423,12 @@ export default function HeaderModern() {
 
             {/* Sign In / User Profile */}
             {isAuthenticated ? (
-              <div className="user-profile-menu-wrapper" style={{ position: 'relative' }}>
+              <div 
+                className="user-profile-menu-wrapper" 
+                style={{ position: 'relative' }}
+                onMouseEnter={() => handleMouseEnter('userProfile')}
+                onMouseLeave={handleMouseLeave}
+              >
                 <button
                   onClick={() => toggleDropdown('userProfile')}
                   className="user-profile-trigger"
@@ -485,16 +529,22 @@ export default function HeaderModern() {
                   padding: '8px 16px',
                   borderRadius: '10px',
                   fontWeight: 700,
-                  fontSize: '0.84rem',
+                  fontSize: '0.85rem',
                   textDecoration: 'none',
-                  boxShadow: '0 4px 10px rgba(15, 43, 72, 0.15)',
                   transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 12px rgba(15, 43, 72, 0.15)',
                   whiteSpace: 'nowrap'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#1e3a5f'}
-                onMouseLeave={(e) => e.currentTarget.style.background = '#0f2b48'}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#0a1e33';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#0f2b48';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
-                Sign In
+                <LogIn size={15} /> Sign In
               </Link>
             )}
 
@@ -503,194 +553,374 @@ export default function HeaderModern() {
         </div>
       </header>
 
-      {/* Modern Left-Side Mobile Drawer Navigation (PolicyBazaar Style) */}
+      {/* Mobile Drawer Overlay */}
       {isMobileOpen && (
-        <div className="mobile-backdrop" onClick={() => setIsMobileOpen(false)} />
+        <div 
+          onClick={() => setIsMobileOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1200,
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        />
       )}
-      <div className={`mobile-drawer-left ${isMobileOpen ? 'open' : ''}`}>
-        
+
+      {/* Mobile Sidebar Navigation */}
+      <div 
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: '85%',
+          maxWidth: '360px',
+          background: '#ffffff',
+          zIndex: 1300,
+          transform: isMobileOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '10px 0 30px rgba(0, 0, 0, 0.2)'
+        }}
+      >
         {/* Drawer Header */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingBottom: '1rem',
+          padding: '16px 20px',
           borderBottom: '1px solid #e2e8f0',
-          marginBottom: '0.5rem'
+          background: '#f8fafc'
         }}>
-          <Link to="/" onClick={() => setIsMobileOpen(false)} style={{ display: 'flex', alignItems: 'center' }}>
-            <img src={logoImg} alt="Aadhiraksha" style={{ height: '36px', width: 'auto', objectFit: 'contain' }} />
-          </Link>
-          <button 
+          <img src={logoImg} alt="Aadhiraksha" style={{ height: '36px', width: 'auto' }} />
+          <button
             onClick={() => setIsMobileOpen(false)}
             style={{
-              background: '#f1f5f9',
+              background: 'none',
               border: 'none',
-              borderRadius: '50%',
-              width: '36px',
-              height: '36px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              padding: '6px',
+              cursor: 'pointer',
               color: '#64748b',
-              cursor: 'pointer'
+              borderRadius: '8px'
             }}
             aria-label="Close menu"
           >
-            <X size={18} />
+            <X size={22} />
           </button>
         </div>
 
-        {/* Scrollable Menu Items with Accordions (PolicyBazaar Mobile UX) */}
-        <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', flex: 1, paddingRight: '4px', gap: '8px' }}>
+        {/* Drawer Scrollable Content with Accordions */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
           
-          {/* Accordion 1: Insurance Products */}
-          <div>
+          {/* Section 1: Insurance Products (Accordion) */}
+          <div style={{ 
+            marginBottom: '10px', 
+            borderRadius: '12px', 
+            border: mobileAccordion === 'products' ? '1.5px solid #a7f3d0' : '1px solid #e2e8f0',
+            overflow: 'hidden',
+            transition: 'all 0.2s ease',
+            background: mobileAccordion === 'products' ? '#fafdfb' : '#ffffff'
+          }}>
             <button
-              onClick={() => setMobileAccordion(mobileAccordion === 'products' ? null : 'products')}
-              className={`mobile-accordion-header ${mobileAccordion === 'products' ? 'active' : ''}`}
+              onClick={() => setMobileAccordion(mobileAccordion === 'products' ? '' : 'products')}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 14px',
+                background: mobileAccordion === 'products' ? '#ecfdf5' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <HeartPulse size={18} color="#059669" /> Insurance Products
-              </span>
-              <ChevronDown size={16} style={{ transform: mobileAccordion === 'products' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShieldCheck size={18} color="#059669" />
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f2b48' }}>Insurance Products</span>
+              </div>
+              <ChevronDown 
+                size={16} 
+                color="#059669" 
+                style={{ 
+                  transform: mobileAccordion === 'products' ? 'rotate(180deg)' : 'none', 
+                  transition: 'transform 0.2s ease' 
+                }} 
+              />
             </button>
 
             {mobileAccordion === 'products' && (
-              <div className="mobile-accordion-body">
+              <div style={{ padding: '8px 10px 12px 10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {[
-                  { title: 'Health Insurance', icon: <HeartPulse size={15} color="#059669" />, bg: '#ecfdf5', link: '/new-policy-support' },
-                  { title: 'Term Life Insurance', icon: <ShieldCheck size={15} color="#0284c7" />, bg: '#e0f2fe', link: '/new-policy-support' },
-                  { title: 'Car & 2-Wheeler Insurance', icon: <Car size={15} color="#d97706" />, bg: '#fef3c7', link: '/new-policy-support' },
-                  { title: 'Family Health Floater', icon: <Users size={15} color="#db2777" />, bg: '#fdf2f8', link: '/new-policy-support' },
-                  { title: 'Corporate / SME Insurance', icon: <Briefcase size={15} color="#2563eb" />, bg: '#eff6ff', link: '/new-policy-support' },
-                  { title: 'Travel Insurance', icon: <Plane size={15} color="#0891b2" />, bg: '#ecfeff', link: '/new-policy-support' }
+                  { title: 'Health Insurance', desc: 'Cashless hospital network', icon: <HeartPulse size={16} color="#059669" />, link: '/new-policy-support' },
+                  { title: 'Term Life Insurance', desc: '₹1 Cr cover from ₹490/mo', icon: <ShieldCheck size={16} color="#0284c7" />, link: '/new-policy-support' },
+                  { title: 'Car & 2-Wheeler Insurance', desc: 'Instant policy in 2 mins', icon: <Car size={16} color="#d97706" />, link: '/new-policy-support' },
+                  { title: 'Family Health Floater', desc: 'Cover spouse & kids in 1 plan', icon: <Users size={16} color="#db2777" />, link: '/new-policy-support' },
+                  { title: 'Corporate / SME Insurance', desc: 'Group health & liability', icon: <Briefcase size={16} color="#2563eb" />, link: '/new-policy-support' },
+                  { title: 'Travel Insurance', desc: 'Schengen & US approved', icon: <Plane size={16} color="#0891b2" />, link: '/new-policy-support' }
                 ].map((item, idx) => (
-                  <NavLink
+                  <Link
                     key={idx}
                     to={item.link}
                     onClick={() => setIsMobileOpen(false)}
-                    className="mobile-menu-link-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '8px',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      background: '#ffffff',
+                      border: '1px solid #f1f5f9'
+                    }}
                   >
-                    <div className="mobile-menu-icon-box" style={{ background: item.bg }}>
-                      {item.icon}
+                    <div style={{ background: '#f8fafc', padding: '6px', borderRadius: '6px' }}>{item.icon}</div>
+                    <div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f2b48' }}>{item.title}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{item.desc}</div>
                     </div>
-                    <span>{item.title}</span>
-                  </NavLink>
+                  </Link>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Accordion 2: Renewals & Porting */}
-          <div>
+          {/* Section 2: Renew Your Policy (Accordion) */}
+          <div style={{ 
+            marginBottom: '10px', 
+            borderRadius: '12px', 
+            border: mobileAccordion === 'renewal' ? '1.5px solid #a7f3d0' : '1px solid #e2e8f0',
+            overflow: 'hidden',
+            transition: 'all 0.2s ease',
+            background: mobileAccordion === 'renewal' ? '#fafdfb' : '#ffffff'
+          }}>
             <button
-              onClick={() => setMobileAccordion(mobileAccordion === 'renewals' ? null : 'renewals')}
-              className={`mobile-accordion-header ${mobileAccordion === 'renewals' ? 'active' : ''}`}
+              onClick={() => setMobileAccordion(mobileAccordion === 'renewal' ? '' : 'renewal')}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 14px',
+                background: mobileAccordion === 'renewal' ? '#ecfdf5' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileCheck size={18} color="#0284c7" /> Renewals & Porting
-              </span>
-              <ChevronDown size={16} style={{ transform: mobileAccordion === 'renewals' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FileCheck size={18} color="#0284c7" />
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f2b48' }}>Renew Your Policy</span>
+              </div>
+              <ChevronDown 
+                size={16} 
+                color="#0284c7" 
+                style={{ 
+                  transform: mobileAccordion === 'renewal' ? 'rotate(180deg)' : 'none', 
+                  transition: 'transform 0.2s ease' 
+                }} 
+              />
             </button>
 
-            {mobileAccordion === 'renewals' && (
-              <div className="mobile-accordion-body">
+            {mobileAccordion === 'renewal' && (
+              <div style={{ padding: '8px 10px 12px 10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {[
-                  { title: 'Health Insurance Renewal', icon: <HeartPulse size={15} color="#059669" />, bg: '#ecfdf5', link: '/renewal-port' },
-                  { title: 'Motor / Car Renewal', icon: <Car size={15} color="#d97706" />, bg: '#fef3c7', link: '/renewal-port' },
-                  { title: 'Two Wheeler Renewal', icon: <Bike size={15} color="#7c3aed" />, bg: '#f5f3ff', link: '/renewal-port' },
-                  { title: 'Port Existing Policy', icon: <FileCheck size={15} color="#0284c7" />, bg: '#e0f2fe', link: '/renewal-port' }
+                  { title: 'Health Insurance Renewal', link: '/renewal-port' },
+                  { title: 'Motor / Car Renewal', link: '/renewal-port' },
+                  { title: 'Two Wheeler Renewal', link: '/renewal-port' },
+                  { title: 'Port Existing Policy to Us', link: '/renewal-port' }
                 ].map((item, idx) => (
-                  <NavLink
+                  <Link
                     key={idx}
                     to={item.link}
                     onClick={() => setIsMobileOpen(false)}
-                    className="mobile-menu-link-item"
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      color: '#0f2b48',
+                      textDecoration: 'none',
+                      background: '#ffffff',
+                      border: '1px solid #f1f5f9'
+                    }}
                   >
-                    <div className="mobile-menu-icon-box" style={{ background: item.bg }}>
-                      {item.icon}
-                    </div>
-                    <span>{item.title}</span>
-                  </NavLink>
+                    {item.title}
+                  </Link>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Accordion 3: Claims Desk & Network */}
-          <div>
+          {/* Section 3: Claim Support & Network (Accordion) */}
+          <div style={{ 
+            marginBottom: '10px', 
+            borderRadius: '12px', 
+            border: mobileAccordion === 'claims' ? '1.5px solid #a7f3d0' : '1px solid #e2e8f0',
+            overflow: 'hidden',
+            transition: 'all 0.2s ease',
+            background: mobileAccordion === 'claims' ? '#fafdfb' : '#ffffff'
+          }}>
             <button
-              onClick={() => setMobileAccordion(mobileAccordion === 'claims' ? null : 'claims')}
-              className={`mobile-accordion-header ${mobileAccordion === 'claims' ? 'active' : ''}`}
+              onClick={() => setMobileAccordion(mobileAccordion === 'claims' ? '' : 'claims')}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 14px',
+                background: mobileAccordion === 'claims' ? '#ecfdf5' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left'
+              }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <ShieldCheck size={18} color="#d97706" /> Claims & Hospitals
-              </span>
-              <ChevronDown size={16} style={{ transform: mobileAccordion === 'claims' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Hospital size={18} color="#d97706" />
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f2b48' }}>Claim Support & Network</span>
+              </div>
+              <ChevronDown 
+                size={16} 
+                color="#d97706" 
+                style={{ 
+                  transform: mobileAccordion === 'claims' ? 'rotate(180deg)' : 'none', 
+                  transition: 'transform 0.2s ease' 
+                }} 
+              />
             </button>
 
             {mobileAccordion === 'claims' && (
-              <div className="mobile-accordion-body">
+              <div style={{ padding: '8px 10px 12px 10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {[
-                  { title: 'File / Intimate Claim', icon: <ShieldCheck size={15} color="#059669" />, bg: '#ecfdf5', link: '/claim-support' },
-                  { title: 'Track Claim Status', icon: <FileCheck size={15} color="#0284c7" />, bg: '#e0f2fe', link: '/claim-support' },
-                  { title: 'Network Hospitals (Cashless)', icon: <Hospital size={15} color="#d97706" />, bg: '#fef3c7', link: '/network-hospitals' }
+                  { title: 'File / Intimate a Claim', link: '/claim-support' },
+                  { title: 'Track Claim Status', link: '/claim-support' },
+                  { title: 'Network Hospitals (Cashless)', link: '/network-hospitals' },
+                  { title: 'Become POSP Agent', link: '/become-posp' }
                 ].map((item, idx) => (
-                  <NavLink
+                  <Link
                     key={idx}
                     to={item.link}
                     onClick={() => setIsMobileOpen(false)}
-                    className="mobile-menu-link-item"
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      color: '#0f2b48',
+                      textDecoration: 'none',
+                      background: '#ffffff',
+                      border: '1px solid #f1f5f9'
+                    }}
                   >
-                    <div className="mobile-menu-icon-box" style={{ background: item.bg }}>
-                      {item.icon}
-                    </div>
-                    <span>{item.title}</span>
-                  </NavLink>
+                    {item.title}
+                  </Link>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Accordion 4: Loans & Partners */}
-          <div>
-            <button
-              onClick={() => setMobileAccordion(mobileAccordion === 'growth' ? null : 'growth')}
-              className={`mobile-accordion-header ${mobileAccordion === 'growth' ? 'active' : ''}`}
+          {/* Direct Loan Section */}
+          <div style={{ marginTop: '14px', borderTop: '1px solid #f1f5f9', paddingTop: '14px' }}>
+            <Link
+              to="/loans"
+              onClick={() => setIsMobileOpen(false)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 14px',
+                borderRadius: '12px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                textDecoration: 'none',
+                color: '#0f2b48',
+                fontWeight: 700,
+                fontSize: '0.88rem'
+              }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Building2 size={18} color="#ea580c" /> Loans & POSP Portal
-              </span>
-              <ChevronDown size={16} style={{ transform: mobileAccordion === 'growth' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-            </button>
-
-            {mobileAccordion === 'growth' && (
-              <div className="mobile-accordion-body">
-                {[
-                  { title: 'Business & Home Loans', icon: <Building2 size={15} color="#ea580c" />, bg: '#fff7ed', link: '/loans' },
-                  { title: 'Become POSP Agent', icon: <UserCheck size={15} color="#7c3aed" />, bg: '#f5f3ff', link: '/become-posp' }
-                ].map((item, idx) => (
-                  <NavLink
-                    key={idx}
-                    to={item.link}
-                    onClick={() => setIsMobileOpen(false)}
-                    className="mobile-menu-link-item"
-                  >
-                    <div className="mobile-menu-icon-box" style={{ background: item.bg }}>
-                      {item.icon}
-                    </div>
-                    <span>{item.title}</span>
-                  </NavLink>
-                ))}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Building2 size={18} color="#d97706" />
+                <span>Loans & Financial Services</span>
               </div>
-            )}
+              <ArrowRight size={16} color="#64748b" />
+            </Link>
           </div>
+
+          {/* User Profile on Mobile */}
+          {isAuthenticated && (
+            <div style={{ marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', padding: '0 4px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  background: '#0f2b48',
+                  color: '#f59e0b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '0.85rem'
+                }}>
+                  {userInitials}
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f2b48' }}>{user.fullName}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{user.email || user.username}</div>
+                </div>
+              </div>
+
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  onClick={() => setIsMobileOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    color: '#059669',
+                    textDecoration: 'none',
+                    background: '#f0fdf4',
+                    marginBottom: '8px'
+                  }}
+                >
+                  <LayoutDashboard size={16} /> Operations Console
+                </Link>
+              )}
+
+              <button
+                onClick={() => { setIsMobileOpen(false); handleLogout(); }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: '#ef4444',
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  cursor: 'pointer'
+                }}
+              >
+                <LogOut size={16} /> Sign Out
+              </button>
+            </div>
+          )}
 
         </div>
 
-        {/* Drawer Footer Actions */}
-        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+        {/* Drawer Footer CTA */}
+        <div style={{ padding: '16px', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
           <a
             href="tel:+918367415156"
             style={{
