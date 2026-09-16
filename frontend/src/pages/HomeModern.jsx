@@ -684,41 +684,13 @@ export default function HomeModern() {
             {filteredPartners.map((partner, idx) => (
               <div
                 key={idx}
-                style={{
-                  background: '#ffffff',
-                  borderRadius: '14px',
-                  padding: '1.25rem 1rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)',
-                  transition: 'all 0.25s ease',
-                  minHeight: '90px',
-                  cursor: 'pointer'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.08)';
-                  e.currentTarget.style.borderColor = '#cbd5e1';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.03)';
-                  e.currentTarget.style.borderColor = '#e2e8f0';
-                }}
+                className="partner-card-modern"
                 title={partner.name}
               >
                 <img
                   src={partner.logo}
                   alt={partner.name}
-                  style={{
-                    maxHeight: '44px',
-                    maxWidth: '130px',
-                    width: 'auto',
-                    height: 'auto',
-                    objectFit: 'contain'
-                  }}
+                  className="partner-logo-img"
                   loading="lazy"
                 />
               </div>
