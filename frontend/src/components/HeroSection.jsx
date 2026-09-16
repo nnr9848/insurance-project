@@ -2,12 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ArrowRight, ShieldCheck, HeartPulse, Car, Briefcase, Plane, Banknote, CheckCircle, Send } from 'lucide-react';
 import { portalService } from '../services/api';
 
+import familyHero from '../assets/slides/family_hero.png';
+import healthHero from '../assets/slides/health_hero.jpg';
+import vehicleHero from '../assets/slides/vehicle_hero.jpg';
+import businessHero from '../assets/slides/business_hero.jpg';
+import businessTravelHero from '../assets/slides/business_travel_hero.jpg';
+import loansHero from '../assets/slides/loans_hero.jpg';
+
 const slides = [
   {
     badge: 'Life & Family',
     title: 'Comprehensive Family Protection',
     desc: 'Shield your family against unforeseen financial risks with high-value coverage and guaranteed security.',
-    image: 'https://images.unsplash.com/photo-1609220136736-443140cffec6?auto=format&fit=crop&w=1200&q=80',
+    image: familyHero,
     categorySlug: 'life-insurance',
     highlight: '₹1 Crore Cover from ₹490/month*'
   },
@@ -15,7 +22,7 @@ const slides = [
     badge: 'Health & Wellness',
     title: '100% Cashless Health Care',
     desc: 'Instant coverage across 10,000+ empanelled hospitals with zero waiting hassles and 24x7 desk support.',
-    image: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=1200&q=80',
+    image: healthHero,
     categorySlug: 'health-insurance',
     highlight: 'No Room Rent Capping & Free Health Checkups'
   },
@@ -23,7 +30,7 @@ const slides = [
     badge: 'Vehicle & Motor',
     title: 'Zero-Depreciation Vehicle Insurance',
     desc: 'Instant cashless accident repairs, engine protection, and 24x7 pan-India roadside assistance.',
-    image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80',
+    image: vehicleHero,
     categorySlug: 'vehicle-insurance',
     highlight: 'Save up to 85% with Instant Policy Delivery'
   },
@@ -31,15 +38,23 @@ const slides = [
     badge: 'Corporate & SME',
     title: 'Commercial & Corporate Protection',
     desc: 'Group health, commercial property, marine cargo, and comprehensive liability shields for business growth.',
-    image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
+    image: businessHero,
     categorySlug: 'business-insurance',
     highlight: 'Tailored B2B Policies for Startups & Enterprises'
+  },
+  {
+    badge: 'Overseas Travel',
+    title: 'International Travel Protection',
+    desc: 'Global protection against flight disruptions, emergency hospitalization, and baggage delay.',
+    image: businessTravelHero,
+    categorySlug: 'travel-insurance',
+    highlight: 'Schengen & Worldwide Medical Emergency Shield'
   },
   {
     badge: 'Loans & Finance',
     title: 'Fast Loan Approvals & Financing',
     desc: 'Lowest interest benchmarking on Personal, Home, MSME, and Loan Against Property.',
-    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80',
+    image: loansHero,
     categorySlug: 'loans',
     highlight: 'Disbursal in as fast as 24-48 hours'
   }

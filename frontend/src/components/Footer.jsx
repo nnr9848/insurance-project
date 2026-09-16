@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Phone, Mail, Globe, Shield } from 'lucide-react';
+import logoImg from '../assets/logo.png';
 
 export default function Footer() {
   return (
@@ -20,46 +21,18 @@ export default function Footer() {
             {/* White Brand Card */}
             <div style={{
               background: '#ffffff',
-              padding: '0.85rem 1.4rem',
+              padding: '0.65rem 1rem',
               borderRadius: '12px',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.75rem',
               boxShadow: '0 4px 15px rgba(0, 0, 0, 0.25)',
               marginBottom: '1.75rem'
             }}>
-              <div style={{
-                width: '38px',
-                height: '38px',
-                borderRadius: '8px',
-                background: '#f0fdf4',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <Shield size={22} color="#064e3b" />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
-                <span style={{
-                  fontSize: '1.25rem',
-                  fontWeight: 900,
-                  letterSpacing: '0.5px',
-                  color: '#064e3b',
-                  fontFamily: 'var(--font-heading)'
-                }}>
-                  AADHIRAKSHA
-                </span>
-                <span style={{
-                  fontSize: '0.62rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.3px',
-                  color: '#d97706',
-                  whiteSpace: 'nowrap'
-                }}>
-                  INSURANCE MARKETING & FINANCIAL SERVICES PVT LTD.
-                </span>
-              </div>
+              <img 
+                src={logoImg} 
+                alt="Aadhiraksha Insurance Marketing & Financial Services" 
+                style={{ height: '44px', width: 'auto', objectFit: 'contain' }}
+              />
             </div>
 
             {/* Communication Address */}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, LogIn, LayoutDashboard, LogOut } from 'lucide-react';
+import logoImg from '../assets/logo.png';
 
 export default function Navbar() {
   const { user, logout, isAuthenticated } = useAuth();
@@ -17,16 +18,22 @@ export default function Navbar() {
     <>
       <nav className="nav-bar">
         <div className="nav-container container">
-          {/* Home Brand Logo button (First item in horizontal bar like original site) */}
+          {/* Home Brand Logo button */}
           <NavLink to="/" className="nav-brand-logo-btn" title="Aadhiraksha Home" aria-label="Go to Home">
-            <div className="nav-logo-badge">
-              <div className="nav-logo-icon">
-                <span style={{ fontWeight: 900, fontSize: '0.95rem', color: '#10b981' }}>🛡️</span>
-              </div>
-              <div className="nav-logo-text-group">
-                <span className="nav-logo-title">AADHIRAKSHA</span>
-                <span className="nav-logo-subtitle">INSURANCE & FINANCIAL SERVICES</span>
-              </div>
+            <div style={{
+              background: '#ffffff',
+              padding: '0.2rem 0.5rem',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+              height: '40px'
+            }}>
+              <img 
+                src={logoImg} 
+                alt="Aadhiraksha Logo" 
+                style={{ height: '32px', width: 'auto', objectFit: 'contain' }} 
+              />
             </div>
           </NavLink>
 

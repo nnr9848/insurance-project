@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Phone, Shield, User, LogIn, LayoutDashboard, LogOut, ChevronDown, ShieldCheck, Mail } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logoImg from '../assets/logo.png';
 
 export default function Header() {
   const { user, logout, isAuthenticated } = useAuth();
@@ -41,27 +42,12 @@ export default function Header() {
       {/* Brand Logo & Slogan Row */}
       <div className="header-brand-row">
         <div className="brand-container">
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, #0f2b48, #183e66)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#f59e0b',
-              boxShadow: '0 4px 10px rgba(15, 43, 72, 0.25)',
-              flexShrink: 0
-            }}>
-              <Shield size={26} />
-            </div>
-            <div>
-              <div className="brand-logo-text">
-                AADHIRAKSHA
-                <span className="brand-logo-badge">INSURANCE</span>
-              </div>
-            </div>
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+            <img 
+              src={logoImg} 
+              alt="Aadhiraksha Insurance Marketing & Financial Services" 
+              style={{ height: '48px', width: 'auto', objectFit: 'contain' }}
+            />
           </Link>
         </div>
 

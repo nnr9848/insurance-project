@@ -20,6 +20,28 @@ import {
   Headphones
 } from 'lucide-react';
 
+// Partner Logos
+import adityaBirlaLogo from '../assets/partners/ADITYA BIRLA CAPITAL.jpg';
+import axisMaxLogo from '../assets/partners/AXIS MAX Life Insurance logo.png';
+import bajajAllianzLogo from '../assets/partners/Bajaj Alilanz logo.png';
+import hdfcErgoLogo from '../assets/partners/HDFC-Ergo-logo.png';
+import iciciLombardLogo from '../assets/partners/ICICI Lombard logo.webp';
+import licLogo from '../assets/partners/LIC LOGO.jpg';
+import nationalInsuranceLogo from '../assets/partners/NATIONAL INSURANCE LOGO.jpg';
+import orientalInsuranceLogo from '../assets/partners/ORIENTAL INSURANCE LOGO.jpg';
+import relianceGeneralLogo from '../assets/partners/Reliance General Insurance Logo.jpg';
+import sbiGeneralLogo from '../assets/partners/SBI general Insurance logo.jpg';
+import tataAigLogo from '../assets/partners/TATA AIG Insurance logo.png';
+import careHealthLogo from '../assets/partners/care health insurance logo.png';
+import cholaMsLogo from '../assets/partners/chola ms generali insurance.png';
+import digitLogo from '../assets/partners/digit logo.png';
+import futureGeneraliLogo from '../assets/partners/future generali insurance logo.jpg';
+import kotakGeneralLogo from '../assets/partners/kotak general insurance logo.jpg';
+import magmaHdiLogo from '../assets/partners/magma hdi general insurnce logo.png';
+import manipalCignaLogo from '../assets/partners/manipal cigna health insurance logo.jpg';
+import nivaBupaLogo from '../assets/partners/niva health insurance logo.png';
+import starHealthLogo from '../assets/partners/star health insurance logo.png';
+
 export default function Home() {
   const categories = [
     {
@@ -67,14 +89,26 @@ export default function Home() {
   ];
 
   const partners = [
-    { name: 'Star Health', category: 'Health Insurance', logo: '🏥' },
-    { name: 'HDFC ERGO', category: 'General & Health', logo: '🛡️' },
-    { name: 'ICICI Lombard', category: 'Motor & Health', logo: '🚗' },
-    { name: 'Care Health', category: 'Health & Critical', logo: '❤️' },
-    { name: 'Tata AIG', category: 'General & Commercial', logo: '🏢' },
-    { name: 'Bajaj Allianz', category: 'Life & General', logo: '⚡' },
-    { name: 'Niva Bupa', category: 'Health Insurance', logo: '🩺' },
-    { name: 'SBI Life', category: 'Life & Term Plans', logo: '🏛️' }
+    { name: 'Star Health Insurance', logo: starHealthLogo },
+    { name: 'HDFC ERGO', logo: hdfcErgoLogo },
+    { name: 'ICICI Lombard', logo: iciciLombardLogo },
+    { name: 'Care Health Insurance', logo: careHealthLogo },
+    { name: 'TATA AIG Insurance', logo: tataAigLogo },
+    { name: 'Bajaj Allianz', logo: bajajAllianzLogo },
+    { name: 'Niva Bupa Health', logo: nivaBupaLogo },
+    { name: 'SBI General Insurance', logo: sbiGeneralLogo },
+    { name: 'Life Insurance Corporation (LIC)', logo: licLogo },
+    { name: 'Max Life Insurance', logo: axisMaxLogo },
+    { name: 'Aditya Birla Capital', logo: adityaBirlaLogo },
+    { name: 'Reliance General Insurance', logo: relianceGeneralLogo },
+    { name: 'Digit Insurance', logo: digitLogo },
+    { name: 'Kotak General Insurance', logo: kotakGeneralLogo },
+    { name: 'ManipalCigna Health', logo: manipalCignaLogo },
+    { name: 'Chola MS General Insurance', logo: cholaMsLogo },
+    { name: 'Future Generali', logo: futureGeneraliLogo },
+    { name: 'Magma HDI General', logo: magmaHdiLogo },
+    { name: 'National Insurance', logo: nationalInsuranceLogo },
+    { name: 'Oriental Insurance', logo: orientalInsuranceLogo }
   ];
 
   const whyChooseUs = [
@@ -266,32 +300,48 @@ export default function Home() {
 
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1.25rem'
+            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+            gap: '1.25rem',
+            alignItems: 'stretch'
           }}>
             {partners.map((partner, idx) => (
               <div
                 key={idx}
                 style={{
                   background: '#ffffff',
-                  borderRadius: '14px',
-                  padding: '1.5rem 1rem',
-                  textAlign: 'center',
-                  border: '1px solid var(--border-subtle)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  borderRadius: '12px',
+                  padding: '1.25rem 1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
                   transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                  minHeight: '88px',
                   cursor: 'pointer'
                 }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-3px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.04)';
+                }}
+                title={partner.name}
               >
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
-                  {partner.logo}
-                </div>
-                <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary-navy)', marginBottom: '0.2rem' }}>
-                  {partner.name}
-                </h4>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                  {partner.category}
-                </span>
+                <img 
+                  src={partner.logo} 
+                  alt={partner.name}
+                  style={{
+                    maxHeight: '44px',
+                    maxWidth: '130px',
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: 'contain'
+                  }}
+                  loading="lazy"
+                />
               </div>
             ))}
           </div>
