@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Navbar from './components/Navbar';
 import HeaderModern from './components/HeaderModern';
@@ -8,6 +8,7 @@ import DesignModeToggle from './components/DesignModeToggle';
 import { ThemeModeProvider, useThemeMode } from './context/ThemeModeContext';
 
 import Home from './pages/Home';
+import HomeClassic from './pages/HomeClassic';
 import NewPolicySupport from './pages/NewPolicySupport';
 import RenewalPort from './pages/RenewalPort';
 import ClaimSupport from './pages/ClaimSupport';
@@ -19,22 +20,27 @@ import AdminDashboard from './pages/AdminDashboard';
 
 function AppContent() {
   const { designMode } = useThemeMode();
+  const location = useLocation();
+
+  // If viewing explicit /classic path or user toggled classic mode
+  const isClassic = location.pathname === '/classic' || designMode === 'classic';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
-      {/* Dynamic Header: Single unified PolicyBazaar header in modern mode, classic 2-bar in classic mode */}
-      {designMode === 'modern' ? (
-        <HeaderModern />
-      ) : (
+      {/* Header: PolicyBazaar Modern header by default, classic 2-bar only in classic mode */}
+      {isClassic ? (
         <>
           <Header />
           <Navbar />
         </>
+      ) : (
+        <HeaderModern />
       )}
       
       <main style={{ flex: 1 }}>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/classic" element={<HomeClassic />} />
           <Route path="/new-policy-support" element={<NewPolicySupport />} />
           <Route path="/renewal-port" element={<RenewalPort />} />
           <Route path="/claim-support" element={<ClaimSupport />} />

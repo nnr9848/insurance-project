@@ -4,7 +4,9 @@ const ThemeModeContext = createContext();
 
 export function ThemeModeProvider({ children }) {
   const [designMode, setDesignMode] = useState(() => {
-    return localStorage.getItem('aadhiraksha_design_mode') || 'modern';
+    const saved = localStorage.getItem('aadhiraksha_design_mode');
+    // Ensure standard default is always modern
+    return saved === 'classic' ? 'classic' : 'modern';
   });
 
   useEffect(() => {
