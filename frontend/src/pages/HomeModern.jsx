@@ -244,51 +244,7 @@ export default function HomeModern() {
   return (
     <div style={{ background: '#f8fafc', minHeight: '100vh', color: '#0f172a' }}>
       
-      {/* 1. PolicyBazaar-Style Top USP Ribbon */}
-      <div style={{
-        background: 'linear-gradient(90deg, #04281f 0%, #064e3b 50%, #04281f 100%)',
-        color: '#ffffff',
-        padding: '8px 0',
-        fontSize: '0.82rem',
-        fontWeight: 600,
-        borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
-      }}>
-        <div className="container" style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{
-              background: '#f59e0b',
-              color: '#000',
-              padding: '2px 8px',
-              borderRadius: '4px',
-              fontWeight: 800,
-              fontSize: '0.72rem'
-            }}>
-              IRDAI CERTIFIED
-            </span>
-            <span>Zero Claim Rejections with Dedicated On-Ground Claim Manager</span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Zap size={14} color="#f59e0b" /> 30-Min Cashless Approval
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Lock size={14} color="#10b981" /> 100% Unbiased Pricing
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <PhoneCall size={14} color="#38bdf8" /> 24x7 Claims: 1800-890-4560
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Hero Section: PolicyBazaar Visual Category Grid */}
+      {/* 1. Hero Section: PolicyBazaar Visual Category Grid */}
       <section style={{
         background: 'linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%)',
         padding: '3.5rem 0 4.5rem 0',
@@ -337,96 +293,48 @@ export default function HomeModern() {
             </p>
           </div>
 
-          {/* PolicyBazaar Grid Tiles */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: '1.25rem'
-          }}>
-            {productTiles.map((product) => (
-              <div
-                key={product.id}
-                onClick={() => handleOpenModal(product)}
-                style={{
-                  background: '#ffffff',
-                  borderRadius: '18px',
-                  padding: '1.5rem',
-                  border: '1.5px solid #e2e8f0',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
-                  cursor: 'pointer',
-                  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  minHeight: '180px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-5px)';
-                  e.currentTarget.style.boxShadow = '0 16px 30px -10px rgba(0, 0, 0, 0.12)';
-                  e.currentTarget.style.borderColor = '#059669';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.03)';
-                  e.currentTarget.style.borderColor = '#e2e8f0';
-                }}
-              >
-                {/* Top Tag & Discount Pill */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <div style={{
-                    width: '52px',
-                    height: '52px',
-                    borderRadius: '14px',
-                    background: product.bgGradient,
-                    border: `1px solid ${product.borderColor}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 8px rgba(0,0,0,0.04)'
-                  }}>
+          {/* PolicyBazaar Authentic Product Grid Tiles (4 cols desktop, 2 cols mobile) */}
+          <div className="pb-product-grid">
+            {productTiles.map((product) => {
+              const badgeClass = product.discountType === 'green' ? 'pb-badge-green'
+                : product.discountType === 'blue' ? 'pb-badge-blue'
+                : product.discountType === 'purple' ? 'pb-badge-purple'
+                : 'pb-badge-amber';
+
+              return (
+                <div
+                  key={product.id}
+                  onClick={() => handleOpenModal(product)}
+                  className="pb-product-tile"
+                >
+                  {/* Top Discount / Benefit Ribbon */}
+                  <div className={`pb-tile-badge-ribbon ${badgeClass}`}>
+                    {product.discount}
+                  </div>
+
+                  {/* Centered Icon Container */}
+                  <div
+                    className="pb-tile-icon-container"
+                    style={{
+                      background: product.bgGradient,
+                      border: `1px solid ${product.borderColor}`
+                    }}
+                  >
                     {product.icon}
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                    <span style={{
-                      fontSize: '0.68rem',
-                      fontWeight: 800,
-                      background: product.discountType === 'green' ? '#dcfce7' : product.discountType === 'blue' ? '#e0f2fe' : '#fef3c7',
-                      color: product.discountType === 'green' ? '#15803d' : product.discountType === 'blue' ? '#0369a1' : '#b45309',
-                      padding: '3px 8px',
-                      borderRadius: '6px',
-                      letterSpacing: '0.02em'
-                    }}>
-                      {product.discount}
-                    </span>
-                    <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>
-                      {product.tag}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Title & Desc */}
-                <div>
-                  <h3 style={{
-                    fontSize: '1.18rem',
-                    fontWeight: 700,
-                    color: '#0f2b48',
-                    marginBottom: '0.25rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}>
+                  {/* Product Title */}
+                  <h3 className="pb-tile-title">
                     {product.name}
-                    <ChevronRight size={18} color="#059669" />
                   </h3>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>
+
+                  {/* Subtitle / Starting Price */}
+                  <p className="pb-tile-subtext">
                     {product.subtext}
                   </p>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Trust Highlights Bar */}
@@ -640,8 +548,8 @@ export default function HomeModern() {
               }}>
                 Our Network
               </span>
-              <h2 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#0f2b48', marginTop: '0.5rem' }}>
-                India's 20+ Leading Insurance Partners
+              <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#0f2b48', marginTop: '0.5rem' }}>
+                A Wide Range of Insurers & Lenders to Choose From
               </h2>
             </div>
 
