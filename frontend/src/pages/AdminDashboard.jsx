@@ -892,43 +892,38 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           {/* VIEW: CRM DASHBOARD OVERVIEW */}
           {activeView === 'dashboard' && (
             <div>
-              {/* Welcome Banner */}
+              {/* Sleek Executive Greeting Bar */}
               <div 
                 className="crm-mobile-hero-banner"
                 style={{
-                  background: 'linear-gradient(135deg, var(--primary-navy) 0%, var(--primary-navy-light) 100%)',
-                  color: '#fff',
-                  padding: '1.75rem 2rem',
-                  borderRadius: '16px',
-                  marginBottom: '1.5rem',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  boxShadow: 'var(--shadow-md)'
+                  marginBottom: '1.25rem',
+                  gap: '1rem',
+                  flexWrap: 'wrap'
                 }}
               >
                 <div>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(245, 158, 11, 0.2)', color: 'var(--accent-gold)', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.6rem' }}>
-                    <Sparkles size={12} /> Aadhiraksha Insurance CRM & Operations Suite
-                  </div>
-                  <h2 style={{ fontSize: '1.55rem', fontWeight: 800, color: '#fff', margin: '0 0 0.4rem' }}>
-                    Welcome back, {user?.fullName || 'Super Admin'}
+                  <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--primary-navy)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    Welcome back, {user?.fullName || 'Super Admin'} <span style={{ fontSize: '1.1rem' }}>👋</span>
                   </h2>
-                  <p style={{ color: '#cbd5e1', fontSize: '0.88rem', margin: 0, maxWidth: '600px' }}>
-                    Manage client leads, execute daily call schedules, track the 10-stage insurance pipeline, and coordinate hospital cashless claims in real time.
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', margin: '3px 0 0 0', fontWeight: 500 }}>
+                    Here's a live summary of your policy pipeline, daily agendas, and network operations.
                   </p>
                 </div>
-                <div className="crm-mobile-hero-actions" style={{ display: 'flex', gap: '0.75rem' }}>
+
+                <div className="crm-mobile-hero-actions" style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                   <button
                     onClick={() => setActiveView('clients')}
                     style={{
                       background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover))',
                       color: '#fff',
                       border: 'none',
-                      padding: '0.65rem 1.2rem',
+                      padding: '0.55rem 1rem',
                       borderRadius: '10px',
-                      fontWeight: 800,
-                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -936,25 +931,25 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                       boxShadow: 'var(--shadow-gold)'
                     }}
                   >
-                    <FileText size={16} /> Open Client Sheet
+                    <FileText size={15} /> + New Client
                   </button>
                   <button
                     onClick={() => setActiveView('agenda')}
                     style={{
-                      background: 'rgba(255,255,255,0.12)',
-                      color: '#fff',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      padding: '0.65rem 1.2rem',
+                      background: 'var(--bg-card)',
+                      color: 'var(--text-main)',
+                      border: '1px solid var(--border-subtle)',
+                      padding: '0.55rem 1rem',
                       borderRadius: '10px',
                       fontWeight: 700,
-                      fontSize: '0.85rem',
+                      fontSize: '0.82rem',
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '0.4rem'
                     }}
                   >
-                    <PhoneCall size={16} /> Daily Call Agenda
+                    <PhoneCall size={15} color="#ea580c" /> Call Agenda
                   </button>
                 </div>
               </div>
