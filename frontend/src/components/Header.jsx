@@ -395,6 +395,9 @@ export default function Header() {
             {/* Talk to Expert CTA (PolicyBazaar Style) */}
             <a
               href="tel:+918367415156"
+              className="header-expert-btn"
+              title="Talk to Insurance Expert (+91 8367415156)"
+              aria-label="Call Expert"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -419,7 +422,8 @@ export default function Header() {
                 e.currentTarget.style.transform = 'translateY(0)';
               }}
             >
-              <Phone size={14} /> Talk to Expert
+              <Phone size={14} />
+              <span className="header-expert-btn-text">Talk to Expert</span>
             </a>
 
             {/* Sign In / User Profile */}
@@ -521,6 +525,9 @@ export default function Header() {
             ) : (
               <Link
                 to="/login"
+                className="header-signin-btn"
+                title="Sign In / Register"
+                aria-label="Sign In"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -545,7 +552,8 @@ export default function Header() {
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
-                <LogIn size={15} /> Sign In
+                <LogIn size={15} />
+                <span className="header-signin-btn-text">Sign In</span>
               </Link>
             )}
 

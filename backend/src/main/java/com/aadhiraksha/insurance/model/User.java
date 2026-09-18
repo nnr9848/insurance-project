@@ -1,5 +1,7 @@
 package com.aadhiraksha.insurance.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -16,11 +18,15 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "employee_code", unique = true, length = 50)
+    private String employeeCode;
 
     @Column(name = "full_name", nullable = false, length = 120)
     private String fullName;
@@ -31,12 +37,29 @@ public class User {
     @Column(name = "phone_number", unique = true, length = 20)
     private String phoneNumber;
 
+    @JsonIgnore
     @Column(name = "password_hash", nullable = false)
     private String password;
+
+    @Column(length = 100)
+    private String designation;
+
+    @Builder.Default
+    @Column(length = 100)
+    private String department = "Insurance Sales";
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_id")
+    @JsonIgnoreProperties({"manager", "roles", "password"})
+    private User manager;
 
     @Builder.Default
     @Column(name = "is_active")
     private Boolean isActive = true;
+
+    @Builder.Default
+    @Column(name = "must_change_password")
+    private Boolean mustChangePassword = false;
 
     @Builder.Default
     @ManyToMany(fetch = FetchType.EAGER)

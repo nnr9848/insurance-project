@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   Users, 
   FileText, 
@@ -20,20 +20,74 @@ import {
   Download,
   AlertCircle,
   X,
-  MapPin
+  MapPin,
+  Calendar,
+  Layers,
+  PhoneCall,
+  LayoutDashboard,
+  ShieldCheck,
+  Briefcase,
+  UserCheck,
+  ChevronRight,
+  ChevronLeft,
+  Sparkles,
+  RefreshCw,
+  Bell,
+  LogOut,
+  ExternalLink,
+  MessageSquare,
+  Menu,
+  Globe
 } from 'lucide-react';
-import { portalService } from '../services/api';
+import { portalService, crmService } from '../services/api';
+import UserManagementView from '../components/crm/UserManagementView';
+import ClientDataSheetView from '../components/crm/ClientDataSheetView';
+import DailyCallAgendaView from '../components/crm/DailyCallAgendaView';
+import SalesPipelineView from '../components/crm/SalesPipelineView';
+import MeetingCalendarView from '../components/crm/MeetingCalendarView';
+import Client360Drawer from '../components/crm/Client360Drawer';
 
 export default function AdminDashboard() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('quotes'); // 'quotes', 'posp', 'claims', 'hospitals'
+  // Active Workspace Navigation View
+  // 'dashboard' | 'clients' | 'agenda' | 'pipeline' | 'meetings' | 'users' | 'quotes' | 'posp' | 'claims' | 'hospitals'
+  const [activeView, setActiveView] = useState('dashboard');
+
+  // Collapsible Sidebar States (with local storage persistence)
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    return localStorage.getItem('crm_sidebar_collapsed') === 'true';
+  });
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+
+  // Auto-track screen resize
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) setIsMobileOpen(false);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Preview Role Switcher (Super Admin | Manager | Advisor)
+  const [demoRole, setDemoRole] = useState(user?.role || 'ROLE_SUPER_ADMIN');
+
+  // Dataset states
   const [quotes, setQuotes] = useState([]);
   const [pospList, setPospList] = useState([]);
   const [claims, setClaims] = useState([]);
   const [hospitals, setHospitals] = useState([]);
+  const [leads, setLeads] = useState([]);
+  const [dueFollowUps, setDueFollowUps] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Global Interactive Drawers / Modals
+  const [selectedClient360, setSelectedClient360] = useState(null);
+  const [preselectedMeetingClient, setPreselectedMeetingClient] = useState(null);
 
   // Hospital filters & search
   const [hospSearch, setHospSearch] = useState('');
@@ -63,6 +117,35 @@ export default function AdminDashboard() {
   const [bulkParsedData, setBulkParsedData] = useState([]);
   const [bulkError, setBulkError] = useState('');
 
+  // Persist sidebar state
+  const toggleSidebar = () => {
+    setIsCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('crm_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
+
+  const handleMenuToggle = () => {
+    if (window.innerWidth < 768) {
+      setIsMobileOpen(prev => !prev);
+    } else {
+      toggleSidebar();
+    }
+  };
+
+  // Keyboard shortcut Cmd/Ctrl + B
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
@@ -74,18 +157,22 @@ export default function AdminDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [qData, pData, cData, hData] = await Promise.all([
+      const [qData, pData, cData, hData, lData, fData] = await Promise.all([
         portalService.getAdminQuotes().catch(() => []),
         portalService.getAdminPOSP().catch(() => []),
         portalService.getAdminClaims().catch(() => []),
-        portalService.searchHospitals('', '').catch(() => [])
+        portalService.searchHospitals('', '').catch(() => []),
+        crmService.getLeads().catch(() => []),
+        crmService.getDueTodayFollowUps().catch(() => [])
       ]);
       setQuotes(qData || []);
       setPospList(pData || []);
       setClaims(cData || []);
       setHospitals(hData || []);
+      setLeads(lData || []);
+      setDueFollowUps(fData || []);
     } catch (err) {
-      console.error('Error fetching admin datasets', err);
+      console.error('Error fetching admin/crm datasets', err);
     } finally {
       setLoading(false);
     }
@@ -171,11 +258,8 @@ export default function AdminDashboard() {
             setBulkError('CSV file must have a header row and at least 1 data row.');
             return;
           }
-          const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z0-9]/g, ''));
-          
           const records = [];
           for (let i = 1; i < lines.length; i++) {
-            // Basic CSV row splitter handling quotes
             const row = lines[i].split(',').map(cell => cell.trim().replace(/^["']|["']$/g, ''));
             if (row.length >= 3 && row[0]) {
               records.push({
@@ -250,168 +334,852 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
   const uniqueCities = Array.from(new Set(hospitals.map(h => h.city))).filter(Boolean).sort();
 
+  // Navigation Items
+  const navItemsCRM = [
+    { id: 'dashboard', label: 'CRM Dashboard', icon: <LayoutDashboard size={19} />, count: null },
+    { id: 'clients', label: 'Client Data Sheet', icon: <FileText size={19} />, count: leads.length, badgeColor: '#0284c7' },
+    { id: 'agenda', label: 'Daily Call Agenda', icon: <PhoneCall size={19} />, count: dueFollowUps.length, badgeColor: '#ea580c' },
+    { id: 'pipeline', label: 'Sales Pipeline', icon: <TrendingUp size={19} />, count: null },
+    { id: 'meetings', label: 'Meeting Calendar', icon: <Calendar size={19} />, count: null },
+  ];
+
+  const navItemsAdmin = [
+    { id: 'users', label: 'User & Team Hierarchy', icon: <Users size={19} />, count: null },
+    { id: 'quotes', label: 'Web Quote Leads', icon: <Briefcase size={19} />, count: quotes.length, badgeColor: '#16a34a' },
+    { id: 'posp', label: 'POSP Agent Network', icon: <UserCheck size={19} />, count: pospList.filter(p => p.status === 'PENDING').length, badgeColor: '#d97706' },
+    { id: 'claims', label: 'Claims Desk', icon: <Crosshair size={19} />, count: claims.length, badgeColor: '#2563eb' },
+    { id: 'hospitals', label: 'Cashless Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' },
+  ];
+
+  const showMiniRail = !isMobile && isCollapsed;
+  const currentSidebarWidth = isMobile ? '280px' : (showMiniRail ? '68px' : '260px');
+
   return (
-    <div style={{ padding: '3rem 0', background: '#f8fafc', minHeight: '85vh' }}>
-      <div className="container">
-        {/* Dashboard Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <span className="section-badge">Management Console</span>
-            <h1 style={{ fontSize: '2rem', color: 'var(--primary-navy)' }}>
-              Aadhiraksha Operations & Leads Portal
+    <div style={{ display: 'flex', minHeight: '100vh', height: '100vh', background: 'var(--bg-main)', color: 'var(--text-main)', fontFamily: 'var(--font-sans)', overflow: 'hidden' }}>
+      
+      {/* MOBILE BACKDROP OVERLAY */}
+      {isMobileOpen && (
+        <div
+          onClick={() => setIsMobileOpen(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            zIndex: 9990,
+            backdropFilter: 'none'
+          }}
+        />
+      )}
+
+      {/* 1. COLLAPSIBLE LEFT CRM SIDEBAR */}
+      <aside 
+        className={`crm-workspace-aside ${isMobileOpen ? 'mobile-open' : ''}`}
+        style={{
+          width: currentSidebarWidth,
+          minWidth: currentSidebarWidth,
+          background: 'var(--crm-bg-sidebar)',
+          color: 'var(--crm-sidebar-text-active)',
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
+          zIndex: 9999,
+          boxShadow: 'var(--shadow-lg)',
+          transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s ease',
+          overflow: 'hidden',
+          position: 'relative'
+        }}
+      >
+        {/* Sidebar Brand Header */}
+        <div style={{
+          padding: showMiniRail ? '1.25rem 0.75rem' : '1.25rem 1.25rem',
+          borderBottom: '1px solid var(--crm-sidebar-border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: showMiniRail ? 'center' : 'space-between',
+          height: '64px',
+          boxSizing: 'border-box'
+        }}>
+          {!showMiniRail ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
+              <div style={{ width: '36px', height: '36px', minWidth: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '1.1rem', boxShadow: 'var(--shadow-gold)' }}>
+                AR
+              </div>
+              <div style={{ overflow: 'hidden' }}>
+                <div style={{ fontWeight: 800, fontSize: '0.98rem', letterSpacing: '-0.3px', color: '#fff', whiteSpace: 'nowrap' }}>Aadhiraksha</div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--crm-sidebar-text)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}>
+                  <Sparkles size={11} color="var(--accent-gold)" /> Enterprise CRM
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div 
+              onClick={toggleSidebar}
+              title="Expand Sidebar (Cmd/Ctrl + B)"
+              style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '1.1rem', cursor: 'pointer', boxShadow: 'var(--shadow-gold)' }}
+            >
+              AR
+            </div>
+          )}
+
+          {/* If mobile, show Close (X) button; If desktop expanded, show Collapse (<) button */}
+          {isMobile ? (
+            <button
+              onClick={() => setIsMobileOpen(false)}
+              title="Close Drawer"
+              style={{
+                background: 'rgba(255,255,255,0.08)',
+                border: 'none',
+                color: '#cbd5e1',
+                borderRadius: '8px',
+                padding: '0.4rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <X size={18} />
+            </button>
+          ) : (
+            !showMiniRail && (
+              <button
+                onClick={toggleSidebar}
+                title="Collapse Sidebar (Cmd/Ctrl + B)"
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: 'none',
+                  color: '#94a3b8',
+                  borderRadius: '6px',
+                  padding: '0.35rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#fff'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#94a3b8'; }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+            )
+          )}
+        </div>
+
+        {/* Navigation Section */}
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: showMiniRail ? '0.75rem 0.4rem' : '1rem 0.75rem' }}>
+          
+          {/* CRM WORKSPACE GROUP */}
+          {!showMiniRail ? (
+            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', padding: '0.5rem 0.75rem 0.35rem', whiteSpace: 'nowrap' }}>
+              CRM Workspace
+            </div>
+          ) : (
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '0.5rem 0.4rem' }} />
+          )}
+
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginBottom: '1rem' }}>
+            {navItemsCRM.map((item) => {
+              const isActive = activeView === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveView(item.id);
+                    setIsMobileOpen(false);
+                  }}
+                  title={showMiniRail ? `${item.label} ${item.count ? `(${item.count})` : ''}` : undefined}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: showMiniRail ? 'center' : 'space-between',
+                    padding: showMiniRail ? '0.7rem 0' : '0.65rem 0.75rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: isActive ? 'linear-gradient(90deg, #1e3a5f 0%, #152e4d 100%)' : 'transparent',
+                    color: isActive ? '#f8fafc' : '#94a3b8',
+                    fontWeight: isActive ? 700 : 500,
+                    fontSize: '0.86rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    textAlign: 'left',
+                    boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
+                    borderLeft: isActive && !showMiniRail ? '3px solid #f59e0b' : '3px solid transparent',
+                    position: 'relative'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                      e.currentTarget.style.color = '#f1f5f9';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = '#94a3b8';
+                    }
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <span style={{ color: isActive ? '#f59e0b' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {item.icon}
+                    </span>
+                    {!showMiniRail && <span style={{ whiteSpace: 'nowrap' }}>{item.label}</span>}
+                  </div>
+                  
+                  {!showMiniRail && item.count !== null && item.count > 0 && (
+                    <span style={{
+                      background: item.badgeColor || '#0284c7',
+                      color: '#fff',
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      padding: '0.1rem 0.45rem',
+                      borderRadius: '999px'
+                    }}>
+                      {item.count}
+                    </span>
+                  )}
+
+                  {/* Dot indicator when collapsed */}
+                  {showMiniRail && item.count !== null && item.count > 0 && (
+                    <span style={{
+                      position: 'absolute',
+                      top: '6px',
+                      right: '8px',
+                      width: '7px',
+                      height: '7px',
+                      borderRadius: '50%',
+                      background: item.badgeColor || '#ea580c'
+                    }} />
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* ADMIN & OPERATIONS GROUP */}
+          {!showMiniRail ? (
+            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', padding: '0.5rem 0.75rem 0.35rem', whiteSpace: 'nowrap' }}>
+              Operations & Admin
+            </div>
+          ) : (
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '0.5rem 0.4rem' }} />
+          )}
+
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+            {navItemsAdmin.map((item) => {
+              const isActive = activeView === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveView(item.id);
+                    setIsMobileOpen(false);
+                  }}
+                  title={showMiniRail ? `${item.label} ${item.count ? `(${item.count})` : ''}` : undefined}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: showMiniRail ? 'center' : 'space-between',
+                    padding: showMiniRail ? '0.7rem 0' : '0.65rem 0.75rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: isActive ? 'linear-gradient(90deg, #1e3a5f 0%, #152e4d 100%)' : 'transparent',
+                    color: isActive ? '#f8fafc' : '#94a3b8',
+                    fontWeight: isActive ? 700 : 500,
+                    fontSize: '0.86rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    textAlign: 'left',
+                    boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
+                    borderLeft: isActive && !showMiniRail ? '3px solid #f59e0b' : '3px solid transparent',
+                    position: 'relative'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                      e.currentTarget.style.color = '#f1f5f9';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = '#94a3b8';
+                    }
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <span style={{ color: isActive ? '#f59e0b' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {item.icon}
+                    </span>
+                    {!showMiniRail && <span style={{ whiteSpace: 'nowrap' }}>{item.label}</span>}
+                  </div>
+                  
+                  {!showMiniRail && item.count !== null && item.count > 0 && (
+                    <span style={{
+                      background: item.badgeColor || '#d97706',
+                      color: '#fff',
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      padding: '0.1rem 0.45rem',
+                      borderRadius: '999px'
+                    }}>
+                      {item.count}
+                    </span>
+                  )}
+
+                  {/* Dot indicator when collapsed */}
+                  {showMiniRail && item.count !== null && item.count > 0 && (
+                    <span style={{
+                      position: 'absolute',
+                      top: '6px',
+                      right: '8px',
+                      width: '7px',
+                      height: '7px',
+                      borderRadius: '50%',
+                      background: item.badgeColor || '#d97706'
+                    }} />
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Sidebar Footer User Card */}
+        <div style={{
+          padding: showMiniRail ? '0.75rem 0.4rem' : '0.85rem 1rem',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          background: '#06101a',
+          boxSizing: 'border-box'
+        }}>
+          {!showMiniRail ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              
+              {/* RBAC Role Preview Selector inside Sidebar */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                background: 'rgba(255,255,255,0.06)',
+                padding: '0.35rem 0.6rem',
+                borderRadius: '8px',
+                border: '1px solid rgba(255,255,255,0.1)'
+              }}>
+                <ShieldCheck size={13} color="var(--accent-gold)" />
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', whiteSpace: 'nowrap' }}>Scope:</span>
+                <select
+                  value={demoRole}
+                  onChange={(e) => setDemoRole(e.target.value)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    color: '#f8fafc',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    width: '100%'
+                  }}
+                >
+                  <option value="ROLE_SUPER_ADMIN" style={{ background: '#091726', color: '#fff' }}>Super Admin (Global)</option>
+                  <option value="ROLE_MANAGER" style={{ background: '#091726', color: '#fff' }}>Insurance Manager (Team)</option>
+                  <option value="ROLE_ADVISOR" style={{ background: '#091726', color: '#fff' }}>Advisor (Assigned Only)</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', overflow: 'hidden' }}>
+                  <div style={{ width: '32px', height: '32px', minWidth: '32px', borderRadius: '50%', background: '#1e3a5f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#93c5fd', fontWeight: 700, fontSize: '0.8rem', border: '1px solid #3b82f6' }}>
+                    {user?.fullName ? user.fullName.charAt(0) : 'A'}
+                  </div>
+                  <div style={{ overflow: 'hidden' }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                      {user?.fullName || 'Super Admin'}
+                    </div>
+                    <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                      {demoRole.replace('ROLE_', '')}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={logout}
+                  title="Sign Out"
+                  style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.35rem', borderRadius: '6px' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+
+              {/* Back to Public Web Portal Link */}
+              <Link
+                to="/"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  color: '#94a3b8',
+                  fontSize: '0.74rem',
+                  textDecoration: 'none',
+                  padding: '0.3rem 0.5rem',
+                  borderRadius: '6px',
+                  background: 'rgba(255,255,255,0.04)'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#f59e0b'; e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+              >
+                <Globe size={13} />
+                <span>Back to Customer Portal</span>
+              </Link>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+              <div 
+                title={`${user?.fullName || 'Super Admin'} (${demoRole.replace('ROLE_', '')})`}
+                style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#1e3a5f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#93c5fd', fontWeight: 700, fontSize: '0.82rem', border: '1px solid #3b82f6', cursor: 'pointer' }}
+              >
+                {user?.fullName ? user.fullName.charAt(0) : 'A'}
+              </div>
+              <button
+                onClick={logout}
+                title="Sign Out"
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.35rem' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* 2. MAIN APP SHELL WORKSPACE */}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto' }}>
+        
+        {/* TOP CRM APP BAR */}
+        <header 
+          className="crm-top-appbar"
+          style={{
+            height: '64px',
+            minHeight: '64px',
+            background: 'var(--crm-header-bg)',
+            borderBottom: '1px solid var(--crm-header-border)',
+            padding: '0 1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            position: 'sticky',
+            top: 0,
+            zIndex: 50,
+            boxShadow: 'var(--shadow-sm)'
+          }}
+        >
+          {/* Left: Sidebar Toggle + Active View Title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, overflow: 'hidden' }}>
+            <button
+              onClick={handleMenuToggle}
+              title={isCollapsed ? "Expand Sidebar (Cmd/Ctrl + B)" : "Collapse Sidebar (Cmd/Ctrl + B)"}
+              style={{
+                background: 'var(--bg-main)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '8px',
+                padding: '0.45rem 0.55rem',
+                color: 'var(--text-main)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'background var(--transition-fast)',
+                flexShrink: 0
+              }}
+            >
+              <Menu size={18} />
+            </button>
+
+            <h1 className="crm-title-text" style={{ fontSize: '1.02rem', fontWeight: 800, color: 'var(--primary-navy)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+              {activeView === 'clients' ? 'Client Data Sheet' :
+               activeView === 'agenda' ? "Daily Call Agenda" :
+               activeView === 'pipeline' ? 'Sales Pipeline' :
+               activeView === 'meetings' ? 'Meeting Calendar' :
+               activeView === 'users' ? 'User & Team Management' :
+               activeView === 'quotes' ? 'Customer Quotes' :
+               activeView === 'posp' ? 'POSP Partner Network' :
+               activeView === 'claims' ? 'Claims Desk' :
+               activeView === 'hospitals' ? 'Cashless Hospital Network' : 'Dashboard Overview'}
             </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-              Real-time monitoring of customer inquiries, POSP onboarding, claims, and cashless hospital networks.
-            </p>
-          </div>
-          <button 
-            onClick={loadData} 
-            className="btn-portal btn-portal-agent"
-            style={{ padding: '0.6rem 1.2rem', cursor: 'pointer' }}
-          >
-            Refresh Datasets
-          </button>
-        </div>
-
-        {/* Metrics Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
-          <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.85rem', fontWeight: 600 }}>
-              <span>Total Inquiries</span>
-              <FileText size={18} color="var(--primary-navy)" />
-            </div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.5rem' }}>
-              {quotes.length}
-            </div>
-            <div style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 600, marginTop: '0.25rem' }}>
-              Live customer leads
-            </div>
+            <span className="crm-livesync-badge" style={{ background: 'var(--accent-emerald-light)', color: 'var(--accent-emerald-dark)', fontSize: '0.68rem', fontWeight: 800, padding: '0.15rem 0.5rem', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-emerald)' }}></span>
+              Live Sync
+            </span>
           </div>
 
-          <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.85rem', fontWeight: 600 }}>
-              <span>POSP Applications</span>
-              <Users size={18} color="var(--accent-gold-hover)" />
-            </div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.5rem' }}>
-              {pospList.length}
-            </div>
-            <div style={{ fontSize: '0.78rem', color: '#d97706', fontWeight: 600, marginTop: '0.25rem' }}>
-              {pospList.filter(p => p.status === 'PENDING').length} Pending verification
-            </div>
-          </div>
+          {/* Right Header Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexShrink: 0 }}>
+            
+            {/* Quick Action Buttons */}
+            <button
+              onClick={() => setActiveView('agenda')}
+              className="crm-action-btn"
+              title={`Calls Due (${dueFollowUps.length})`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-subtle)',
+                padding: '0.45rem 0.75rem',
+                borderRadius: '8px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: 'var(--text-main)',
+                cursor: 'pointer'
+              }}
+            >
+              <PhoneCall size={14} color="#ea580c" />
+              <span className="crm-action-btn-text">Calls Due ({dueFollowUps.length})</span>
+            </button>
 
-          <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.85rem', fontWeight: 600 }}>
-              <span>Claims Lodged</span>
-              <Crosshair size={18} color="#2563eb" />
-            </div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.5rem' }}>
-              {claims.length}
-            </div>
-            <div style={{ fontSize: '0.78rem', color: '#2563eb', fontWeight: 600, marginTop: '0.25rem' }}>
-              Emergency intimation queue
-            </div>
-          </div>
+            <button
+              onClick={() => setActiveView('meetings')}
+              className="crm-action-btn"
+              title="Meeting Calendar"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-subtle)',
+                padding: '0.45rem 0.75rem',
+                borderRadius: '8px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: 'var(--text-main)',
+                cursor: 'pointer'
+              }}
+            >
+              <Calendar size={14} color="#9333ea" />
+              <span className="crm-action-btn-text">Calendar</span>
+            </button>
 
-          <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.85rem', fontWeight: 600 }}>
-              <span>Network Hospitals</span>
-              <Building2 size={18} color="#10b981" />
-            </div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: '#065f46', marginTop: '0.5rem' }}>
-              {hospitals.length}
-            </div>
-            <div style={{ fontSize: '0.78rem', color: '#059669', fontWeight: 600, marginTop: '0.25rem' }}>
-              {hospitals.filter(h => h.cashlessAvailable).length} Cashless empanelled
-            </div>
+            <button
+              onClick={loadData}
+              title="Refresh CRM Data"
+              style={{
+                background: 'var(--bg-main)',
+                border: '1px solid var(--border-subtle)',
+                padding: '0.45rem',
+                borderRadius: '8px',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <RefreshCw size={15} />
+            </button>
           </div>
-        </div>
+        </header>
 
-        {/* Navigation Tabs */}
-        <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '2px solid var(--border-subtle)', marginBottom: '1.5rem', overflowX: 'auto' }}>
-          <button
-            onClick={() => setActiveTab('quotes')}
-            style={{
-              padding: '0.75rem 1.25rem',
-              fontWeight: 700,
-              fontSize: '0.95rem',
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              color: activeTab === 'quotes' ? 'var(--primary-navy)' : 'var(--text-muted)',
-              borderBottom: activeTab === 'quotes' ? '3px solid var(--accent-gold)' : 'none',
-              marginBottom: '-2px'
-            }}
-          >
-            📋 Customer Quote Inquiries ({quotes.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('posp')}
-            style={{
-              padding: '0.75rem 1.25rem',
-              fontWeight: 700,
-              fontSize: '0.95rem',
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              color: activeTab === 'posp' ? 'var(--primary-navy)' : 'var(--text-muted)',
-              borderBottom: activeTab === 'posp' ? '3px solid var(--accent-gold)' : 'none',
-              marginBottom: '-2px'
-            }}
-          >
-            ⭐ POSP Agent Applications ({pospList.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('claims')}
-            style={{
-              padding: '0.75rem 1.25rem',
-              fontWeight: 700,
-              fontSize: '0.95rem',
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              color: activeTab === 'claims' ? 'var(--primary-navy)' : 'var(--text-muted)',
-              borderBottom: activeTab === 'claims' ? '3px solid var(--accent-gold)' : 'none',
-              marginBottom: '-2px'
-            }}
-          >
-            🚨 Insurance Claims ({claims.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('hospitals')}
-            style={{
-              padding: '0.75rem 1.25rem',
-              fontWeight: 700,
-              fontSize: '0.95rem',
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              color: activeTab === 'hospitals' ? '#065f46' : 'var(--text-muted)',
-              borderBottom: activeTab === 'hospitals' ? '3px solid #10b981' : 'none',
-              marginBottom: '-2px'
-            }}
-          >
-            🏥 Network Hospitals ({hospitals.length})
-          </button>
-        </div>
+        {/* WORKSPACE VIEW CONTENT AREA */}
+        <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}>
 
-        {/* Data Tables */}
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>
-            Loading dashboard data...
-          </div>
-        ) : (
-          <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid var(--border-subtle)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-            {/* Tab 1: Customer Quotes */}
-            {activeTab === 'quotes' && (
+          {/* VIEW: CRM DASHBOARD OVERVIEW */}
+          {activeView === 'dashboard' && (
+            <div>
+              {/* Welcome Banner */}
+              <div 
+                className="crm-mobile-hero-banner"
+                style={{
+                  background: 'linear-gradient(135deg, var(--primary-navy) 0%, var(--primary-navy-light) 100%)',
+                  color: '#fff',
+                  padding: '1.75rem 2rem',
+                  borderRadius: '16px',
+                  marginBottom: '1.5rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  boxShadow: 'var(--shadow-md)'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(245, 158, 11, 0.2)', color: 'var(--accent-gold)', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.6rem' }}>
+                    <Sparkles size={12} /> Aadhiraksha Insurance CRM & Operations Suite
+                  </div>
+                  <h2 style={{ fontSize: '1.55rem', fontWeight: 800, color: '#fff', margin: '0 0 0.4rem' }}>
+                    Welcome back, {user?.fullName || 'Super Admin'}
+                  </h2>
+                  <p style={{ color: '#cbd5e1', fontSize: '0.88rem', margin: 0, maxWidth: '600px' }}>
+                    Manage client leads, execute daily call schedules, track the 10-stage insurance pipeline, and coordinate hospital cashless claims in real time.
+                  </p>
+                </div>
+                <div className="crm-mobile-hero-actions" style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button
+                    onClick={() => setActiveView('clients')}
+                    style={{
+                      background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover))',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '0.65rem 1.2rem',
+                      borderRadius: '10px',
+                      fontWeight: 800,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      boxShadow: 'var(--shadow-gold)'
+                    }}
+                  >
+                    <FileText size={16} /> Open Client Sheet
+                  </button>
+                  <button
+                    onClick={() => setActiveView('agenda')}
+                    style={{
+                      background: 'rgba(255,255,255,0.12)',
+                      color: '#fff',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      padding: '0.65rem 1.2rem',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem'
+                    }}
+                  >
+                    <PhoneCall size={16} /> Daily Call Agenda
+                  </button>
+                </div>
+              </div>
+
+              {/* CRM Key Performance Metrics */}
+              <div 
+                className="crm-metrics-grid"
+                style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.75rem' }}
+              >
+                
+                {/* Metric 1: Total Leads */}
+                <div 
+                  onClick={() => setActiveView('clients')}
+                  className="crm-metric-box crm-metric-card-inner"
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
+                    <span>Active CRM Leads</span>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7' }}>
+                      <FileText size={16} />
+                    </div>
+                  </div>
+                  <div className="crm-metric-card-val" style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.4rem' }}>
+                    {leads.length}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: 700, marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                    <span>Interactive Excel Data Grid</span> <ChevronRight size={12} />
+                  </div>
+                </div>
+
+                {/* Metric 2: Due Followups */}
+                <div 
+                  onClick={() => setActiveView('agenda')}
+                  className="crm-metric-box crm-metric-card-inner"
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
+                    <span>Today's Call Agenda</span>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ea580c' }}>
+                      <PhoneCall size={16} />
+                    </div>
+                  </div>
+                  <div className="crm-metric-card-val" style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.4rem' }}>
+                    {dueFollowUps.length}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#ea580c', fontWeight: 700, marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                    <span>Overdue SLA & Due Calls</span> <ChevronRight size={12} />
+                  </div>
+                </div>
+
+                {/* Metric 3: Web Inquiries */}
+                <div 
+                  onClick={() => setActiveView('quotes')}
+                  className="crm-metric-box crm-metric-card-inner"
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
+                    <span>Portal Inquiries</span>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
+                      <Briefcase size={16} />
+                    </div>
+                  </div>
+                  <div className="crm-metric-card-val" style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.4rem' }}>
+                    {quotes.length}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 700, marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                    <span>Incoming Customer Quotes</span> <ChevronRight size={12} />
+                  </div>
+                </div>
+
+                {/* Metric 4: Cashless Hospitals */}
+                <div 
+                  onClick={() => setActiveView('hospitals')}
+                  className="crm-metric-box crm-metric-card-inner"
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
+                    <span>Cashless Hospitals</span>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ccfbf1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0d9488' }}>
+                      <Building2 size={16} />
+                    </div>
+                  </div>
+                  <div className="crm-metric-card-val" style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.4rem' }}>
+                    {hospitals.length}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#0d9488', fontWeight: 700, marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                    <span>Empanelled Network Centers</span> <ChevronRight size={12} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Jump Modules */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                {/* Card 1: Sales Pipeline Preview */}
+                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div style={{ fontWeight: 800, fontSize: '1rem', color: '#091726', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <TrendingUp size={18} color="#0284c7" /> 10-Stage Pipeline Overview
+                    </div>
+                    <button
+                      onClick={() => setActiveView('pipeline')}
+                      style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      Open Kanban &rarr;
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.25rem' }}>
+                    Track leads seamlessly from New Lead &rarr; Contacted &rarr; Follow-up &rarr; Quotation &rarr; Meeting &rarr; KYC &rarr; Policy Issued.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                    <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0284c7' }}>
+                        {leads.filter(l => l.stage === 'NEW_LEAD').length}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>New Leads</div>
+                    </div>
+                    <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ea580c' }}>
+                        {leads.filter(l => l.stage === 'FOLLOWUP').length}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>In Follow-up</div>
+                    </div>
+                    <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#059669' }}>
+                        {leads.filter(l => l.stage === 'POLICY_ISSUED').length}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Issued 🎉</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 2: User & Team Hierarchy */}
+                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div style={{ fontWeight: 800, fontSize: '1rem', color: '#091726', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <Users size={18} color="#059669" /> User & Team Management
+                    </div>
+                    <button
+                      onClick={() => setActiveView('users')}
+                      style={{ background: 'none', border: 'none', color: '#059669', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      Manage Users &rarr;
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>
+                    Create Managers, generate temporary credentials with 1-click clipboard copy, reassign advisor teams, and activate/deactivate accounts.
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => setActiveView('users')}
+                      style={{ background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', padding: '0.5rem 0.85rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      + Create Manager / Advisor
+                    </button>
+                    <button
+                      onClick={() => setActiveView('agenda')}
+                      style={{ background: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1', padding: '0.5rem 0.85rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      View Team Follow-ups
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW: CLIENT DATA SHEET (EXCEL GRID) */}
+          {activeView === 'clients' && (
+            <ClientDataSheetView 
+              onOpenClient360={(lead) => setSelectedClient360(lead)}
+              onOpenCallModal={() => setActiveView('agenda')}
+              onOpenMeetingModal={(lead) => {
+                setPreselectedMeetingClient(lead);
+                setActiveView('meetings');
+              }}
+            />
+          )}
+
+          {/* VIEW: DAILY CALL AGENDA */}
+          {activeView === 'agenda' && (
+            <DailyCallAgendaView 
+              onOpenClient360={(lead) => setSelectedClient360(lead)}
+              onOpenMeetingModal={(lead) => {
+                setPreselectedMeetingClient(lead);
+                setActiveView('meetings');
+              }}
+            />
+          )}
+
+          {/* VIEW: SALES PIPELINE KANBAN */}
+          {activeView === 'pipeline' && (
+            <SalesPipelineView 
+              onOpenClient360={(lead) => setSelectedClient360(lead)}
+              onOpenCallModal={() => setActiveView('agenda')}
+              onOpenMeetingModal={(lead) => {
+                setPreselectedMeetingClient(lead);
+                setActiveView('meetings');
+              }}
+            />
+          )}
+
+          {/* VIEW: MEETING CALENDAR */}
+          {activeView === 'meetings' && (
+            <MeetingCalendarView 
+              preselectedClient={preselectedMeetingClient}
+              onCloseModal={() => setPreselectedMeetingClient(null)}
+            />
+          )}
+
+          {/* VIEW: USER MANAGEMENT */}
+          {activeView === 'users' && (
+            <UserManagementView />
+          )}
+
+          {/* VIEW: CUSTOMER QUOTES */}
+          {activeView === 'quotes' && (
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#091726', margin: '0 0 0.2rem' }}>Customer Quote Inquiries</h3>
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>Incoming inquiries from consumer web portal</p>
+                </div>
+                <span style={{ background: '#eff6ff', color: '#1d4ed8', fontSize: '0.78rem', fontWeight: 700, padding: '0.25rem 0.65rem', borderRadius: '999px' }}>
+                  {quotes.length} Inquiries
+                </span>
+              </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
-                  <thead style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                     <tr>
                       <th style={{ padding: '1rem' }}>Date</th>
                       <th style={{ padding: '1rem' }}>Category</th>
@@ -425,13 +1193,13 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                   <tbody>
                     {quotes.length === 0 ? (
                       <tr>
-                        <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
                           No inquiries received yet. Submit a test quote from the home page.
                         </td>
                       </tr>
                     ) : (
                       quotes.map((q) => (
-                        <tr key={q.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                        <tr key={q.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ padding: '1rem', color: '#64748b' }}>
                             {new Date(q.createdAt).toLocaleDateString()}
                           </td>
@@ -440,7 +1208,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                           </td>
                           <td style={{ padding: '1rem', fontWeight: 600 }}>{q.fullName}</td>
                           <td style={{ padding: '1rem' }}>
-                            <a href={`tel:${q.phoneNumber}`} style={{ color: 'var(--primary-navy)', fontWeight: 600 }}>
+                            <a href={`tel:${q.phoneNumber}`} style={{ color: '#091726', fontWeight: 600 }}>
                               {q.phoneNumber}
                             </a>
                           </td>
@@ -449,14 +1217,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                             {q.planDetails || '-'}
                           </td>
                           <td style={{ padding: '1rem' }}>
-                            <span style={{
-                              background: '#dcfce7',
-                              color: '#15803d',
-                              padding: '0.2rem 0.6rem',
-                              borderRadius: '9999px',
-                              fontSize: '0.75rem',
-                              fontWeight: 700
-                            }}>
+                            <span style={{ background: '#dcfce7', color: '#15803d', padding: '0.2rem 0.6rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 700 }}>
                               {q.status}
                             </span>
                           </td>
@@ -466,13 +1227,24 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                   </tbody>
                 </table>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Tab 2: POSP Applications */}
-            {activeTab === 'posp' && (
+          {/* VIEW: POSP AGENTS */}
+          {activeView === 'posp' && (
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#091726', margin: '0 0 0.2rem' }}>POSP Agent Applications</h3>
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>Review agent KYC, certificates, and IRDAI compliance</p>
+                </div>
+                <span style={{ background: '#fef3c7', color: '#b45309', fontSize: '0.78rem', fontWeight: 700, padding: '0.25rem 0.65rem', borderRadius: '999px' }}>
+                  {pospList.filter(p => p.status === 'PENDING').length} Pending Approval
+                </span>
+              </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
-                  <thead style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                     <tr>
                       <th style={{ padding: '1rem' }}>Applied Date</th>
                       <th style={{ padding: '1rem' }}>Agent Name</th>
@@ -486,19 +1258,19 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                   <tbody>
                     {pospList.length === 0 ? (
                       <tr>
-                        <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
                           No POSP applications found.
                         </td>
                       </tr>
                     ) : (
                       pospList.map((posp) => (
-                        <tr key={posp.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                        <tr key={posp.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ padding: '1rem', color: '#64748b' }}>
                             {new Date(posp.appliedAt).toLocaleDateString()}
                           </td>
                           <td style={{ padding: '1rem', fontWeight: 600 }}>
                             {posp.user?.fullName}
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{posp.user?.email}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{posp.user?.email}</div>
                           </td>
                           <td style={{ padding: '1rem' }}>
                             <div><strong>PAN:</strong> {posp.panNumber}</div>
@@ -544,13 +1316,24 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                   </tbody>
                 </table>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Tab 3: Insurance Claims */}
-            {activeTab === 'claims' && (
+          {/* VIEW: CLAIMS */}
+          {activeView === 'claims' && (
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#091726', margin: '0 0 0.2rem' }}>Insurance Claims Intimation</h3>
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>Emergency cashless & reimbursement claim tickets</p>
+                </div>
+                <span style={{ background: '#eff6ff', color: '#1e40af', fontSize: '0.78rem', fontWeight: 700, padding: '0.25rem 0.65rem', borderRadius: '999px' }}>
+                  {claims.length} Claims Lodged
+                </span>
+              </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
-                  <thead style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                     <tr>
                       <th style={{ padding: '1rem' }}>Intimation Date</th>
                       <th style={{ padding: '1rem' }}>Policy No</th>
@@ -563,36 +1346,29 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                   <tbody>
                     {claims.length === 0 ? (
                       <tr>
-                        <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
                           No claims submitted yet.
                         </td>
                       </tr>
                     ) : (
                       claims.map((claim) => (
-                        <tr key={claim.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                        <tr key={claim.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ padding: '1rem', color: '#64748b' }}>
                             {new Date(claim.createdAt).toLocaleDateString()}
                           </td>
-                          <td style={{ padding: '1rem', fontWeight: 700, color: 'var(--primary-navy)' }}>
+                          <td style={{ padding: '1rem', fontWeight: 700, color: '#091726' }}>
                             {claim.policyNumber}
                           </td>
                           <td style={{ padding: '1rem' }}>{claim.claimType}</td>
                           <td style={{ padding: '1rem' }}>
                             <div style={{ fontWeight: 600 }}>{claim.claimantName}</div>
-                            <a href={`tel:${claim.contactPhone}`} style={{ fontSize: '0.78rem', color: 'var(--accent-gold-hover)' }}>
+                            <a href={`tel:${claim.contactPhone}`} style={{ fontSize: '0.78rem', color: '#d97706' }}>
                               {claim.contactPhone}
                             </a>
                           </td>
                           <td style={{ padding: '1rem' }}>{claim.hospitalOrGarage || '-'}</td>
                           <td style={{ padding: '1rem' }}>
-                            <span style={{
-                              background: '#dbeafe',
-                              color: '#1e40af',
-                              padding: '0.2rem 0.6rem',
-                              borderRadius: '9999px',
-                              fontSize: '0.75rem',
-                              fontWeight: 700
-                            }}>
+                            <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.2rem 0.6rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 700 }}>
                               {claim.status}
                             </span>
                           </td>
@@ -602,189 +1378,207 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                   </tbody>
                 </table>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Tab 4: Network Hospitals Directory Management */}
-            {activeTab === 'hospitals' && (
-              <div>
-                {/* Hospital Management Toolbar */}
-                <div style={{ padding: '1.25rem 1.5rem', background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <div style={{ position: 'relative', width: '240px' }}>
-                      <input
-                        type="text"
-                        placeholder="Search hospital name..."
-                        className="form-input"
-                        value={hospSearch}
-                        onChange={(e) => setHospSearch(e.target.value)}
-                        style={{ paddingLeft: '2.2rem', paddingRight: '0.75rem', height: '38px', fontSize: '0.85rem' }}
-                      />
-                      <Search size={15} color="#64748b" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-                    </div>
-
-                    <select
-                      className="form-select"
-                      value={hospCityFilter}
-                      onChange={(e) => setHospCityFilter(e.target.value)}
-                      style={{ height: '38px', fontSize: '0.85rem', width: '160px' }}
-                    >
-                      <option value="">All Cities</option>
-                      {uniqueCities.map((city, idx) => (
-                        <option key={idx} value={city}>{city}</option>
-                      ))}
-                    </select>
+          {/* VIEW: CASHLESS HOSPITALS */}
+          {activeView === 'hospitals' && (
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              {/* Hospital Management Toolbar */}
+              <div style={{ padding: '1.25rem 1.5rem', background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div style={{ position: 'relative', width: '240px' }}>
+                    <input
+                      type="text"
+                      placeholder="Search hospital name..."
+                      className="form-input"
+                      value={hospSearch}
+                      onChange={(e) => setHospSearch(e.target.value)}
+                      style={{ paddingLeft: '2.2rem', paddingRight: '0.75rem', height: '38px', fontSize: '0.85rem' }}
+                    />
+                    <Search size={15} color="#64748b" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
                   </div>
 
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                    <button
-                      onClick={() => setShowAddHospitalModal(true)}
-                      style={{
-                        background: '#059669',
-                        color: '#fff',
-                        border: 'none',
-                        padding: '0.55rem 1rem',
-                        borderRadius: '8px',
-                        fontWeight: 700,
-                        fontSize: '0.85rem',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)'
-                      }}
-                    >
-                      <Plus size={16} /> Add Single Hospital
-                    </button>
-
-                    <button
-                      onClick={() => setShowBulkUploadModal(true)}
-                      style={{
-                        background: '#0f2b48',
-                        color: '#fff',
-                        border: 'none',
-                        padding: '0.55rem 1rem',
-                        borderRadius: '8px',
-                        fontWeight: 700,
-                        fontSize: '0.85rem',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Upload size={16} /> Bulk Upload (CSV/JSON)
-                    </button>
-                  </div>
+                  <select
+                    className="form-select"
+                    value={hospCityFilter}
+                    onChange={(e) => setHospCityFilter(e.target.value)}
+                    style={{ height: '38px', fontSize: '0.85rem', width: '160px' }}
+                  >
+                    <option value="">All Cities</option>
+                    {uniqueCities.map((city, idx) => (
+                      <option key={idx} value={city}>{city}</option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* Hospitals Table */}
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
-                    <thead style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <button
+                    onClick={() => setShowAddHospitalModal(true)}
+                    style={{
+                      background: '#059669',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '0.55rem 1rem',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)'
+                    }}
+                  >
+                    <Plus size={16} /> Add Single Hospital
+                  </button>
+
+                  <button
+                    onClick={() => setShowBulkUploadModal(true)}
+                    style={{
+                      background: '#0f2b48',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '0.55rem 1rem',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Upload size={16} /> Bulk Upload (CSV/JSON)
+                  </button>
+                </div>
+              </div>
+
+              {/* Hospitals Table */}
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+                  <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <tr>
+                      <th style={{ padding: '1rem' }}>Hospital Name & Status</th>
+                      <th style={{ padding: '1rem' }}>State & City</th>
+                      <th style={{ padding: '1rem' }}>Complete Address</th>
+                      <th style={{ padding: '1rem' }}>Contact Number</th>
+                      <th style={{ padding: '1rem' }}>Specialties</th>
+                      <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredHospitals.length === 0 ? (
                       <tr>
-                        <th style={{ padding: '1rem' }}>Hospital Name & Status</th>
-                        <th style={{ padding: '1rem' }}>State & City</th>
-                        <th style={{ padding: '1rem' }}>Complete Address</th>
-                        <th style={{ padding: '1rem' }}>Contact Number</th>
-                        <th style={{ padding: '1rem' }}>Specialties</th>
-                        <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>
+                        <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                          <Building2 size={36} color="#94a3b8" style={{ margin: '0 auto 0.5rem' }} />
+                          <div>No hospitals match your search criteria.</div>
+                          <button
+                            onClick={() => { setHospSearch(''); setHospCityFilter(''); }}
+                            style={{ marginTop: '0.5rem', background: 'none', border: 'none', color: '#059669', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            Reset filters
+                          </button>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {filteredHospitals.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                            <Building2 size={36} color="#94a3b8" style={{ margin: '0 auto 0.5rem' }} />
-                            <div>No hospitals match your search criteria.</div>
+                    ) : (
+                      filteredHospitals.map((hosp) => (
+                        <tr key={hosp.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '1rem' }}>
+                            <div style={{ fontWeight: 700, color: '#091726' }}>{hosp.hospitalName}</div>
+                            {hosp.cashlessAvailable ? (
+                              <span style={{
+                                background: '#dcfce7',
+                                color: '#15803d',
+                                padding: '0.15rem 0.5rem',
+                                borderRadius: '9999px',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                marginTop: '0.2rem'
+                              }}>
+                                <CheckCircle2 size={11} /> Cashless Empanelled
+                              </span>
+                            ) : (
+                              <span style={{
+                                background: '#fee2e2',
+                                color: '#b91c1c',
+                                padding: '0.15rem 0.5rem',
+                                borderRadius: '9999px',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                marginTop: '0.2rem'
+                              }}>
+                                Reimbursement Only
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            <span style={{ fontWeight: 600 }}>{hosp.city}</span>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{hosp.state}</div>
+                          </td>
+                          <td style={{ padding: '1rem', fontSize: '0.82rem', color: '#475569', maxWidth: '240px' }}>
+                            {hosp.address} {hosp.pincode && ` - ${hosp.pincode}`}
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            <a href={`tel:${hosp.contactNumber}`} style={{ color: '#091726', fontWeight: 600, fontSize: '0.85rem' }}>
+                              {hosp.contactNumber || '-'}
+                            </a>
+                          </td>
+                          <td style={{ padding: '1rem', fontSize: '0.78rem', color: '#64748b', maxWidth: '200px' }}>
+                            {hosp.specialties || '-'}
+                          </td>
+                          <td style={{ padding: '1rem', textAlign: 'center' }}>
                             <button
-                              onClick={() => { setHospSearch(''); setHospCityFilter(''); }}
-                              style={{ marginTop: '0.5rem', background: 'none', border: 'none', color: '#059669', fontWeight: 700, cursor: 'pointer' }}
+                              onClick={() => handleDeleteHospital(hosp.id, hosp.hospitalName)}
+                              title="Remove hospital"
+                              style={{
+                                background: '#fee2e2',
+                                color: '#ef4444',
+                                border: 'none',
+                                padding: '0.4rem 0.6rem',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                                fontSize: '0.75rem',
+                                fontWeight: 700
+                              }}
                             >
-                              Reset filters
+                              <Trash2 size={13} /> Delete
                             </button>
                           </td>
                         </tr>
-                      ) : (
-                        filteredHospitals.map((hosp) => (
-                          <tr key={hosp.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                            <td style={{ padding: '1rem' }}>
-                              <div style={{ fontWeight: 700, color: 'var(--primary-navy)' }}>{hosp.hospitalName}</div>
-                              {hosp.cashlessAvailable ? (
-                                <span style={{
-                                  background: '#dcfce7',
-                                  color: '#15803d',
-                                  padding: '0.15rem 0.5rem',
-                                  borderRadius: '9999px',
-                                  fontSize: '0.7rem',
-                                  fontWeight: 700,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '0.2rem',
-                                  marginTop: '0.2rem'
-                                }}>
-                                  <CheckCircle2 size={11} /> Cashless Empanelled
-                                </span>
-                              ) : (
-                                <span style={{
-                                  background: '#fee2e2',
-                                  color: '#b91c1c',
-                                  padding: '0.15rem 0.5rem',
-                                  borderRadius: '9999px',
-                                  fontSize: '0.7rem',
-                                  fontWeight: 700,
-                                  marginTop: '0.2rem'
-                                }}>
-                                  Reimbursement Only
-                                </span>
-                              )}
-                            </td>
-                            <td style={{ padding: '1rem' }}>
-                              <span style={{ fontWeight: 600 }}>{hosp.city}</span>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{hosp.state}</div>
-                            </td>
-                            <td style={{ padding: '1rem', fontSize: '0.82rem', color: '#475569', maxWidth: '240px' }}>
-                              {hosp.address} {hosp.pincode && ` - ${hosp.pincode}`}
-                            </td>
-                            <td style={{ padding: '1rem' }}>
-                              <a href={`tel:${hosp.contactNumber}`} style={{ color: 'var(--primary-navy)', fontWeight: 600, fontSize: '0.85rem' }}>
-                                {hosp.contactNumber || '-'}
-                              </a>
-                            </td>
-                            <td style={{ padding: '1rem', fontSize: '0.78rem', color: '#64748b', maxWidth: '200px' }}>
-                              {hosp.specialties || '-'}
-                            </td>
-                            <td style={{ padding: '1rem', textAlign: 'center' }}>
-                              <button
-                                onClick={() => handleDeleteHospital(hosp.id, hosp.hospitalName)}
-                                title="Remove hospital"
-                                style={{
-                                  background: '#fee2e2',
-                                  color: '#ef4444',
-                                  border: 'none',
-                                  padding: '0.4rem 0.6rem',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '0.25rem',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 700
-                                }}
-                              >
-                                <Trash2 size={13} /> Delete
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+
+        </div>
+      </main>
+
+      {/* 3. SLIDE-OVER CLIENT 360 DRAWER */}
+      {selectedClient360 && (
+        <Client360Drawer 
+          client={selectedClient360}
+          onClose={() => setSelectedClient360(null)}
+          onOpenCallModal={() => {
+            setSelectedClient360(null);
+            setActiveView('agenda');
+          }}
+          onOpenMeetingModal={(client) => {
+            setSelectedClient360(null);
+            setPreselectedMeetingClient(client);
+            setActiveView('meetings');
+          }}
+        />
+      )}
 
       {/* MODAL 1: Add Single Hospital */}
       {showAddHospitalModal && (
@@ -795,7 +1589,6 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           right: 0,
           bottom: 0,
           background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -810,12 +1603,12 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
             maxHeight: '90vh',
             overflowY: 'auto',
             padding: '2rem',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Building2 size={22} color="#059669" />
-                <h2 style={{ fontSize: '1.25rem', color: 'var(--primary-navy)' }}>Add Empanelled Hospital</h2>
+                <h2 style={{ fontSize: '1.25rem', color: '#091726' }}>Add Empanelled Hospital</h2>
               </div>
               <button 
                 onClick={() => setShowAddHospitalModal(false)}
@@ -955,7 +1748,6 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           right: 0,
           bottom: 0,
           background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -972,10 +1764,10 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
             padding: '2rem',
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Upload size={22} color="#0f2b48" />
-                <h2 style={{ fontSize: '1.25rem', color: 'var(--primary-navy)' }}>Bulk Upload Network Hospitals</h2>
+                <h2 style={{ fontSize: '1.25rem', color: '#091726' }}>Bulk Upload Network Hospitals</h2>
               </div>
               <button 
                 onClick={() => { setShowBulkUploadModal(false); setBulkParsedData([]); setBulkFile(null); setBulkError(''); }}
@@ -1026,10 +1818,10 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
               marginBottom: '1.5rem'
             }}>
               <Upload size={32} color="#64748b" style={{ margin: '0 auto 0.75rem' }} />
-              <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--primary-navy)' }}>
+              <div style={{ fontWeight: 600, fontSize: '0.95rem', color: '#091726' }}>
                 Select a CSV or JSON file from your computer
               </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.35rem 0 1rem' }}>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.35rem 0 1rem' }}>
                 Supports hundreds of empanelled hospital centers in one click.
               </p>
               <input
@@ -1086,6 +1878,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           </div>
         </div>
       )}
+
     </div>
   );
 }

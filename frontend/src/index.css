@@ -28,6 +28,17 @@
   --border-subtle: #e2e8f0;
   --border-focus: #cbd5e1;
 
+  /* Enterprise CRM SaaS Design System Tokens */
+  --crm-bg-sidebar: #091726;
+  --crm-bg-sidebar-hover: rgba(255, 255, 255, 0.05);
+  --crm-bg-sidebar-active: linear-gradient(90deg, #1e3a5f 0%, #152e4d 100%);
+  --crm-bg-sidebar-footer: #06101a;
+  --crm-sidebar-border: rgba(255, 255, 255, 0.08);
+  --crm-sidebar-text: #94a3b8;
+  --crm-sidebar-text-active: #f8fafc;
+  --crm-header-bg: #ffffff;
+  --crm-header-border: #e2e8f0;
+
   /* Elevation Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
@@ -2216,18 +2227,18 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-/* Translucent Grey Overlay on Menu Dropdown Open (PolicyBazaar & FinTech Industry Standard UX) */
+/* Flat Soft Dimming Shade on Menu Dropdown Open (PolicyBazaar & FinTech Industry Standard UX) */
 .header-backdrop-overlay {
   position: fixed;
   top: 68px;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   z-index: 990;
-  animation: overlayFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: overlayFadeIn 0.18s ease-out;
   pointer-events: auto;
 }
 
@@ -2525,10 +2536,223 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* =========================================================
+   MOBILE RESPONSIVE CONSUMER HEADER & CRM WORKSPACE
+   ========================================================= */
 
+@media (max-width: 640px) {
+  .header-expert-btn-text,
+  .header-signin-btn-text {
+    display: none !important;
+  }
+  .header-expert-btn {
+    padding: 8px !important;
+    border-radius: 50% !important;
+    width: 36px !important;
+    height: 36px !important;
+    justify-content: center !important;
+  }
+  .header-signin-btn {
+    padding: 8px !important;
+    border-radius: 50% !important;
+    width: 36px !important;
+    height: 36px !important;
+    justify-content: center !important;
+  }
+}
 
+/* CRM Workspace Mobile Responsive Layout (< 768px) */
+@media (max-width: 768px) {
+  .crm-workspace-aside {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 280px !important;
+    min-width: 280px !important;
+    transform: translateX(-100%) !important;
+    z-index: 9999 !important;
+    transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: 12px 0 35px rgba(0, 0, 0, 0.35) !important;
+  }
 
+  .crm-workspace-aside.mobile-open {
+    transform: translateX(0) !important;
+  }
 
+  .crm-top-appbar {
+    padding: 0 0.85rem !important;
+    height: 56px !important;
+    min-height: 56px !important;
+  }
 
+  .crm-breadcrumb-item,
+  .crm-livesync-badge,
+  .crm-scope-selector,
+  .crm-scope-selector-label {
+    display: none !important;
+  }
+
+  .crm-title-text {
+    font-size: 0.94rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .crm-action-btn-text {
+    display: none !important;
+  }
+
+  .crm-action-btn {
+    padding: 0.4rem 0.55rem !important;
+  }
+
+  /* Admin Mobile Cockpit Hero */
+  .crm-mobile-hero-banner {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 1.25rem 1rem !important;
+    gap: 1rem !important;
+  }
+
+  .crm-mobile-hero-actions {
+    width: 100% !important;
+    display: flex !important;
+    gap: 0.5rem !important;
+  }
+
+  .crm-mobile-hero-actions > button {
+    flex: 1 !important;
+    justify-content: center !important;
+    padding: 0.65rem 0.75rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* Admin 2x2 Metric Grid for Mobile */
+  .crm-metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
+    margin-bottom: 1.25rem !important;
+  }
+
+  .crm-metric-card-inner {
+    padding: 0.9rem !important;
+  }
+
+  .crm-metric-card-val {
+    font-size: 1.45rem !important;
+    margin-top: 0.25rem !important;
+  }
+
+  /* CRM Client Sheet Mobile Controls */
+  .crm-sheet-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+    padding: 0.85rem !important;
+  }
+
+  .crm-sheet-search-filters {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+  }
+
+  .crm-sheet-filter-group {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+
+  .crm-sheet-action-btns {
+    width: 100% !important;
+    display: flex !important;
+    gap: 0.5rem !important;
+  }
+
+  .crm-sheet-action-btns > button {
+    flex: 1 !important;
+    justify-content: center !important;
+  }
+
+  /* Hide Desktop Table on Mobile and Show Touch-Friendly Card Rail */
+  .crm-desktop-table-container {
+    display: none !important;
+  }
+
+  .crm-mobile-cards-container {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.85rem !important;
+    padding: 0.85rem !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .crm-mobile-cards-container {
+    display: none !important;
+  }
+
+  .crm-desktop-table-container {
+    display: block !important;
+  }
+}
+
+/* =========================================================
+   CENTRALIZED CRM DESIGN SYSTEM UTILITIES
+   ========================================================= */
+
+.crm-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.crm-metric-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.crm-metric-box:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-focus);
+}
+
+.crm-sidebar-item {
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--crm-sidebar-text);
+  font-weight: 500;
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  text-align: left;
+}
+
+.crm-sidebar-item:hover {
+  background: var(--crm-bg-sidebar-hover);
+  color: var(--crm-sidebar-text-active);
+}
+
+.crm-sidebar-item.active {
+  background: var(--crm-bg-sidebar-active);
+  color: var(--crm-sidebar-text-active);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
 
 

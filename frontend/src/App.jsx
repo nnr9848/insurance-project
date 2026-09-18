@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 
@@ -14,9 +14,12 @@ import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
-      <Header />
+      {!isAdminRoute && <Header />}
       
       <main style={{ flex: 1 }}>
         <Routes>
@@ -32,7 +35,8 @@ export default function App() {
         </Routes>
       </main>
 
-      <Footer />
+      {!isAdminRoute && <Footer />}
     </div>
   );
 }
+

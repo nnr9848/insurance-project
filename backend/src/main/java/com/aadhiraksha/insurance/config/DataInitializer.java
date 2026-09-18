@@ -1,9 +1,7 @@
 package com.aadhiraksha.insurance.config;
 
-import com.aadhiraksha.insurance.model.Role;
-import com.aadhiraksha.insurance.model.User;
-import com.aadhiraksha.insurance.repository.RoleRepository;
-import com.aadhiraksha.insurance.repository.UserRepository;
+import com.aadhiraksha.insurance.model.*;
+import com.aadhiraksha.insurance.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -11,6 +9,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashSet;
 
@@ -20,10 +21,24 @@ import java.util.HashSet;
 public class DataInitializer {
 
     @Bean
-    public CommandLineRunner initDefaultAdmin(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder) {
+    public CommandLineRunner initDefaultAdmin(UserRepository userRepository,
+                                              RoleRepository roleRepository,
+                                              ClientLeadRepository clientLeadRepository,
+                                              FollowUpTaskRepository followUpTaskRepository,
+                                              PasswordEncoder passwordEncoder) {
         return args -> {
+            // Ensure roles exist
+            Role superAdminRole = roleRepository.findByName("ROLE_SUPER_ADMIN")
+                    .orElseGet(() -> roleRepository.save(Role.builder().name("ROLE_SUPER_ADMIN").build()));
+
             Role adminRole = roleRepository.findByName("ROLE_ADMIN")
                     .orElseGet(() -> roleRepository.save(Role.builder().name("ROLE_ADMIN").build()));
+
+            Role managerRole = roleRepository.findByName("ROLE_MANAGER")
+                    .orElseGet(() -> roleRepository.save(Role.builder().name("ROLE_MANAGER").build()));
+
+            Role advisorRole = roleRepository.findByName("ROLE_ADVISOR")
+                    .orElseGet(() -> roleRepository.save(Role.builder().name("ROLE_ADVISOR").build()));
 
             roleRepository.findByName("ROLE_STAFF")
                     .orElseGet(() -> roleRepository.save(Role.builder().name("ROLE_STAFF").build()));
@@ -34,18 +49,169 @@ public class DataInitializer {
             roleRepository.findByName("ROLE_USER")
                     .orElseGet(() -> roleRepository.save(Role.builder().name("ROLE_USER").build()));
 
+            // 1. Seed Super Admin
             String adminEmail = "admin@aadhiraksha.com";
-            if (!userRepository.existsByEmail(adminEmail)) {
-                User admin = User.builder()
-                        .fullName("Aadhiraksha System Admin")
+            User admin = userRepository.findByEmail(adminEmail).orElse(null);
+            if (admin == null) {
+                admin = User.builder()
+                        .employeeCode("ADM001")
+                        .fullName("Aadhiraksha Super Admin")
                         .email(adminEmail)
                         .phoneNumber("+91 8367415156")
                         .password(passwordEncoder.encode("Admin@12345"))
-                        .roles(new HashSet<>(Collections.singletonList(adminRole)))
+                        .designation("Managing Director & Chief Administrator")
+                        .department("Executive Management")
+                        .roles(new HashSet<>(Collections.singletonList(superAdminRole)))
                         .isActive(true)
+                        .mustChangePassword(false)
                         .build();
-                userRepository.save(admin);
-                log.info("Initialized default admin user: {} / Admin@12345", adminEmail);
+                admin = userRepository.save(admin);
+                log.info("Initialized default Super Admin user: {} / Admin@12345", adminEmail);
+            }
+
+            // 2. Seed Insurance Manager
+            String managerEmail = "manager@aadhiraksha.com";
+            User manager = userRepository.findByEmail(managerEmail).orElse(null);
+            if (manager == null) {
+                manager = User.builder()
+                        .employeeCode("MGR101")
+                        .fullName("Suresh Reddy")
+                        .email(managerEmail)
+                        .phoneNumber("+91 9848022338")
+                        .password(passwordEncoder.encode("Manager@12345"))
+                        .designation("Senior Branch Manager")
+                        .department("Retail & Corporate Sales")
+                        .roles(new HashSet<>(Collections.singletonList(managerRole)))
+                        .isActive(true)
+                        .mustChangePassword(false)
+                        .build();
+                manager = userRepository.save(manager);
+                log.info("Initialized default Insurance Manager: {} / Manager@12345", managerEmail);
+            }
+
+            // 3. Seed Insurance Advisors under Manager
+            String advisor1Email = "rajesh.advisor@aadhiraksha.com";
+            User advisor1 = userRepository.findByEmail(advisor1Email).orElse(null);
+            if (advisor1 == null) {
+                advisor1 = User.builder()
+                        .employeeCode("ADV201")
+                        .fullName("Rajesh Kumar")
+                        .email(advisor1Email)
+                        .phoneNumber("+91 9988776655")
+                        .password(passwordEncoder.encode("Advisor@12345"))
+                        .designation("Insurance Advisor (Health & Motor)")
+                        .department("Retail Sales")
+                        .manager(manager)
+                        .roles(new HashSet<>(Collections.singletonList(advisorRole)))
+                        .isActive(true)
+                        .mustChangePassword(false)
+                        .build();
+                advisor1 = userRepository.save(advisor1);
+                log.info("Initialized default Insurance Advisor 1: {} / Advisor@12345", advisor1Email);
+            }
+
+            String advisor2Email = "priya.advisor@aadhiraksha.com";
+            User advisor2 = userRepository.findByEmail(advisor2Email).orElse(null);
+            if (advisor2 == null) {
+                advisor2 = User.builder()
+                        .employeeCode("ADV202")
+                        .fullName("Priya Sharma")
+                        .email(advisor2Email)
+                        .phoneNumber("+91 9876543210")
+                        .password(passwordEncoder.encode("Advisor@12345"))
+                        .designation("Senior Insurance Advisor (Life & SME)")
+                        .department("Corporate Sales")
+                        .manager(manager)
+                        .roles(new HashSet<>(Collections.singletonList(advisorRole)))
+                        .isActive(true)
+                        .mustChangePassword(false)
+                        .build();
+                advisor2 = userRepository.save(advisor2);
+                log.info("Initialized default Insurance Advisor 2: {} / Advisor@12345", advisor2Email);
+            }
+
+            // 4. Seed Initial Sample Client Leads & Follow-ups if database is fresh
+            if (clientLeadRepository.count() == 0) {
+                ClientLead lead1 = ClientLead.builder()
+                        .clientCode("CL-801245")
+                        .fullName("Ahmed Ali")
+                        .companyName("Ali Logistics Pvt Ltd")
+                        .phoneNumber("+91 9849012345")
+                        .whatsappNumber("+91 9849012345")
+                        .email("ahmed.ali@example.com")
+                        .city("Hyderabad")
+                        .state("Telangana")
+                        .pincode("500034")
+                        .insuranceType("Health Insurance")
+                        .existingInsurer("Star Health")
+                        .policyExpiryDate(LocalDate.now().plusDays(25))
+                        .sumInsured("₹10 Lakhs")
+                        .estimatedPremium(new BigDecimal("18500.00"))
+                        .leadSource("WEB_INQUIRY")
+                        .stage("FOLLOWUP")
+                        .priority("HIGH")
+                        .assignedAdvisor(advisor1)
+                        .manager(manager)
+                        .notes("Looking for ₹10L Family Floater with zero room rent capping.")
+                        .build();
+                clientLeadRepository.save(lead1);
+
+                FollowUpTask task1 = FollowUpTask.builder()
+                        .client(lead1)
+                        .advisor(advisor1)
+                        .scheduledDatetime(LocalDateTime.now().plusHours(2))
+                        .reminderMilestone("EXACT")
+                        .channel("PHONE_CALL")
+                        .status("PENDING")
+                        .notes("Call back with Star vs Care comparative quote breakdown.")
+                        .build();
+                followUpTaskRepository.save(task1);
+
+                ClientLead lead2 = ClientLead.builder()
+                        .clientCode("CL-801246")
+                        .fullName("Venkatesh Rao")
+                        .companyName("VR Software Solutions")
+                        .phoneNumber("+91 9988112233")
+                        .whatsappNumber("+91 9988112233")
+                        .email("v.rao@example.com")
+                        .city("Hyderabad")
+                        .state("Telangana")
+                        .pincode("500081")
+                        .insuranceType("Term Life Insurance")
+                        .sumInsured("₹1 Crore")
+                        .estimatedPremium(new BigDecimal("14200.00"))
+                        .leadSource("REFERRAL")
+                        .stage("QUOTATION")
+                        .priority("HIGH")
+                        .assignedAdvisor(advisor1)
+                        .manager(manager)
+                        .notes("Wants 30-year term with Critical Illness rider.")
+                        .build();
+                clientLeadRepository.save(lead2);
+
+                ClientLead lead3 = ClientLead.builder()
+                        .clientCode("CL-801247")
+                        .fullName("Dr. Sunita Deshmukh")
+                        .companyName("Apollo Clinic ECIL")
+                        .phoneNumber("+91 9849556677")
+                        .whatsappNumber("+91 9849556677")
+                        .email("dr.sunita@example.com")
+                        .city("Hyderabad")
+                        .state("Telangana")
+                        .pincode("500062")
+                        .insuranceType("Vehicle / Motor Insurance")
+                        .existingInsurer("ICICI Lombard")
+                        .policyExpiryDate(LocalDate.now().plusDays(10))
+                        .sumInsured("₹8 Lakhs IDV")
+                        .estimatedPremium(new BigDecimal("9800.00"))
+                        .leadSource("DIRECT_ENTRY")
+                        .stage("MEETING")
+                        .priority("MEDIUM")
+                        .assignedAdvisor(advisor2)
+                        .manager(manager)
+                        .notes("Comprehensive Zero Dep renewal for Hyundai Creta.")
+                        .build();
+                clientLeadRepository.save(lead3);
             }
         };
     }
