@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ArrowRight, ShieldCheck, HeartPulse, Car, Briefcase, Plane, Banknote, CheckCircle, Send } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight, ShieldCheck, HeartPulse, Car, Briefcase, Plane, Banknote, CheckCircle, Send, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { portalService } from '../services/api';
 
 import familyHero from '../assets/slides/family_hero.png';
@@ -72,6 +72,7 @@ export default function HeroSection() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isMobileFormExpanded, setIsMobileFormExpanded] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -124,7 +125,7 @@ export default function HeroSection() {
               <h2 className="hero-slider-title">{slide.title}</h2>
               <p className="hero-slider-desc">{slide.desc}</p>
               
-              <div style={{
+              <div className="hero-slider-highlight" style={{
                 background: 'rgba(255, 255, 255, 0.15)',
                 backdropFilter: 'blur(10px)',
                 padding: '0.65rem 1rem',
@@ -168,137 +169,162 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* Right: Instant Quote Inquiry Form */}
-          <div className="hero-quote-card">
-            <div className="quote-card-header">
-              <h3>Get Instant Quote & Callback</h3>
-              <p>Compare India's leading insurers and save up to 40% on your premium.</p>
-            </div>
-
-            {submitted ? (
-              <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-                <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
-                  <CheckCircle size={36} />
+          {/* Right: Instant Quote Inquiry Form (Collapsible Accordion on Mobile, Always Visible on Desktop) */}
+          <div className={`hero-quote-card ${isMobileFormExpanded ? 'mobile-expanded' : 'mobile-collapsed'}`}>
+            <div 
+              className="quote-card-header"
+              onClick={() => setIsMobileFormExpanded(!isMobileFormExpanded)}
+            >
+              <div className="quote-header-title-row">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="quote-header-badge">⚡ Quick Assistance</span>
+                  <h3>Get Instant Quote & Callback</h3>
                 </div>
-                <h4 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Inquiry Received!</h4>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-                  Our dedicated insurance expert will contact you at <strong>{formData.phoneNumber}</strong> shortly with customized quotations.
-                </p>
                 <button 
-                  onClick={() => { setSubmitted(false); setFormData({ fullName: '', phoneNumber: '', email: '', city: '', coverageAmount: '₹10 Lakhs' }); }}
-                  className="btn-submit-quote"
+                  type="button" 
+                  className="quote-accordion-toggle-btn"
+                  aria-label="Toggle Quick Quote Form"
                 >
-                  Calculate Another Quote
+                  {isMobileFormExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                 </button>
               </div>
-            ) : (
-              <form onSubmit={handleSubmit}>
-                <div className="quote-category-tabs">
-                  <button
-                    type="button"
-                    className={`category-tab ${selectedCategory === 'health-insurance' ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory('health-insurance')}
-                  >
-                    🏥 Health
-                  </button>
-                  <button
-                    type="button"
-                    className={`category-tab ${selectedCategory === 'life-insurance' ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory('life-insurance')}
-                  >
-                    🛡️ Life / Term
-                  </button>
-                  <button
-                    type="button"
-                    className={`category-tab ${selectedCategory === 'vehicle-insurance' ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory('vehicle-insurance')}
-                  >
-                    🚗 Motor
-                  </button>
-                  <button
-                    type="button"
-                    className={`category-tab ${selectedCategory === 'business-insurance' ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory('business-insurance')}
-                  >
-                    🏢 Business
-                  </button>
-                  <button
-                    type="button"
-                    className={`category-tab ${selectedCategory === 'travel-insurance' ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory('travel-insurance')}
-                  >
-                    ✈️ Travel
-                  </button>
-                  <button
-                    type="button"
-                    className={`category-tab ${selectedCategory === 'loans' ? 'active' : ''}`}
-                    onClick={() => setSelectedCategory('loans')}
-                  >
-                    💰 Loans
-                  </button>
+              <p className="quote-header-desc">Compare India's leading insurers and save up to 40% on your premium.</p>
+              
+              {/* Mobile Collapsed Hint */}
+              {!isMobileFormExpanded && (
+                <div className="quote-collapsed-prompt">
+                  <span>Tap to open fast quote inquiry</span>
+                  <span className="prompt-action">Open Form <ChevronDown size={14} /></span>
                 </div>
+              )}
+            </div>
 
-                <div className="form-group">
-                  <label className="form-label">Full Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Ramesh Kumar"
-                    className="form-input"
-                    value={formData.fullName}
-                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Mobile Number *</label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="10-digit mobile"
-                      className="form-input"
-                      value={formData.phoneNumber}
-                      onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                    />
+            <div className="quote-card-body">
+              {submitted ? (
+                <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+                  <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+                    <CheckCircle size={36} />
                   </div>
+                  <h4 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Inquiry Received!</h4>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+                    Our dedicated insurance expert will contact you at <strong>{formData.phoneNumber}</strong> shortly with customized quotations.
+                  </p>
+                  <button 
+                    onClick={() => { setSubmitted(false); setFormData({ fullName: '', phoneNumber: '', email: '', city: '', coverageAmount: '₹10 Lakhs' }); }}
+                    className="btn-submit-quote"
+                  >
+                    Calculate Another Quote
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit}>
+                  <div className="quote-category-tabs">
+                    <button
+                      type="button"
+                      className={`category-tab ${selectedCategory === 'health-insurance' ? 'active' : ''}`}
+                      onClick={() => setSelectedCategory('health-insurance')}
+                    >
+                      🏥 Health
+                    </button>
+                    <button
+                      type="button"
+                      className={`category-tab ${selectedCategory === 'life-insurance' ? 'active' : ''}`}
+                      onClick={() => setSelectedCategory('life-insurance')}
+                    >
+                      🛡️ Life / Term
+                    </button>
+                    <button
+                      type="button"
+                      className={`category-tab ${selectedCategory === 'vehicle-insurance' ? 'active' : ''}`}
+                      onClick={() => setSelectedCategory('vehicle-insurance')}
+                    >
+                      🚗 Motor
+                    </button>
+                    <button
+                      type="button"
+                      className={`category-tab ${selectedCategory === 'business-insurance' ? 'active' : ''}`}
+                      onClick={() => setSelectedCategory('business-insurance')}
+                    >
+                      🏢 Business
+                    </button>
+                    <button
+                      type="button"
+                      className={`category-tab ${selectedCategory === 'travel-insurance' ? 'active' : ''}`}
+                      onClick={() => setSelectedCategory('travel-insurance')}
+                    >
+                      ✈️ Travel
+                    </button>
+                    <button
+                      type="button"
+                      className={`category-tab ${selectedCategory === 'loans' ? 'active' : ''}`}
+                      onClick={() => setSelectedCategory('loans')}
+                    >
+                      💰 Loans
+                    </button>
+                  </div>
+
                   <div className="form-group">
-                    <label className="form-label">City *</label>
+                    <label className="form-label">Full Name *</label>
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Hyderabad"
+                      placeholder="e.g. Ramesh Kumar"
                       className="form-input"
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                     />
                   </div>
-                </div>
 
-                <div className="form-group">
-                  <label className="form-label">Desired Cover / Loan Sum</label>
-                  <select
-                    className="form-select"
-                    value={formData.coverageAmount}
-                    onChange={(e) => setFormData({ ...formData, coverageAmount: e.target.value })}
-                  >
-                    <option value="₹5 Lakhs">₹5 Lakhs Coverage</option>
-                    <option value="₹10 Lakhs">₹10 Lakhs Coverage (Most Popular)</option>
-                    <option value="₹25 Lakhs">₹25 Lakhs Super Cover</option>
-                    <option value="₹50 Lakhs">₹50 Lakhs Premium Shield</option>
-                    <option value="₹1 Crore+">₹1 Crore+ Term / Loan</option>
-                  </select>
-                </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div className="form-group">
+                      <label className="form-label">Mobile Number *</label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="10-digit mobile"
+                        className="form-input"
+                        value={formData.phoneNumber}
+                        onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">City *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Hyderabad"
+                        className="form-input"
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      />
+                    </div>
+                  </div>
 
-                <button type="submit" disabled={loading} className="btn-submit-quote">
-                  {loading ? 'Processing...' : (
-                    <>
-                      <Send size={16} /> Get Free Best Quotes
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
+                  <div className="form-group">
+                    <label className="form-label">Desired Cover / Loan Sum</label>
+                    <select
+                      className="form-select"
+                      value={formData.coverageAmount}
+                      onChange={(e) => setFormData({ ...formData, coverageAmount: e.target.value })}
+                    >
+                      <option value="₹5 Lakhs">₹5 Lakhs Coverage</option>
+                      <option value="₹10 Lakhs">₹10 Lakhs Coverage (Most Popular)</option>
+                      <option value="₹25 Lakhs">₹25 Lakhs Super Cover</option>
+                      <option value="₹50 Lakhs">₹50 Lakhs Premium Shield</option>
+                      <option value="₹1 Crore+">₹1 Crore+ Term / Loan</option>
+                    </select>
+                  </div>
+
+                  <button type="submit" disabled={loading} className="btn-submit-quote">
+                    {loading ? 'Processing...' : (
+                      <>
+                        <Send size={16} /> Get Free Best Quotes
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       </div>
