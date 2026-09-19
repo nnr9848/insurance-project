@@ -16,7 +16,8 @@ import {
   Layers,
   Sparkles,
   RefreshCw,
-  Zap
+  Zap,
+  CheckSquare
 } from 'lucide-react';
 
 export default function ManagerDashboardOverview({
@@ -129,6 +130,25 @@ export default function ManagerDashboardOverview({
             }}
           >
             <RefreshCw size={14} /> Refresh Metrics
+          </button>
+          <button
+            onClick={() => onNavigateView('approvals')}
+            style={{
+              background: 'rgba(217, 119, 6, 0.25)',
+              color: '#fbbf24',
+              border: '1px solid rgba(251, 191, 36, 0.4)',
+              padding: '0.55rem 0.9rem',
+              borderRadius: '10px',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <CheckSquare size={14} /> Approvals Desk
           </button>
           <button
             onClick={() => onNavigateView('clients')}

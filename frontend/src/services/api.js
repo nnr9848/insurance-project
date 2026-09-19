@@ -197,6 +197,23 @@ export const crmService = {
     const res = await api.post(`/crm/documents/client/${clientId}/request-checklist`, { docTypes });
     return res.data;
   },
+  // Manager Approval Workflows & Governance
+  getApprovals: async () => {
+    const res = await api.get('/crm/approvals');
+    return res.data;
+  },
+  getClientApprovals: async (clientId) => {
+    const res = await api.get(`/crm/approvals/client/${clientId}`);
+    return res.data;
+  },
+  submitApprovalRequest: async (approvalData) => {
+    const res = await api.post('/crm/approvals', approvalData);
+    return res.data;
+  },
+  reviewApprovalRequest: async (approvalId, reviewData) => {
+    const res = await api.patch(`/crm/approvals/${approvalId}/review`, reviewData);
+    return res.data;
+  },
   // Enterprise Audit Trail & Compliance
   getClientAuditLogs: async (clientId) => {
     const res = await api.get(`/crm/audit/client/${clientId}`);

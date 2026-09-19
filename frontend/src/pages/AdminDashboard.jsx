@@ -45,7 +45,8 @@ import {
   FileSpreadsheet,
   Award,
   ShieldAlert,
-  FolderCheck
+  FolderCheck,
+  CheckSquare
 } from 'lucide-react';
 import { portalService, crmService } from '../services/api';
 import UserManagementView from '../components/crm/UserManagementView';
@@ -62,6 +63,7 @@ import AuditTrailView from '../components/crm/AuditTrailView';
 import QuotationManagementView from '../components/crm/QuotationManagementView';
 import DocumentLockerView from '../components/crm/DocumentLockerView';
 import CallHistoryView from '../components/crm/CallHistoryView';
+import ManagerApprovalsView from '../components/crm/ManagerApprovalsView';
 
 export default function AdminDashboard() {
   const { 
@@ -205,6 +207,13 @@ export default function AdminDashboard() {
           category: 'CRM Workspace',
           subtitle: 'Centralized repository of Aadhaar, PAN, previous policies, RC books, and medical reports with verification workflows.',
           icon: <FolderCheck size={18} color="#059669" />
+        };
+      case 'approvals':
+        return {
+          title: 'Executive Approvals & Exceptions Desk',
+          category: 'Operations & Management',
+          subtitle: 'Review & authorize quotation discounts, high sum-insured underwriting exceptions, lead reassignments, and policy cancellations.',
+          icon: <CheckSquare size={18} color="#d97706" />
         };
       case 'audit':
         return {
@@ -567,7 +576,10 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
   const navItemsAdmin = [
     ...(canManageUsers ? [{ id: 'users', label: 'User & Team Hierarchy', icon: <Users size={19} />, count: null }] : []),
-    ...((isSuperAdmin || isManager) ? [{ id: 'audit', label: 'Audit Trail & Compliance', icon: <ShieldCheck size={19} />, count: null }] : []),
+    ...((isSuperAdmin || isManager) ? [
+      { id: 'approvals', label: 'Manager Approvals Desk', icon: <CheckSquare size={19} />, count: null },
+      { id: 'audit', label: 'Audit Trail & Compliance', icon: <ShieldCheck size={19} />, count: null }
+    ] : []),
     { id: 'quotes', label: 'Web Quote Leads', icon: <Briefcase size={19} />, count: quotes.length, badgeColor: '#16a34a' },
     { id: 'posp', label: 'POSP Agent Network', icon: <UserCheck size={19} />, count: pospList.filter(p => p.status === 'PENDING').length, badgeColor: '#d97706' },
     { id: 'claims', label: 'Claims Desk', icon: <Crosshair size={19} />, count: claims.length, badgeColor: '#2563eb' },
@@ -1452,6 +1464,13 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           {/* VIEW: AUDIT TRAIL & COMPLIANCE */}
           {activeView === 'audit' && (
             <AuditTrailView 
+              onOpenClient360={(client) => setSelectedClient360(client)}
+            />
+          )}
+
+          {/* VIEW: EXECUTIVE APPROVALS & EXCEPTION DESK */}
+          {activeView === 'approvals' && (
+            <ManagerApprovalsView 
               onOpenClient360={(client) => setSelectedClient360(client)}
             />
           )}
