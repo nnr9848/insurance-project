@@ -31,6 +31,7 @@ public class PortalController {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.aadhiraksha.insurance.service.AuditService auditService;
 
     // Categories
     @GetMapping("/categories")
@@ -173,23 +174,58 @@ public class PortalController {
         return ResponseEntity.ok(claimRepository.findAllByOrderByCreatedAtDesc());
     }
 
+    @GetMapping("/admin/hospitals")
+    @Operation(summary = "Get all network hospitals including inactive ones (Admin/Staff only)")
+    public ResponseEntity<List<NetworkHospital>> getAllHospitalsForAdmin(
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String query) {
+        return ResponseEntity.ok(hospitalRepository.searchAllHospitalsForAdmin(city, query));
+    }
+
     // Admin Hospital Management APIs
     @PostMapping("/admin/hospitals")
     @Operation(summary = "Add a new network hospital (Admin/Staff only)")
-    public ResponseEntity<NetworkHospital> createHospital(@Valid @RequestBody NetworkHospital hospital) {
-        return ResponseEntity.ok(hospitalRepository.save(hospital));
+    public ResponseEntity<NetworkHospital> createHospital(@Valid @RequestBody NetworkHospital hospital, org.springframework.security.core.Authentication auth) {
+        hospital.setIsActive(true);
+        NetworkHospital saved = hospitalRepository.save(hospital);
+        User user = (auth != null && auth.getName() != null) ? userRepository.findByEmail(auth.getName()).orElse(null) : null;
+        auditService.logAction("NETWORK_HOSPITAL", saved.getId(), "CREATE", "ALL", null, "Created cashless hospital: " + saved.getHospitalName(), user, null);
+        return ResponseEntity.ok(saved);
     }
 
     @PostMapping("/admin/hospitals/bulk")
     @Operation(summary = "Bulk import network hospitals list (Admin/Staff only)")
-    public ResponseEntity<List<NetworkHospital>> createHospitalsBulk(@RequestBody List<NetworkHospital> hospitals) {
-        return ResponseEntity.ok(hospitalRepository.saveAll(hospitals));
+    public ResponseEntity<List<NetworkHospital>> createHospitalsBulk(@RequestBody List<NetworkHospital> hospitals, org.springframework.security.core.Authentication auth) {
+        for (NetworkHospital h : hospitals) {
+            h.setIsActive(true);
+        }
+        List<NetworkHospital> saved = hospitalRepository.saveAll(hospitals);
+        User user = (auth != null && auth.getName() != null) ? userRepository.findByEmail(auth.getName()).orElse(null) : null;
+        auditService.logAction("NETWORK_HOSPITAL", 0L, "CREATE", "BULK_IMPORT", null, "Bulk imported " + saved.size() + " hospitals", user, null);
+        return ResponseEntity.ok(saved);
+    }
+
+    @PostMapping("/admin/hospitals/{id}/toggle-status")
+    @Operation(summary = "Soft-deactivate or restore a network hospital (Zero Hard Deletes)")
+    public ResponseEntity<NetworkHospital> toggleHospitalStatus(@PathVariable Long id, org.springframework.security.core.Authentication auth) {
+        NetworkHospital hospital = hospitalRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Hospital not found with ID: " + id));
+
+        boolean oldStatus = Boolean.TRUE.equals(hospital.getIsActive());
+        boolean newStatus = !oldStatus;
+        hospital.setIsActive(newStatus);
+        NetworkHospital updated = hospitalRepository.save(hospital);
+
+        User user = (auth != null && auth.getName() != null) ? userRepository.findByEmail(auth.getName()).orElse(null) : null;
+        auditService.logAction("NETWORK_HOSPITAL", updated.getId(), newStatus ? "RESTORE" : "SOFT_DELETE", "IS_ACTIVE",
+                String.valueOf(oldStatus), String.valueOf(newStatus), user, null);
+
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/admin/hospitals/{id}")
-    @Operation(summary = "Delete a network hospital (Admin/Staff only)")
-    public ResponseEntity<?> deleteHospital(@PathVariable Long id) {
-        hospitalRepository.deleteById(id);
-        return ResponseEntity.ok(Map.of("message", "Hospital deleted successfully"));
+    @Operation(summary = "Soft delete a network hospital (Backward compatibility)")
+    public ResponseEntity<?> deleteHospital(@PathVariable Long id, org.springframework.security.core.Authentication auth) {
+        return toggleHospitalStatus(id, auth);
     }
 }

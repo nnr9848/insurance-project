@@ -47,6 +47,20 @@ public class CrmUserController {
         return ResponseEntity.ok(crmUserService.getAssignableRoles(performedBy));
     }
 
+    @GetMapping("/departments")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Get list of active departments with their associated designations")
+    public ResponseEntity<List<CrmUserDto.DepartmentOption>> getDepartments() {
+        return ResponseEntity.ok(crmUserService.getDepartmentOptions());
+    }
+
+    @GetMapping("/designations")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Get list of active designations, optionally filtered by departmentId")
+    public ResponseEntity<List<CrmUserDto.DesignationOption>> getDesignations(@RequestParam(required = false) Long departmentId) {
+        return ResponseEntity.ok(crmUserService.getDesignationOptions(departmentId));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
     @Operation(summary = "Update user details, active status, or reassign manager (Super Admin only)")

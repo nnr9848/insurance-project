@@ -65,6 +65,14 @@ export const crmService = {
     const res = await api.post(`/crm/users/${id}/reset-password`, { newPassword });
     return res.data;
   },
+  getDepartments: async () => {
+    const res = await api.get('/crm/users/departments');
+    return res.data;
+  },
+  getDesignations: async (departmentId) => {
+    const res = await api.get('/crm/users/designations', { params: departmentId ? { departmentId } : {} });
+    return res.data;
+  },
 
   // Leads & Pipeline
   getLeads: async () => {
@@ -111,6 +119,16 @@ export const crmService = {
     const res = await api.get('/crm/meetings/upcoming');
     return res.data;
   },
+
+  // Analytics & Dashboard Summary
+  getManagerSummary: async () => {
+    const res = await api.get('/crm/analytics/manager-summary');
+    return res.data;
+  },
+  getSuperAdminSummary: async () => {
+    const res = await api.get('/crm/analytics/superadmin-summary');
+    return res.data;
+  },
 };
 
 export const portalService = {
@@ -155,12 +173,20 @@ export const portalService = {
     const res = await api.get('/admin/claims');
     return res.data;
   },
+  getAdminHospitals: async (city, query) => {
+    const res = await api.get('/admin/hospitals', { params: { city, query } });
+    return res.data;
+  },
   createHospital: async (data) => {
     const res = await api.post('/admin/hospitals', data);
     return res.data;
   },
   createHospitalsBulk: async (list) => {
     const res = await api.post('/admin/hospitals/bulk', list);
+    return res.data;
+  },
+  toggleHospitalStatus: async (id) => {
+    const res = await api.post(`/admin/hospitals/${id}/toggle-status`);
     return res.data;
   },
   deleteHospital: async (id) => {

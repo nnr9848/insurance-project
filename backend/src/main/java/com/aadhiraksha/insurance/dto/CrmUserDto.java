@@ -25,6 +25,31 @@ public class CrmUserDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    public static class DesignationOption {
+        private Long id;
+        private String name;
+        private String code;
+        private Long departmentId;
+        private String departmentName;
+        private Integer displayOrder;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DepartmentOption {
+        private Long id;
+        private String name;
+        private String code;
+        private Integer displayOrder;
+        private java.util.List<DesignationOption> designations;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CreateUserRequest {
         private String employeeCode;
         private String fullName;

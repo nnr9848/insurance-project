@@ -38,6 +38,8 @@ export default function UserManagementView() {
   const [users, setUsers] = useState([]);
   const [managers, setManagers] = useState([]);
   const [assignableRoles, setAssignableRoles] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [designations, setDesignations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
@@ -53,6 +55,18 @@ export default function UserManagementView() {
   // Selected User for action
   const [selectedUser, setSelectedUser] = useState(null);
 
+  // Custom dropdown states for Create Form
+  const [isCustomCreateDept, setIsCustomCreateDept] = useState(false);
+  const [customCreateDeptText, setCustomCreateDeptText] = useState('');
+  const [isCustomCreateDesig, setIsCustomCreateDesig] = useState(false);
+  const [customCreateDesigText, setCustomCreateDesigText] = useState('');
+
+  // Custom dropdown states for Edit Form
+  const [isCustomEditDept, setIsCustomEditDept] = useState(false);
+  const [customEditDeptText, setCustomEditDeptText] = useState('');
+  const [isCustomEditDesig, setIsCustomEditDesig] = useState(false);
+  const [customEditDesigText, setCustomEditDesigText] = useState('');
+
   // Form states
   const [createUserForm, setCreateUserForm] = useState({
     employeeCode: '',
@@ -60,7 +74,7 @@ export default function UserManagementView() {
     email: '',
     phoneNumber: '',
     designation: 'Insurance Advisor',
-    department: 'Retail Sales',
+    department: 'Retail Sales (Health, Life & Motor)',
     role: 'ROLE_ADVISOR',
     managerId: '',
     password: ''
@@ -129,20 +143,32 @@ export default function UserManagementView() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [usersData, managersData, rolesData] = await Promise.all([
+      const [usersData, managersData, rolesData, deptsData, desigsData] = await Promise.all([
         crmService.getUsers(),
         crmService.getManagers(),
-        crmService.getAssignableRoles().catch(() => [])
+        crmService.getAssignableRoles().catch(() => []),
+        crmService.getDepartments().catch(() => []),
+        crmService.getDesignations().catch(() => [])
       ]);
       setUsers(usersData || []);
       setManagers(managersData || []);
       setAssignableRoles(rolesData || []);
+      setDepartments(deptsData || []);
+      setDesignations(desigsData || []);
       
       // Auto-set default role if current form role not in assignable list
       if (rolesData && rolesData.length > 0) {
         setCreateUserForm(prev => ({
           ...prev,
           role: rolesData.some(r => r.code === prev.role) ? prev.role : rolesData[0].code
+        }));
+      }
+
+      // Auto-set default department & designation
+      if (deptsData && deptsData.length > 0) {
+        setCreateUserForm(prev => ({
+          ...prev,
+          department: prev.department || deptsData[0].name
         }));
       }
     } catch (err) {
@@ -157,8 +183,13 @@ export default function UserManagementView() {
     setSubmitting(true);
     setErrorMsg('');
     try {
+      const finalDepartment = isCustomCreateDept ? customCreateDeptText : createUserForm.department;
+      const finalDesignation = isCustomCreateDesig ? customCreateDesigText : createUserForm.designation;
+
       const payload = {
         ...createUserForm,
+        department: finalDepartment,
+        designation: finalDesignation,
         managerId: createUserForm.managerId ? Number(createUserForm.managerId) : null
       };
       const response = await crmService.createUser(payload);
@@ -169,13 +200,17 @@ export default function UserManagementView() {
         temporaryPassword: response.temporaryPassword
       });
       loadData();
+      setIsCustomCreateDept(false);
+      setCustomCreateDeptText('');
+      setIsCustomCreateDesig(false);
+      setCustomCreateDesigText('');
       setCreateUserForm({
         employeeCode: '',
         fullName: '',
         email: '',
         phoneNumber: '',
         designation: 'Insurance Advisor',
-        department: 'Retail Sales',
+        department: departments[0]?.name || 'Retail Sales (Health, Life & Motor)',
         role: 'ROLE_ADVISOR',
         managerId: '',
         password: ''
@@ -212,8 +247,13 @@ export default function UserManagementView() {
 
     setSubmitting(true);
     try {
+      const finalDepartment = isCustomEditDept ? customEditDeptText : editUserForm.department;
+      const finalDesignation = isCustomEditDesig ? customEditDesigText : editUserForm.designation;
+
       const payload = {
         ...editUserForm,
+        department: finalDepartment,
+        designation: finalDesignation,
         managerId: editUserForm.managerId ? Number(editUserForm.managerId) : null
       };
       await crmService.updateUser(selectedUser.id, payload);
@@ -256,11 +296,26 @@ export default function UserManagementView() {
 
   const openEditModal = (user) => {
     setSelectedUser(user);
+    
+    // Check standard match for department
+    const standardDeptNames = departments.map(d => d.name);
+    const hasStandardDept = standardDeptNames.includes(user.department);
+
+    // Check standard match for designation
+    const standardDesigNames = designations.map(d => d.name);
+    const hasStandardDesig = standardDesigNames.includes(user.designation);
+
+    setIsCustomEditDept(!hasStandardDept && !!user.department);
+    setCustomEditDeptText(!hasStandardDept ? (user.department || '') : '');
+
+    setIsCustomEditDesig(!hasStandardDesig && !!user.designation);
+    setCustomEditDesigText(!hasStandardDesig ? (user.designation || '') : '');
+
     setEditUserForm({
       fullName: user.fullName,
       phoneNumber: user.phoneNumber || '',
-      designation: user.designation || '',
-      department: user.department || 'Retail Sales',
+      designation: hasStandardDesig ? user.designation : (user.designation ? '__CUSTOM__' : (standardDesigNames[0] || 'Insurance Advisor')),
+      department: hasStandardDept ? user.department : (user.department ? '__CUSTOM__' : (standardDeptNames[0] || 'Retail Sales (Health, Life & Motor)')),
       managerId: user.managerId ? String(user.managerId) : '',
       isActive: user.isActive
     });
@@ -837,28 +892,88 @@ export default function UserManagementView() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Designation
+                    Department
                   </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Senior Health Advisor"
-                    value={createUserForm.designation}
-                    onChange={(e) => setCreateUserForm({ ...createUserForm, designation: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                  />
+                  <select
+                    value={isCustomCreateDept ? '__CUSTOM__' : createUserForm.department}
+                    onChange={(e) => {
+                      if (e.target.value === '__CUSTOM__') {
+                        setIsCustomCreateDept(true);
+                      } else {
+                        setIsCustomCreateDept(false);
+                        setCreateUserForm({ ...createUserForm, department: e.target.value });
+                      }
+                    }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
+                  >
+                    {departments.map(dept => (
+                      <option key={dept.code || dept.name} value={dept.name}>
+                        {dept.name}
+                      </option>
+                    ))}
+                    <option value="__CUSTOM__">✏️ + Custom / Other Department...</option>
+                  </select>
+
+                  {isCustomCreateDept && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Type custom department name..."
+                      value={customCreateDeptText}
+                      onChange={(e) => setCustomCreateDeptText(e.target.value)}
+                      style={{ width: '100%', marginTop: '6px', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #0284c7', fontSize: '0.85rem' }}
+                    />
+                  )}
                 </div>
+
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Custom Password (optional)
+                    Designation
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Leave blank to auto-generate"
-                    value={createUserForm.password}
-                    onChange={(e) => setCreateUserForm({ ...createUserForm, password: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                  />
+                  <select
+                    value={isCustomCreateDesig ? '__CUSTOM__' : createUserForm.designation}
+                    onChange={(e) => {
+                      if (e.target.value === '__CUSTOM__') {
+                        setIsCustomCreateDesig(true);
+                      } else {
+                        setIsCustomCreateDesig(false);
+                        setCreateUserForm({ ...createUserForm, designation: e.target.value });
+                      }
+                    }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
+                  >
+                    {designations.map(desig => (
+                      <option key={desig.code || desig.name} value={desig.name}>
+                        {desig.name}
+                      </option>
+                    ))}
+                    <option value="__CUSTOM__">✏️ + Custom / Other Designation...</option>
+                  </select>
+
+                  {isCustomCreateDesig && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Type custom designation title..."
+                      value={customCreateDesigText}
+                      onChange={(e) => setCustomCreateDesigText(e.target.value)}
+                      style={{ width: '100%', marginTop: '6px', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #0284c7', fontSize: '0.85rem' }}
+                    />
+                  )}
                 </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Custom Password (optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Leave blank to auto-generate"
+                  value={createUserForm.password}
+                  onChange={(e) => setCreateUserForm({ ...createUserForm, password: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                />
               </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '1rem' }}>
@@ -1103,25 +1218,74 @@ export default function UserManagementView() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Designation
-                  </label>
-                  <input
-                    type="text"
-                    value={editUserForm.designation}
-                    onChange={(e) => setEditUserForm({ ...editUserForm, designation: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
                     Department
                   </label>
-                  <input
-                    type="text"
-                    value={editUserForm.department}
-                    onChange={(e) => setEditUserForm({ ...editUserForm, department: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                  />
+                  <select
+                    value={isCustomEditDept ? '__CUSTOM__' : editUserForm.department}
+                    onChange={(e) => {
+                      if (e.target.value === '__CUSTOM__') {
+                        setIsCustomEditDept(true);
+                      } else {
+                        setIsCustomEditDept(false);
+                        setEditUserForm({ ...editUserForm, department: e.target.value });
+                      }
+                    }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
+                  >
+                    {departments.map(dept => (
+                      <option key={dept.code || dept.name} value={dept.name}>
+                        {dept.name}
+                      </option>
+                    ))}
+                    <option value="__CUSTOM__">✏️ + Custom / Other Department...</option>
+                  </select>
+
+                  {isCustomEditDept && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Type custom department name..."
+                      value={customEditDeptText}
+                      onChange={(e) => setCustomEditDeptText(e.target.value)}
+                      style={{ width: '100%', marginTop: '6px', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #0284c7', fontSize: '0.85rem' }}
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Designation
+                  </label>
+                  <select
+                    value={isCustomEditDesig ? '__CUSTOM__' : editUserForm.designation}
+                    onChange={(e) => {
+                      if (e.target.value === '__CUSTOM__') {
+                        setIsCustomEditDesig(true);
+                      } else {
+                        setIsCustomEditDesig(false);
+                        setEditUserForm({ ...editUserForm, designation: e.target.value });
+                      }
+                    }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
+                  >
+                    {designations.map(desig => (
+                      <option key={desig.code || desig.name} value={desig.name}>
+                        {desig.name}
+                      </option>
+                    ))}
+                    <option value="__CUSTOM__">✏️ + Custom / Other Designation...</option>
+                  </select>
+
+                  {isCustomEditDesig && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Type custom designation title..."
+                      value={customEditDesigText}
+                      onChange={(e) => setCustomEditDesigText(e.target.value)}
+                      style={{ width: '100%', marginTop: '6px', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #0284c7', fontSize: '0.85rem' }}
+                    />
+                  )}
                 </div>
               </div>
 

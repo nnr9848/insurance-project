@@ -1,10 +1,16 @@
 package com.aadhiraksha.insurance.service;
 
 import com.aadhiraksha.insurance.dto.CrmUserDto;
+import com.aadhiraksha.insurance.model.Department;
+import com.aadhiraksha.insurance.model.Designation;
 import com.aadhiraksha.insurance.model.Role;
+import com.aadhiraksha.insurance.model.StaffProfile;
 import com.aadhiraksha.insurance.model.User;
 import com.aadhiraksha.insurance.repository.ClientLeadRepository;
+import com.aadhiraksha.insurance.repository.DepartmentRepository;
+import com.aadhiraksha.insurance.repository.DesignationRepository;
 import com.aadhiraksha.insurance.repository.RoleRepository;
+import com.aadhiraksha.insurance.repository.StaffProfileRepository;
 import com.aadhiraksha.insurance.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +29,9 @@ public class CrmUserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final DepartmentRepository departmentRepository;
+    private final DesignationRepository designationRepository;
+    private final StaffProfileRepository staffProfileRepository;
     private final ClientLeadRepository clientLeadRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
@@ -111,7 +120,7 @@ public class CrmUserService {
                 .phoneNumber(request.getPhoneNumber())
                 .password(passwordEncoder.encode(rawPassword))
                 .designation(request.getDesignation())
-                .department(request.getDepartment() != null ? request.getDepartment() : "Insurance Sales")
+                .department(request.getDepartment() != null ? request.getDepartment() : "Retail Sales (Health, Life & Motor)")
                 .manager(manager)
                 .isActive(true)
                 .mustChangePassword(true)
@@ -119,6 +128,30 @@ public class CrmUserService {
                 .build();
 
         User savedUser = userRepository.save(user);
+
+        // Resolve relational Department and Designation entities for StaffProfile
+        Department department = null;
+        if (request.getDepartment() != null && !request.getDepartment().trim().isEmpty()) {
+            department = departmentRepository.findByNameIgnoreCase(request.getDepartment().trim()).orElse(null);
+        }
+
+        Designation designation = null;
+        if (request.getDesignation() != null && !request.getDesignation().trim().isEmpty()) {
+            designation = designationRepository.findByNameIgnoreCase(request.getDesignation().trim()).orElse(null);
+        }
+
+        // Persist dedicated StaffProfile extension
+        StaffProfile staffProfile = StaffProfile.builder()
+                .user(savedUser)
+                .employeeCode(employeeCode)
+                .reportingManager(manager)
+                .department(department)
+                .designation(designation)
+                .departmentName(request.getDepartment() != null ? request.getDepartment() : (department != null ? department.getName() : "Retail Sales (Health, Life & Motor)"))
+                .designationName(request.getDesignation() != null ? request.getDesignation() : (designation != null ? designation.getName() : "Insurance Advisor"))
+                .mustChangePassword(true)
+                .build();
+        staffProfileRepository.save(staffProfile);
 
         auditService.logAction("USER", savedUser.getId(), "CREATE", "ALL", null,
                 "Created user " + savedUser.getFullName() + " with role " + targetRole.getName(), performedBy, null);
@@ -174,6 +207,26 @@ public class CrmUserService {
         }
 
         User updated = userRepository.save(user);
+
+        // Synchronize dedicated StaffProfile extension
+        StaffProfile staffProfile = staffProfileRepository.findByUserId(user.getId())
+                .orElseGet(() -> StaffProfile.builder().user(user).employeeCode(user.getEmployeeCode()).build());
+
+        if (request.getDesignation() != null) {
+            staffProfile.setDesignationName(request.getDesignation());
+            Designation desig = designationRepository.findByNameIgnoreCase(request.getDesignation().trim()).orElse(null);
+            staffProfile.setDesignation(desig);
+        }
+        if (request.getDepartment() != null) {
+            staffProfile.setDepartmentName(request.getDepartment());
+            Department dept = departmentRepository.findByNameIgnoreCase(request.getDepartment().trim()).orElse(null);
+            staffProfile.setDepartment(dept);
+        }
+        if (request.getManagerId() != null && isSuperAdmin) {
+            staffProfile.setReportingManager(user.getManager());
+        }
+        staffProfileRepository.save(staffProfile);
+
         auditService.logAction("USER", updated.getId(), "UPDATE", "PROFILE", null,
                 "Updated profile for " + updated.getFullName(), performedBy, null);
 
@@ -325,19 +378,74 @@ public class CrmUserService {
         }
     }
 
+    public List<CrmUserDto.DepartmentOption> getDepartmentOptions() {
+        List<Department> departments = departmentRepository.findByIsActiveTrueOrderByDisplayOrderAsc();
+        List<Designation> designations = designationRepository.findByIsActiveTrueOrderByDisplayOrderAsc();
+
+        Map<Long, List<CrmUserDto.DesignationOption>> designationMap = designations.stream()
+                .filter(d -> d.getDepartment() != null)
+                .map(d -> CrmUserDto.DesignationOption.builder()
+                        .id(d.getId())
+                        .name(d.getName())
+                        .code(d.getCode())
+                        .departmentId(d.getDepartment().getId())
+                        .departmentName(d.getDepartment().getName())
+                        .displayOrder(d.getDisplayOrder())
+                        .build())
+                .collect(Collectors.groupingBy(CrmUserDto.DesignationOption::getDepartmentId));
+
+        return departments.stream()
+                .map(dept -> CrmUserDto.DepartmentOption.builder()
+                        .id(dept.getId())
+                        .name(dept.getName())
+                        .code(dept.getCode())
+                        .displayOrder(dept.getDisplayOrder())
+                        .designations(designationMap.getOrDefault(dept.getId(), Collections.emptyList()))
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    public List<CrmUserDto.DesignationOption> getDesignationOptions(Long departmentId) {
+        List<Designation> designations;
+        if (departmentId != null) {
+            designations = designationRepository.findByDepartmentIdAndIsActiveTrueOrderByDisplayOrderAsc(departmentId);
+        } else {
+            designations = designationRepository.findByIsActiveTrueOrderByDisplayOrderAsc();
+        }
+
+        return designations.stream()
+                .map(d -> CrmUserDto.DesignationOption.builder()
+                        .id(d.getId())
+                        .name(d.getName())
+                        .code(d.getCode())
+                        .departmentId(d.getDepartment() != null ? d.getDepartment().getId() : null)
+                        .departmentName(d.getDepartment() != null ? d.getDepartment().getName() : null)
+                        .displayOrder(d.getDisplayOrder())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
     public CrmUserDto.UserResponse mapToResponse(User user) {
         long clientCount = clientLeadRepository.countByAssignedAdvisorId(user.getId());
 
+        StaffProfile staff = staffProfileRepository.findByUserId(user.getId()).orElse(null);
+
+        String employeeCode = staff != null && staff.getEmployeeCode() != null ? staff.getEmployeeCode() : user.getEmployeeCode();
+        String designation = staff != null && staff.getDesignationName() != null ? staff.getDesignationName() : user.getDesignation();
+        String department = staff != null && staff.getDepartmentName() != null ? staff.getDepartmentName() : user.getDepartment();
+        Long managerId = staff != null && staff.getReportingManager() != null ? staff.getReportingManager().getId() : (user.getManager() != null ? user.getManager().getId() : null);
+        String managerName = staff != null && staff.getReportingManager() != null ? staff.getReportingManager().getFullName() : (user.getManager() != null ? user.getManager().getFullName() : null);
+
         return CrmUserDto.UserResponse.builder()
                 .id(user.getId())
-                .employeeCode(user.getEmployeeCode())
+                .employeeCode(employeeCode)
                 .fullName(user.getFullName())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
-                .designation(user.getDesignation())
-                .department(user.getDepartment())
-                .managerId(user.getManager() != null ? user.getManager().getId() : null)
-                .managerName(user.getManager() != null ? user.getManager().getFullName() : null)
+                .designation(designation)
+                .department(department)
+                .managerId(managerId)
+                .managerName(managerName)
                 .isActive(user.getIsActive())
                 .mustChangePassword(user.getMustChangePassword())
                 .roles(user.getRoles().stream().map(Role::getName).collect(Collectors.toSet()))

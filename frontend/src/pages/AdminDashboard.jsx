@@ -54,6 +54,8 @@ import SalesPipelineView from '../components/crm/SalesPipelineView';
 import MeetingCalendarView from '../components/crm/MeetingCalendarView';
 import Client360Drawer from '../components/crm/Client360Drawer';
 import UserProfileModal from '../components/crm/UserProfileModal';
+import ManagerDashboardOverview from '../components/crm/ManagerDashboardOverview';
+import SuperAdminDashboardOverview from '../components/crm/SuperAdminDashboardOverview';
 
 export default function AdminDashboard() {
   const { 
@@ -222,6 +224,8 @@ export default function AdminDashboard() {
   const [hospitals, setHospitals] = useState([]);
   const [leads, setLeads] = useState([]);
   const [dueFollowUps, setDueFollowUps] = useState([]);
+  const [managerAnalytics, setManagerAnalytics] = useState(null);
+  const [superAdminAnalytics, setSuperAdminAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Global Interactive Drawers / Modals
@@ -325,13 +329,15 @@ export default function AdminDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [qData, pData, cData, hData, lData, fData] = await Promise.all([
+      const [qData, pData, cData, hData, lData, fData, mData, sData] = await Promise.all([
         portalService.getAdminQuotes().catch(() => []),
         portalService.getAdminPOSP().catch(() => []),
         portalService.getAdminClaims().catch(() => []),
         portalService.searchHospitals('', '').catch(() => []),
         crmService.getLeads().catch(() => []),
-        crmService.getDueTodayFollowUps().catch(() => [])
+        crmService.getDueTodayFollowUps().catch(() => []),
+        crmService.getManagerSummary().catch(() => null),
+        crmService.getSuperAdminSummary().catch(() => null)
       ]);
       setQuotes(qData || []);
       setPospList(pData || []);
@@ -339,6 +345,8 @@ export default function AdminDashboard() {
       setHospitals(hData || []);
       setLeads(lData || []);
       setDueFollowUps(fData || []);
+      setManagerAnalytics(mData);
+      setSuperAdminAnalytics(sData);
     } catch (err) {
       console.error('Error fetching admin/crm datasets', err);
     } finally {
@@ -388,16 +396,17 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteHospital = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to remove "${name}" from the network directory?`)) {
+  const handleToggleHospitalStatus = async (id, name, currentActive) => {
+    const actionLabel = currentActive ? 'soft-deactivate' : 'restore';
+    if (!window.confirm(`Are you sure you want to ${actionLabel} "${name}" in the network directory? (Zero hard-deletes policy)`)) {
       return;
     }
     try {
-      await portalService.deleteHospital(id);
-      setHospitals(prev => prev.filter(h => h.id !== id));
+      const updated = await portalService.toggleHospitalStatus(id);
+      setHospitals(prev => prev.map(h => h.id === id ? updated : h));
     } catch (err) {
-      console.error('Error deleting hospital', err);
-      alert('Failed to delete hospital: ' + (err.response?.data?.message || err.message));
+      console.error('Error toggling hospital status', err);
+      alert('Failed to toggle hospital status: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -1292,225 +1301,24 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
           {/* VIEW: CRM DASHBOARD OVERVIEW */}
           {activeView === 'dashboard' && (
-            <div>
-              {/* Sleek Executive Greeting Bar */}
-              <div 
-                className="crm-mobile-hero-banner"
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '1.25rem',
-                  gap: '1rem',
-                  flexWrap: 'wrap'
-                }}
-              >
-                <div>
-                  <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--primary-navy)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                    Welcome back, {user?.fullName || 'Super Admin'} <span style={{ fontSize: '1.1rem' }}>👋</span>
-                  </h2>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', margin: '3px 0 0 0', fontWeight: 500 }}>
-                    Here's a live summary of your policy pipeline, daily agendas, and network operations.
-                  </p>
-                </div>
-
-                <div className="crm-mobile-hero-actions" style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-                  <button
-                    onClick={() => handleNavigateView('clients')}
-                    style={{
-                      background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover))',
-                      color: '#fff',
-                      border: 'none',
-                      padding: '0.55rem 1rem',
-                      borderRadius: '10px',
-                      fontWeight: 700,
-                      fontSize: '0.82rem',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      boxShadow: 'var(--shadow-gold)'
-                    }}
-                  >
-                    <FileText size={15} /> + New Client
-                  </button>
-                  <button
-                    onClick={() => handleNavigateView('agenda')}
-                    style={{
-                      background: 'var(--bg-card)',
-                      color: 'var(--text-main)',
-                      border: '1px solid var(--border-subtle)',
-                      padding: '0.55rem 1rem',
-                      borderRadius: '10px',
-                      fontWeight: 700,
-                      fontSize: '0.82rem',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.4rem'
-                    }}
-                  >
-                    <PhoneCall size={15} color="#ea580c" /> Call Agenda
-                  </button>
-                </div>
-              </div>
-
-              {/* CRM Key Performance Metrics */}
-              <div 
-                className="crm-metrics-grid"
-                style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.75rem' }}
-              >
-                
-                {/* Metric 1: Total Leads */}
-                <div 
-                  onClick={() => handleNavigateView('clients')}
-                  className="crm-metric-box crm-metric-card-inner"
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
-                    <span>Active CRM Leads</span>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7' }}>
-                      <FileText size={16} />
-                    </div>
-                  </div>
-                  <div className="crm-metric-card-val" style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.4rem' }}>
-                    {leads.length}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: 700, marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                    <span>Interactive Excel Data Grid</span> <ChevronRight size={12} />
-                  </div>
-                </div>
-
-                {/* Metric 2: Due Followups */}
-                <div 
-                  onClick={() => handleNavigateView('agenda')}
-                  className="crm-metric-box crm-metric-card-inner"
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
-                    <span>Today's Call Agenda</span>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ea580c' }}>
-                      <PhoneCall size={16} />
-                    </div>
-                  </div>
-                  <div className="crm-metric-card-val" style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.4rem' }}>
-                    {dueFollowUps.length}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#ea580c', fontWeight: 700, marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                    <span>Overdue SLA & Due Calls</span> <ChevronRight size={12} />
-                  </div>
-                </div>
-
-                {/* Metric 3: Web Inquiries */}
-                <div 
-                  onClick={() => handleNavigateView('quotes')}
-                  className="crm-metric-box crm-metric-card-inner"
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
-                    <span>Portal Inquiries</span>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
-                      <Briefcase size={16} />
-                    </div>
-                  </div>
-                  <div className="crm-metric-card-val" style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.4rem' }}>
-                    {quotes.length}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 700, marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                    <span>Incoming Customer Quotes</span> <ChevronRight size={12} />
-                  </div>
-                </div>
-
-                {/* Metric 4: Cashless Hospitals */}
-                <div 
-                  onClick={() => handleNavigateView('hospitals')}
-                  className="crm-metric-box crm-metric-card-inner"
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
-                    <span>Cashless Hospitals</span>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ccfbf1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0d9488' }}>
-                      <Building2 size={16} />
-                    </div>
-                  </div>
-                  <div className="crm-metric-card-val" style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.4rem' }}>
-                    {hospitals.length}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#0d9488', fontWeight: 700, marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                    <span>Empanelled Network Centers</span> <ChevronRight size={12} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Jump Modules */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-                {/* Card 1: Sales Pipeline Preview */}
-                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <div style={{ fontWeight: 800, fontSize: '1rem', color: '#091726', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <TrendingUp size={18} color="#0284c7" /> 10-Stage Pipeline Overview
-                    </div>
-                    <button
-                      onClick={() => handleNavigateView('pipeline')}
-                      style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
-                    >
-                      Open Kanban &rarr;
-                    </button>
-                  </div>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.25rem' }}>
-                    Track leads seamlessly from New Lead &rarr; Contacted &rarr; Follow-up &rarr; Quotation &rarr; Meeting &rarr; KYC &rarr; Policy Issued.
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
-                    <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0284c7' }}>
-                        {leads.filter(l => l.stage === 'NEW_LEAD').length}
-                      </div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>New Leads</div>
-                    </div>
-                    <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ea580c' }}>
-                        {leads.filter(l => l.stage === 'FOLLOWUP').length}
-                      </div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>In Follow-up</div>
-                    </div>
-                    <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#059669' }}>
-                        {leads.filter(l => l.stage === 'POLICY_ISSUED').length}
-                      </div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Issued 🎉</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card 2: User & Team Hierarchy */}
-                <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <div style={{ fontWeight: 800, fontSize: '1rem', color: '#091726', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <Users size={18} color="#059669" /> User & Team Management
-                    </div>
-                    <button
-                      onClick={() => handleNavigateView('users')}
-                      style={{ background: 'none', border: 'none', color: '#059669', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
-                    >
-                      Manage Users &rarr;
-                    </button>
-                  </div>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>
-                    Create Managers, generate temporary credentials with 1-click clipboard copy, reassign advisor teams, and activate/deactivate accounts.
-                  </p>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <button
-                      onClick={() => handleNavigateView('users')}
-                      style={{ background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', padding: '0.5rem 0.85rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
-                    >
-                      + Create Manager / Advisor
-                    </button>
-                    <button
-                      onClick={() => handleNavigateView('agenda')}
-                      style={{ background: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1', padding: '0.5rem 0.85rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      View Team Follow-ups
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            user?.roles?.some(r => r === 'ROLE_MANAGER') || user?.role === 'ROLE_MANAGER' ? (
+              <ManagerDashboardOverview 
+                user={user}
+                analytics={managerAnalytics}
+                loading={loading}
+                onRefresh={loadData}
+                onNavigateView={handleNavigateView}
+                onSelectClient={(client) => setSelectedClient360(client)}
+              />
+            ) : (
+              <SuperAdminDashboardOverview 
+                user={user}
+                analytics={superAdminAnalytics}
+                loading={loading}
+                onRefresh={loadData}
+                onNavigateView={handleNavigateView}
+              />
+            )
           )}
 
           {/* VIEW: CLIENT DATA SHEET (EXCEL GRID) */}
@@ -1553,6 +1361,8 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
             <MeetingCalendarView 
               preselectedClient={preselectedMeetingClient}
               onCloseModal={() => setPreselectedMeetingClient(null)}
+              onOpenClient360={(client) => setSelectedClient360(client)}
+              onOpenCallModal={() => handleNavigateView('agenda')}
             />
           )}
 
@@ -1928,13 +1738,13 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                           </td>
                           <td style={{ padding: '1rem', textAlign: 'center' }}>
                             <button
-                              onClick={() => handleDeleteHospital(hosp.id, hosp.hospitalName)}
-                              title="Remove hospital"
+                              onClick={() => handleToggleHospitalStatus(hosp.id, hosp.hospitalName, hosp.isActive !== false)}
+                              title={hosp.isActive !== false ? "Soft-deactivate hospital" : "Restore hospital"}
                               style={{
-                                background: '#fee2e2',
-                                color: '#ef4444',
+                                background: hosp.isActive !== false ? '#fee2e2' : '#ecfdf5',
+                                color: hosp.isActive !== false ? '#dc2626' : '#059669',
                                 border: 'none',
-                                padding: '0.4rem 0.6rem',
+                                padding: '0.4rem 0.65rem',
                                 borderRadius: '6px',
                                 cursor: 'pointer',
                                 display: 'inline-flex',
@@ -1944,7 +1754,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                 fontWeight: 700
                               }}
                             >
-                              <Trash2 size={13} /> Delete
+                              {hosp.isActive !== false ? 'Deactivate' : 'Restore'}
                             </button>
                           </td>
                         </tr>

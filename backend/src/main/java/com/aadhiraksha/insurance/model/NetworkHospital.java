@@ -41,6 +41,10 @@ public class NetworkHospital {
     @Column(name = "cashless_available")
     private Boolean cashlessAvailable = true;
 
+    @Builder.Default
+    @Column(name = "is_active")
+    private Boolean isActive = true;
+
     @Column(columnDefinition = "TEXT")
     private String specialties;
 
