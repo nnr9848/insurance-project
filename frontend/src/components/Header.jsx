@@ -281,10 +281,10 @@ export default function Header() {
                   animation: 'dropdownFadeIn 0.15s ease-out'
                 }}>
                   {[
-                    { title: 'Health Insurance Renewal', link: '/renewal-port' },
-                    { title: 'Motor / Car Renewal', link: '/renewal-port' },
-                    { title: 'Two Wheeler Renewal', link: '/renewal-port' },
-                    { title: 'Port Existing Policy', link: '/renewal-port' }
+                    { title: 'Health Insurance Renewal', link: '/renewal-port?action=renew&type=health' },
+                    { title: 'Motor / Car Renewal', link: '/renewal-port?action=renew&type=motor' },
+                    { title: 'Two Wheeler Renewal', link: '/renewal-port?action=renew&type=two_wheeler' },
+                    { title: 'Port Existing Policy', link: '/renewal-port?action=port&type=health' }
                   ].map((item, idx) => (
                     <Link
                       key={idx}
@@ -351,8 +351,8 @@ export default function Header() {
                   animation: 'dropdownFadeIn 0.15s ease-out'
                 }}>
                   {[
-                    { title: 'File / Intimate a Claim', link: '/claim-support' },
-                    { title: 'Track Claim Status', link: '/claim-support' },
+                    { title: 'File / Intimate a Claim', link: '/claim-support?tab=file' },
+                    { title: 'Track Claim Status', link: '/claim-support?tab=track' },
                     { title: 'Network Hospitals (Cashless)', link: '/network-hospitals' },
                     { title: 'Become POSP Agent', link: '/become-posp' }
                   ].map((item, idx) => (
@@ -792,10 +792,10 @@ export default function Header() {
                 background: '#ffffff'
               }}>
                 {[
-                  { title: 'Health Insurance Renewal', icon: <HeartPulse size={16} color="#0f2b48" />, link: '/renewal-port' },
-                  { title: 'Motor / Car Renewal', icon: <Car size={16} color="#0f2b48" />, link: '/renewal-port' },
-                  { title: 'Two Wheeler Renewal', icon: <Bike size={16} color="#0f2b48" />, link: '/renewal-port' },
-                  { title: 'Port Existing Policy to Us', icon: <FileCheck size={16} color="#0f2b48" />, link: '/renewal-port' }
+                  { title: 'Health Insurance Renewal', icon: <HeartPulse size={16} color="#0f2b48" />, link: '/renewal-port?action=renew&type=health' },
+                  { title: 'Motor / Car Renewal', icon: <Car size={16} color="#0f2b48" />, link: '/renewal-port?action=renew&type=motor' },
+                  { title: 'Two Wheeler Renewal', icon: <Bike size={16} color="#0f2b48" />, link: '/renewal-port?action=renew&type=two_wheeler' },
+                  { title: 'Port Existing Policy to Us', icon: <FileCheck size={16} color="#0f2b48" />, link: '/renewal-port?action=port&type=health' }
                 ].map((item, idx) => (
                   <Link
                     key={idx}
@@ -876,8 +876,8 @@ export default function Header() {
                 background: '#ffffff'
               }}>
                 {[
-                  { title: 'File / Intimate a Claim', icon: <ShieldCheck size={16} color="#0f2b48" />, link: '/claim-support' },
-                  { title: 'Track Claim Status', icon: <FileCheck size={16} color="#0f2b48" />, link: '/claim-support' },
+                  { title: 'File / Intimate a Claim', icon: <ShieldCheck size={16} color="#0f2b48" />, link: '/claim-support?tab=file' },
+                  { title: 'Track Claim Status', icon: <FileCheck size={16} color="#0f2b48" />, link: '/claim-support?tab=track' },
                   { title: 'Network Hospitals (Cashless)', icon: <Hospital size={16} color="#0f2b48" />, link: '/network-hospitals' },
                   { title: 'Become POSP Agent', icon: <UserCheck size={16} color="#0f2b48" />, link: '/become-posp' }
                 ].map((item, idx) => (

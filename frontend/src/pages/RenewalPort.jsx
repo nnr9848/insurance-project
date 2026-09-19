@@ -1,9 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, ArrowRightLeft, ShieldCheck, CheckCircle2, Send, AlertTriangle } from 'lucide-react';
 import { portalService } from '../services/api';
 
 export default function RenewalPort() {
-  const [activeTab, setActiveTab] = useState('renew'); // 'renew' or 'port'
+  const [searchParams, setSearchParams] = useSearchParams();
+  const actionParam = searchParams.get('action');
+  const typeParam = searchParams.get('type');
+
+  const [activeTab, setActiveTab] = useState(actionParam === 'port' ? 'port' : 'renew');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -15,6 +20,30 @@ export default function RenewalPort() {
     expiryDate: '',
     policyType: 'Health Insurance'
   });
+
+  useEffect(() => {
+    if (actionParam) {
+      setActiveTab(actionParam === 'port' ? 'port' : 'renew');
+    }
+    if (typeParam) {
+      const typeMap = {
+        health: 'Health Insurance',
+        motor: 'Motor / Car Insurance',
+        car: 'Motor / Car Insurance',
+        two_wheeler: 'Two Wheeler Insurance',
+        life: 'Term Life Insurance',
+        commercial: 'Commercial / Fire Insurance'
+      };
+      if (typeMap[typeParam]) {
+        setFormData(prev => ({ ...prev, policyType: typeMap[typeParam] }));
+      }
+    }
+  }, [actionParam, typeParam]);
+
+  const handleTabSwitch = (tab) => {
+    setActiveTab(tab);
+    setSearchParams({ action: tab, type: typeParam || 'health' });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,13 +87,13 @@ export default function RenewalPort() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
             <button
               type="button"
-              onClick={() => setActiveTab('renew')}
+              onClick={() => handleTabSwitch('renew')}
               style={{
                 padding: '0.85rem',
                 borderRadius: '12px',
-                border: `2px solid ${activeTab === 'renew' ? 'var(--primary-navy)' : 'var(--border-subtle)'}`,
-                background: activeTab === 'renew' ? 'var(--primary-navy)' : '#fff',
-                color: activeTab === 'renew' ? '#fff' : 'var(--text-main)',
+                border: `2px solid ${activeTab === 'renew' ? '#059669' : '#cbd5e1'}`,
+                background: activeTab === 'renew' ? '#059669' : '#fff',
+                color: activeTab === 'renew' ? '#fff' : '#0f2b48',
                 fontWeight: 700,
                 fontSize: '0.95rem',
                 cursor: 'pointer',
@@ -72,7 +101,8 @@ export default function RenewalPort() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.5rem',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                boxShadow: activeTab === 'renew' ? '0 4px 12px rgba(5, 150, 105, 0.25)' : 'none'
               }}
             >
               <RefreshCw size={18} />
@@ -81,13 +111,13 @@ export default function RenewalPort() {
 
             <button
               type="button"
-              onClick={() => setActiveTab('port')}
+              onClick={() => handleTabSwitch('port')}
               style={{
                 padding: '0.85rem',
                 borderRadius: '12px',
-                border: `2px solid ${activeTab === 'port' ? 'var(--primary-navy)' : 'var(--border-subtle)'}`,
-                background: activeTab === 'port' ? 'var(--primary-navy)' : '#fff',
-                color: activeTab === 'port' ? '#fff' : 'var(--text-main)',
+                border: `2px solid ${activeTab === 'port' ? '#059669' : '#cbd5e1'}`,
+                background: activeTab === 'port' ? '#059669' : '#fff',
+                color: activeTab === 'port' ? '#fff' : '#0f2b48',
                 fontWeight: 700,
                 fontSize: '0.95rem',
                 cursor: 'pointer',
@@ -95,7 +125,8 @@ export default function RenewalPort() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.5rem',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                boxShadow: activeTab === 'port' ? '0 4px 12px rgba(5, 150, 105, 0.25)' : 'none'
               }}
             >
               <ArrowRightLeft size={18} />
