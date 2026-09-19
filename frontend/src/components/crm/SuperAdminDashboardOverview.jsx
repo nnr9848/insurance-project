@@ -553,6 +553,113 @@ export default function SuperAdminDashboardOverview({
 
       </div>
 
+      {/* 5. Enterprise Sandbox & Realistic Demo Data Control Center */}
+      <div style={{
+        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+        borderRadius: '16px',
+        padding: '1.5rem 1.75rem',
+        border: '1.5px solid #e2e8f0',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '1.25rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', maxWidth: '650px' }}>
+          <div style={{
+            width: '44px',
+            height: '44px',
+            borderRadius: '12px',
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#16a34a',
+            flexShrink: 0
+          }}>
+            <Sparkles size={22} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f2b48' }}>
+                Enterprise Sandbox & Realistic Demo Dataset Engine
+              </h3>
+              <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#dbeafe', color: '#1d4ed8', padding: '2px 8px', borderRadius: '12px' }}>
+                SUPER ADMIN
+              </span>
+            </div>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+              Seed high-fidelity client pipelines across Health, Term Life, Motor, and Corporate SME with quotations, KYC documents, call history, and manager approvals. Purge sample records anytime with 1-click.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <button
+            onClick={async () => {
+              if (window.confirm('Are you sure you want to load realistic demo data? This will safely populate leads, comparative quotations, KYC documents, and manager approvals.')) {
+                try {
+                  const res = await crmService.seedDemoData();
+                  alert(res.message || 'Realistic demo data loaded successfully!');
+                  if (onRefresh) onRefresh();
+                } catch (err) {
+                  alert('Error seeding demo data: ' + (err.response?.data?.message || err.message));
+                }
+              }
+            }}
+            style={{
+              background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+              color: '#ffffff',
+              border: 'none',
+              padding: '0.65rem 1.15rem',
+              borderRadius: '10px',
+              fontWeight: 700,
+              fontSize: '0.84rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 4px 10px rgba(5, 150, 105, 0.25)',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Sparkles size={15} /> Load Realistic Demo Dataset
+          </button>
+
+          <button
+            onClick={async () => {
+              if (window.confirm('CAUTION: Are you sure you want to PURGE ALL DEMO DATA? This will remove all sample leads, quotations, approvals, call logs, and documents while preserving your administrative accounts.')) {
+                try {
+                  const res = await crmService.purgeDemoData();
+                  alert(res.message || 'All sample data purged cleanly!');
+                  if (onRefresh) onRefresh();
+                } catch (err) {
+                  alert('Error purging demo data: ' + (err.response?.data?.message || err.message));
+                }
+              }
+            }}
+            style={{
+              background: '#fee2e2',
+              color: '#dc2626',
+              border: '1px solid #fecaca',
+              padding: '0.65rem 1.15rem',
+              borderRadius: '10px',
+              fontWeight: 700,
+              fontSize: '0.84rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <AlertTriangle size={15} /> Clear All Demo Data
+          </button>
+        </div>
+      </div>
+
     </div>
   );
 }

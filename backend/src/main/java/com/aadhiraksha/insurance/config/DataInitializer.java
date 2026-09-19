@@ -214,89 +214,9 @@ public class DataInitializer {
                 userRepository.save(customer);
             }
 
-            // 4. Seed Initial Sample Client Leads & Follow-ups if database is fresh
-            if (clientLeadRepository.count() == 0) {
-                ClientLead lead1 = ClientLead.builder()
-                        .clientCode("CL-801245")
-                        .fullName("Ahmed Ali")
-                        .companyName("Ali Logistics Pvt Ltd")
-                        .phoneNumber("+91 9849012345")
-                        .whatsappNumber("+91 9849012345")
-                        .email("ahmed.ali@example.com")
-                        .city("Hyderabad")
-                        .state("Telangana")
-                        .pincode("500034")
-                        .insuranceType("Health Insurance")
-                        .existingInsurer("Star Health")
-                        .policyExpiryDate(LocalDate.now().plusDays(25))
-                        .sumInsured("₹10 Lakhs")
-                        .estimatedPremium(new BigDecimal("18500.00"))
-                        .leadSource("WEB_INQUIRY")
-                        .stage("FOLLOWUP")
-                        .priority("HIGH")
-                        .assignedAdvisor(advisor1)
-                        .manager(manager)
-                        .notes("Looking for ₹10L Family Floater with zero room rent capping.")
-                        .build();
-                clientLeadRepository.save(lead1);
-
-                FollowUpTask task1 = FollowUpTask.builder()
-                        .client(lead1)
-                        .advisor(advisor1)
-                        .scheduledDatetime(LocalDateTime.now().plusHours(2))
-                        .reminderMilestone("EXACT")
-                        .channel("PHONE_CALL")
-                        .status("PENDING")
-                        .notes("Call back with Star vs Care comparative quote breakdown.")
-                        .build();
-                followUpTaskRepository.save(task1);
-
-                ClientLead lead2 = ClientLead.builder()
-                        .clientCode("CL-801246")
-                        .fullName("Venkatesh Rao")
-                        .companyName("VR Software Solutions")
-                        .phoneNumber("+91 9988112233")
-                        .whatsappNumber("+91 9988112233")
-                        .email("v.rao@example.com")
-                        .city("Hyderabad")
-                        .state("Telangana")
-                        .pincode("500081")
-                        .insuranceType("Term Life Insurance")
-                        .sumInsured("₹1 Crore")
-                        .estimatedPremium(new BigDecimal("14200.00"))
-                        .leadSource("REFERRAL")
-                        .stage("QUOTATION")
-                        .priority("HIGH")
-                        .assignedAdvisor(advisor1)
-                        .manager(manager)
-                        .notes("Wants 30-year term with Critical Illness rider.")
-                        .build();
-                clientLeadRepository.save(lead2);
-
-                ClientLead lead3 = ClientLead.builder()
-                        .clientCode("CL-801247")
-                        .fullName("Dr. Sunita Deshmukh")
-                        .companyName("Apollo Clinic ECIL")
-                        .phoneNumber("+91 9849556677")
-                        .whatsappNumber("+91 9849556677")
-                        .email("dr.sunita@example.com")
-                        .city("Hyderabad")
-                        .state("Telangana")
-                        .pincode("500062")
-                        .insuranceType("Vehicle / Motor Insurance")
-                        .existingInsurer("ICICI Lombard")
-                        .policyExpiryDate(LocalDate.now().plusDays(10))
-                        .sumInsured("₹8 Lakhs IDV")
-                        .estimatedPremium(new BigDecimal("9800.00"))
-                        .leadSource("DIRECT_ENTRY")
-                        .stage("MEETING")
-                        .priority("MEDIUM")
-                        .assignedAdvisor(advisor2)
-                        .manager(manager)
-                        .notes("Comprehensive Zero Dep renewal for Hyundai Creta.")
-                        .build();
-                clientLeadRepository.save(lead3);
-            }
+            // Ensure standard baseline staff & role accounts exist
+            log.info("System accounts and roles baseline initialized successfully.");
         };
     }
 }
+

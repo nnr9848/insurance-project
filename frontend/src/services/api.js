@@ -227,6 +227,15 @@ export const crmService = {
     const res = await api.get('/crm/audit/company-feed');
     return res.data;
   },
+  // Sandbox & System Operations
+  seedDemoData: async () => {
+    const res = await api.post('/crm/system/seed-demo-data');
+    return res.data;
+  },
+  purgeDemoData: async () => {
+    const res = await api.post('/crm/system/purge-demo-data');
+    return res.data;
+  },
 };
 
 export const portalService = {
