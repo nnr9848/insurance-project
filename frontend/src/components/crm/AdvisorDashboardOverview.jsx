@@ -185,19 +185,19 @@ export default function AdvisorDashboardOverview({
         <div 
           style={{ 
             display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
-            gap: '0.9rem' 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', 
+            gap: '1rem' 
           }}
         >
           {/* 1. Today's Calls */}
           <div 
             onClick={() => onNavigateView('agenda')}
             style={{
-              background: 'var(--bg-surface)',
+              background: '#ffffff',
               borderRadius: '14px',
-              padding: '1.1rem 1.2rem',
-              border: '1px solid var(--border-color)',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              padding: '1.2rem',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
               display: 'flex',
@@ -207,25 +207,27 @@ export default function AdvisorDashboardOverview({
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
               e.currentTarget.style.borderColor = '#2563eb';
+              e.currentTarget.style.boxShadow = '0 6px 12px rgba(37, 99, 235, 0.1)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.borderColor = 'var(--border-color)';
+              e.currentTarget.style.borderColor = '#e2e8f0';
+              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Today’s Calls
               </span>
-              <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <PhoneCall size={16} color="#2563eb" />
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#091726', lineHeight: 1 }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.4rem' }}>
                 {data.callsToday}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 700, marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+              <div style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 700, marginTop: '0.2rem' }}>
                 Agenda Queue &rarr;
               </div>
             </div>
@@ -235,11 +237,11 @@ export default function AdvisorDashboardOverview({
           <div 
             onClick={() => onNavigateView('agenda')}
             style={{
-              background: data.overdueFollowups > 0 ? '#fef2f2' : 'var(--bg-surface)',
+              background: data.overdueFollowups > 0 ? '#fef2f2' : '#ffffff',
               borderRadius: '14px',
-              padding: '1.1rem 1.2rem',
-              border: data.overdueFollowups > 0 ? '1px solid #fecaca' : '1px solid var(--border-color)',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              padding: '1.2rem',
+              border: data.overdueFollowups > 0 ? '1px solid #fecaca' : '1px solid #e2e8f0',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
               display: 'flex',
@@ -249,25 +251,27 @@ export default function AdvisorDashboardOverview({
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
               e.currentTarget.style.borderColor = '#dc2626';
+              e.currentTarget.style.boxShadow = '0 6px 12px rgba(220, 38, 38, 0.1)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.borderColor = data.overdueFollowups > 0 ? '#fecaca' : 'var(--border-color)';
+              e.currentTarget.style.borderColor = data.overdueFollowups > 0 ? '#fecaca' : '#e2e8f0';
+              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: data.overdueFollowups > 0 ? '#b91c1c' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: data.overdueFollowups > 0 ? '#b91c1c' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Overdue Follow-ups
               </span>
-              <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Clock size={16} color="#dc2626" />
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '1.65rem', fontWeight: 900, color: data.overdueFollowups > 0 ? '#dc2626' : '#091726', lineHeight: 1 }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: data.overdueFollowups > 0 ? '#dc2626' : 'var(--primary-navy)', marginTop: '0.4rem' }}>
                 {data.overdueFollowups}
               </div>
-              <div style={{ fontSize: '0.75rem', color: data.overdueFollowups > 0 ? '#b91c1c' : '#64748b', fontWeight: 700, marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+              <div style={{ fontSize: '0.72rem', color: data.overdueFollowups > 0 ? '#b91c1c' : '#64748b', fontWeight: 700, marginTop: '0.2rem' }}>
                 {data.overdueFollowups > 0 ? '⚠️ High SLA Alert' : '✓ Clean SLA'}
               </div>
             </div>
@@ -277,11 +281,11 @@ export default function AdvisorDashboardOverview({
           <div 
             onClick={() => onNavigateView('meetings')}
             style={{
-              background: 'var(--bg-surface)',
+              background: '#ffffff',
               borderRadius: '14px',
-              padding: '1.1rem 1.2rem',
-              border: '1px solid var(--border-color)',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              padding: '1.2rem',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
               display: 'flex',
@@ -291,25 +295,27 @@ export default function AdvisorDashboardOverview({
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
               e.currentTarget.style.borderColor = '#7c3aed';
+              e.currentTarget.style.boxShadow = '0 6px 12px rgba(124, 58, 237, 0.1)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.borderColor = 'var(--border-color)';
+              e.currentTarget.style.borderColor = '#e2e8f0';
+              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Meetings Today
               </span>
-              <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Calendar size={16} color="#7c3aed" />
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#091726', lineHeight: 1 }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.4rem' }}>
                 {data.meetingsToday}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#7c3aed', fontWeight: 700, marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+              <div style={{ fontSize: '0.72rem', color: '#7c3aed', fontWeight: 700, marginTop: '0.2rem' }}>
                 Video & Visits &rarr;
               </div>
             </div>
@@ -319,11 +325,11 @@ export default function AdvisorDashboardOverview({
           <div 
             onClick={() => onNavigateView('clients')}
             style={{
-              background: 'var(--bg-surface)',
+              background: '#ffffff',
               borderRadius: '14px',
-              padding: '1.1rem 1.2rem',
-              border: '1px solid var(--border-color)',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              padding: '1.2rem',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
               display: 'flex',
@@ -333,25 +339,27 @@ export default function AdvisorDashboardOverview({
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
               e.currentTarget.style.borderColor = '#0284c7';
+              e.currentTarget.style.boxShadow = '0 6px 12px rgba(2, 132, 199, 0.1)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.borderColor = 'var(--border-color)';
+              e.currentTarget.style.borderColor = '#e2e8f0';
+              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 New Leads
               </span>
-              <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <UserPlus size={16} color="#0284c7" />
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#091726', lineHeight: 1 }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.4rem' }}>
                 {data.newLeads}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: 700, marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+              <div style={{ fontSize: '0.72rem', color: '#0284c7', fontWeight: 700, marginTop: '0.2rem' }}>
                 Fresh Inquiries &rarr;
               </div>
             </div>
@@ -361,11 +369,11 @@ export default function AdvisorDashboardOverview({
           <div 
             onClick={() => onNavigateView('pipeline')}
             style={{
-              background: 'var(--bg-surface)',
+              background: '#ffffff',
               borderRadius: '14px',
-              padding: '1.1rem 1.2rem',
-              border: '1px solid var(--border-color)',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              padding: '1.2rem',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
               display: 'flex',
@@ -375,25 +383,27 @@ export default function AdvisorDashboardOverview({
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
               e.currentTarget.style.borderColor = '#d97706';
+              e.currentTarget.style.boxShadow = '0 6px 12px rgba(217, 119, 6, 0.1)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.borderColor = 'var(--border-color)';
+              e.currentTarget.style.borderColor = '#e2e8f0';
+              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Interested Clients
               </span>
-              <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <HeartHandshake size={16} color="#d97706" />
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#091726', lineHeight: 1 }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.4rem' }}>
                 {data.interestedClients}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 700, marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+              <div style={{ fontSize: '0.72rem', color: '#d97706', fontWeight: 700, marginTop: '0.2rem' }}>
                 In Discussion &rarr;
               </div>
             </div>
@@ -403,11 +413,11 @@ export default function AdvisorDashboardOverview({
           <div 
             onClick={() => onNavigateView('crm-quotes')}
             style={{
-              background: 'var(--bg-surface)',
+              background: '#ffffff',
               borderRadius: '14px',
-              padding: '1.1rem 1.2rem',
-              border: '1px solid var(--border-color)',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+              padding: '1.2rem',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
               display: 'flex',
@@ -417,25 +427,27 @@ export default function AdvisorDashboardOverview({
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
               e.currentTarget.style.borderColor = '#059669';
+              e.currentTarget.style.boxShadow = '0 6px 12px rgba(5, 150, 105, 0.1)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.borderColor = 'var(--border-color)';
+              e.currentTarget.style.borderColor = '#e2e8f0';
+              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Quotation Pending
               </span>
-              <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <FileSpreadsheet size={16} color="#059669" />
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#091726', lineHeight: 1 }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--primary-navy)', marginTop: '0.4rem' }}>
                 {data.quotationPending}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 700, marginTop: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+              <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700, marginTop: '0.2rem' }}>
                 Quotes Desk &rarr;
               </div>
             </div>
@@ -445,12 +457,11 @@ export default function AdvisorDashboardOverview({
           <div 
             onClick={() => onNavigateView('pipeline')}
             style={{
-              background: 'linear-gradient(135deg, #064e3b 0%, #047857 100%)',
+              background: '#ffffff',
               borderRadius: '14px',
-              padding: '1.1rem 1.2rem',
-              border: 'none',
-              color: '#ffffff',
-              boxShadow: '0 4px 10px rgba(5, 150, 105, 0.2)',
+              padding: '1.2rem',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
               display: 'flex',
@@ -459,24 +470,28 @@ export default function AdvisorDashboardOverview({
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.borderColor = '#16a34a';
+              e.currentTarget.style.boxShadow = '0 6px 12px rgba(22, 163, 74, 0.1)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.borderColor = '#e2e8f0';
+              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#a7f3d0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Policies Closed
               </span>
-              <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Award size={16} color="#ffffff" />
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Award size={16} color="#16a34a" />
               </div>
             </div>
             <div>
-              <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#ffffff', lineHeight: 1 }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#16a34a', marginTop: '0.4rem' }}>
                 {data.policiesClosedMonth}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#d1fae5', fontWeight: 700, marginTop: '0.4rem' }}>
+              <div style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: 700, marginTop: '0.2rem' }}>
                 {formatCurrency(data.monthlyAchievedPremium)} GWP 🎉
               </div>
             </div>
@@ -488,8 +503,8 @@ export default function AdvisorDashboardOverview({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1.5rem' }}>
         
         {/* Section 2: Today's Follow-ups */}
-        <div style={{ background: 'var(--bg-surface)', borderRadius: '16px', border: '1px solid var(--border-color)', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '1.1rem 1.4rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafbfc' }}>
+        <div style={{ background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '1.1rem 1.4rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafbfc' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <PhoneForwarded size={16} color="#2563eb" />
@@ -603,8 +618,8 @@ export default function AdvisorDashboardOverview({
         </div>
 
         {/* Section 3: Upcoming Meetings */}
-        <div style={{ background: 'var(--bg-surface)', borderRadius: '16px', border: '1px solid var(--border-color)', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '1.1rem 1.4rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafbfc' }}>
+        <div style={{ background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '1.1rem 1.4rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafbfc' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Calendar size={16} color="#7c3aed" />
@@ -715,7 +730,7 @@ export default function AdvisorDashboardOverview({
       </div>
 
       {/* SECTION 4: MY SALES PIPELINE */}
-      <div style={{ background: 'var(--bg-surface)', borderRadius: '16px', border: '1px solid var(--border-color)', padding: '1.4rem 1.6rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+      <div style={{ background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '1.4rem 1.6rem', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
           <div>
             <h4 style={{ margin: '0 0 0.2rem 0', fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary-navy)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -784,8 +799,8 @@ export default function AdvisorDashboardOverview({
       </div>
 
       {/* SECTION 5: RECENT CLIENT ACTIVITY */}
-      <div style={{ background: 'var(--bg-surface)', borderRadius: '16px', border: '1px solid var(--border-color)', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <div style={{ padding: '1.1rem 1.4rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafbfc' }}>
+      <div style={{ background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <div style={{ padding: '1.1rem 1.4rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fafbfc' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Sparkles size={16} color="#0284c7" />
