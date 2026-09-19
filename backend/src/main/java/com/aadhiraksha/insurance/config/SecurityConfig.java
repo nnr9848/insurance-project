@@ -64,9 +64,9 @@ public class SecurityConfig {
                                 AntPathRequestMatcher.antMatcher("/swagger-ui.html")
                         ).permitAll()
                         // Admin-only endpoints
-                        .requestMatchers(AntPathRequestMatcher.antMatcher("/api/admin/**")).hasAnyAuthority("ROLE_ADMIN", "ROLE_STAFF")
+                        .requestMatchers(AntPathRequestMatcher.antMatcher("/api/admin/**")).hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_STAFF")
                         // POSP Agent endpoints
-                        .requestMatchers(AntPathRequestMatcher.antMatcher("/api/agent/**")).hasAnyAuthority("ROLE_POSP_AGENT", "ROLE_ADMIN")
+                        .requestMatchers(AntPathRequestMatcher.antMatcher("/api/agent/**")).hasAnyAuthority("ROLE_POSP_AGENT", "ROLE_SUPER_ADMIN", "ROLE_ADMIN")
                         // All other authenticated requests
                         .anyRequest().authenticated()
                 )

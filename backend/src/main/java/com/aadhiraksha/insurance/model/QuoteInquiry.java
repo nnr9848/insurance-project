@@ -34,7 +34,7 @@ public class QuoteInquiry {
     @Column(length = 100)
     private String city;
 
-    @Column(name = "plan_details", columnDefinition = "jsonb")
+    @Column(name = "plan_details", columnDefinition = "text")
     private String planDetails;
 
     @Builder.Default
