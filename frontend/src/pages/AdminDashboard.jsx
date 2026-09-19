@@ -58,6 +58,7 @@ import ManagerDashboardOverview from '../components/crm/ManagerDashboardOverview
 import SuperAdminDashboardOverview from '../components/crm/SuperAdminDashboardOverview';
 import PolicyRenewalDeskView from '../components/crm/PolicyRenewalDeskView';
 import AuditTrailView from '../components/crm/AuditTrailView';
+import QuotationManagementView from '../components/crm/QuotationManagementView';
 
 export default function AdminDashboard() {
   const { 
@@ -180,6 +181,13 @@ export default function AdminDashboard() {
           category: 'CRM Workspace',
           subtitle: 'Automated milestone tracking, NCB protection, and 1-tap WhatsApp renewal dispatch.',
           icon: <ShieldCheck size={18} color="#16a34a" />
+        };
+      case 'crm-quotes':
+        return {
+          title: 'Quotation Management & Comparison',
+          category: 'CRM Workspace',
+          subtitle: 'Multi-insurer comparative proposals, automated GST, benefit breakdown, and WhatsApp quote dispatch.',
+          icon: <FileSpreadsheet size={18} color="#0284c7" />
         };
       case 'audit':
         return {
@@ -535,6 +543,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
     { id: 'pipeline', label: 'Sales Pipeline', icon: <TrendingUp size={19} />, count: null },
     { id: 'meetings', label: 'Meeting Calendar', icon: <Calendar size={19} />, count: null },
     { id: 'renewals', label: 'Policy Renewal Desk', icon: <ShieldCheck size={19} />, count: null },
+    { id: 'crm-quotes', label: 'Quotation Desk', icon: <FileSpreadsheet size={19} />, count: null },
   ];
 
   const navItemsAdmin = [
@@ -1392,6 +1401,13 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                 setPreselectedMeetingClient(client);
                 handleNavigateView('meetings');
               }}
+            />
+          )}
+
+          {/* VIEW: QUOTATION MANAGEMENT */}
+          {activeView === 'crm-quotes' && (
+            <QuotationManagementView 
+              onOpenClient360={(client) => setSelectedClient360(client)}
             />
           )}
 

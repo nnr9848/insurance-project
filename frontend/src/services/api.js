@@ -143,6 +143,27 @@ export const crmService = {
     const res = await api.post('/crm/renewals/send-reminder', data);
     return res.data;
   },
+  // Multi-Insurer Quotation Management & Comparison
+  getQuotations: async () => {
+    const res = await api.get('/crm/quotations');
+    return res.data;
+  },
+  getClientQuotations: async (clientId) => {
+    const res = await api.get(`/crm/quotations/client/${clientId}`);
+    return res.data;
+  },
+  createQuotation: async (quoteData) => {
+    const res = await api.post('/crm/quotations', quoteData);
+    return res.data;
+  },
+  updateQuoteStatus: async (quoteId, status) => {
+    const res = await api.patch(`/crm/quotations/${quoteId}/status`, { status });
+    return res.data;
+  },
+  sendQuoteDispatch: async (quoteId, dispatchData) => {
+    const res = await api.post(`/crm/quotations/${quoteId}/send`, dispatchData);
+    return res.data;
+  },
   // Enterprise Audit Trail & Compliance
   getClientAuditLogs: async (clientId) => {
     const res = await api.get(`/crm/audit/client/${clientId}`);

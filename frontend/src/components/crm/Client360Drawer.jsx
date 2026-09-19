@@ -44,13 +44,30 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   const [auditLogs, setAuditLogs] = useState([]);
   const [loadingAudit, setLoadingAudit] = useState(false);
 
+  // Live Quotations State
+  const [clientQuotes, setClientQuotes] = useState([]);
+  const [loadingQuotes, setLoadingQuotes] = useState(false);
+
   useEffect(() => {
     setCurrentClient(client);
     setTargetAdvisorId(client.assignedAdvisorId ? String(client.assignedAdvisorId) : '');
     if (client?.id) {
       loadClientAuditLogs(client.id);
+      loadClientQuotes(client.id);
     }
   }, [client]);
+
+  const loadClientQuotes = async (clientId) => {
+    setLoadingQuotes(true);
+    try {
+      const data = await crmService.getClientQuotations(clientId);
+      setClientQuotes(data || []);
+    } catch (err) {
+      console.error('Failed to load client quotations:', err);
+    } finally {
+      setLoadingQuotes(false);
+    }
+  };
 
   const loadClientAuditLogs = async (clientId) => {
     setLoadingAudit(true);
@@ -293,10 +310,11 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
         </div>
 
         {/* Drawer Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#ffffff', padding: '0 18px' }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#ffffff', padding: '0 18px', overflowX: 'auto' }}>
           {[
             { id: 'overview', label: 'Overview & Plan' },
-            { id: 'timeline', label: 'Activity Timeline' },
+            { id: 'quotes', label: `Quotations (${clientQuotes.length})` },
+            { id: 'timeline', label: `Timeline & Audit (${auditLogs.length})` },
             { id: 'documents', label: 'Document Locker' }
           ].map(tab => (
             <button
@@ -428,6 +446,117 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                 </div>
               )}
 
+            </div>
+          )}
+
+          {/* TAB: QUOTATIONS & PROPOSALS */}
+          {activeTab === 'quotes' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f2b48', textTransform: 'uppercase' }}>
+                  Client Quotations ({clientQuotes.length})
+                </div>
+                <button
+                  onClick={() => loadClientQuotes(currentClient.id)}
+                  disabled={loadingQuotes}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    padding: '3px 8px',
+                    fontSize: '0.74rem',
+                    color: '#475569',
+                    cursor: 'pointer',
+                    fontWeight: 600
+                  }}
+                >
+                  <RefreshCw size={12} className={loadingQuotes ? 'animate-spin' : ''} /> Refresh
+                </button>
+              </div>
+
+              {loadingQuotes ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                  <div style={{ width: '24px', height: '24px', border: '2px solid #cbd5e1', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 8px auto' }} />
+                  <span style={{ fontSize: '0.8rem' }}>Loading quotation history...</span>
+                </div>
+              ) : clientQuotes.length === 0 ? (
+                <div style={{ background: '#ffffff', borderRadius: '12px', padding: '1.5rem', textAlign: 'center', border: '1px solid #e2e8f0', color: '#94a3b8' }}>
+                  <FileText size={32} color="#cbd5e1" style={{ margin: '0 auto 8px auto' }} />
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#475569' }}>No quotations generated yet</div>
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>Generate a new quote from the Quotation Desk in CRM.</div>
+                </div>
+              ) : (
+                clientQuotes.map(q => (
+                  <div
+                    key={q.id}
+                    style={{
+                      background: '#ffffff',
+                      borderRadius: '12px',
+                      padding: '1rem',
+                      border: '1px solid #e2e8f0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#0284c7', background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px' }}>
+                          {q.quoteNumber}
+                        </span>
+                        <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.92rem', marginTop: '4px' }}>
+                          {q.insurerName}
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                          {q.planName} • {q.planVariant || 'Standard'}
+                        </div>
+                      </div>
+
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#16a34a' }}>
+                          ₹{q.totalPremium}
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>incl. 18% GST</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', background: '#f8fafc', padding: '8px 10px', borderRadius: '8px', fontSize: '0.75rem', border: '1px solid #f1f5f9' }}>
+                      <div><span style={{ color: '#64748b' }}>Sum Insured:</span> <strong>{q.sumInsured}</strong></div>
+                      <div><span style={{ color: '#64748b' }}>Room Rent:</span> <strong>{q.roomRentLimit}</strong></div>
+                      <div><span style={{ color: '#64748b' }}>Restoration:</span> <strong>{q.restorationBenefit}</strong></div>
+                      <div><span style={{ color: '#64748b' }}>Status:</span> <strong style={{ color: q.status === 'ACCEPTED' ? '#16a34a' : '#0284c7' }}>{q.status}</strong></div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
+                      <button
+                        onClick={async () => {
+                          const res = await crmService.sendQuoteDispatch(q.id, { channel: 'WHATSAPP', recipientPhone: currentClient.phoneNumber });
+                          if (res.whatsAppUrl) window.open(res.whatsAppUrl, '_blank');
+                          loadClientQuotes(currentClient.id);
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          background: '#dcfce7',
+                          color: '#15803d',
+                          border: '1px solid #bbf7d0',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <MessageSquare size={12} /> WhatsApp Quote
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
 
