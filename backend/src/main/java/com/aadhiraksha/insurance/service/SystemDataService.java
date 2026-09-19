@@ -2,6 +2,7 @@ package com.aadhiraksha.insurance.service;
 
 import com.aadhiraksha.insurance.model.*;
 import com.aadhiraksha.insurance.repository.*;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,19 +29,22 @@ public class SystemDataService {
     private final FollowUpTaskRepository followUpRepository;
     private final ClientMeetingRepository meetingRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EntityManager entityManager;
 
     @Transactional
     public Map<String, Object> purgeDemoData() {
         log.info("Initiating on-demand purge of all demo data...");
 
-        // Safe cascading delete in strict FK order
-        approvalRepository.deleteAll();
-        documentRepository.deleteAll();
-        quotationRepository.deleteAll();
-        callLogRepository.deleteAll();
-        followUpRepository.deleteAll();
-        meetingRepository.deleteAll();
-        clientLeadRepository.deleteAll();
+        // Safe cascading delete in strict FK order using batch deletes + flush
+        approvalRepository.deleteAllInBatch();
+        documentRepository.deleteAllInBatch();
+        quotationRepository.deleteAllInBatch();
+        callLogRepository.deleteAllInBatch();
+        followUpRepository.deleteAllInBatch();
+        meetingRepository.deleteAllInBatch();
+        clientLeadRepository.deleteAllInBatch();
+        entityManager.flush();
+        entityManager.clear();
 
         log.info("Demo CRM transactional data purged cleanly.");
         return Map.of(
