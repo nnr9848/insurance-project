@@ -69,13 +69,28 @@ public class CrmLeadController {
         return ResponseEntity.ok(crmLeadService.reassignLead(id, request.getTargetAdvisorId(), request.getReassignmentReason(), user));
     }
 
-    // 2. Daily Call Logging
+    // 2. Daily Call Logging & Telephony History
     @PostMapping("/calls")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
     @Operation(summary = "Log call disposition result with notes and next follow-up date")
     public ResponseEntity<CallLogDto.CallLogResponse> logCall(@RequestBody CallLogDto.LogCallRequest request, Authentication auth) {
         User user = getAuthenticatedUser(auth);
         return ResponseEntity.ok(crmLeadService.logCall(request, user));
+    }
+
+    @GetMapping("/calls/history")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @Operation(summary = "Get historical call logs scoped to current user hierarchy")
+    public ResponseEntity<List<CallLogDto.CallLogResponse>> getCallHistory(Authentication auth) {
+        User user = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(crmLeadService.getCallHistory(user));
+    }
+
+    @GetMapping("/calls/client/{clientId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @Operation(summary = "Get call logs for a specific client")
+    public ResponseEntity<List<CallLogDto.CallLogResponse>> getClientCallLogs(@PathVariable Long clientId) {
+        return ResponseEntity.ok(crmLeadService.getClientCallLogs(clientId));
     }
 
     // 3. Meeting Scheduling (Google Meet / In-Person)

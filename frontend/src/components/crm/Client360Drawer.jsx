@@ -52,6 +52,10 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   const [clientDocs, setClientDocs] = useState([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
 
+  // Live Call Logs State
+  const [clientCalls, setClientCalls] = useState([]);
+  const [loadingCalls, setLoadingCalls] = useState(false);
+
   useEffect(() => {
     setCurrentClient(client);
     setTargetAdvisorId(client.assignedAdvisorId ? String(client.assignedAdvisorId) : '');
@@ -59,8 +63,21 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
       loadClientAuditLogs(client.id);
       loadClientQuotes(client.id);
       loadClientDocs(client.id);
+      loadClientCalls(client.id);
     }
   }, [client]);
+
+  const loadClientCalls = async (clientId) => {
+    setLoadingCalls(true);
+    try {
+      const data = await crmService.getClientCallLogs(clientId);
+      setClientCalls(data || []);
+    } catch (err) {
+      console.error('Failed to load client call logs:', err);
+    } finally {
+      setLoadingCalls(false);
+    }
+  };
 
   const loadClientDocs = async (clientId) => {
     setLoadingDocs(true);
@@ -330,6 +347,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
         <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#ffffff', padding: '0 18px', overflowX: 'auto' }}>
           {[
             { id: 'overview', label: 'Overview & Plan' },
+            { id: 'calls', label: `Calls (${clientCalls.length})` },
             { id: 'quotes', label: `Quotations (${clientQuotes.length})` },
             { id: 'documents', label: `Documents (${clientDocs.length})` },
             { id: 'timeline', label: `Timeline & Audit (${auditLogs.length})` }
@@ -463,6 +481,122 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                 </div>
               )}
 
+            </div>
+          )}
+
+          {/* TAB: CALL HISTORY LOGS */}
+          {activeTab === 'calls' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f2b48', textTransform: 'uppercase' }}>
+                  Call Logs & Dispositions ({clientCalls.length})
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    onClick={() => onOpenCallModal && onOpenCallModal(currentClient)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: '#091726',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '0.74rem',
+                      cursor: 'pointer',
+                      fontWeight: 700
+                    }}
+                  >
+                    <Phone size={12} /> Log New Call
+                  </button>
+                  <button
+                    onClick={() => loadClientCalls(currentClient.id)}
+                    disabled={loadingCalls}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: '#f1f5f9',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      padding: '4px 8px',
+                      fontSize: '0.74rem',
+                      color: '#475569',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    <RefreshCw size={12} className={loadingCalls ? 'animate-spin' : ''} /> Refresh
+                  </button>
+                </div>
+              </div>
+
+              {loadingCalls ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                  <div style={{ width: '24px', height: '24px', border: '2px solid #cbd5e1', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 8px auto' }} />
+                  <span style={{ fontSize: '0.8rem' }}>Loading call interactions...</span>
+                </div>
+              ) : clientCalls.length === 0 ? (
+                <div style={{ background: '#ffffff', borderRadius: '12px', padding: '1.5rem', textAlign: 'center', border: '1px solid #e2e8f0', color: '#94a3b8' }}>
+                  <PhoneCall size={32} color="#cbd5e1" style={{ margin: '0 auto 8px auto' }} />
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#475569' }}>No calls logged for this client yet</div>
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>Click "Log New Call" above to record an advisor interaction.</div>
+                </div>
+              ) : (
+                clientCalls.map(c => {
+                  const isPositive = c.callResult === 'INTERESTED' || c.callResult === 'QUOTE_REQUESTED' || c.callResult === 'CONVERTED';
+                  const isNotAnswered = c.callResult === 'NOT_ANSWERED' || c.callResult === 'WRONG_NUMBER';
+
+                  let badgeColor = isPositive ? '#15803d' : isNotAnswered ? '#dc2626' : '#0284c7';
+                  let badgeBg = isPositive ? '#dcfce7' : isNotAnswered ? '#fee2e2' : '#e0f2fe';
+
+                  return (
+                    <div
+                      key={c.id}
+                      style={{
+                        background: '#ffffff',
+                        borderRadius: '12px',
+                        padding: '1rem',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          color: badgeColor,
+                          background: badgeBg,
+                          padding: '2px 8px',
+                          borderRadius: '6px'
+                        }}>
+                          {c.callResult.replace('_', ' ')}
+                        </span>
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                          {c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                        </div>
+                      </div>
+
+                      <div style={{ fontSize: '0.82rem', color: '#334155', lineHeight: 1.4, margin: '2px 0' }}>
+                        {c.callNotes || 'No notes provided.'}
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.74rem', color: '#64748b', background: '#f8fafc', padding: '6px 8px', borderRadius: '6px' }}>
+                        <div>Duration: <strong>{c.callDurationSeconds ? `${Math.floor(c.callDurationSeconds / 60)}m ${c.callDurationSeconds % 60}s` : '0s'}</strong></div>
+                        <div>Advisor: <strong>{c.advisorName}</strong></div>
+                        {c.nextFollowUpDate && (
+                          <div style={{ color: '#0284c7' }}>
+                            Next: <strong>{new Date(c.nextFollowUpDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</strong>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
 

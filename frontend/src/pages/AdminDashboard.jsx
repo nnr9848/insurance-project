@@ -61,6 +61,7 @@ import PolicyRenewalDeskView from '../components/crm/PolicyRenewalDeskView';
 import AuditTrailView from '../components/crm/AuditTrailView';
 import QuotationManagementView from '../components/crm/QuotationManagementView';
 import DocumentLockerView from '../components/crm/DocumentLockerView';
+import CallHistoryView from '../components/crm/CallHistoryView';
 
 export default function AdminDashboard() {
   const { 
@@ -160,8 +161,15 @@ export default function AdminDashboard() {
         return {
           title: 'Daily Call Agenda',
           category: 'CRM Workspace',
-          subtitle: 'Scheduled client callbacks, overdue tasks, and instant call outcome logs.',
+          subtitle: 'Scheduled client follow-up calls, overdue pipeline reminders, and call logging.',
           icon: <PhoneCall size={18} color="#ea580c" />
+        };
+      case 'calls':
+        return {
+          title: 'Call History & Telephony Archive',
+          category: 'CRM Workspace',
+          subtitle: 'Audit logs of all client calls, outcomes, talk time duration, and advisor discussions.',
+          icon: <PhoneCall size={18} color="#2563eb" />
         };
       case 'pipeline':
         return {
@@ -549,6 +557,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
     { id: 'dashboard', label: 'CRM Dashboard', icon: <LayoutDashboard size={19} />, count: null },
     { id: 'clients', label: 'Client Data Sheet', icon: <FileText size={19} />, count: leads.length, badgeColor: '#0284c7' },
     { id: 'agenda', label: 'Daily Call Agenda', icon: <PhoneCall size={19} />, count: dueFollowUps.length, badgeColor: '#ea580c' },
+    { id: 'calls', label: 'Call History Log', icon: <PhoneCall size={19} />, count: null },
     { id: 'pipeline', label: 'Sales Pipeline', icon: <TrendingUp size={19} />, count: null },
     { id: 'meetings', label: 'Meeting Calendar', icon: <Calendar size={19} />, count: null },
     { id: 'renewals', label: 'Policy Renewal Desk', icon: <ShieldCheck size={19} />, count: null },
@@ -1378,6 +1387,13 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                 setPreselectedMeetingClient(lead);
                 handleNavigateView('meetings');
               }}
+            />
+          )}
+
+          {/* VIEW: CALL HISTORY ARCHIVE */}
+          {activeView === 'calls' && (
+            <CallHistoryView 
+              onOpenClient360={(client) => setSelectedClient360(client)}
             />
           )}
 

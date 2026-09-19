@@ -260,6 +260,56 @@ public class CrmLeadService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public List<CallLogDto.CallLogResponse> getCallHistory(User user) {
+        boolean isSuperAdmin = user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_SUPER_ADMIN") || r.getName().equals("ROLE_ADMIN"));
+        boolean isManager = user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_MANAGER"));
+
+        List<CallLog> logs;
+        if (isSuperAdmin) {
+            logs = callLogRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
+        } else if (isManager) {
+            logs = callLogRepository.findByManagerIdOrderByCreatedAtDesc(user.getId());
+        } else {
+            logs = callLogRepository.findByAdvisorIdOrderByCreatedAtDesc(user.getId());
+        }
+
+        return logs.stream().map(l -> CallLogDto.CallLogResponse.builder()
+                .id(l.getId())
+                .clientId(l.getClient() != null ? l.getClient().getId() : null)
+                .clientName(l.getClient() != null ? l.getClient().getFullName() : "Unknown")
+                .clientPhone(l.getClient() != null ? l.getClient().getPhoneNumber() : "")
+                .advisorId(l.getAdvisor() != null ? l.getAdvisor().getId() : null)
+                .advisorName(l.getAdvisor() != null ? l.getAdvisor().getFullName() : "Advisor")
+                .callResult(l.getCallResult())
+                .callDurationSeconds(l.getCallDurationSeconds())
+                .callNotes(l.getCallNotes())
+                .nextFollowUpDate(l.getNextFollowUpDate())
+                .createdAt(l.getCreatedAt())
+                .build()
+        ).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<CallLogDto.CallLogResponse> getClientCallLogs(Long clientId) {
+        return callLogRepository.findByClientIdOrderByCreatedAtDesc(clientId)
+                .stream()
+                .map(l -> CallLogDto.CallLogResponse.builder()
+                        .id(l.getId())
+                        .clientId(l.getClient() != null ? l.getClient().getId() : null)
+                        .clientName(l.getClient() != null ? l.getClient().getFullName() : "Unknown")
+                        .clientPhone(l.getClient() != null ? l.getClient().getPhoneNumber() : "")
+                        .advisorId(l.getAdvisor() != null ? l.getAdvisor().getId() : null)
+                        .advisorName(l.getAdvisor() != null ? l.getAdvisor().getFullName() : "Advisor")
+                        .callResult(l.getCallResult())
+                        .callDurationSeconds(l.getCallDurationSeconds())
+                        .callNotes(l.getCallNotes())
+                        .nextFollowUpDate(l.getNextFollowUpDate())
+                        .createdAt(l.getCreatedAt())
+                        .build()
+                ).collect(Collectors.toList());
+    }
+
     @Transactional
     public MeetingDto.MeetingResponse scheduleMeeting(MeetingDto.ScheduleMeetingRequest request, User advisor) {
         ClientLead client = clientLeadRepository.findById(request.getClientId())

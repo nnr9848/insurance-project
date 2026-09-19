@@ -97,8 +97,16 @@ export const crmService = {
   },
 
   // Calls & Follow-Ups
-  logCall: async (data) => {
-    const res = await api.post('/crm/calls', data);
+  logCall: async (callData) => {
+    const res = await api.post('/crm/calls', callData);
+    return res.data;
+  },
+  getCallHistory: async () => {
+    const res = await api.get('/crm/calls/history');
+    return res.data;
+  },
+  getClientCallLogs: async (clientId) => {
+    const res = await api.get(`/crm/calls/client/${clientId}`);
     return res.data;
   },
   getDueTodayFollowUps: async () => {
