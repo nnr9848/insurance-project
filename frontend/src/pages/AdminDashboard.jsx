@@ -56,6 +56,7 @@ import Client360Drawer from '../components/crm/Client360Drawer';
 import UserProfileModal from '../components/crm/UserProfileModal';
 import ManagerDashboardOverview from '../components/crm/ManagerDashboardOverview';
 import SuperAdminDashboardOverview from '../components/crm/SuperAdminDashboardOverview';
+import PolicyRenewalDeskView from '../components/crm/PolicyRenewalDeskView';
 
 export default function AdminDashboard() {
   const { 
@@ -171,6 +172,13 @@ export default function AdminDashboard() {
           category: 'CRM Workspace',
           subtitle: 'Synchronized schedule of advisory video consultations and in-person meetings.',
           icon: <Calendar size={18} color="#7c3aed" />
+        };
+      case 'renewals':
+        return {
+          title: 'Policy Renewal Desk',
+          category: 'CRM Workspace',
+          subtitle: 'Automated milestone tracking, NCB protection, and 1-tap WhatsApp renewal dispatch.',
+          icon: <ShieldCheck size={18} color="#16a34a" />
         };
       case 'users':
         return {
@@ -518,6 +526,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
     { id: 'agenda', label: 'Daily Call Agenda', icon: <PhoneCall size={19} />, count: dueFollowUps.length, badgeColor: '#ea580c' },
     { id: 'pipeline', label: 'Sales Pipeline', icon: <TrendingUp size={19} />, count: null },
     { id: 'meetings', label: 'Meeting Calendar', icon: <Calendar size={19} />, count: null },
+    { id: 'renewals', label: 'Policy Renewal Desk', icon: <ShieldCheck size={19} />, count: null },
   ];
 
   const navItemsAdmin = [
@@ -1363,6 +1372,17 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
               onCloseModal={() => setPreselectedMeetingClient(null)}
               onOpenClient360={(client) => setSelectedClient360(client)}
               onOpenCallModal={() => handleNavigateView('agenda')}
+            />
+          )}
+
+          {/* VIEW: POLICY RENEWAL DESK */}
+          {activeView === 'renewals' && (
+            <PolicyRenewalDeskView 
+              onOpenClient360={(client) => setSelectedClient360(client)}
+              onOpenMeetingModal={(client) => {
+                setPreselectedMeetingClient(client);
+                handleNavigateView('meetings');
+              }}
             />
           )}
 

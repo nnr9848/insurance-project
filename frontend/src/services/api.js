@@ -129,6 +129,24 @@ export const crmService = {
     const res = await api.get('/crm/analytics/superadmin-summary');
     return res.data;
   },
+
+  // Policy Renewal Reminder Engine
+  getRenewalSummary: async () => {
+    const res = await api.get('/crm/renewals/summary');
+    return res.data;
+  },
+  getRenewalList: async (bucket = 'ALL') => {
+    const res = await api.get(`/crm/renewals/list?bucket=${bucket}`);
+    return res.data;
+  },
+  sendRenewalReminder: async (data) => {
+    const res = await api.post('/crm/renewals/send-reminder', data);
+    return res.data;
+  },
+  triggerRenewalScan: async () => {
+    const res = await api.post('/crm/renewals/trigger-scan');
+    return res.data;
+  },
 };
 
 export const portalService = {
