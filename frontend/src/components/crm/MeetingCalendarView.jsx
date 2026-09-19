@@ -309,7 +309,6 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal })
           position: 'fixed',
           inset: 0,
           background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(4px)',
           zIndex: 10000,
           display: 'flex',
           alignItems: 'center',
@@ -325,26 +324,39 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal })
             overflow: 'hidden'
           }}>
             <div style={{
-              background: 'linear-gradient(135deg, #0f2b48 0%, #091726 100%)',
-              color: '#ffffff',
+              background: '#ffffff',
               padding: '1.25rem 1.5rem',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
+              borderBottom: '1px solid #e2e8f0'
             }}>
               <div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#0f2b48', letterSpacing: '-0.2px' }}>
                   Schedule Consultation & Google Meet
                 </h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
                   Auto-generates Google Meet link and synchronizes calendar
                 </p>
               </div>
               <button
                 onClick={() => setShowScheduleModal(false)}
-                style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer' }}
+                style={{ 
+                  background: '#f8fafc', 
+                  border: '1px solid #e2e8f0', 
+                  color: '#64748b', 
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#0f2b48'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 

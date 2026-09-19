@@ -14,6 +14,17 @@ public class CrmUserDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    public static class RoleOption {
+        private String code;
+        private String label;
+        private String description;
+        private String category;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class CreateUserRequest {
         private String employeeCode;
         private String fullName;

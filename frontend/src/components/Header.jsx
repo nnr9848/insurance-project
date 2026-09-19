@@ -32,13 +32,16 @@ export default function Header() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [mobileAccordion, setMobileAccordion] = useState('products');
   const dropdownRef = useRef(null);
+  const userMenuRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
   const navigate = useNavigate();
 
   // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      const isOutsideNav = !dropdownRef.current || !dropdownRef.current.contains(event.target);
+      const isOutsideUserMenu = !userMenuRef.current || !userMenuRef.current.contains(event.target);
+      if (isOutsideNav && isOutsideUserMenu) {
         setActiveDropdown(null);
       }
     };
@@ -69,7 +72,14 @@ export default function Header() {
     navigate('/');
   };
 
-  const isAdmin = user?.roles?.includes('ROLE_ADMIN') || user?.roles?.includes('ROLE_STAFF');
+  const isAdmin = user?.roles?.some(r => [
+    'ROLE_SUPER_ADMIN',
+    'ROLE_ADMIN',
+    'ROLE_MANAGER',
+    'ROLE_ADVISOR',
+    'ROLE_STAFF',
+    'ROLE_POSP_AGENT'
+  ].includes(r));
 
   const userInitials = user?.fullName
     ? user.fullName
@@ -429,6 +439,7 @@ export default function Header() {
             {/* Sign In / User Profile */}
             {isAuthenticated ? (
               <div 
+                ref={userMenuRef}
                 className="user-profile-menu-wrapper" 
                 style={{ position: 'relative' }}
                 onMouseEnter={() => handleMouseEnter('userProfile')}
@@ -569,8 +580,7 @@ export default function Header() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.6)',
-            backdropFilter: 'blur(4px)',
+            background: 'rgba(15, 23, 42, 0.65)',
             zIndex: 1200,
             animation: 'fadeIn 0.2s ease-out'
           }}

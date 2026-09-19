@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Table, 
   Plus, 
@@ -20,20 +20,52 @@ import {
   Sparkles,
   ExternalLink,
   Shield,
-  ArrowUpDown
+  ArrowUpDown,
+  FileSpreadsheet,
+  Check,
+  RefreshCw,
+  UserCheck,
+  Users
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { crmService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, onOpenMeetingModal }) {
+  const { isSuperAdmin, isManager, user } = useAuth();
+  const canReassign = isSuperAdmin || isManager;
+
   const [leads, setLeads] = useState([]);
+  const [advisors, setAdvisors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [stageFilter, setStageFilter] = useState('ALL');
   const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [insuranceTypeFilter, setInsuranceTypeFilter] = useState('ALL');
+  const [sortField, setSortField] = useState('updatedAt'); // 'deadline', 'updatedAt', 'premium', 'name'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+  
+  // Selection for bulk operations
+  const [selectedLeadIds, setSelectedLeadIds] = useState([]);
+  const [showBulkReassignModal, setShowBulkReassignModal] = useState(false);
+  const [bulkTargetAdvisorId, setBulkTargetAdvisorId] = useState('');
+  const [bulkReassignReason, setBulkReassignReason] = useState('');
+  const [bulkReassigning, setBulkReassigning] = useState(false);
+
+  // Single Quick Reassign Modal state
+  const [quickReassignLead, setQuickReassignLead] = useState(null);
+  const [quickTargetAdvisorId, setQuickTargetAdvisorId] = useState('');
+  const [quickReassignReason, setQuickReassignReason] = useState('');
+  const [quickReassigning, setQuickReassigning] = useState(false);
+
   const [editingRowId, setEditingRowId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
+  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
+  const [parsedBulkLeads, setParsedBulkLeads] = useState([]);
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const fileInputRef = useRef(null);
+
   const [newLeadForm, setNewLeadForm] = useState({
     fullName: '',
     companyName: '',
@@ -43,6 +75,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
     city: 'Hyderabad',
     insuranceType: 'Health Insurance',
     existingInsurer: '',
+    policyExpiryDate: '',
     sumInsured: '₹10 Lakhs',
     estimatedPremium: '',
     priority: 'HIGH',
@@ -50,9 +83,53 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
     notes: ''
   });
 
+  const getStageBadge = (stage) => {
+    switch (stage) {
+      case 'NEW_LEAD': return { label: 'New Lead', bg: '#e0f2fe', color: '#0284c7' };
+      case 'CONTACTED': return { label: 'Contacted', bg: '#fef3c7', color: '#d97706' };
+      case 'FOLLOWUP': return { label: 'Follow-up Due', bg: '#ffedd5', color: '#ea580c' };
+      case 'INTERESTED': return { label: 'Interested', bg: '#dcfce7', color: '#16a34a' };
+      case 'QUOTATION': return { label: 'Quotation', bg: '#e0e7ff', color: '#4f46e5' };
+      case 'MEETING': return { label: 'Meeting Scheduled', bg: '#f3e8ff', color: '#9333ea' };
+      case 'DOCUMENTS': return { label: 'Documents / KYC', bg: '#ccfbf1', color: '#0d9488' };
+      case 'PAYMENT': return { label: 'Payment Pending', bg: '#fef9c3', color: '#ca8a04' };
+      case 'POLICY_ISSUED': return { label: 'Policy Issued 🎉', bg: '#d1fae5', color: '#059669' };
+      case 'LOST': return { label: 'Lost Lead', bg: '#fee2e2', color: '#dc2626' };
+      default: return { label: stage || 'Active', bg: '#f1f5f9', color: '#475569' };
+    }
+  };
+
+  const getPriorityBadge = (priority) => {
+    switch (priority) {
+      case 'HIGH': return { label: '🔥 HIGH', color: '#dc2626' };
+      case 'MEDIUM': return { label: '⚡ MED', color: '#d97706' };
+      case 'LOW': return { label: 'LOW', color: '#64748b' };
+      default: return { label: priority || 'MED', color: '#64748b' };
+    }
+  };
+
+  const openWhatsApp = (phone, name, product) => {
+    if (!phone) return;
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const text = encodeURIComponent(`Hello ${name || 'Client'}, regarding your ${product || 'insurance'} inquiry at Aadhiraksha InsurTech...`);
+    window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
+  };
+
   useEffect(() => {
     loadLeads();
-  }, []);
+    if (canReassign) {
+      loadAdvisors();
+    }
+  }, [canReassign]);
+
+  const loadAdvisors = async () => {
+    try {
+      const data = await crmService.getAdvisors();
+      setAdvisors(data || []);
+    } catch (err) {
+      console.error('Failed to load advisors:', err);
+    }
+  };
 
   const loadLeads = async () => {
     setLoading(true);
@@ -184,6 +261,86 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
     }
   };
 
+  const openQuickReassign = (lead) => {
+    setQuickReassignLead(lead);
+    setQuickTargetAdvisorId(lead.assignedAdvisorId ? String(lead.assignedAdvisorId) : '');
+    setQuickReassignReason('');
+  };
+
+  const handleQuickReassignSubmit = async (e) => {
+    e.preventDefault();
+    if (!quickTargetAdvisorId || !quickReassignLead) {
+      alert('Please select a target Insurance Advisor');
+      return;
+    }
+    setQuickReassigning(true);
+    try {
+      const updatedLead = await crmService.reassignLead(
+        quickReassignLead.id,
+        Number(quickTargetAdvisorId),
+        quickReassignReason || 'Reassigned from Client Data Sheet'
+      );
+      setLeads(prev => prev.map(l => l.id === quickReassignLead.id ? { ...l, ...updatedLead } : l));
+      setQuickReassignLead(null);
+    } catch (err) {
+      alert('Failed to reassign lead: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setQuickReassigning(false);
+    }
+  };
+
+  const toggleSelectLead = (leadId) => {
+    setSelectedLeadIds(prev => 
+      prev.includes(leadId) ? prev.filter(id => id !== leadId) : [...prev, leadId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedLeadIds.length === sortedLeads.length) {
+      setSelectedLeadIds([]);
+    } else {
+      setSelectedLeadIds(sortedLeads.map(l => l.id));
+    }
+  };
+
+  const handleBulkReassignSubmit = async (e) => {
+    e.preventDefault();
+    if (!bulkTargetAdvisorId || selectedLeadIds.length === 0) {
+      alert('Please select an advisor and at least one client.');
+      return;
+    }
+    setBulkReassigning(true);
+    try {
+      const targetAdv = advisors.find(a => String(a.id) === String(bulkTargetAdvisorId));
+      const targetAdvisorName = targetAdv ? targetAdv.fullName : 'Assigned Advisor';
+
+      // Perform reassignment for all selected leads
+      await Promise.all(
+        selectedLeadIds.map(leadId => 
+          crmService.reassignLead(
+            leadId, 
+            Number(bulkTargetAdvisorId), 
+            bulkReassignReason || `Bulk reassigned to ${targetAdvisorName}`
+          ).catch(err => {
+            console.warn(`Reassignment failed for lead ${leadId}:`, err);
+            return null;
+          })
+        )
+      );
+
+      // Refresh leads list
+      await loadLeads();
+      setSelectedLeadIds([]);
+      setShowBulkReassignModal(false);
+      setBulkTargetAdvisorId('');
+      setBulkReassignReason('');
+    } catch (err) {
+      alert('Error during bulk reassignment: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setBulkReassigning(false);
+    }
+  };
+
   const handleCreateLead = async (e) => {
     e.preventDefault();
     try {
@@ -210,77 +367,96 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
     }
   };
 
-  const exportToCsv = () => {
-    const headers = ['Client Code', 'Full Name', 'Company', 'Phone', 'Email', 'City', 'Insurance Type', 'Sum Insured', 'Premium', 'Stage', 'Priority', 'Assigned Advisor', 'Notes'];
-    const rows = filteredLeads.map(l => [
-      l.clientCode,
-      `"${l.fullName}"`,
-      `"${l.companyName || ''}"`,
-      `"${l.phoneNumber}"`,
-      `"${l.email || ''}"`,
-      `"${l.city || ''}"`,
-      `"${l.insuranceType}"`,
-      `"${l.sumInsured || ''}"`,
-      l.estimatedPremium || '',
-      l.stage,
-      l.priority,
-      `"${l.assignedAdvisorName || ''}"`,
-      `"${(l.notes || '').replace(/"/g, '""')}"`
-    ]);
+  const exportToExcel = () => {
+    const dataToExport = sortedLeads.map(l => ({
+      'Client Code': l.clientCode,
+      'Full Name': l.fullName,
+      'Company Name': l.companyName || '',
+      'Phone Number': l.phoneNumber,
+      'WhatsApp Number': l.whatsappNumber || l.phoneNumber,
+      'Email': l.email || '',
+      'City': l.city || '',
+      'Insurance Product': l.insuranceType,
+      'Existing Insurer': l.existingInsurer || '',
+      'Policy Expiry / Deadline': l.policyExpiryDate || '',
+      'Sum Insured': l.sumInsured || '',
+      'Estimated Premium (₹)': l.estimatedPremium || '',
+      'Pipeline Stage': l.stage,
+      'Priority': l.priority,
+      'Assigned Advisor': l.assignedAdvisorName || '',
+      'Notes': l.notes || ''
+    }));
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `aadhiraksha_client_sheet_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Clients");
+    XLSX.writeFile(workbook, `Aadhiraksha_Client_Data_Sheet_${new Date().toISOString().slice(0,10)}.xlsx`);
   };
 
-  const openWhatsApp = (phone, name, insuranceType) => {
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
-    const text = encodeURIComponent(`Hello ${name}, this is your Insurance Advisor from Aadhiraksha InsurTech regarding your ${insuranceType} inquiry. How can I assist you today?`);
-    window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const wsname = workbook.SheetNames[0];
+        const ws = workbook.Sheets[wsname];
+        const rawData = XLSX.utils.sheet_to_json(ws);
+
+        if (!rawData || rawData.length === 0) {
+          alert('No data found in uploaded sheet.');
+          return;
+        }
+
+        // Map various column names
+        const normalized = rawData.map(row => ({
+          fullName: row['Full Name'] || row['Name'] || row['Client Name'] || row['fullName'] || '',
+          companyName: row['Company Name'] || row['Company'] || row['companyName'] || '',
+          phoneNumber: String(row['Phone Number'] || row['Phone'] || row['Mobile'] || row['phoneNumber'] || ''),
+          whatsappNumber: String(row['WhatsApp Number'] || row['WhatsApp'] || row['whatsappNumber'] || row['Phone'] || ''),
+          email: row['Email'] || row['email'] || '',
+          city: row['City'] || row['city'] || 'Hyderabad',
+          insuranceType: row['Insurance Product'] || row['Insurance Type'] || row['insuranceType'] || 'Health Insurance',
+          existingInsurer: row['Existing Insurer'] || row['existingInsurer'] || '',
+          policyExpiryDate: row['Policy Expiry / Deadline'] || row['Deadline'] || row['policyExpiryDate'] || '',
+          sumInsured: row['Sum Insured'] || row['sumInsured'] || '₹10 Lakhs',
+          estimatedPremium: row['Estimated Premium (₹)'] || row['Premium'] || row['estimatedPremium'] || null,
+          priority: (row['Priority'] || row['priority'] || 'MEDIUM').toUpperCase(),
+          stage: row['Pipeline Stage'] || row['Stage'] || row['stage'] || 'NEW_LEAD',
+          notes: row['Notes'] || row['notes'] || ''
+        })).filter(r => r.fullName && r.phoneNumber);
+
+        if (normalized.length === 0) {
+          alert('Could not parse any valid rows. Please ensure your Excel file includes "Full Name" and "Phone Number" columns.');
+          return;
+        }
+
+        setParsedBulkLeads(normalized);
+        setShowBulkUploadModal(true);
+      } catch (err) {
+        alert('Failed to parse Excel file: ' + err.message);
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsBinaryString(file);
   };
 
-  const getStageBadge = (stage) => {
-    switch (stage) {
-      case 'NEW_LEAD':
-        return { bg: '#e0f2fe', color: '#0369a1', label: 'New Lead' };
-      case 'CONTACTED':
-        return { bg: '#fef3c7', color: '#b45309', label: 'Contacted' };
-      case 'FOLLOWUP':
-        return { bg: '#fed7aa', color: '#c2410c', label: 'Follow-up Due' };
-      case 'INTERESTED':
-        return { bg: '#dcfce7', color: '#15803d', label: 'Interested' };
-      case 'QUOTATION':
-        return { bg: '#e0e7ff', color: '#4338ca', label: 'Quotation Sent' };
-      case 'MEETING':
-        return { bg: '#f3e8ff', color: '#7e22ce', label: 'Meeting Scheduled' };
-      case 'DOCUMENTS':
-        return { bg: '#ccfbf1', color: '#0f766e', label: 'Docs In Progress' };
-      case 'PAYMENT':
-        return { bg: '#fef9c3', color: '#a16207', label: 'Payment Pending' };
-      case 'POLICY_ISSUED':
-      case 'CONVERTED':
-        return { bg: '#d1fae5', color: '#065f46', label: 'Policy Issued 🎉' };
-      case 'LOST':
-      case 'NOT_INTERESTED':
-        return { bg: '#fee2e2', color: '#b91c1c', label: 'Lost / Closed' };
-      default:
-        return { bg: '#f1f5f9', color: '#475569', label: stage };
-    }
-  };
-
-  const getPriorityBadge = (priority) => {
-    switch (priority) {
-      case 'HIGH':
-        return { color: '#ef4444', label: '🔥 High' };
-      case 'MEDIUM':
-        return { color: '#f59e0b', label: '⚡ Medium' };
-      default:
-        return { color: '#64748b', label: 'Standard' };
+  const handleConfirmBulkImport = async () => {
+    setBulkImporting(true);
+    try {
+      const imported = await crmService.bulkImportLeads(parsedBulkLeads);
+      setLeads(prev => [...imported, ...prev]);
+      setShowBulkUploadModal(false);
+      setParsedBulkLeads([]);
+      alert(`🎉 Successfully imported ${imported.length} clients to your Data Sheet!`);
+    } catch (err) {
+      alert('Bulk import failed: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setBulkImporting(false);
     }
   };
 
@@ -298,6 +474,37 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
 
     return matchesSearch && matchesStage && matchesPriority && matchesType;
   });
+
+  const sortedLeads = [...filteredLeads].sort((a, b) => {
+    if (sortField === 'deadline') {
+      const dateA = a.policyExpiryDate ? new Date(a.policyExpiryDate).getTime() : (sortOrder === 'asc' ? 9999999999999 : 0);
+      const dateB = b.policyExpiryDate ? new Date(b.policyExpiryDate).getTime() : (sortOrder === 'asc' ? 9999999999999 : 0);
+      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+    }
+    if (sortField === 'premium') {
+      const premA = Number(a.estimatedPremium) || 0;
+      const premB = Number(b.estimatedPremium) || 0;
+      return sortOrder === 'asc' ? premA - premB : premB - premA;
+    }
+    if (sortField === 'name') {
+      return sortOrder === 'asc' 
+        ? a.fullName.localeCompare(b.fullName) 
+        : b.fullName.localeCompare(a.fullName);
+    }
+    // Default: updatedAt / created
+    const idA = a.id || 0;
+    const idB = b.id || 0;
+    return sortOrder === 'asc' ? idA - idB : idB - idA;
+  });
+
+  const toggleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -391,10 +598,46 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
           </div>
         </div>
 
-        {/* Right: Add Row, Export Buttons */}
+        {/* Right: Upload Excel, Export Excel, Bulk Reassign, Add Row */}
         <div className="crm-sheet-action-btns" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {canReassign && selectedLeadIds.length > 0 && (
+            <button
+              onClick={() => {
+                setBulkTargetAdvisorId('');
+                setBulkReassignReason('');
+                setShowBulkReassignModal(true);
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#4338ca',
+                border: 'none',
+                padding: '8px 14px',
+                borderRadius: '10px',
+                fontSize: '0.84rem',
+                fontWeight: 700,
+                color: '#ffffff',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(67, 56, 202, 0.25)',
+                animation: 'pulse 2s infinite'
+              }}
+              title="Reassign selected clients to an advisor"
+            >
+              <UserCheck size={15} /> Reassign ({selectedLeadIds.length})
+            </button>
+          )}
+
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            accept=".xlsx, .xls, .csv" 
+            style={{ display: 'none' }} 
+          />
+
           <button
-            onClick={exportToCsv}
+            onClick={() => fileInputRef.current && fileInputRef.current.click()}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -408,6 +651,27 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
               color: 'var(--text-main)',
               cursor: 'pointer'
             }}
+            title="Import clients from .xlsx / .csv spreadsheet"
+          >
+            <Upload size={15} /> Upload Excel
+          </button>
+
+          <button
+            onClick={exportToExcel}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'var(--bg-main)',
+              border: '1px solid var(--border-subtle)',
+              padding: '8px 14px',
+              borderRadius: '10px',
+              fontSize: '0.84rem',
+              fontWeight: 700,
+              color: 'var(--text-main)',
+              cursor: 'pointer'
+            }}
+            title="Export sheet to Excel (.xlsx)"
           >
             <Download size={15} /> Export
           </button>
@@ -446,7 +710,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
             Loading Interactive Client Data Sheet...
           </div>
-        ) : filteredLeads.length === 0 ? (
+        ) : sortedLeads.length === 0 ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
             No client records found matching criteria.
           </div>
@@ -454,42 +718,91 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
           <>
             {/* 1. DESKTOP VIEW: HIGH-DENSITY EXCEL DATA TABLE */}
             <div className="crm-desktop-table-container" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr style={{ background: 'var(--primary-navy)', color: '#ffffff', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    <th style={{ padding: '12px 14px', width: '110px' }}>Code</th>
-                    <th style={{ padding: '12px 14px', minWidth: '180px' }}>Client Name & Company</th>
-                    <th style={{ padding: '12px 14px', minWidth: '140px' }}>Contact</th>
-                    <th style={{ padding: '12px 14px', minWidth: '150px' }}>Insurance Product</th>
-                    <th style={{ padding: '12px 14px', minWidth: '120px' }}>Sum Insured / Prem</th>
-                    <th style={{ padding: '12px 14px', minWidth: '140px' }}>Pipeline Stage</th>
-                    <th style={{ padding: '12px 14px', width: '90px' }}>Priority</th>
-                    <th style={{ padding: '12px 14px', minWidth: '130px' }}>Advisor</th>
-                    <th style={{ padding: '12px 14px', textAlign: 'center', width: '160px' }}>Quick Actions</th>
+              <table className="crm-table">
+                <thead className="crm-table-head">
+                  <tr>
+                    {canReassign && (
+                      <th className="crm-table-th" style={{ width: '40px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedLeadIds.length === sortedLeads.length && sortedLeads.length > 0}
+                          onChange={toggleSelectAll}
+                          style={{ cursor: 'pointer' }}
+                          title="Select / Deselect all clients"
+                        />
+                      </th>
+                    )}
+                    <th className="crm-table-th" style={{ width: '110px' }}>Code</th>
+                    <th 
+                      className="crm-table-th" 
+                      onClick={() => toggleSort('name')}
+                      style={{ minWidth: '180px', cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span>Client Name & Company</span>
+                        <ArrowUpDown size={12} color={sortField === 'name' ? 'var(--accent-emerald)' : 'var(--text-muted)'} />
+                      </div>
+                    </th>
+                    <th className="crm-table-th" style={{ minWidth: '140px' }}>Contact</th>
+                    <th className="crm-table-th" style={{ minWidth: '150px' }}>Insurance Product</th>
+                    <th 
+                      className="crm-table-th" 
+                      onClick={() => toggleSort('premium')}
+                      style={{ minWidth: '130px', cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span>Sum Insured / Prem</span>
+                        <ArrowUpDown size={12} color={sortField === 'premium' ? 'var(--accent-emerald)' : 'var(--text-muted)'} />
+                      </div>
+                    </th>
+                    <th 
+                      className="crm-table-th" 
+                      onClick={() => toggleSort('deadline')}
+                      style={{ minWidth: '140px', cursor: 'pointer', userSelect: 'none' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span>Expiry / Deadline</span>
+                        <ArrowUpDown size={12} color={sortField === 'deadline' ? 'var(--accent-emerald)' : 'var(--text-muted)'} />
+                      </div>
+                    </th>
+                    <th className="crm-table-th" style={{ minWidth: '140px' }}>Pipeline Stage</th>
+                    <th className="crm-table-th" style={{ width: '90px' }}>Priority</th>
+                    <th className="crm-table-th" style={{ minWidth: '150px' }}>Advisor</th>
+                    <th className="crm-table-th" style={{ textAlign: 'center', width: '175px' }}>Quick Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredLeads.map((lead, index) => {
+                  {sortedLeads.map((lead, index) => {
                     const isEditing = editingRowId === lead.id;
+                    const isSelected = selectedLeadIds.includes(lead.id);
                     const stageBadge = getStageBadge(lead.stage);
                     const priorityBadge = getPriorityBadge(lead.priority);
 
                     return (
                       <tr 
                         key={lead.id} 
-                        style={{ 
-                          borderBottom: '1px solid var(--border-subtle)', 
-                          background: index % 2 === 0 ? 'var(--bg-card)' : 'var(--bg-main)',
-                          transition: 'background var(--transition-fast)'
-                        }}
+                        className="crm-table-row"
+                        style={{ background: isSelected ? 'rgba(99, 102, 241, 0.05)' : undefined }}
                       >
+                        {/* Multi-Select Checkbox for Admin/Manager */}
+                        {canReassign && (
+                          <td className="crm-table-td" style={{ textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectLead(lead.id)}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </td>
+                        )}
+
                         {/* Client Code */}
-                        <td style={{ padding: '10px 14px', fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-emerald)' }}>
+                        <td className="crm-table-td" style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-emerald)' }}>
                           {lead.clientCode}
                         </td>
 
                         {/* Client Name & Company (Inline Editable) */}
-                        <td style={{ padding: '10px 14px' }}>
+                        <td className="crm-table-td">
                           {isEditing ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               <input
@@ -510,19 +823,19 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             <div>
                               <div 
                                 onClick={() => onOpenClient360 && onOpenClient360(lead)}
-                                style={{ fontWeight: 700, color: 'var(--primary-navy)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                style={{ fontWeight: 700, color: 'var(--crm-text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                               >
                                 {lead.fullName} <ExternalLink size={12} color="var(--accent-gold)" />
                               </div>
                               {lead.companyName && (
-                                <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{lead.companyName}</div>
+                                <div style={{ fontSize: '0.74rem', color: 'var(--crm-text-muted)' }}>{lead.companyName}</div>
                               )}
                             </div>
                           )}
                         </td>
 
                         {/* Contact */}
-                        <td style={{ padding: '10px 14px' }}>
+                        <td className="crm-table-td">
                           {isEditing ? (
                             <input
                               type="text"
@@ -532,14 +845,14 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             />
                           ) : (
                             <div>
-                              <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{lead.phoneNumber}</div>
-                              {lead.city && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{lead.city}</div>}
+                              <div style={{ fontWeight: 600, color: 'var(--crm-text-primary)' }}>{lead.phoneNumber}</div>
+                              {lead.city && <div style={{ fontSize: '0.72rem', color: 'var(--crm-text-muted)' }}>{lead.city}</div>}
                             </div>
                           )}
                         </td>
 
                         {/* Insurance Product */}
-                        <td style={{ padding: '10px 14px' }}>
+                        <td className="crm-table-td">
                           {isEditing ? (
                             <select
                               value={editFormData.insuranceType || ''}
@@ -555,7 +868,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             </select>
                           ) : (
                             <div>
-                              <div style={{ fontWeight: 700, color: 'var(--primary-navy)' }}>{lead.insuranceType}</div>
+                              <div style={{ fontWeight: 700, color: 'var(--crm-text-primary)' }}>{lead.insuranceType}</div>
                               {lead.existingInsurer && (
                                 <div style={{ fontSize: '0.72rem', color: 'var(--accent-gold)' }}>Prev: {lead.existingInsurer}</div>
                               )}
@@ -564,7 +877,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                         </td>
 
                         {/* Sum Insured / Premium */}
-                        <td style={{ padding: '10px 14px' }}>
+                        <td className="crm-table-td">
                           {isEditing ? (
                             <input
                               type="text"
@@ -575,7 +888,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             />
                           ) : (
                             <div>
-                              <div style={{ fontWeight: 700, color: 'var(--primary-navy)' }}>{lead.sumInsured || '-'}</div>
+                              <div style={{ fontWeight: 700, color: 'var(--crm-text-primary)' }}>{lead.sumInsured || '-'}</div>
                               {lead.estimatedPremium && (
                                 <div style={{ fontSize: '0.74rem', color: 'var(--accent-emerald)', fontWeight: 600 }}>
                                   ₹{Number(lead.estimatedPremium).toLocaleString()}
@@ -585,8 +898,36 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           )}
                         </td>
 
+                        {/* Expiry / Deadline */}
+                        <td className="crm-table-td">
+                          {isEditing ? (
+                            <input
+                              type="date"
+                              value={editFormData.policyExpiryDate || ''}
+                              onChange={(e) => setEditFormData({ ...editFormData, policyExpiryDate: e.target.value })}
+                              style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.78rem', width: '100%' }}
+                            />
+                          ) : (
+                            <div>
+                              {lead.policyExpiryDate ? (
+                                <div style={{ 
+                                  fontWeight: 600, 
+                                  fontSize: '0.8rem',
+                                  color: new Date(lead.policyExpiryDate).getTime() - new Date().getTime() < 7 * 86400000 
+                                    ? 'var(--danger-red, #dc2626)' 
+                                    : 'var(--crm-text-primary)'
+                                }}>
+                                  {lead.policyExpiryDate}
+                                </div>
+                              ) : (
+                                <span style={{ color: 'var(--crm-text-muted)', fontSize: '0.78rem' }}>-</span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+
                         {/* Stage (Inline Dropdown) */}
-                        <td style={{ padding: '10px 14px' }}>
+                        <td className="crm-table-td">
                           {isEditing ? (
                             <select
                               value={editFormData.stage || ''}
@@ -620,7 +961,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                         </td>
 
                         {/* Priority */}
-                        <td style={{ padding: '10px 14px' }}>
+                        <td className="crm-table-td">
                           {isEditing ? (
                             <select
                               value={editFormData.priority || 'MEDIUM'}
@@ -638,13 +979,57 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           )}
                         </td>
 
-                        {/* Assigned Advisor */}
-                        <td style={{ padding: '10px 14px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                          {lead.assignedAdvisorName || 'Unassigned'}
+                        {/* Assigned Advisor (Interactive for Admins/Managers) */}
+                        <td className="crm-table-td">
+                          {isEditing && canReassign ? (
+                            <select
+                              value={editFormData.assignedAdvisorId || ''}
+                              onChange={(e) => {
+                                const selectedId = e.target.value;
+                                const adv = advisors.find(a => String(a.id) === String(selectedId));
+                                setEditFormData({
+                                  ...editFormData,
+                                  assignedAdvisorId: selectedId ? Number(selectedId) : null,
+                                  assignedAdvisorName: adv ? adv.fullName : 'Unassigned'
+                                });
+                              }}
+                              style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.78rem', width: '100%' }}
+                            >
+                              <option value="">Unassigned</option>
+                              {advisors.map(adv => (
+                                <option key={adv.id} value={adv.id}>
+                                  {adv.fullName} ({adv.branchCity || adv.employeeCode || 'Advisor'})
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
+                              <span style={{ color: 'var(--crm-text-muted)', fontWeight: 600, fontSize: '0.82rem' }}>
+                                {lead.assignedAdvisorName || 'Unassigned'}
+                              </span>
+                              {canReassign && (
+                                <button
+                                  onClick={() => openQuickReassign(lead)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#4f46e5',
+                                    cursor: 'pointer',
+                                    padding: '2px',
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                  }}
+                                  title="Quick Reassign to another Advisor"
+                                >
+                                  <UserCheck size={13} />
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </td>
 
                         {/* Actions */}
-                        <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                        <td className="crm-table-td" style={{ textAlign: 'center' }}>
                           {isEditing ? (
                             <div style={{ display: 'inline-flex', gap: '4px' }}>
                               <button
@@ -880,7 +1265,6 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
           position: 'fixed',
           inset: 0,
           background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(4px)',
           zIndex: 10000,
           display: 'flex',
           alignItems: 'center',
@@ -896,24 +1280,39 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
             overflow: 'hidden'
           }}>
             <div style={{
-              background: 'linear-gradient(135deg, #0f2b48 0%, #091726 100%)',
-              color: '#ffffff',
+              background: '#ffffff',
               padding: '1.25rem 1.5rem',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
+              borderBottom: '1px solid #e2e8f0'
             }}>
               <div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>Add New Client Lead</h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#0f2b48', letterSpacing: '-0.2px' }}>
+                  Add New Client Lead
+                </h3>
+                <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
                   Create a new record in the CRM data sheet
                 </p>
               </div>
               <button
                 onClick={() => setShowAddLeadModal(false)}
-                style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer' }}
+                style={{ 
+                  background: '#f8fafc', 
+                  border: '1px solid #e2e8f0', 
+                  color: '#64748b', 
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#0f2b48'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -1061,6 +1460,509 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                   style={{ flex: 2, padding: '10px', borderRadius: '8px', border: 'none', background: '#059669', color: '#ffffff', fontWeight: 700, cursor: 'pointer' }}
                 >
                   Save to Sheet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Bulk Excel Upload Preview & Confirm */}
+      {showBulkUploadModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '780px',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            overflow: 'hidden'
+          }}>
+            {/* Header */}
+            <div style={{
+              background: '#ffffff',
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid #e2e8f0'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  background: '#ecfdf5',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#059669'
+                }}>
+                  <FileSpreadsheet size={22} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#0f2b48' }}>
+                    Bulk Import Preview ({parsedBulkLeads.length} Clients)
+                  </h3>
+                  <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                    Review parsed rows from your Excel sheet before saving to CRM database
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setShowBulkUploadModal(false); setParsedBulkLeads([]); }}
+                style={{ 
+                  background: '#f8fafc', 
+                  border: '1px solid #e2e8f0', 
+                  color: '#64748b', 
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Table Preview */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1rem 1.5rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>
+                    <th style={{ padding: '8px 10px', fontWeight: 700, color: '#334155' }}>#</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 700, color: '#334155' }}>Client Name</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 700, color: '#334155' }}>Mobile</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 700, color: '#334155' }}>Insurance Product</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 700, color: '#334155' }}>Coverage / Prem</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 700, color: '#334155' }}>Deadline</th>
+                    <th style={{ padding: '8px 10px', fontWeight: 700, color: '#334155' }}>Priority</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {parsedBulkLeads.slice(0, 15).map((row, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '8px 10px', color: '#64748b' }}>{idx + 1}</td>
+                      <td style={{ padding: '8px 10px', fontWeight: 600, color: '#0f2b48' }}>
+                        {row.fullName}
+                        {row.companyName && <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{row.companyName}</div>}
+                      </td>
+                      <td style={{ padding: '8px 10px', color: '#334155' }}>{row.phoneNumber}</td>
+                      <td style={{ padding: '8px 10px', color: '#0f2b48', fontWeight: 600 }}>{row.insuranceType}</td>
+                      <td style={{ padding: '8px 10px', color: '#059669', fontWeight: 600 }}>
+                        {row.sumInsured} {row.estimatedPremium ? `(₹${row.estimatedPremium})` : ''}
+                      </td>
+                      <td style={{ padding: '8px 10px', color: '#64748b' }}>{row.policyExpiryDate || '-'}</td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <span style={{
+                          padding: '2px 6px',
+                          borderRadius: '6px',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          background: row.priority === 'HIGH' ? '#fef2f2' : '#f8fafc',
+                          color: row.priority === 'HIGH' ? '#dc2626' : '#64748b'
+                        }}>
+                          {row.priority}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {parsedBulkLeads.length > 15 && (
+                <div style={{ textAlign: 'center', padding: '10px', color: '#64748b', fontSize: '0.78rem' }}>
+                  ... and {parsedBulkLeads.length - 15} more rows ready to import.
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '1rem 1.5rem',
+              background: '#f8fafc',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                Database will remain the main source of truth.
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => { setShowBulkUploadModal(false); setParsedBulkLeads([]); }}
+                  disabled={bulkImporting}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmBulkImport}
+                  disabled={bulkImporting}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #059669, #047857)',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    cursor: bulkImporting ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)'
+                  }}
+                >
+                  {bulkImporting ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" /> Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={16} /> Confirm Import ({parsedBulkLeads.length})
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Single Quick Reassign Lead */}
+      {quickReassignLead && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          zIndex: 11000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '520px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              background: '#ffffff',
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid #e2e8f0'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: '#e0e7ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#4338ca'
+                }}>
+                  <UserCheck size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: '#0f2b48' }}>
+                    Reassign Insurance Advisor
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                    {quickReassignLead.fullName} ({quickReassignLead.clientCode})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setQuickReassignLead(null)}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickReassignSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Select Target Insurance Advisor *
+                </label>
+                <select
+                  required
+                  value={quickTargetAdvisorId}
+                  onChange={(e) => setQuickTargetAdvisorId(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    background: '#ffffff',
+                    fontWeight: 600,
+                    color: '#0f2b48'
+                  }}
+                >
+                  <option value="">-- Choose Advisor --</option>
+                  {advisors.map(adv => (
+                    <option key={adv.id} value={adv.id}>
+                      {adv.fullName} • {adv.branchCity || adv.employeeCode || 'Advisor'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Reassignment Reason / Governance Note
+                </label>
+                <textarea
+                  rows="3"
+                  placeholder="e.g. Territory realignment, advisor workload distribution, or specialized commercial quote handling..."
+                  value={quickReassignReason}
+                  onChange={(e) => setQuickReassignReason(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setQuickReassignLead(null)}
+                  disabled={quickReassigning}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={quickReassigning}
+                  style={{
+                    flex: 2,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #4338ca, #3730a3)',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    cursor: quickReassigning ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {quickReassigning ? <RefreshCw size={14} className="animate-spin" /> : <Check size={16} />}
+                  Confirm Reassignment
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Bulk Reassignment */}
+      {showBulkReassignModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          zIndex: 11000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '520px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              background: '#ffffff',
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid #e2e8f0'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: '#e0e7ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#4338ca'
+                }}>
+                  <Users size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: '#0f2b48' }}>
+                    Bulk Reassign Clients
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                    Reassigning {selectedLeadIds.length} selected client leads
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBulkReassignModal(false)}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleBulkReassignSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Assign all {selectedLeadIds.length} leads to Advisor *
+                </label>
+                <select
+                  required
+                  value={bulkTargetAdvisorId}
+                  onChange={(e) => setBulkTargetAdvisorId(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    background: '#ffffff',
+                    fontWeight: 600,
+                    color: '#0f2b48'
+                  }}
+                >
+                  <option value="">-- Choose Target Advisor --</option>
+                  {advisors.map(adv => (
+                    <option key={adv.id} value={adv.id}>
+                      {adv.fullName} • {adv.branchCity || adv.employeeCode || 'Advisor'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Batch Reason / Instructions
+                </label>
+                <textarea
+                  rows="3"
+                  placeholder="e.g. Portfolio redistribution or new campaign allocation..."
+                  value={bulkReassignReason}
+                  onChange={(e) => setBulkReassignReason(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowBulkReassignModal(false)}
+                  disabled={bulkReassigning}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={bulkReassigning}
+                  style={{
+                    flex: 2,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #4338ca, #3730a3)',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    cursor: bulkReassigning ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {bulkReassigning ? <RefreshCw size={14} className="animate-spin" /> : <Check size={16} />}
+                  Reassign {selectedLeadIds.length} Clients
                 </button>
               </div>
             </form>

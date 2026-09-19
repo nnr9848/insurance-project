@@ -37,6 +37,10 @@ export const crmService = {
     const res = await api.get('/crm/users');
     return res.data;
   },
+  getAssignableRoles: async () => {
+    const res = await api.get('/crm/users/roles');
+    return res.data;
+  },
   getManagers: async () => {
     const res = await api.get('/crm/users/managers');
     return res.data;
@@ -69,6 +73,10 @@ export const crmService = {
   },
   createLead: async (data) => {
     const res = await api.post('/crm/leads', data);
+    return res.data;
+  },
+  bulkImportLeads: async (leadsArray) => {
+    const res = await api.post('/crm/leads/bulk-import', leadsArray);
     return res.data;
   },
   updateLead: async (id, data) => {

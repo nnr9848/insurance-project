@@ -22,6 +22,9 @@ public interface ClientMeetingRepository extends JpaRepository<ClientMeeting, Lo
     @Query("SELECT m FROM ClientMeeting m WHERE m.advisor.manager.id = :managerId AND m.meetingDatetime BETWEEN :start AND :end ORDER BY m.meetingDatetime ASC")
     List<ClientMeeting> findMeetingsForManagerBetween(@Param("managerId") Long managerId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
+    @Query("SELECT m FROM ClientMeeting m WHERE m.meetingDatetime BETWEEN :start AND :end ORDER BY m.meetingDatetime ASC")
+    List<ClientMeeting> findAllMeetingsBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
     @Query("SELECT COUNT(m) FROM ClientMeeting m WHERE m.advisor.id = :advisorId AND m.meetingDatetime BETWEEN :start AND :end")
     long countMeetingsTodayForAdvisor(@Param("advisorId") Long advisorId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 

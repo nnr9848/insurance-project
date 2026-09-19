@@ -81,6 +81,18 @@ public class CrmLeadService {
     }
 
     @Transactional
+    public List<ClientLeadDto.LeadResponse> bulkImportLeads(List<ClientLeadDto.CreateLeadRequest> requests, User performedBy) {
+        List<ClientLeadDto.LeadResponse> responses = new java.util.ArrayList<>();
+        for (ClientLeadDto.CreateLeadRequest request : requests) {
+            if (request.getFullName() != null && !request.getFullName().trim().isEmpty() &&
+                request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
+                responses.add(createLead(request, performedBy));
+            }
+        }
+        return responses;
+    }
+
+    @Transactional
     public ClientLeadDto.LeadResponse updateLead(Long leadId, ClientLeadDto.CreateLeadRequest request, User performedBy) {
         ClientLead lead = clientLeadRepository.findById(leadId)
                 .orElseThrow(() -> new IllegalArgumentException("Lead not found with ID: " + leadId));
@@ -266,14 +278,37 @@ public class CrmLeadService {
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
 
-        List<FollowUpTask> tasks = followUpTaskRepository.findDueTodayForAdvisor(user.getId(), startOfDay, endOfDay);
+        boolean isSuperAdmin = user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_SUPER_ADMIN") || r.getName().equals("ROLE_ADMIN"));
+        boolean isManager = user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_MANAGER"));
+
+        List<FollowUpTask> tasks;
+        if (isSuperAdmin) {
+            tasks = followUpTaskRepository.findAllDueToday(startOfDay, endOfDay);
+        } else if (isManager) {
+            tasks = followUpTaskRepository.findDueTodayForManager(user.getId(), startOfDay, endOfDay);
+        } else {
+            tasks = followUpTaskRepository.findDueTodayForAdvisor(user.getId(), startOfDay, endOfDay);
+        }
+
         return tasks.stream().map(this::mapToFollowUpResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<FollowUpDto.FollowUpResponse> getOverdueFollowUps(User user) {
         LocalDateTime now = LocalDateTime.now();
-        List<FollowUpTask> tasks = followUpTaskRepository.findOverdueForAdvisor(user.getId(), now);
+
+        boolean isSuperAdmin = user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_SUPER_ADMIN") || r.getName().equals("ROLE_ADMIN"));
+        boolean isManager = user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_MANAGER"));
+
+        List<FollowUpTask> tasks;
+        if (isSuperAdmin) {
+            tasks = followUpTaskRepository.findAllOverdue(now);
+        } else if (isManager) {
+            tasks = followUpTaskRepository.findOverdueForManager(user.getId(), now);
+        } else {
+            tasks = followUpTaskRepository.findOverdueForAdvisor(user.getId(), now);
+        }
+
         return tasks.stream().map(this::mapToFollowUpResponse).collect(Collectors.toList());
     }
 
@@ -282,7 +317,18 @@ public class CrmLeadService {
         LocalDateTime start = LocalDateTime.now().minusHours(1);
         LocalDateTime end = LocalDateTime.now().plusDays(30);
 
-        List<ClientMeeting> meetings = clientMeetingRepository.findMeetingsForAdvisorBetween(user.getId(), start, end);
+        boolean isSuperAdmin = user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_SUPER_ADMIN") || r.getName().equals("ROLE_ADMIN"));
+        boolean isManager = user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_MANAGER"));
+
+        List<ClientMeeting> meetings;
+        if (isSuperAdmin) {
+            meetings = clientMeetingRepository.findAllMeetingsBetween(start, end);
+        } else if (isManager) {
+            meetings = clientMeetingRepository.findMeetingsForManagerBetween(user.getId(), start, end);
+        } else {
+            meetings = clientMeetingRepository.findMeetingsForAdvisorBetween(user.getId(), start, end);
+        }
+
         return meetings.stream().map(this::mapToMeetingResponse).collect(Collectors.toList());
     }
 

@@ -25,4 +25,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u WHERE u.manager.id = :managerId AND u.isActive = true ORDER BY u.fullName ASC")
     List<User> findActiveTeamByManagerId(@Param("managerId") Long managerId);
+
+    @Query("SELECT COUNT(u) FROM User u JOIN u.roles r WHERE (r.name = 'ROLE_SUPER_ADMIN' OR r.name = 'ROLE_ADMIN') AND u.isActive = true AND u.id <> :excludeUserId")
+    long countActiveSuperAdminsExcept(@Param("excludeUserId") Long excludeUserId);
 }

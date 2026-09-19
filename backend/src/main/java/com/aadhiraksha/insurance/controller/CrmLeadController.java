@@ -45,6 +45,14 @@ public class CrmLeadController {
         return ResponseEntity.ok(crmLeadService.createLead(request, user));
     }
 
+    @PostMapping("/leads/bulk-import")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @Operation(summary = "Bulk import multiple client leads from Excel/CSV")
+    public ResponseEntity<List<ClientLeadDto.LeadResponse>> bulkImportLeads(@RequestBody List<ClientLeadDto.CreateLeadRequest> requests, Authentication auth) {
+        User user = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(crmLeadService.bulkImportLeads(requests, user));
+    }
+
     @PutMapping("/leads/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
     @Operation(summary = "Update client lead record")

@@ -8,19 +8,32 @@ import {
   Calendar, 
   MessageSquare, 
   User, 
-  Filter, 
   ChevronRight, 
   X,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  UserCheck,
+  Check,
+  RefreshCw
 } from 'lucide-react';
 import { crmService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModal }) {
+  const { isSuperAdmin, isManager, user } = useAuth();
+  const canReassign = isSuperAdmin || isManager;
+
   const [dueToday, setDueToday] = useState([]);
   const [overdue, setOverdue] = useState([]);
+  const [advisors, setAdvisors] = useState([]);
   const [activeTab, setActiveTab] = useState('dueToday'); // 'dueToday' | 'overdue'
   const [loading, setLoading] = useState(true);
+
+  // Quick Reassign Modal state for Overdue cards
+  const [reassignTask, setReassignTask] = useState(null);
+  const [targetAdvisorId, setTargetAdvisorId] = useState('');
+  const [reassignReason, setReassignReason] = useState('');
+  const [reassigning, setReassigning] = useState(false);
 
   // Call Logger Modal
   const [showCallModal, setShowCallModal] = useState(false);
@@ -37,7 +50,41 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
 
   useEffect(() => {
     loadAgenda();
-  }, []);
+    if (canReassign) {
+      loadAdvisors();
+    }
+  }, [canReassign]);
+
+  const loadAdvisors = async () => {
+    try {
+      const data = await crmService.getAdvisors();
+      setAdvisors(data || []);
+    } catch (err) {
+      console.error('Failed to load advisors:', err);
+    }
+  };
+
+  const handleReassignSubmit = async (e) => {
+    e.preventDefault();
+    if (!targetAdvisorId || !reassignTask) {
+      alert('Please select an Advisor');
+      return;
+    }
+    setReassigning(true);
+    try {
+      await crmService.reassignLead(
+        reassignTask.clientId,
+        Number(targetAdvisorId),
+        reassignReason || 'Reassigned from Overdue Follow-ups Cockpit'
+      );
+      setReassignTask(null);
+      await loadAgenda();
+    } catch (err) {
+      alert('Failed to reassign lead: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setReassigning(false);
+    }
+  };
 
   const loadAgenda = async () => {
     setLoading(true);
@@ -342,6 +389,11 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
 
                       <div style={{ fontSize: '0.84rem', color: '#475569', marginTop: '3px' }}>
                         📞 <strong>{task.clientPhone}</strong> • Scheduled: <strong>{timeFormatted}</strong>
+                        {task.advisorName && (
+                          <span style={{ marginLeft: '8px', fontSize: '0.75rem', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', color: '#475569', fontWeight: 600 }}>
+                            Advisor: {task.advisorName}
+                          </span>
+                        )}
                       </div>
 
                       {task.notes && (
@@ -354,6 +406,33 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
 
                   {/* Right: Quick Action Trigger Buttons */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {/* Manager Reassign Action */}
+                    {canReassign && (
+                      <button
+                        onClick={() => {
+                          setReassignTask(task);
+                          setTargetAdvisorId(task.advisorId ? String(task.advisorId) : '');
+                          setReassignReason('');
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          background: '#e0e7ff',
+                          color: '#4338ca',
+                          border: '1px solid #c7d2fe',
+                          padding: '8px 12px',
+                          borderRadius: '10px',
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                          cursor: 'pointer'
+                        }}
+                        title="Reassign to another Advisor"
+                      >
+                        <UserCheck size={14} /> Reassign
+                      </button>
+                    )}
+
                     {/* Call & Log Button */}
                     <button
                       onClick={() => handleOpenCallModal(task)}
@@ -428,7 +507,6 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
           position: 'fixed',
           inset: 0,
           background: 'rgba(15, 23, 42, 0.7)',
-          backdropFilter: 'blur(4px)',
           zIndex: 10000,
           display: 'flex',
           alignItems: 'center',
@@ -444,26 +522,39 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
             overflow: 'hidden'
           }}>
             <div style={{
-              background: 'linear-gradient(135deg, #0f2b48 0%, #091726 100%)',
-              color: '#ffffff',
+              background: '#ffffff',
               padding: '1.25rem 1.5rem',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
+              borderBottom: '1px solid #e2e8f0'
             }}>
               <div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#0f2b48', letterSpacing: '-0.2px' }}>
                   Log Call Disposition: {activeTask.clientName}
                 </h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
                   {activeTask.clientPhone} • {activeTask.insuranceType}
                 </p>
               </div>
               <button
                 onClick={() => setShowCallModal(false)}
-                style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer' }}
+                style={{ 
+                  background: '#f8fafc', 
+                  border: '1px solid #e2e8f0', 
+                  color: '#64748b', 
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#0f2b48'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -557,6 +648,166 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                 </button>
               </div>
 
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reassign Advisor Modal for Overdue / Agenda Tasks */}
+      {reassignTask && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          zIndex: 12000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '500px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              background: '#ffffff',
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid #e2e8f0'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: '#e0e7ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#4338ca'
+                }}>
+                  <UserCheck size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: '#0f2b48' }}>
+                    Reassign Overdue Client
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                    {reassignTask.clientName} ({reassignTask.clientCode})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setReassignTask(null)}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleReassignSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Target Insurance Advisor *
+                </label>
+                <select
+                  required
+                  value={targetAdvisorId}
+                  onChange={(e) => setTargetAdvisorId(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    background: '#ffffff',
+                    fontWeight: 600,
+                    color: '#0f2b48'
+                  }}
+                >
+                  <option value="">-- Choose Target Advisor --</option>
+                  {advisors.map(adv => (
+                    <option key={adv.id} value={adv.id}>
+                      {adv.fullName} • {adv.branchCity || adv.employeeCode || 'Advisor'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Reassignment Reason / Transfer Note
+                </label>
+                <textarea
+                  rows="3"
+                  placeholder="e.g. Overdue follow-up reallocated to active advisor for immediate callback..."
+                  value={reassignReason}
+                  onChange={(e) => setReassignReason(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setReassignTask(null)}
+                  disabled={reassigning}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={reassigning}
+                  style={{
+                    flex: 2,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #4338ca, #3730a3)',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    cursor: reassigning ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {reassigning ? <RefreshCw size={14} className="animate-spin" /> : <Check size={16} />}
+                  Reassign Lead
+                </button>
+              </div>
             </form>
           </div>
         </div>

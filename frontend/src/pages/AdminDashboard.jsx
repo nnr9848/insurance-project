@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { 
   Users, 
   FileText, 
@@ -30,6 +30,10 @@ import {
   UserCheck,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
+  ArrowLeft,
+  User,
+  Lock,
   Sparkles,
   RefreshCw,
   Bell,
@@ -37,7 +41,10 @@ import {
   ExternalLink,
   MessageSquare,
   Menu,
-  Globe
+  Globe,
+  FileSpreadsheet,
+  Award,
+  ShieldAlert
 } from 'lucide-react';
 import { portalService, crmService } from '../services/api';
 import UserManagementView from '../components/crm/UserManagementView';
@@ -46,14 +53,59 @@ import DailyCallAgendaView from '../components/crm/DailyCallAgendaView';
 import SalesPipelineView from '../components/crm/SalesPipelineView';
 import MeetingCalendarView from '../components/crm/MeetingCalendarView';
 import Client360Drawer from '../components/crm/Client360Drawer';
+import UserProfileModal from '../components/crm/UserProfileModal';
 
 export default function AdminDashboard() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { 
+    user, 
+    isAuthenticated, 
+    loading: authLoading, 
+    logout,
+    isSuperAdmin,
+    isManager,
+    isAdvisor,
+    canManageUsers,
+    canAccessCRM
+  } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Active Workspace Navigation View
+  // Active Workspace Navigation View (URL Query Param Synchronized)
   // 'dashboard' | 'clients' | 'agenda' | 'pipeline' | 'meetings' | 'users' | 'quotes' | 'posp' | 'claims' | 'hospitals'
-  const [activeView, setActiveView] = useState('dashboard');
+  const currentTabFromUrl = searchParams.get('tab') || 'dashboard';
+  const [activeView, setActiveView] = useState(currentTabFromUrl);
+
+  // Sync state when URL query param changes (e.g. Browser Back / Forward buttons)
+  useEffect(() => {
+    const tab = searchParams.get('tab') || 'dashboard';
+    if (tab !== activeView) {
+      setActiveView(tab);
+    }
+  }, [searchParams]);
+
+  // Handler to navigate between views with browser history push
+  const handleNavigateView = (viewId, replace = false) => {
+    setActiveView(viewId);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (viewId === 'dashboard') {
+        next.delete('tab');
+      } else {
+        next.set('tab', viewId);
+      }
+      return next;
+    }, { replace });
+    setIsMobileOpen(false);
+  };
+
+  // History-aware back navigation helper (steps back to previous internal tab, or falls back to dashboard)
+  const handleGoBack = () => {
+    if (window.history.state && typeof window.history.state.idx === 'number' && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      handleNavigateView('dashboard');
+    }
+  };
 
   // Collapsible Sidebar States (with local storage persistence)
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -73,8 +125,95 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Preview Role Switcher (Super Admin | Manager | Advisor)
-  const [demoRole, setDemoRole] = useState(user?.role || 'ROLE_SUPER_ADMIN');
+  // Resolve user role display label
+  const userRoleKey = user?.role || (Array.isArray(user?.roles) ? user.roles[0] : 'ROLE_SUPER_ADMIN') || 'ROLE_SUPER_ADMIN';
+  const formatRoleName = (role) => {
+    switch (role) {
+      case 'ROLE_SUPER_ADMIN': return '👑 Super Admin';
+      case 'ROLE_ADMIN': return '👑 Administrator';
+      case 'ROLE_MANAGER': return '👔 Branch Manager';
+      case 'ROLE_ADVISOR': return '🎯 Insurance Advisor';
+      case 'ROLE_POSP_AGENT': return '🤝 POSP Partner';
+      case 'ROLE_STAFF': return '💼 Support Staff';
+      default: return '👤 User';
+    }
+  };
+
+  // View metadata for in-page header and breadcrumb navigation
+  const getViewMeta = (viewId) => {
+    switch (viewId) {
+      case 'clients':
+        return {
+          title: 'Client Data Sheet',
+          category: 'CRM Workspace',
+          subtitle: 'Interactive spreadsheet for fast lead filtering, client updates, and multi-advisor assignment.',
+          icon: <FileSpreadsheet size={18} color="#0284c7" />
+        };
+      case 'agenda':
+        return {
+          title: 'Daily Call Agenda',
+          category: 'CRM Workspace',
+          subtitle: 'Scheduled client callbacks, overdue tasks, and instant call outcome logs.',
+          icon: <PhoneCall size={18} color="#ea580c" />
+        };
+      case 'pipeline':
+        return {
+          title: 'Sales Pipeline',
+          category: 'CRM Workspace',
+          subtitle: 'Visual Kanban stage-progression from initial inquiry to policy issuance.',
+          icon: <TrendingUp size={18} color="#059669" />
+        };
+      case 'meetings':
+        return {
+          title: 'Meeting Calendar',
+          category: 'CRM Workspace',
+          subtitle: 'Synchronized schedule of advisory video consultations and in-person meetings.',
+          icon: <Calendar size={18} color="#7c3aed" />
+        };
+      case 'users':
+        return {
+          title: 'User & Team Management',
+          category: 'Operations & Management',
+          subtitle: 'Manage branch managers, insurance advisors, staff permissions, and hierarchy teams.',
+          icon: <Users size={18} color="#059669" />
+        };
+      case 'quotes':
+        return {
+          title: 'Customer Quote Inquiries',
+          category: 'Operations & Management',
+          subtitle: 'Real-time prospective customer insurance quote inquiries from the web portal.',
+          icon: <FileText size={18} color="#2563eb" />
+        };
+      case 'posp':
+        return {
+          title: 'POSP Partner Network',
+          category: 'Operations & Management',
+          subtitle: 'POSP agent registrations, KYC verification, certifications, and approvals.',
+          icon: <Award size={18} color="#d97706" />
+        };
+      case 'claims':
+        return {
+          title: 'Claims Assistance Desk',
+          category: 'Operations & Management',
+          subtitle: 'End-to-end claim settlement tracking, hospital paperwork, and customer support.',
+          icon: <ShieldAlert size={18} color="#dc2626" />
+        };
+      case 'hospitals':
+        return {
+          title: 'Cashless Hospital Network',
+          category: 'Operations & Management',
+          subtitle: 'Comprehensive directory of verified cashless hospital admission desks and contacts.',
+          icon: <Building2 size={18} color="#0891b2" />
+        };
+      default:
+        return {
+          title: 'Dashboard Overview',
+          category: 'Portal',
+          subtitle: 'High-level business analytics and operational performance summary.',
+          icon: <LayoutDashboard size={18} color="#0f2b48" />
+        };
+    }
+  };
 
   // Dataset states
   const [quotes, setQuotes] = useState([]);
@@ -88,6 +227,34 @@ export default function AdminDashboard() {
   // Global Interactive Drawers / Modals
   const [selectedClient360, setSelectedClient360] = useState(null);
   const [preselectedMeetingClient, setPreselectedMeetingClient] = useState(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileModalTab, setProfileModalTab] = useState('profile');
+
+  // Top Header User Profile Dropdown Menu
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef(null);
+
+  // Click outside & Escape key listeners to dismiss profile menu
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setShowUserMenu(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowUserMenu(false);
+      }
+    };
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showUserMenu]);
 
   // Hospital filters & search
   const [hospSearch, setHospSearch] = useState('');
@@ -147,12 +314,13 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
     loadData();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
 
   const loadData = async () => {
     setLoading(true);
@@ -344,7 +512,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
   ];
 
   const navItemsAdmin = [
-    { id: 'users', label: 'User & Team Hierarchy', icon: <Users size={19} />, count: null },
+    ...(canManageUsers ? [{ id: 'users', label: 'User & Team Hierarchy', icon: <Users size={19} />, count: null }] : []),
     { id: 'quotes', label: 'Web Quote Leads', icon: <Briefcase size={19} />, count: quotes.length, badgeColor: '#16a34a' },
     { id: 'posp', label: 'POSP Agent Network', icon: <UserCheck size={19} />, count: pospList.filter(p => p.status === 'PENDING').length, badgeColor: '#d97706' },
     { id: 'claims', label: 'Claims Desk', icon: <Crosshair size={19} />, count: claims.length, badgeColor: '#2563eb' },
@@ -353,6 +521,35 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
   const showMiniRail = !isMobile && isCollapsed;
   const currentSidebarWidth = isMobile ? '280px' : (showMiniRail ? '68px' : '260px');
+
+  if (authLoading) {
+    return (
+      <div style={{
+        display: 'flex',
+        height: '100vh',
+        width: '100vw',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--bg-main)',
+        color: 'var(--text-main)',
+        fontFamily: 'var(--font-sans)'
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            border: '3px solid #cbd5e1',
+            borderTopColor: 'var(--accent-gold, #f59e0b)',
+            animation: 'spin 0.8s linear infinite'
+          }} />
+          <span style={{ fontSize: '0.92rem', color: '#64748b', fontWeight: 600, letterSpacing: '0.2px' }}>
+            Restoring CRM session...
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', height: '100vh', background: 'var(--bg-main)', color: 'var(--text-main)', fontFamily: 'var(--font-sans)', overflow: 'hidden' }}>
@@ -400,7 +597,8 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           alignItems: 'center',
           justifyContent: showMiniRail ? 'center' : 'space-between',
           height: '64px',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          background: 'var(--crm-bg-sidebar)'
         }}>
           {!showMiniRail ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
@@ -408,7 +606,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                 AR
               </div>
               <div style={{ overflow: 'hidden' }}>
-                <div style={{ fontWeight: 800, fontSize: '0.98rem', letterSpacing: '-0.3px', color: '#fff', whiteSpace: 'nowrap' }}>Aadhiraksha</div>
+                <div style={{ fontWeight: 800, fontSize: '0.98rem', letterSpacing: '-0.3px', color: '#0f2b48', whiteSpace: 'nowrap' }}>Aadhiraksha</div>
                 <div style={{ fontSize: '0.68rem', color: 'var(--crm-sidebar-text)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}>
                   <Sparkles size={11} color="var(--accent-gold)" /> Enterprise CRM
                 </div>
@@ -430,9 +628,9 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
               onClick={() => setIsMobileOpen(false)}
               title="Close Drawer"
               style={{
-                background: 'rgba(255,255,255,0.08)',
+                background: '#e2e8f0',
                 border: 'none',
-                color: '#cbd5e1',
+                color: '#475569',
                 borderRadius: '8px',
                 padding: '0.4rem',
                 cursor: 'pointer',
@@ -440,6 +638,8 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                 alignItems: 'center',
                 justifyContent: 'center'
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#cbd5e1'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#e2e8f0'; }}
             >
               <X size={18} />
             </button>
@@ -449,9 +649,9 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                 onClick={toggleSidebar}
                 title="Collapse Sidebar (Cmd/Ctrl + B)"
                 style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  border: 'none',
-                  color: '#94a3b8',
+                  background: '#f1f5f9',
+                  border: '1px solid var(--crm-sidebar-border)',
+                  color: '#64748b',
                   borderRadius: '6px',
                   padding: '0.35rem',
                   cursor: 'pointer',
@@ -459,8 +659,8 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = '#fff'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#94a3b8'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#0f2b48'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
               >
                 <ChevronLeft size={16} />
               </button>
@@ -477,19 +677,16 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
               CRM Workspace
             </div>
           ) : (
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '0.5rem 0.4rem' }} />
+            <div style={{ height: '1px', background: 'var(--crm-sidebar-border)', margin: '0.5rem 0.4rem' }} />
           )}
 
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginBottom: '1rem' }}>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem' }}>
             {navItemsCRM.map((item) => {
               const isActive = activeView === item.id;
               return (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    setActiveView(item.id);
-                    setIsMobileOpen(false);
-                  }}
+                  onClick={() => handleNavigateView(item.id)}
                   title={showMiniRail ? `${item.label} ${item.count ? `(${item.count})` : ''}` : undefined}
                   style={{
                     display: 'flex',
@@ -498,32 +695,32 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                     padding: showMiniRail ? '0.7rem 0' : '0.65rem 0.75rem',
                     borderRadius: '8px',
                     border: 'none',
-                    background: isActive ? 'linear-gradient(90deg, #1e3a5f 0%, #152e4d 100%)' : 'transparent',
-                    color: isActive ? '#f8fafc' : '#94a3b8',
+                    background: isActive ? 'var(--crm-bg-sidebar-active)' : 'transparent',
+                    color: isActive ? 'var(--crm-sidebar-text-active)' : 'var(--crm-sidebar-text)',
                     fontWeight: isActive ? 700 : 500,
                     fontSize: '0.86rem',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                     textAlign: 'left',
-                    boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
-                    borderLeft: isActive && !showMiniRail ? '3px solid #f59e0b' : '3px solid transparent',
+                    boxShadow: isActive ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                    borderLeft: isActive && !showMiniRail ? '3px solid var(--accent-gold)' : '3px solid transparent',
                     position: 'relative'
                   }}
                   onMouseEnter={(e) => {
                     if (!isActive) {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                      e.currentTarget.style.color = '#f1f5f9';
+                      e.currentTarget.style.background = 'var(--crm-bg-sidebar-hover)';
+                      e.currentTarget.style.color = 'var(--crm-sidebar-text-active)';
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!isActive) {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#94a3b8';
+                      e.currentTarget.style.color = 'var(--crm-sidebar-text)';
                     }
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                    <span style={{ color: isActive ? '#f59e0b' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ color: isActive ? 'var(--accent-gold)' : 'var(--crm-sidebar-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {item.icon}
                     </span>
                     {!showMiniRail && <span style={{ whiteSpace: 'nowrap' }}>{item.label}</span>}
@@ -565,19 +762,16 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
               Operations & Admin
             </div>
           ) : (
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '0.5rem 0.4rem' }} />
+            <div style={{ height: '1px', background: 'var(--crm-sidebar-border)', margin: '0.5rem 0.4rem' }} />
           )}
 
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             {navItemsAdmin.map((item) => {
               const isActive = activeView === item.id;
               return (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    setActiveView(item.id);
-                    setIsMobileOpen(false);
-                  }}
+                  onClick={() => handleNavigateView(item.id)}
                   title={showMiniRail ? `${item.label} ${item.count ? `(${item.count})` : ''}` : undefined}
                   style={{
                     display: 'flex',
@@ -586,32 +780,32 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                     padding: showMiniRail ? '0.7rem 0' : '0.65rem 0.75rem',
                     borderRadius: '8px',
                     border: 'none',
-                    background: isActive ? 'linear-gradient(90deg, #1e3a5f 0%, #152e4d 100%)' : 'transparent',
-                    color: isActive ? '#f8fafc' : '#94a3b8',
+                    background: isActive ? 'var(--crm-bg-sidebar-active)' : 'transparent',
+                    color: isActive ? 'var(--crm-sidebar-text-active)' : 'var(--crm-sidebar-text)',
                     fontWeight: isActive ? 700 : 500,
                     fontSize: '0.86rem',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                     textAlign: 'left',
-                    boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
-                    borderLeft: isActive && !showMiniRail ? '3px solid #f59e0b' : '3px solid transparent',
+                    boxShadow: isActive ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                    borderLeft: isActive && !showMiniRail ? '3px solid var(--accent-gold)' : '3px solid transparent',
                     position: 'relative'
                   }}
                   onMouseEnter={(e) => {
                     if (!isActive) {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                      e.currentTarget.style.color = '#f1f5f9';
+                      e.currentTarget.style.background = 'var(--crm-bg-sidebar-hover)';
+                      e.currentTarget.style.color = 'var(--crm-sidebar-text-active)';
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!isActive) {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#94a3b8';
+                      e.currentTarget.style.color = 'var(--crm-sidebar-text)';
                     }
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                    <span style={{ color: isActive ? '#f59e0b' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ color: isActive ? 'var(--accent-gold)' : 'var(--crm-sidebar-text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {item.icon}
                     </span>
                     {!showMiniRail && <span style={{ whiteSpace: 'nowrap' }}>{item.label}</span>}
@@ -651,65 +845,40 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
         {/* Sidebar Footer User Card */}
         <div style={{
           padding: showMiniRail ? '0.75rem 0.4rem' : '0.85rem 1rem',
-          borderTop: '1px solid rgba(255,255,255,0.08)',
-          background: '#06101a',
+          borderTop: '1px solid var(--crm-sidebar-border)',
+          background: 'var(--crm-bg-sidebar-footer)',
           boxSizing: 'border-box'
         }}>
           {!showMiniRail ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
               
-              {/* RBAC Role Preview Selector inside Sidebar */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                background: 'rgba(255,255,255,0.06)',
-                padding: '0.35rem 0.6rem',
-                borderRadius: '8px',
-                border: '1px solid rgba(255,255,255,0.1)'
-              }}>
-                <ShieldCheck size={13} color="var(--accent-gold)" />
-                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', whiteSpace: 'nowrap' }}>Scope:</span>
-                <select
-                  value={demoRole}
-                  onChange={(e) => setDemoRole(e.target.value)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
-                    color: '#f8fafc',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    width: '100%'
-                  }}
-                >
-                  <option value="ROLE_SUPER_ADMIN" style={{ background: '#091726', color: '#fff' }}>Super Admin (Global)</option>
-                  <option value="ROLE_MANAGER" style={{ background: '#091726', color: '#fff' }}>Insurance Manager (Team)</option>
-                  <option value="ROLE_ADVISOR" style={{ background: '#091726', color: '#fff' }}>Advisor (Assigned Only)</option>
-                </select>
-              </div>
-
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', overflow: 'hidden' }}>
-                  <div style={{ width: '32px', height: '32px', minWidth: '32px', borderRadius: '50%', background: '#1e3a5f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#93c5fd', fontWeight: 700, fontSize: '0.8rem', border: '1px solid #3b82f6' }}>
+                <div 
+                  onClick={() => setShowProfileModal(true)}
+                  title="Open Account & Profile Settings"
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', overflow: 'hidden', cursor: 'pointer', flex: 1, padding: '0.2rem', borderRadius: '8px', transition: 'background 0.15s ease' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ width: '34px', height: '34px', minWidth: '34px', borderRadius: '50%', background: 'linear-gradient(135deg, #0f2b48, #1e3a5f)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontWeight: 800, fontSize: '0.82rem', border: '1.5px solid #cbd5e1' }}>
                     {user?.fullName ? user.fullName.charAt(0) : 'A'}
                   </div>
                   <div style={{ overflow: 'hidden' }}>
-                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f8fafc', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                      {user?.fullName || 'Super Admin'}
+                    <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f2b48', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                      {user?.fullName || 'Aadhiraksha User'}
                     </div>
-                    <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
-                      {demoRole.replace('ROLE_', '')}
+                    <div style={{ fontSize: '0.7rem', color: '#0284c7', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '1px' }}>
+                      <span style={{ fontWeight: 600 }}>{formatRoleName(userRoleKey)}</span>
+                      <span style={{ color: '#64748b', fontSize: '0.65rem' }}>⚙️</span>
                     </div>
                   </div>
                 </div>
                 <button
                   onClick={logout}
                   title="Sign Out"
-                  style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.35rem', borderRadius: '6px' }}
+                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '0.35rem', borderRadius: '6px' }}
                   onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
                 >
                   <LogOut size={16} />
                 </button>
@@ -722,15 +891,18 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.4rem',
-                  color: '#94a3b8',
+                  color: '#475569',
                   fontSize: '0.74rem',
+                  fontWeight: 600,
                   textDecoration: 'none',
-                  padding: '0.3rem 0.5rem',
+                  padding: '0.4rem 0.55rem',
                   borderRadius: '6px',
-                  background: 'rgba(255,255,255,0.04)'
+                  background: '#ffffff',
+                  border: '1px solid var(--crm-sidebar-border)',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#f59e0b'; e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent-gold)'; e.currentTarget.style.borderColor = 'var(--accent-gold)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#475569'; e.currentTarget.style.borderColor = 'var(--crm-sidebar-border)'; }}
               >
                 <Globe size={13} />
                 <span>Back to Customer Portal</span>
@@ -739,17 +911,18 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
               <div 
-                title={`${user?.fullName || 'Super Admin'} (${demoRole.replace('ROLE_', '')})`}
-                style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#1e3a5f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#93c5fd', fontWeight: 700, fontSize: '0.82rem', border: '1px solid #3b82f6', cursor: 'pointer' }}
+                onClick={() => setShowProfileModal(true)}
+                title={`Open Account Settings: ${user?.fullName || 'Super Admin'}`}
+                style={{ width: '34px', height: '34px', borderRadius: '50%', background: 'linear-gradient(135deg, #0f2b48, #1e3a5f)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontWeight: 700, fontSize: '0.82rem', border: '1.5px solid #cbd5e1', cursor: 'pointer' }}
               >
                 {user?.fullName ? user.fullName.charAt(0) : 'A'}
               </div>
               <button
                 onClick={logout}
                 title="Sign Out"
-                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.35rem' }}
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '0.35rem' }}
                 onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
               >
                 <LogOut size={16} />
               </button>
@@ -779,7 +952,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
             boxShadow: 'var(--shadow-sm)'
           }}
         >
-          {/* Left: Sidebar Toggle + Active View Title */}
+          {/* Left: Sidebar Toggle + Portal Brand Title + Live Sync Status */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, overflow: 'hidden' }}>
             <button
               onClick={handleMenuToggle}
@@ -801,21 +974,22 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
               <Menu size={18} />
             </button>
 
-            <h1 className="crm-title-text" style={{ fontSize: '1.02rem', fontWeight: 800, color: 'var(--primary-navy)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
-              {activeView === 'clients' ? 'Client Data Sheet' :
-               activeView === 'agenda' ? "Daily Call Agenda" :
-               activeView === 'pipeline' ? 'Sales Pipeline' :
-               activeView === 'meetings' ? 'Meeting Calendar' :
-               activeView === 'users' ? 'User & Team Management' :
-               activeView === 'quotes' ? 'Customer Quotes' :
-               activeView === 'posp' ? 'POSP Partner Network' :
-               activeView === 'claims' ? 'Claims Desk' :
-               activeView === 'hospitals' ? 'Cashless Hospital Network' : 'Dashboard Overview'}
-            </h1>
-            <span className="crm-livesync-badge" style={{ background: 'var(--accent-emerald-light)', color: 'var(--accent-emerald-dark)', fontSize: '0.68rem', fontWeight: 800, padding: '0.15rem 0.5rem', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-emerald)' }}></span>
-              Live Sync
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+              <span style={{ 
+                fontSize: '0.92rem', 
+                fontWeight: 800, 
+                color: 'var(--primary-navy)', 
+                letterSpacing: '-0.01em',
+                whiteSpace: 'nowrap'
+              }}>
+                Aadhiraksha CRM Portal
+              </span>
+
+              <span className="crm-livesync-badge" style={{ background: 'var(--accent-emerald-light)', color: 'var(--accent-emerald-dark)', fontSize: '0.68rem', fontWeight: 800, padding: '0.15rem 0.5rem', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-emerald)' }}></span>
+                Live Sync
+              </span>
+            </div>
           </div>
 
           {/* Right Header Actions */}
@@ -823,7 +997,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
             
             {/* Quick Action Buttons */}
             <button
-              onClick={() => setActiveView('agenda')}
+              onClick={() => handleNavigateView('agenda')}
               className="crm-action-btn"
               title={`Calls Due (${dueFollowUps.length})`}
               style={{
@@ -883,11 +1057,238 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
             >
               <RefreshCw size={15} />
             </button>
+
+            {/* Header User Profile Avatar & Dropdown Menu */}
+            <div style={{ position: 'relative' }} ref={userMenuRef}>
+              <button
+                onClick={() => setShowUserMenu(prev => !prev)}
+                title="Account & Profile Settings"
+                className={`crm-header-user-btn ${showUserMenu ? 'active' : ''}`}
+              >
+                {/* Avatar with active presence dot */}
+                <div style={{ position: 'relative' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, var(--primary-navy), var(--primary-navy-light))',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.8rem',
+                    boxShadow: 'var(--shadow-xs)'
+                  }}>
+                    {user?.fullName ? user.fullName.charAt(0).toUpperCase() : 'A'}
+                  </div>
+                  <span style={{
+                    position: 'absolute',
+                    bottom: '0px',
+                    right: '0px',
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: 'var(--accent-emerald)',
+                    border: '1.5px solid #ffffff'
+                  }} />
+                </div>
+
+                {/* User Name & Role on Desktop */}
+                <div className="crm-header-user-text" style={{ textAlign: 'left', lineHeight: 1.2 }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--crm-text-primary)', maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {user?.fullName || 'User'}
+                  </div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--crm-info)', fontWeight: 600 }}>
+                    {formatRoleName(userRoleKey)}
+                  </div>
+                </div>
+
+                <ChevronDown 
+                  size={14} 
+                  color="var(--crm-text-muted)" 
+                  style={{
+                    transition: 'transform var(--transition-fast)',
+                    transform: showUserMenu ? 'rotate(180deg)' : 'rotate(0deg)'
+                  }} 
+                />
+              </button>
+
+              {/* Profile Dropdown Popover */}
+              {showUserMenu && (
+                <div className="crm-popover-card">
+                  {/* Identity Header Card */}
+                  <div className="crm-popover-identity">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <div style={{
+                        width: '38px',
+                        height: '38px',
+                        minWidth: '38px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, var(--primary-navy), var(--primary-navy-light))',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#ffffff',
+                        fontWeight: 800,
+                        fontSize: '0.95rem'
+                      }}>
+                        {user?.fullName ? user.fullName.charAt(0).toUpperCase() : 'A'}
+                      </div>
+                      <div style={{ overflow: 'hidden' }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--crm-text-primary)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                          {user?.fullName || 'Aadhiraksha User'}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--crm-text-muted)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                          {user?.email || user?.username || 'user@aadhiraksha.com'}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '999px',
+                        background: 'var(--crm-info-bg)',
+                        color: 'var(--crm-info)'
+                      }}>
+                        <ShieldCheck size={11} /> {formatRoleName(userRoleKey)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Dropdown Items */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setProfileModalTab('profile');
+                        setShowProfileModal(true);
+                      }}
+                      className="crm-popover-btn"
+                    >
+                      <User size={15} color="var(--primary-navy)" />
+                      <span>My Profile Details</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setProfileModalTab('security');
+                        setShowProfileModal(true);
+                      }}
+                      className="crm-popover-btn"
+                    >
+                      <Lock size={15} color="var(--accent-emerald-dark)" />
+                      <span>Security & Password</span>
+                    </button>
+
+                    <Link
+                      to="/"
+                      onClick={() => setShowUserMenu(false)}
+                      className="crm-popover-btn"
+                    >
+                      <Globe size={15} color="var(--crm-info)" />
+                      <span>Back to Customer Portal</span>
+                    </Link>
+
+                    <div style={{ height: '1px', background: 'var(--crm-border-subtle)', margin: '0.35rem 0' }} />
+
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        logout();
+                      }}
+                      className="crm-popover-btn danger"
+                    >
+                      <LogOut size={15} color="var(--crm-danger)" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
         {/* WORKSPACE VIEW CONTENT AREA */}
         <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}>
+
+          {/* SLIM IN-PAGE NAVIGATION & BREADCRUMB BAR (Shown on all sub-views) */}
+          {activeView !== 'dashboard' && (() => {
+            const meta = getViewMeta(activeView);
+            return (
+              <div 
+                className="crm-page-nav-bar"
+                style={{
+                  marginBottom: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                  flexWrap: 'wrap'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+                  {/* High-Contrast Distinct Back Button */}
+                  <button
+                    onClick={handleGoBack}
+                    title="Go back to previous screen"
+                    style={{
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: '8px',
+                      padding: '0.35rem 0.75rem',
+                      color: 'var(--text-main)',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      boxShadow: 'var(--shadow-xs, 0 1px 2px rgba(0,0,0,0.05))',
+                      transition: 'all var(--transition-fast)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--accent-gold)';
+                      e.currentTarget.style.color = 'var(--accent-gold)';
+                      e.currentTarget.style.background = 'var(--bg-main)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                      e.currentTarget.style.color = 'var(--text-main)';
+                      e.currentTarget.style.background = 'var(--bg-card)';
+                    }}
+                  >
+                    <ArrowLeft size={14} />
+                    <span>Back</span>
+                  </button>
+
+                  <div style={{ width: '1px', height: '18px', background: 'var(--border-subtle)' }} />
+
+                  {/* Micro Breadcrumb Trail */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    <span
+                      onClick={() => handleNavigateView('dashboard')}
+                      style={{ cursor: 'pointer', color: 'var(--text-muted)' }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-gold)'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                    >
+                      Overview
+                    </span>
+                    <ChevronRight size={12} color="var(--text-muted)" />
+                    <span>{meta.category}</span>
+                    <ChevronRight size={12} color="var(--text-muted)" />
+                    <span style={{ color: 'var(--primary-navy)', fontWeight: 700 }}>{meta.title}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* VIEW: CRM DASHBOARD OVERVIEW */}
           {activeView === 'dashboard' && (
@@ -915,7 +1316,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
                 <div className="crm-mobile-hero-actions" style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                   <button
-                    onClick={() => setActiveView('clients')}
+                    onClick={() => handleNavigateView('clients')}
                     style={{
                       background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover))',
                       color: '#fff',
@@ -934,7 +1335,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                     <FileText size={15} /> + New Client
                   </button>
                   <button
-                    onClick={() => setActiveView('agenda')}
+                    onClick={() => handleNavigateView('agenda')}
                     style={{
                       background: 'var(--bg-card)',
                       color: 'var(--text-main)',
@@ -962,7 +1363,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                 
                 {/* Metric 1: Total Leads */}
                 <div 
-                  onClick={() => setActiveView('clients')}
+                  onClick={() => handleNavigateView('clients')}
                   className="crm-metric-box crm-metric-card-inner"
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
@@ -981,7 +1382,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
                 {/* Metric 2: Due Followups */}
                 <div 
-                  onClick={() => setActiveView('agenda')}
+                  onClick={() => handleNavigateView('agenda')}
                   className="crm-metric-box crm-metric-card-inner"
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
@@ -1000,7 +1401,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
                 {/* Metric 3: Web Inquiries */}
                 <div 
-                  onClick={() => setActiveView('quotes')}
+                  onClick={() => handleNavigateView('quotes')}
                   className="crm-metric-box crm-metric-card-inner"
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
@@ -1019,7 +1420,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
                 {/* Metric 4: Cashless Hospitals */}
                 <div 
-                  onClick={() => setActiveView('hospitals')}
+                  onClick={() => handleNavigateView('hospitals')}
                   className="crm-metric-box crm-metric-card-inner"
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.82rem', fontWeight: 600 }}>
@@ -1046,7 +1447,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                       <TrendingUp size={18} color="#0284c7" /> 10-Stage Pipeline Overview
                     </div>
                     <button
-                      onClick={() => setActiveView('pipeline')}
+                      onClick={() => handleNavigateView('pipeline')}
                       style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
                     >
                       Open Kanban &rarr;
@@ -1084,7 +1485,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                       <Users size={18} color="#059669" /> User & Team Management
                     </div>
                     <button
-                      onClick={() => setActiveView('users')}
+                      onClick={() => handleNavigateView('users')}
                       style={{ background: 'none', border: 'none', color: '#059669', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
                     >
                       Manage Users &rarr;
@@ -1095,13 +1496,13 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                   </p>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <button
-                      onClick={() => setActiveView('users')}
+                      onClick={() => handleNavigateView('users')}
                       style={{ background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', padding: '0.5rem 0.85rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}
                     >
                       + Create Manager / Advisor
                     </button>
                     <button
-                      onClick={() => setActiveView('agenda')}
+                      onClick={() => handleNavigateView('agenda')}
                       style={{ background: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1', padding: '0.5rem 0.85rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
                     >
                       View Team Follow-ups
@@ -1116,10 +1517,10 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           {activeView === 'clients' && (
             <ClientDataSheetView 
               onOpenClient360={(lead) => setSelectedClient360(lead)}
-              onOpenCallModal={() => setActiveView('agenda')}
+              onOpenCallModal={() => handleNavigateView('agenda')}
               onOpenMeetingModal={(lead) => {
                 setPreselectedMeetingClient(lead);
-                setActiveView('meetings');
+                handleNavigateView('meetings');
               }}
             />
           )}
@@ -1130,7 +1531,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
               onOpenClient360={(lead) => setSelectedClient360(lead)}
               onOpenMeetingModal={(lead) => {
                 setPreselectedMeetingClient(lead);
-                setActiveView('meetings');
+                handleNavigateView('meetings');
               }}
             />
           )}
@@ -1139,10 +1540,10 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           {activeView === 'pipeline' && (
             <SalesPipelineView 
               onOpenClient360={(lead) => setSelectedClient360(lead)}
-              onOpenCallModal={() => setActiveView('agenda')}
+              onOpenCallModal={() => handleNavigateView('agenda')}
               onOpenMeetingModal={(lead) => {
                 setPreselectedMeetingClient(lead);
-                setActiveView('meetings');
+                handleNavigateView('meetings');
               }}
             />
           )}
@@ -1873,6 +2274,13 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           </div>
         </div>
       )}
+
+      {/* Global Self-Service Account & Profile Settings Modal */}
+      <UserProfileModal 
+        isOpen={showProfileModal} 
+        onClose={() => setShowProfileModal(false)} 
+        defaultTab={profileModalTab}
+      />
 
     </div>
   );

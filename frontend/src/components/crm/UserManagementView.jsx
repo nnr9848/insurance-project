@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Users, 
   UserPlus, 
@@ -17,16 +17,31 @@ import {
   Building2,
   Phone,
   Mail,
-  ChevronRight
+  ChevronRight,
+  MoreVertical,
+  Lock,
+  Shield,
+  UserX
 } from 'lucide-react';
 import { crmService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function UserManagementView() {
+  const { 
+    user: authUser, 
+    isSuperAdmin, 
+    isManager, 
+    canCreateAdmins, 
+    canCreateManagers 
+  } = useAuth();
+  
   const [users, setUsers] = useState([]);
   const [managers, setManagers] = useState([]);
+  const [assignableRoles, setAssignableRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
+  const [activeActionMenuId, setActiveActionMenuId] = useState(null);
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -66,17 +81,70 @@ export default function UserManagementView() {
 
   useEffect(() => {
     loadData();
+
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.user-action-menu-container')) {
+        setActiveActionMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
+
+  const handleToggleUserStatus = async (user) => {
+    // 1. Prevent self-deactivation guardrail
+    if (authUser && (authUser.id === user.id || authUser.email === user.email)) {
+      alert("⚠️ Security Protection: You cannot deactivate your own account.");
+      return;
+    }
+
+    // 2. Prevent deactivating the last remaining Super Admin
+    if (user.isActive && (user.roles?.includes('ROLE_SUPER_ADMIN') || user.roles?.includes('ROLE_ADMIN'))) {
+      const activeSuperAdmins = users.filter(u => 
+        u.isActive && 
+        u.id !== user.id && 
+        (u.roles?.includes('ROLE_SUPER_ADMIN') || u.roles?.includes('ROLE_ADMIN'))
+      );
+      if (activeSuperAdmins.length === 0) {
+        alert("⛔ System Protection: Cannot deactivate the last remaining Super Administrator in the organization.");
+        return;
+      }
+    }
+
+    try {
+      await crmService.updateUser(user.id, {
+        fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
+        designation: user.designation,
+        department: user.department,
+        managerId: user.managerId,
+        isActive: !user.isActive
+      });
+      loadData();
+    } catch (err) {
+      alert('Failed to update user status: ' + (err.response?.data?.message || err.message));
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [usersData, managersData] = await Promise.all([
+      const [usersData, managersData, rolesData] = await Promise.all([
         crmService.getUsers(),
-        crmService.getManagers()
+        crmService.getManagers(),
+        crmService.getAssignableRoles().catch(() => [])
       ]);
-      setUsers(usersData);
-      setManagers(managersData);
+      setUsers(usersData || []);
+      setManagers(managersData || []);
+      setAssignableRoles(rolesData || []);
+      
+      // Auto-set default role if current form role not in assignable list
+      if (rolesData && rolesData.length > 0) {
+        setCreateUserForm(prev => ({
+          ...prev,
+          role: rolesData.some(r => r.code === prev.role) ? prev.role : rolesData[0].code
+        }));
+      }
     } catch (err) {
       console.error('Failed to load CRM users:', err);
     } finally {
@@ -122,6 +190,26 @@ export default function UserManagementView() {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!selectedUser) return;
+
+    // 1. Prevent self-deactivation guardrail via Edit modal
+    if (!editUserForm.isActive && authUser && (authUser.id === selectedUser.id || authUser.email === selectedUser.email)) {
+      alert("⚠️ Security Protection: You cannot deactivate your own account.");
+      return;
+    }
+
+    // 2. Prevent deactivating the last remaining Super Admin via Edit modal
+    if (!editUserForm.isActive && selectedUser.isActive && (selectedUser.roles?.includes('ROLE_SUPER_ADMIN') || selectedUser.roles?.includes('ROLE_ADMIN'))) {
+      const activeSuperAdmins = users.filter(u => 
+        u.isActive && 
+        u.id !== selectedUser.id && 
+        (u.roles?.includes('ROLE_SUPER_ADMIN') || u.roles?.includes('ROLE_ADMIN'))
+      );
+      if (activeSuperAdmins.length === 0) {
+        alert("⛔ System Protection: Cannot deactivate the last remaining Super Administrator in the organization.");
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const payload = {
@@ -186,6 +274,13 @@ export default function UserManagementView() {
   };
 
   const filteredUsers = users.filter((u) => {
+    // Defense-in-depth: If logged-in user is a Manager, strictly enforce subordinate-only display
+    if (isManager && !isSuperAdmin) {
+      if (u.managerId !== authUser?.id) {
+        return false;
+      }
+    }
+
     const matchesSearch = 
       u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -205,46 +300,54 @@ export default function UserManagementView() {
       {/* Top Header & Actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f2b48', margin: 0 }}>
-            User & Team Hierarchy Management
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--crm-text-primary)', margin: 0 }}>
+            {isSuperAdmin ? 'Organization Staff & Team Hierarchy' : 'My Team Members'}
           </h2>
-          <p style={{ color: '#64748b', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
-            Manage Super Admins, Insurance Managers, Advisors, team allocations, and login credentials.
+          <p style={{ color: 'var(--crm-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+            {isSuperAdmin 
+              ? 'Manage Super Admins, Insurance Managers, Advisors, and global user provisioning.'
+              : 'View and manage insurance advisors and employees assigned directly under your team hierarchy.'}
           </p>
         </div>
 
-        <button
-          onClick={() => setShowCreateModal(true)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-            color: '#ffffff',
-            border: 'none',
-            padding: '10px 20px',
-            borderRadius: '12px',
-            fontWeight: 700,
-            fontSize: '0.9rem',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)'
-          }}
-        >
-          <UserPlus size={18} /> Add New Employee / Manager
-        </button>
+        {isSuperAdmin && (
+          <button
+            onClick={async () => {
+              try {
+                const freshRoles = await crmService.getAssignableRoles();
+                if (freshRoles && freshRoles.length > 0) {
+                  setAssignableRoles(freshRoles);
+                }
+              } catch (err) {
+                console.warn('Using existing assignable roles catalog', err);
+              }
+              setShowCreateModal(true);
+            }}
+            className="crm-emerald-btn"
+            style={{
+              padding: '9px 18px',
+              borderRadius: '10px',
+              fontWeight: 700,
+              fontSize: '0.88rem'
+            }}
+          >
+            <UserPlus size={17} /> Add New Employee / Manager
+          </button>
+        )}
       </div>
 
       {/* Filter & Search Bar */}
       <div style={{
-        background: '#ffffff',
+        background: 'var(--crm-surface-card)',
         padding: '1rem 1.25rem',
-        borderRadius: '16px',
-        border: '1px solid #e2e8f0',
+        borderRadius: '14px',
+        border: '1px solid var(--crm-border-subtle)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '1rem'
+        gap: '1rem',
+        boxShadow: 'var(--shadow-xs)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '260px' }}>
           <Search size={18} color="#94a3b8" />
@@ -272,15 +375,16 @@ export default function UserManagementView() {
             style={{
               padding: '6px 12px',
               borderRadius: '8px',
-              border: '1px solid #cbd5e1',
+              border: '1px solid var(--crm-border-subtle)',
               fontSize: '0.85rem',
               fontWeight: 600,
-              background: '#ffffff'
+              background: 'var(--crm-surface-card)',
+              color: 'var(--crm-text-primary)'
             }}
           >
-            <option value="ALL">All Roles ({users.length})</option>
-            <option value="ROLE_SUPER_ADMIN">Super Admins</option>
-            <option value="ROLE_MANAGER">Insurance Managers</option>
+            <option value="ALL">All Roles ({filteredUsers.length})</option>
+            {isSuperAdmin && <option value="ROLE_SUPER_ADMIN">Super Admins</option>}
+            {isSuperAdmin && <option value="ROLE_MANAGER">Insurance Managers</option>}
             <option value="ROLE_ADVISOR">Insurance Advisors</option>
             <option value="ROLE_POSP_AGENT">POSP Agents</option>
           </select>
@@ -289,31 +393,39 @@ export default function UserManagementView() {
 
       {/* Users Table */}
       <div style={{
-        background: '#ffffff',
+        background: 'var(--crm-surface-card)',
         borderRadius: '16px',
-        border: '1px solid #e2e8f0',
+        border: '1px solid var(--crm-border-subtle)',
         overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+        boxShadow: 'var(--shadow-sm)'
       }}>
         {loading ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-            Loading user hierarchy data...
+          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--crm-text-muted)' }}>
+            Loading team & user hierarchy directory...
           </div>
         ) : filteredUsers.length === 0 ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-            No users match the search and filter criteria.
+          <div style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
+            <Users size={36} color="var(--crm-text-muted)" style={{ margin: '0 auto 10px', opacity: 0.6 }} />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--crm-text-primary)', margin: 0 }}>
+              {isSuperAdmin ? 'No users match the search and filter criteria.' : 'No Team Members Assigned Yet'}
+            </h3>
+            <p style={{ fontSize: '0.82rem', color: 'var(--crm-text-muted)', margin: '6px 0 0 0' }}>
+              {isSuperAdmin 
+                ? 'Try adjusting your search query or role filter.'
+                : 'You currently do not have any advisors or employees allocated under your manager branch. Please contact a Super Administrator to assign advisors to your team.'}
+            </p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  <th style={{ padding: '14px 18px' }}>Employee</th>
-                  <th style={{ padding: '14px 18px' }}>Role</th>
-                  <th style={{ padding: '14px 18px' }}>Reporting Manager</th>
-                  <th style={{ padding: '14px 18px' }}>Assigned Clients</th>
-                  <th style={{ padding: '14px 18px' }}>Status</th>
-                  <th style={{ padding: '14px 18px', textAlign: 'right' }}>Actions</th>
+            <table className="crm-table">
+              <thead className="crm-table-head">
+                <tr>
+                  <th className="crm-table-th">Employee</th>
+                  <th className="crm-table-th">Role</th>
+                  <th className="crm-table-th">Reporting Manager</th>
+                  <th className="crm-table-th">Assigned Clients</th>
+                  <th className="crm-table-th">Status</th>
+                  <th className="crm-table-th" style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -330,18 +442,24 @@ export default function UserManagementView() {
                     ? { bg: '#ecfdf5', color: '#047857', label: 'Insurance Advisor' }
                     : { bg: '#fef3c7', color: '#b45309', label: 'POSP Agent' };
 
+                  // Authorization check for 3-dot action menu:
+                  // Strictly Super Admins can manage employee IAM profiles, credentials, and roles.
+                  // Managers have clean read-only visibility into their assigned subordinates.
+                  const canActOnUser = isSuperAdmin;
+
                   return (
-                    <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }}>
+                    <tr key={u.id} className="crm-table-row">
                       
                       {/* Employee Info */}
-                      <td style={{ padding: '14px 18px' }}>
+                      <td className="crm-table-td">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <div style={{
                             width: '36px',
                             height: '36px',
                             borderRadius: '50%',
-                            background: isSuper ? '#0f2b48' : '#e2e8f0',
-                            color: isSuper ? '#f59e0b' : '#334155',
+                            background: 'var(--crm-surface-hover)',
+                            border: '1px solid var(--crm-border-subtle)',
+                            color: 'var(--crm-text-primary)',
                             fontWeight: 800,
                             display: 'flex',
                             alignItems: 'center',
@@ -349,22 +467,22 @@ export default function UserManagementView() {
                             fontSize: '0.85rem',
                             flexShrink: 0
                           }}>
-                            {u.fullName[0]}
+                            {u.fullName ? u.fullName[0] : 'U'}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 700, color: '#0f2b48' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--crm-text-primary)' }}>
                               {u.fullName} 
                               {u.employeeCode && (
-                                <span style={{ marginLeft: '6px', fontSize: '0.72rem', background: '#f1f5f9', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                                <span style={{ marginLeft: '6px', fontSize: '0.72rem', background: 'var(--crm-surface-hover)', color: 'var(--crm-text-secondary)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
                                   {u.employeeCode}
                                 </span>
                               )}
                             </div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--crm-text-muted)' }}>
                               {u.email} • {u.phoneNumber || 'No phone'}
                             </div>
                             {u.designation && (
-                              <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--accent-emerald)', fontWeight: 600 }}>
                                 {u.designation} ({u.department || 'Sales'})
                               </div>
                             )}
@@ -373,7 +491,7 @@ export default function UserManagementView() {
                       </td>
 
                       {/* Role Badge */}
-                      <td style={{ padding: '14px 18px' }}>
+                      <td className="crm-table-td">
                         <span style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -390,88 +508,114 @@ export default function UserManagementView() {
                       </td>
 
                       {/* Reporting Manager */}
-                      <td style={{ padding: '14px 18px', color: '#334155' }}>
+                      <td className="crm-table-td" style={{ color: 'var(--crm-text-secondary)' }}>
                         {u.managerName ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                            <Building2 size={14} color="#059669" />
+                            <Building2 size={14} color="var(--accent-emerald)" />
                             {u.managerName}
                           </div>
                         ) : (
-                          <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '0.8rem' }}>None (Direct)</span>
+                          <span style={{ color: 'var(--crm-text-muted)', fontStyle: 'italic', fontSize: '0.8rem' }}>None (Direct)</span>
                         )}
                       </td>
 
                       {/* Assigned Clients */}
-                      <td style={{ padding: '14px 18px' }}>
+                      <td className="crm-table-td">
                         <span style={{
-                          background: '#f8fafc',
-                          border: '1px solid #e2e8f0',
+                          background: 'var(--crm-surface-muted)',
+                          border: '1px solid var(--crm-border-subtle)',
                           padding: '4px 10px',
                           borderRadius: '8px',
                           fontWeight: 700,
                           fontSize: '0.82rem',
-                          color: '#0f2b48'
+                          color: 'var(--crm-text-primary)'
                         }}>
                           {u.assignedClientsCount || 0} Clients
                         </span>
                       </td>
 
                       {/* Status */}
-                      <td style={{ padding: '14px 18px' }}>
+                      <td className="crm-table-td">
                         {u.isActive ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#059669', fontWeight: 700, fontSize: '0.8rem' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--crm-success)', fontWeight: 700, fontSize: '0.8rem' }}>
                             <CheckCircle2 size={14} /> Active
                           </span>
                         ) : (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#dc2626', fontWeight: 700, fontSize: '0.8rem' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--crm-danger)', fontWeight: 700, fontSize: '0.8rem' }}>
                             <XCircle size={14} /> Inactive
                           </span>
                         )}
                       </td>
 
-                      {/* Actions */}
-                      <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: '6px' }}>
-                          <button
-                            onClick={() => openEditModal(u)}
-                            title="Edit User Profile & Reassign Manager"
-                            style={{
-                              background: '#f1f5f9',
-                              border: '1px solid #cbd5e1',
-                              padding: '6px 10px',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              color: '#334155',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '0.78rem',
-                              fontWeight: 600
-                            }}
-                          >
-                            <Edit3 size={13} /> Edit
-                          </button>
+                      {/* Actions (3-Dot Overflow Menu - Industry Standard UX) */}
+                      <td className="crm-table-td" style={{ textAlign: 'right', position: 'relative' }}>
+                        {canActOnUser ? (
+                          <div className="user-action-menu-container" style={{ display: 'inline-block', position: 'relative' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveActionMenuId(activeActionMenuId === u.id ? null : u.id);
+                              }}
+                              title="Actions"
+                              className="crm-modal-close-btn"
+                              style={{ padding: '6px' }}
+                            >
+                              <MoreVertical size={16} />
+                            </button>
 
-                          <button
-                            onClick={() => openResetModal(u)}
-                            title="Reset Password & Generate Temporary Credentials"
-                            style={{
-                              background: '#fef3c7',
-                              border: '1px solid #fde68a',
-                              padding: '6px 10px',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              color: '#b45309',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              fontSize: '0.78rem',
-                              fontWeight: 700
-                            }}
-                          >
-                            <Key size={13} /> Reset Pwd
-                          </button>
-                        </div>
+                            {activeActionMenuId === u.id && (
+                              <div className="crm-popover-card" style={{ width: '200px', right: 0, top: 'calc(100% + 4px)' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveActionMenuId(null);
+                                    openEditModal(u);
+                                  }}
+                                  className="crm-popover-btn"
+                                >
+                                  <Edit3 size={14} color="var(--accent-emerald)" /> Edit Profile & Role
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveActionMenuId(null);
+                                    openResetModal(u);
+                                  }}
+                                  className="crm-popover-btn"
+                                >
+                                  <Key size={14} color="var(--accent-gold)" /> Reset Password
+                                </button>
+
+                                <div style={{ height: '1px', background: 'var(--crm-border-subtle)', margin: '4px 0' }} />
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveActionMenuId(null);
+                                    handleToggleUserStatus(u);
+                                  }}
+                                  className="crm-popover-btn danger"
+                                >
+                                  {u.isActive ? (
+                                    <>
+                                      <UserX size={14} /> Deactivate User
+                                    </>
+                                  ) : (
+                                    <>
+                                      <UserCheck size={14} color="var(--crm-success)" /> Activate User
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--crm-text-muted)', fontStyle: 'italic' }}>
+                            Read-only
+                          </span>
+                        )}
                       </td>
 
                     </tr>
@@ -489,7 +633,6 @@ export default function UserManagementView() {
           position: 'fixed',
           inset: 0,
           background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(4px)',
           zIndex: 10000,
           display: 'flex',
           alignItems: 'center',
@@ -505,24 +648,39 @@ export default function UserManagementView() {
             overflow: 'hidden'
           }}>
             <div style={{
-              background: 'linear-gradient(135deg, #0f2b48 0%, #091726 100%)',
-              color: '#ffffff',
+              background: '#ffffff',
               padding: '1.25rem 1.5rem',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
+              borderBottom: '1px solid #e2e8f0'
             }}>
               <div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>Add New Employee / Manager</h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                <h3 style={{ fontSize: '1.18rem', fontWeight: 700, margin: 0, color: '#0f2b48', letterSpacing: '-0.2px' }}>
+                  Add New Employee / Manager
+                </h3>
+                <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
                   Generate username and temporary login credentials
                 </p>
               </div>
               <button
                 onClick={() => setShowCreateModal(false)}
-                style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer' }}
+                style={{ 
+                  background: '#f8fafc', 
+                  border: '1px solid #e2e8f0', 
+                  color: '#64748b', 
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#0f2b48'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
@@ -600,10 +758,34 @@ export default function UserManagementView() {
                     onChange={(e) => setCreateUserForm({ ...createUserForm, role: e.target.value })}
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
                   >
-                    <option value="ROLE_ADVISOR">Employee / Insurance Advisor</option>
-                    <option value="ROLE_MANAGER">Insurance Manager</option>
-                    <option value="ROLE_SUPER_ADMIN">Super Admin</option>
-                    <option value="ROLE_POSP_AGENT">POSP Agent</option>
+                    {assignableRoles.length > 0 ? (
+                      assignableRoles
+                        .filter(r => {
+                          if (!canCreateAdmins && (r.code === 'ROLE_SUPER_ADMIN' || r.code === 'ROLE_ADMIN')) return false;
+                          if (!canCreateManagers && r.code === 'ROLE_MANAGER') return false;
+                          return true;
+                        })
+                        .map(r => (
+                          <option key={r.code} value={r.code}>
+                            {r.code === 'ROLE_SUPER_ADMIN' ? '👑 ' : r.code === 'ROLE_MANAGER' ? '👔 ' : r.code === 'ROLE_ADVISOR' ? '🎯 ' : r.code === 'ROLE_POSP_AGENT' ? '🤝 ' : '💼 '}
+                            {r.label}
+                          </option>
+                        ))
+                    ) : (
+                      isManager ? (
+                        <>
+                          <option value="ROLE_ADVISOR">🎯 Insurance Advisor / Employee</option>
+                          <option value="ROLE_POSP_AGENT">🤝 POSP Agent Partner</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="ROLE_ADVISOR">🎯 Insurance Advisor / Employee</option>
+                          <option value="ROLE_MANAGER">👔 Branch Manager</option>
+                          <option value="ROLE_SUPER_ADMIN">👑 Super Admin (Full Global Access)</option>
+                          <option value="ROLE_POSP_AGENT">🤝 POSP Agent Partner</option>
+                        </>
+                      )
+                    )}
                   </select>
                 </div>
 
@@ -614,7 +796,16 @@ export default function UserManagementView() {
                   <select
                     value={createUserForm.managerId}
                     onChange={(e) => setCreateUserForm({ ...createUserForm, managerId: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
+                    disabled={createUserForm.role === 'ROLE_SUPER_ADMIN'}
+                    style={{ 
+                      width: '100%', 
+                      padding: '9px 12px', 
+                      borderRadius: '8px', 
+                      border: '1px solid #cbd5e1', 
+                      fontSize: '0.88rem', 
+                      background: createUserForm.role === 'ROLE_SUPER_ADMIN' ? '#f1f5f9' : '#ffffff',
+                      cursor: createUserForm.role === 'ROLE_SUPER_ADMIN' ? 'not-allowed' : 'pointer'
+                    }}
                   >
                     <option value="">Direct / None</option>
                     {managers.map(m => (
@@ -623,6 +814,25 @@ export default function UserManagementView() {
                   </select>
                 </div>
               </div>
+
+              {createUserForm.role === 'ROLE_SUPER_ADMIN' && (
+                <div style={{
+                  background: '#fef3c7',
+                  border: '1px solid #fde68a',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  fontSize: '0.78rem',
+                  color: '#92400e'
+                }}>
+                  <ShieldCheck size={16} color="#d97706" style={{ marginTop: '2px', flexShrink: 0 }} />
+                  <div>
+                    <strong>Super Admin Access Notice:</strong> This user will have unrestricted global governance over all branch financials, pipelines, cashless hospitals, and team credentials.
+                  </div>
+                </div>
+              )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
@@ -678,7 +888,6 @@ export default function UserManagementView() {
           position: 'fixed',
           inset: 0,
           background: 'rgba(15, 23, 42, 0.75)',
-          backdropFilter: 'blur(4px)',
           zIndex: 11000,
           display: 'flex',
           alignItems: 'center',

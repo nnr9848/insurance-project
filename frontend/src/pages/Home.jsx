@@ -561,8 +561,6 @@ export default function Home() {
           right: 0,
           bottom: 0,
           background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
           zIndex: 10000,
           display: 'flex',
           alignItems: 'center',

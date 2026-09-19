@@ -46,11 +46,43 @@ public class CrmUserService {
         return sb.toString();
     }
 
+    private String generateEmployeeCode(String roleName) {
+        String prefix = "ADV-";
+        if ("ROLE_SUPER_ADMIN".equals(roleName)) prefix = "ADM-";
+        else if ("ROLE_ADMIN".equals(roleName)) prefix = "ADM-";
+        else if ("ROLE_MANAGER".equals(roleName)) prefix = "MGR-";
+        else if ("ROLE_POSP_AGENT".equals(roleName)) prefix = "POSP-";
+        else if ("ROLE_STAFF".equals(roleName)) prefix = "STF-";
+
+        String code;
+        do {
+            int randomNum = 100000 + random.nextInt(900000);
+            code = prefix + randomNum;
+        } while (userRepository.existsByEmployeeCode(code));
+
+        return code;
+    }
+
     @Transactional
     public Map<String, Object> createUser(CrmUserDto.CreateUserRequest request, User performedBy) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("User with email " + request.getEmail() + " already exists.");
         }
+
+        String targetRoleName = request.getRole() != null ? request.getRole() : "ROLE_ADVISOR";
+
+        // RBAC Boundary: Only Super Admins / Admins can create staff/users on the platform
+        if (performedBy != null) {
+            boolean isCallerSuperAdmin = performedBy.getRoles().stream()
+                    .anyMatch(r -> "ROLE_SUPER_ADMIN".equals(r.getName()) || "ROLE_ADMIN".equals(r.getName()));
+
+            if (!isCallerSuperAdmin) {
+                throw new IllegalArgumentException("Access Denied: Only Super Administrators have permission to create and provision new platform users.");
+            }
+        }
+
+        Role targetRole = roleRepository.findByName(targetRoleName)
+                .orElseThrow(() -> new IllegalArgumentException("Role " + targetRoleName + " not found."));
 
         String rawPassword = (request.getPassword() != null && !request.getPassword().trim().isEmpty())
                 ? request.getPassword().trim()
@@ -58,11 +90,13 @@ public class CrmUserService {
 
         String employeeCode = request.getEmployeeCode();
         if (employeeCode == null || employeeCode.trim().isEmpty()) {
-            employeeCode = "EMP" + (1000 + random.nextInt(9000));
+            employeeCode = generateEmployeeCode(targetRoleName);
+        } else {
+            if (userRepository.existsByEmployeeCode(employeeCode.trim())) {
+                throw new IllegalArgumentException("Employee Code " + employeeCode + " is already taken.");
+            }
+            employeeCode = employeeCode.trim().toUpperCase();
         }
-
-        Role targetRole = roleRepository.findByName(request.getRole() != null ? request.getRole() : "ROLE_ADVISOR")
-                .orElseGet(() -> roleRepository.save(Role.builder().name(request.getRole() != null ? request.getRole() : "ROLE_ADVISOR").build()));
 
         User manager = null;
         if (request.getManagerId() != null) {
@@ -100,13 +134,40 @@ public class CrmUserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
 
+        boolean isSuperAdmin = performedBy != null && performedBy.getRoles().stream()
+                .anyMatch(r -> "ROLE_SUPER_ADMIN".equals(r.getName()) || "ROLE_ADMIN".equals(r.getName()));
+
+        // IAM Governance: Only Super Admins have authority to modify employee profiles or credentials
+        if (!isSuperAdmin) {
+            throw new IllegalArgumentException("Access Denied: Only Super Administrators have permission to modify employee profiles or roles.");
+        }
+
+        // 1. Self-deactivation prevention guardrail
+        if (Boolean.FALSE.equals(request.getIsActive()) && performedBy != null && user.getId().equals(performedBy.getId())) {
+            throw new IllegalArgumentException("Security Protection: You cannot deactivate your own account.");
+        }
+
+        // 2. Last active Super Admin protection guardrail
+        if (Boolean.FALSE.equals(request.getIsActive()) && user.getIsActive()) {
+            boolean isTargetSuperAdmin = user.getRoles().stream()
+                    .anyMatch(r -> "ROLE_SUPER_ADMIN".equals(r.getName()) || "ROLE_ADMIN".equals(r.getName()));
+
+            if (isTargetSuperAdmin) {
+                long remainingSuperAdmins = userRepository.countActiveSuperAdminsExcept(user.getId());
+                if (remainingSuperAdmins == 0) {
+                    throw new IllegalStateException("System Protection: Cannot deactivate the last remaining active Super Administrator.");
+                }
+            }
+        }
+
         if (request.getFullName() != null) user.setFullName(request.getFullName());
         if (request.getPhoneNumber() != null) user.setPhoneNumber(request.getPhoneNumber());
         if (request.getDesignation() != null) user.setDesignation(request.getDesignation());
         if (request.getDepartment() != null) user.setDepartment(request.getDepartment());
         if (request.getIsActive() != null) user.setIsActive(request.getIsActive());
 
-        if (request.getManagerId() != null) {
+        // Only Super Admins can reassign a user's manager
+        if (request.getManagerId() != null && isSuperAdmin) {
             User newManager = userRepository.findById(request.getManagerId())
                     .orElseThrow(() -> new IllegalArgumentException("Manager not found with ID: " + request.getManagerId()));
             user.setManager(newManager);
@@ -123,6 +184,14 @@ public class CrmUserService {
     public Map<String, String> resetPassword(Long userId, String customPassword, User performedBy) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+
+        boolean isSuperAdmin = performedBy != null && performedBy.getRoles().stream()
+                .anyMatch(r -> "ROLE_SUPER_ADMIN".equals(r.getName()) || "ROLE_ADMIN".equals(r.getName()));
+
+        // IAM Governance: Only Super Admins have authority to reset credentials
+        if (!isSuperAdmin) {
+            throw new IllegalArgumentException("Access Denied: Only Super Administrators have permission to reset user credentials.");
+        }
 
         String newRawPassword = (customPassword != null && !customPassword.trim().isEmpty())
                 ? customPassword.trim()
@@ -143,10 +212,25 @@ public class CrmUserService {
     }
 
     @Transactional(readOnly = true)
-    public List<CrmUserDto.UserResponse> getAllUsers() {
-        return userRepository.findAll().stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+    public List<CrmUserDto.UserResponse> getAllUsers(User performedBy) {
+        boolean isSuperAdmin = performedBy != null && performedBy.getRoles().stream()
+                .anyMatch(r -> "ROLE_SUPER_ADMIN".equals(r.getName()) || "ROLE_ADMIN".equals(r.getName()));
+
+        if (isSuperAdmin) {
+            return userRepository.findAll().stream()
+                    .map(this::mapToResponse)
+                    .collect(Collectors.toList());
+        }
+
+        // If caller is a Manager, strictly return only employees assigned under this manager
+        if (performedBy != null && performedBy.getRoles().stream().anyMatch(r -> "ROLE_MANAGER".equals(r.getName()))) {
+            return userRepository.findByManagerId(performedBy.getId()).stream()
+                    .map(this::mapToResponse)
+                    .collect(Collectors.toList());
+        }
+
+        // Fallback: empty list for unauthorized tiers
+        return Collections.emptyList();
     }
 
     @Transactional(readOnly = true)
@@ -170,6 +254,75 @@ public class CrmUserService {
         return userRepository.findByManagerId(managerId).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<CrmUserDto.RoleOption> getAssignableRoles(User caller) {
+        List<Role> allRoles = roleRepository.findAll();
+        boolean isCallerSuperAdmin = caller == null || caller.getRoles().stream()
+                .anyMatch(r -> "ROLE_SUPER_ADMIN".equals(r.getName()) || "ROLE_ADMIN".equals(r.getName()));
+
+        List<CrmUserDto.RoleOption> roleOptions = new ArrayList<>();
+
+        for (Role r : allRoles) {
+            String roleName = r.getName();
+            // Skip general customer role
+            if ("ROLE_USER".equals(roleName)) continue;
+
+            // If caller is Branch Manager, they can only create/manage Advisors and POSP Agents
+            if (!isCallerSuperAdmin) {
+                if ("ROLE_SUPER_ADMIN".equals(roleName) || "ROLE_ADMIN".equals(roleName) || "ROLE_MANAGER".equals(roleName)) {
+                    continue;
+                }
+            }
+
+            CrmUserDto.RoleOption option = CrmUserDto.RoleOption.builder()
+                    .code(roleName)
+                    .label(formatRoleLabel(roleName))
+                    .description(getRoleDescription(roleName))
+                    .category(getRoleCategory(roleName))
+                    .build();
+
+            roleOptions.add(option);
+        }
+
+        return roleOptions;
+    }
+
+    private String formatRoleLabel(String roleName) {
+        switch (roleName) {
+            case "ROLE_SUPER_ADMIN": return "Super Admin (Full Global Access)";
+            case "ROLE_ADMIN": return "Administrator";
+            case "ROLE_MANAGER": return "Branch Manager";
+            case "ROLE_ADVISOR": return "Insurance Advisor / Employee";
+            case "ROLE_POSP_AGENT": return "POSP Agent Partner";
+            case "ROLE_STAFF": return "Operations / Support Staff";
+            default: return roleName.replace("ROLE_", "");
+        }
+    }
+
+    private String getRoleDescription(String roleName) {
+        switch (roleName) {
+            case "ROLE_SUPER_ADMIN": return "Full global oversight, team governance, credential resets, hospital network management";
+            case "ROLE_ADMIN": return "Administrative operations and user management";
+            case "ROLE_MANAGER": return "Oversees assigned branch advisors, monitors pipelines, reassigns leads";
+            case "ROLE_ADVISOR": return "Manages assigned client portfolio, schedules calls, creates policies";
+            case "ROLE_POSP_AGENT": return "External certified insurance agent partner";
+            case "ROLE_STAFF": return "Operational back-office support";
+            default: return "System Role";
+        }
+    }
+
+    private String getRoleCategory(String roleName) {
+        switch (roleName) {
+            case "ROLE_SUPER_ADMIN":
+            case "ROLE_ADMIN": return "MANAGEMENT";
+            case "ROLE_MANAGER": return "SUPERVISORY";
+            case "ROLE_ADVISOR":
+            case "ROLE_STAFF": return "SALES_OPERATIONS";
+            case "ROLE_POSP_AGENT": return "EXTERNAL_PARTNER";
+            default: return "OTHER";
+        }
     }
 
     public CrmUserDto.UserResponse mapToResponse(User user) {

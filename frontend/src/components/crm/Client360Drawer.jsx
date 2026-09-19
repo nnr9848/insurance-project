@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Phone, 
@@ -16,13 +16,89 @@ import {
   ExternalLink,
   Tag,
   User,
-  AlertCircle
+  AlertCircle,
+  UserCheck,
+  Check,
+  RefreshCw
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { crmService } from '../../services/api';
 
-export default function Client360Drawer({ client, onClose, onOpenCallModal, onOpenMeetingModal }) {
+export default function Client360Drawer({ client, onClose, onOpenCallModal, onOpenMeetingModal, onLeadUpdated }) {
   if (!client) return null;
 
+  const { isSuperAdmin, isManager, user } = useAuth();
+  const canReassign = isSuperAdmin || isManager;
+
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'timeline' | 'documents'
+  const [currentClient, setCurrentClient] = useState(client);
+  const [advisors, setAdvisors] = useState([]);
+  
+  // Reassign Modal state
+  const [showReassignModal, setShowReassignModal] = useState(false);
+  const [targetAdvisorId, setTargetAdvisorId] = useState(client.assignedAdvisorId ? String(client.assignedAdvisorId) : '');
+  const [reassignReason, setReassignReason] = useState('');
+  const [reassigning, setReassigning] = useState(false);
+
+  useEffect(() => {
+    setCurrentClient(client);
+    setTargetAdvisorId(client.assignedAdvisorId ? String(client.assignedAdvisorId) : '');
+  }, [client]);
+
+  useEffect(() => {
+    if (canReassign) {
+      loadAdvisors();
+    }
+  }, [canReassign]);
+
+  const loadAdvisors = async () => {
+    try {
+      const data = await crmService.getAdvisors();
+      setAdvisors(data || []);
+    } catch (err) {
+      console.error('Failed to load advisors:', err);
+    }
+  };
+
+  const handleReassignSubmit = async (e) => {
+    e.preventDefault();
+    if (!targetAdvisorId) {
+      alert('Please select an Advisor');
+      return;
+    }
+    setReassigning(true);
+    try {
+      const updated = await crmService.reassignLead(
+        currentClient.id,
+        Number(targetAdvisorId),
+        reassignReason || 'Reassigned from Client 360 Drawer'
+      );
+      
+      const targetAdv = advisors.find(a => String(a.id) === String(targetAdvisorId));
+      const targetAdvisorName = targetAdv ? targetAdv.fullName : 'New Advisor';
+
+      // Prepend reassignment audit item to timeline immediately
+      setReassignHistory(prev => [
+        {
+          date: 'Just now',
+          title: `Reassigned to ${targetAdvisorName}`,
+          desc: `Transferred ownership from ${currentClient.assignedAdvisorName || 'Unassigned'} to ${targetAdvisorName}.`,
+          reason: reassignReason || 'Direct management portfolio realignment',
+          performedBy: user?.name || user?.fullName || 'Manager',
+          icon: <UserCheck size={14} color="#4338ca" />
+        },
+        ...prev
+      ]);
+
+      setCurrentClient(prev => ({ ...prev, ...updated }));
+      setShowReassignModal(false);
+      if (onLeadUpdated) onLeadUpdated(updated);
+    } catch (err) {
+      alert('Failed to reassign client: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setReassigning(false);
+    }
+  };
 
   const openWhatsApp = () => {
     const cleanPhone = (client.whatsappNumber || client.phoneNumber).replace(/[^0-9]/g, '');
@@ -30,7 +106,21 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
   };
 
+  const [reassignHistory, setReassignHistory] = useState([
+    {
+      date: 'Today, 10:45 AM',
+      title: `Assigned to ${currentClient.assignedAdvisorName || 'Advisor'}`,
+      desc: currentClient.notes?.includes('reassigned') || currentClient.notes?.includes('Specialist')
+        ? currentClient.notes
+        : `Handed over by Branch Management for dedicated advisory and quotation support.`,
+      reason: 'Portfolio workload optimization & client specialist alignment',
+      performedBy: currentClient.managerName || 'Branch Management',
+      icon: <UserCheck size={14} color="#4338ca" />
+    }
+  ]);
+
   const sampleTimeline = [
+    ...reassignHistory,
     { date: 'Today, 2:30 PM', title: 'Call Logged by Advisor', desc: 'Discussed family floater plan options. Client requested quotation comparing Star Health Optima vs Care Supreme.', icon: <Phone size={14} color="#059669" /> },
     { date: 'Yesterday, 11:00 AM', title: 'Stage Changed to FOLLOWUP', desc: 'Lead moved from NEW_LEAD to FOLLOWUP.', icon: <CheckCircle2 size={14} color="#0284c7" /> },
     { date: '16 Sep 2026, 4:15 PM', title: 'Web Inquiry Received', desc: 'Inquiry submitted from Aadhiraksha homepage discovery engine.', icon: <Clock size={14} color="#f59e0b" /> }
@@ -46,7 +136,6 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
       position: 'fixed',
       inset: 0,
       background: 'rgba(15, 23, 42, 0.65)',
-      backdropFilter: 'blur(3px)',
       zIndex: 12000,
       display: 'flex',
       justifyContent: 'flex-end',
@@ -270,30 +359,52 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
 
               {/* Card 3: Ownership & Governance */}
               <div style={{ background: '#ffffff', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', marginBottom: '10px' }}>
-                  Assigned Team & Advisor
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48' }}>
+                    Assigned Team & Advisor
+                  </div>
+                  {canReassign && (
+                    <button
+                      onClick={() => setShowReassignModal(true)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        background: '#e0e7ff',
+                        color: '#4338ca',
+                        border: '1px solid #c7d2fe',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <UserCheck size={13} /> Reassign
+                    </button>
+                  )}
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.85rem' }}>
                   <div>
                     <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Insurance Advisor</div>
-                    <div style={{ fontWeight: 700, color: '#0f2b48' }}>{client.assignedAdvisorName || 'Unassigned'}</div>
+                    <div style={{ fontWeight: 700, color: '#0f2b48' }}>{currentClient.assignedAdvisorName || 'Unassigned'}</div>
                   </div>
                   <div>
                     <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Branch Manager</div>
-                    <div style={{ fontWeight: 700, color: '#0f2b48' }}>{client.managerName || 'None'}</div>
+                    <div style={{ fontWeight: 700, color: '#0f2b48' }}>{currentClient.managerName || 'None'}</div>
                   </div>
                 </div>
               </div>
 
               {/* Card 4: Notes */}
-              {client.notes && (
+              {currentClient.notes && (
                 <div style={{ background: '#fef3c7', borderRadius: '12px', padding: '1rem', border: '1px solid #fde68a' }}>
                   <div style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', color: '#92400e', marginBottom: '4px' }}>
                     Advisor Notes
                   </div>
                   <div style={{ fontSize: '0.85rem', color: '#78350f', lineHeight: 1.4 }}>
-                    {client.notes}
+                    {currentClient.notes}
                   </div>
                 </div>
               )}
@@ -320,7 +431,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                   <div style={{
                     padding: '8px',
                     borderRadius: '10px',
-                    background: '#f1f5f9',
+                    background: item.reason ? '#e0e7ff' : '#f1f5f9',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -328,9 +439,16 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                   }}>
                     {item.icon}
                   </div>
-                  <div>
-                    <div style={{ fontWeight: 700, color: '#0f2b48', fontSize: '0.88rem' }}>
-                      {item.title}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+                      <div style={{ fontWeight: 700, color: '#0f2b48', fontSize: '0.88rem' }}>
+                        {item.title}
+                      </div>
+                      {item.performedBy && (
+                        <span style={{ fontSize: '0.72rem', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', color: '#64748b', fontWeight: 600 }}>
+                          by {item.performedBy}
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: '0.74rem', color: '#94a3b8', margin: '2px 0 6px 0' }}>
                       {item.date}
@@ -338,6 +456,20 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                     <div style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.4 }}>
                       {item.desc}
                     </div>
+                    {item.reason && (
+                      <div style={{
+                        marginTop: '8px',
+                        background: '#f8fafc',
+                        borderLeft: '3px solid #4338ca',
+                        padding: '6px 10px',
+                        borderRadius: '0 6px 6px 0',
+                        fontSize: '0.78rem',
+                        color: '#334155'
+                      }}>
+                        <strong style={{ color: '#4338ca' }}>Handover Note: </strong>
+                        {item.reason}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -401,6 +533,167 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
         </div>
 
       </div>
+
+      {/* Modal: Reassign Advisor */}
+      {showReassignModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          zIndex: 13000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '500px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              background: '#ffffff',
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid #e2e8f0'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: '#e0e7ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#4338ca'
+                }}>
+                  <UserCheck size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: '#0f2b48' }}>
+                    Reassign Lead Advisor
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                    {currentClient.fullName} ({currentClient.clientCode})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowReassignModal(false)}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleReassignSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Target Insurance Advisor *
+                </label>
+                <select
+                  required
+                  value={targetAdvisorId}
+                  onChange={(e) => setTargetAdvisorId(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    background: '#ffffff',
+                    fontWeight: 600,
+                    color: '#0f2b48'
+                  }}
+                >
+                  <option value="">-- Choose Target Advisor --</option>
+                  {advisors.map(adv => (
+                    <option key={adv.id} value={adv.id}>
+                      {adv.fullName} • {adv.branchCity || adv.employeeCode || 'Advisor'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Reassignment Reason / Transfer Notes
+                </label>
+                <textarea
+                  rows="3"
+                  placeholder="e.g. Assigned to specialist advisor for corporate health quote..."
+                  value={reassignReason}
+                  onChange={(e) => setReassignReason(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowReassignModal(false)}
+                  disabled={reassigning}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={reassigning}
+                  style={{
+                    flex: 2,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #4338ca, #3730a3)',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    cursor: reassigning ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {reassigning ? <RefreshCw size={14} className="animate-spin" /> : <Check size={16} />}
+                  Confirm Reassign
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

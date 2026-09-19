@@ -28,16 +28,35 @@
   --border-subtle: #e2e8f0;
   --border-focus: #cbd5e1;
 
-  /* Enterprise CRM SaaS Design System Tokens */
-  --crm-bg-sidebar: #091726;
-  --crm-bg-sidebar-hover: rgba(255, 255, 255, 0.05);
-  --crm-bg-sidebar-active: linear-gradient(90deg, #1e3a5f 0%, #152e4d 100%);
-  --crm-bg-sidebar-footer: #06101a;
-  --crm-sidebar-border: rgba(255, 255, 255, 0.08);
-  --crm-sidebar-text: #94a3b8;
-  --crm-sidebar-text-active: #f8fafc;
+  /* Enterprise CRM SaaS Design System Tokens (Unified Clean Standard) */
+  --crm-bg-sidebar: #f8fafc;
+  --crm-bg-sidebar-hover: #f1f5f9;
+  --crm-bg-sidebar-active: #ffffff;
+  --crm-bg-sidebar-footer: #ffffff;
+  --crm-sidebar-border: #e2e8f0;
+  --crm-sidebar-text: #64748b;
+  --crm-sidebar-text-active: #1e293b;
   --crm-header-bg: #ffffff;
   --crm-header-border: #e2e8f0;
+  --crm-surface-card: #ffffff;
+  --crm-surface-muted: #f8fafc;
+  --crm-surface-hover: #f1f5f9;
+  --crm-surface-active: #e2e8f0;
+  --crm-text-primary: #1e293b;
+  --crm-text-secondary: #475569;
+  --crm-text-muted: #64748b;
+  --crm-border-subtle: #e2e8f0;
+  --crm-border-focus: #3b82f6;
+  --crm-overlay-bg: rgba(15, 23, 42, 0.65);
+  --crm-danger: #ef4444;
+  --crm-danger-bg: #fef2f2;
+  --crm-danger-border: #fecaca;
+  --crm-info: #0284c7;
+  --crm-info-bg: #e0f2fe;
+  --crm-info-border: #bae6fd;
+  --crm-success: #059669;
+  --crm-success-bg: #ecfdf5;
+  --crm-success-border: #a7f3d0;
 
   /* Elevation Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -686,8 +705,9 @@ h1, h2, h3, h4, h5, h6 {
 .mobile-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(4px);
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   z-index: 999;
 }
 
@@ -2602,7 +2622,8 @@ h1, h2, h3, h4, h5, h6 {
     min-width: 0 !important;
   }
 
-  .crm-action-btn-text {
+  .crm-action-btn-text,
+  .crm-header-user-text {
     display: none !important;
   }
 
@@ -2706,53 +2727,412 @@ h1, h2, h3, h4, h5, h6 {
    CENTRALIZED CRM DESIGN SYSTEM UTILITIES
    ========================================================= */
 
-.crm-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
+/* =========================================================
+   CENTRALIZED CRM DESIGN SYSTEM COMPONENT CLASSES
+   ========================================================= */
+
+/* 1. Modals & Dialogs */
+.crm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--crm-overlay-bg);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  z-index: 10005;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+  animation: crmFadeIn 0.15s ease-out;
+}
+
+@keyframes crmFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.crm-modal-card {
+  background: var(--crm-surface-card);
+  width: 100%;
+  max-width: 520px;
   border-radius: 16px;
-  box-shadow: var(--shadow-sm);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  border: 1px solid var(--crm-border-subtle);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
 }
 
-.crm-metric-box {
+.crm-modal-header {
+  background: var(--crm-surface-card);
+  border-bottom: 1px solid var(--crm-border-subtle);
+  padding: 1.15rem 1.35rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.crm-modal-avatar {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 10px;
+  background: var(--crm-surface-hover);
+  border: 1px solid var(--crm-border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--crm-text-primary);
+  font-weight: 700;
+  font-size: 1.05rem;
+  box-shadow: var(--shadow-xs);
+}
+
+.crm-modal-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--crm-text-primary);
+  letter-spacing: -0.2px;
+}
+
+.crm-modal-subtitle {
+  font-size: 0.72rem;
+  color: var(--crm-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 2px;
+}
+
+.crm-modal-close-btn {
+  background: var(--crm-surface-hover);
+  border: 1px solid var(--crm-border-subtle);
+  color: var(--crm-text-muted);
+  border-radius: 8px;
+  padding: 0.4rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.crm-modal-close-btn:hover {
+  background: var(--crm-surface-active);
+  color: var(--crm-text-primary);
+  border-color: var(--border-subtle);
+}
+
+.crm-modal-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.crm-modal-footer {
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--crm-border-subtle);
+  background: var(--crm-surface-muted);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
+/* 2. Apple/Linear-Style Segmented Control Tabs */
+.crm-segmented-control {
+  margin: 1rem 1.25rem 0.25rem;
+  background: var(--crm-surface-hover);
+  padding: 4px;
+  border-radius: 10px;
+  display: flex;
+  gap: 4px;
+}
+
+.crm-segmented-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.5rem;
+  border-radius: 7px;
+  border: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--crm-text-muted);
+  transition: all var(--transition-fast);
+}
+
+.crm-segmented-btn:hover:not(.active) {
+  color: var(--crm-text-primary);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.crm-segmented-btn.active {
+  background: var(--crm-surface-card);
+  color: var(--crm-text-primary);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* 3. Form Layouts & Inputs */
+.crm-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.crm-form-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.crm-input-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--crm-surface-muted);
+  border: 1px solid var(--crm-border-subtle);
+  border-radius: 10px;
+  padding: 0.6rem 0.85rem;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+
+.crm-input-box:focus-within {
+  background: var(--crm-surface-card);
+  border-color: var(--crm-border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.crm-input-field {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
+.crm-input-field:disabled {
+  color: var(--crm-text-muted);
+  cursor: not-allowed;
+}
+
+.crm-input-helper {
+  font-size: 0.7rem;
+  color: var(--crm-text-muted);
+  margin-top: 3px;
+  display: block;
+}
+
+/* 4. Buttons */
+.crm-primary-btn {
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover));
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  box-shadow: var(--shadow-gold);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+}
+
+.crm-primary-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px -4px rgba(245, 158, 11, 0.4);
+}
+
+.crm-primary-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.crm-primary-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.crm-emerald-btn {
+  background: linear-gradient(135deg, var(--accent-emerald), var(--accent-emerald-dark));
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+}
+
+.crm-emerald-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px -4px rgba(5, 150, 105, 0.35);
+}
+
+.crm-secondary-btn {
+  background: var(--crm-surface-card);
+  border: 1px solid var(--crm-border-subtle);
+  color: var(--text-main);
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.crm-secondary-btn:hover {
+  background: var(--crm-surface-hover);
+  border-color: var(--border-subtle);
+}
+
+/* 5. Header User Profile & Popover */
+.crm-header-user-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  padding: 1.25rem;
-  box-shadow: var(--shadow-sm);
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem 0.25rem 0.3rem;
   cursor: pointer;
-  transition: transform var(--transition-fast), border-color var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  box-shadow: var(--shadow-xs);
 }
 
-.crm-metric-box:hover {
-  transform: translateY(-2px);
+.crm-header-user-btn:hover,
+.crm-header-user-btn.active {
+  background: var(--crm-surface-hover);
   border-color: var(--border-focus);
 }
 
-.crm-sidebar-item {
+.crm-popover-card {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 270px;
+  background: var(--crm-surface-card);
+  border-radius: 12px;
+  border: 1px solid var(--crm-border-subtle);
+  box-shadow: var(--shadow-xl);
+  padding: 0.5rem;
+  z-index: 10000;
+  animation: crmFadeIn 0.15s ease-out;
+}
+
+.crm-popover-identity {
+  padding: 0.75rem;
+  background: var(--crm-surface-muted);
+  border-radius: 8px;
+  margin-bottom: 0.4rem;
+}
+
+.crm-popover-btn {
   display: flex;
   align-items: center;
-  border-radius: 8px;
+  gap: 0.65rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
   border: none;
   background: transparent;
-  color: var(--crm-sidebar-text);
-  font-weight: 500;
-  font-size: 0.86rem;
+  color: var(--text-main);
+  font-size: 0.82rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast);
   text-align: left;
+  text-decoration: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
-.crm-sidebar-item:hover {
-  background: var(--crm-bg-sidebar-hover);
-  color: var(--crm-sidebar-text-active);
+.crm-popover-btn:hover {
+  background: var(--crm-surface-hover);
+  color: var(--crm-text-primary);
 }
 
-.crm-sidebar-item.active {
-  background: var(--crm-bg-sidebar-active);
-  color: var(--crm-sidebar-text-active);
+.crm-popover-btn.danger {
+  color: var(--crm-danger);
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
+.crm-popover-btn.danger:hover {
+  background: var(--crm-danger-bg);
+  color: var(--crm-danger);
+}
 
+/* 6. Centralized CRM Data Table System (Industry Standard) */
+.crm-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.crm-table-head {
+  background: var(--crm-surface-muted);
+  border-bottom: 1px solid var(--crm-border-subtle);
+}
+
+.crm-table-th {
+  padding: 12px 14px;
+  color: var(--crm-text-secondary);
+  font-weight: 700;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.crm-table-row {
+  border-bottom: 1px solid var(--crm-border-subtle);
+  background: var(--crm-surface-card);
+  transition: background var(--transition-fast);
+}
+
+.crm-table-row:nth-child(even) {
+  background: var(--crm-surface-muted);
+}
+
+.crm-table-row:hover {
+  background: var(--crm-surface-hover) !important;
+}
+
+.crm-table-td {
+  padding: 10px 14px;
+  vertical-align: middle;
+}
+
+.crm-table-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 5px 7px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform var(--transition-fast), filter var(--transition-fast), opacity var(--transition-fast);
+}
+
+.crm-table-action-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.96);
+}

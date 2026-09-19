@@ -126,11 +126,10 @@ export default function HeroSection() {
               <p className="hero-slider-desc">{slide.desc}</p>
               
               <div className="hero-slider-highlight" style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                backdropFilter: 'blur(10px)',
+                background: 'rgba(15, 23, 42, 0.75)',
                 padding: '0.65rem 1rem',
                 borderRadius: '10px',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 alignSelf: 'flex-start',
@@ -176,10 +175,7 @@ export default function HeroSection() {
               onClick={() => setIsMobileFormExpanded(!isMobileFormExpanded)}
             >
               <div className="quote-header-title-row">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="quote-header-badge">⚡ Quick Assistance</span>
-                  <h3>Get Instant Quote & Callback</h3>
-                </div>
+                <h3>Get Instant Quote & Callback</h3>
                 <button 
                   type="button" 
                   className="quote-accordion-toggle-btn"
