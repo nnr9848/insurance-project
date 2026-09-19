@@ -40,10 +40,29 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   const [reassignReason, setReassignReason] = useState('');
   const [reassigning, setReassigning] = useState(false);
 
+  // Live Audit Logs State
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+
   useEffect(() => {
     setCurrentClient(client);
     setTargetAdvisorId(client.assignedAdvisorId ? String(client.assignedAdvisorId) : '');
+    if (client?.id) {
+      loadClientAuditLogs(client.id);
+    }
   }, [client]);
+
+  const loadClientAuditLogs = async (clientId) => {
+    setLoadingAudit(true);
+    try {
+      const logs = await crmService.getClientAuditLogs(clientId);
+      setAuditLogs(logs || []);
+    } catch (err) {
+      console.error('Failed to load client audit logs:', err);
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
 
   useEffect(() => {
     if (canReassign) {
@@ -412,67 +431,147 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
             </div>
           )}
 
-          {/* TAB 2: ACTIVITY TIMELINE */}
+          {/* TAB 2: ACTIVITY TIMELINE & AUDIT TRAIL */}
           {activeTab === 'timeline' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {sampleTimeline.map((item, idx) => (
-                <div
-                  key={idx}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f2b48', textTransform: 'uppercase' }}>
+                  Live Audit Trail & Change History ({auditLogs.length})
+                </div>
+                <button
+                  onClick={() => loadClientAuditLogs(currentClient.id)}
+                  disabled={loadingAudit}
                   style={{
-                    background: '#ffffff',
-                    borderRadius: '12px',
-                    padding: '1rem',
-                    border: '1px solid #e2e8f0',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '12px'
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    padding: '3px 8px',
+                    fontSize: '0.74rem',
+                    color: '#475569',
+                    cursor: 'pointer',
+                    fontWeight: 600
                   }}
                 >
-                  <div style={{
-                    padding: '8px',
-                    borderRadius: '10px',
-                    background: item.reason ? '#e0e7ff' : '#f1f5f9',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    {item.icon}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
-                      <div style={{ fontWeight: 700, color: '#0f2b48', fontSize: '0.88rem' }}>
-                        {item.title}
-                      </div>
-                      {item.performedBy && (
-                        <span style={{ fontSize: '0.72rem', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', color: '#64748b', fontWeight: 600 }}>
-                          by {item.performedBy}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '0.74rem', color: '#94a3b8', margin: '2px 0 6px 0' }}>
-                      {item.date}
-                    </div>
-                    <div style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.4 }}>
-                      {item.desc}
-                    </div>
-                    {item.reason && (
-                      <div style={{
-                        marginTop: '8px',
-                        background: '#f8fafc',
-                        borderLeft: '3px solid #4338ca',
-                        padding: '6px 10px',
-                        borderRadius: '0 6px 6px 0',
-                        fontSize: '0.78rem',
-                        color: '#334155'
-                      }}>
-                        <strong style={{ color: '#4338ca' }}>Handover Note: </strong>
-                        {item.reason}
-                      </div>
-                    )}
-                  </div>
+                  <RefreshCw size={12} className={loadingAudit ? 'animate-spin' : ''} /> Refresh
+                </button>
+              </div>
+
+              {loadingAudit ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                  <div style={{ width: '24px', height: '24px', border: '2px solid #cbd5e1', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 8px auto' }} />
+                  <span style={{ fontSize: '0.8rem' }}>Loading verified audit records...</span>
                 </div>
-              ))}
+              ) : auditLogs.length === 0 ? (
+                <div style={{ background: '#ffffff', borderRadius: '12px', padding: '1.5rem', textAlign: 'center', border: '1px solid #e2e8f0', color: '#94a3b8' }}>
+                  <ShieldCheck size={32} color="#cbd5e1" style={{ margin: '0 auto 8px auto' }} />
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#475569' }}>No audit history recorded yet</div>
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>Any status transitions, reassignments, or field edits will appear here.</div>
+                </div>
+              ) : (
+                auditLogs.map((log) => {
+                  const isReassign = log.action === 'REASSIGN';
+                  const isStageChange = log.action === 'STATUS_CHANGE' || log.fieldName === 'stage';
+                  const isCallLog = log.action === 'CALL_LOG';
+                  const isMeeting = log.action === 'MEETING_SCHEDULED';
+
+                  let badgeColor = '#0f2b48';
+                  let badgeBg = '#f1f5f9';
+                  let icon = <Clock size={14} color="#64748b" />;
+
+                  if (isReassign) {
+                    badgeColor = '#6d28d9';
+                    badgeBg = '#ede9fe';
+                    icon = <UserCheck size={14} color="#6d28d9" />;
+                  } else if (isStageChange) {
+                    badgeColor = '#b45309';
+                    badgeBg = '#fef3c7';
+                    icon = <CheckCircle2 size={14} color="#b45309" />;
+                  } else if (isCallLog) {
+                    badgeColor = '#0369a1';
+                    badgeBg = '#e0f2fe';
+                    icon = <Phone size={14} color="#0369a1" />;
+                  } else if (isMeeting) {
+                    badgeColor = '#a21caf';
+                    badgeBg = '#fae8ff';
+                    icon = <Calendar size={14} color="#a21caf" />;
+                  }
+
+                  const formattedDate = log.timestamp 
+                    ? new Date(log.timestamp).toLocaleDateString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      })
+                    : 'Recent';
+
+                  return (
+                    <div
+                      key={log.id}
+                      style={{
+                        background: '#ffffff',
+                        borderRadius: '12px',
+                        padding: '1rem',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '12px'
+                      }}
+                    >
+                      <div style={{
+                        padding: '8px',
+                        borderRadius: '10px',
+                        background: badgeBg,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        {icon}
+                      </div>
+
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+                          <div style={{ fontWeight: 700, color: '#0f2b48', fontSize: '0.88rem' }}>
+                            {log.action === 'UPDATE' ? `Updated ${log.fieldName || 'field'}` : log.action.replace('_', ' ')}
+                          </div>
+                          {log.performedByName && (
+                            <span style={{ fontSize: '0.72rem', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', color: '#64748b', fontWeight: 600 }}>
+                              by {log.performedByName}
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ fontSize: '0.74rem', color: '#94a3b8', margin: '2px 0 6px 0' }}>
+                          {formattedDate}
+                        </div>
+
+                        {/* Value Diff */}
+                        {log.oldValue || log.newValue ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', border: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
+                            {log.oldValue && (
+                              <span style={{ color: '#dc2626', textDecoration: 'line-through', background: '#fef2f2', padding: '1px 4px', borderRadius: '3px' }}>
+                                {log.oldValue}
+                              </span>
+                            )}
+                            {log.oldValue && log.newValue && <span style={{ color: '#94a3b8' }}>→</span>}
+                            {log.newValue && (
+                              <span style={{ color: '#16a34a', fontWeight: 700, background: '#f0fdf4', padding: '1px 4px', borderRadius: '3px' }}>
+                                {log.newValue}
+                              </span>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
 

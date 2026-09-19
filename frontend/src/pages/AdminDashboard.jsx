@@ -57,6 +57,7 @@ import UserProfileModal from '../components/crm/UserProfileModal';
 import ManagerDashboardOverview from '../components/crm/ManagerDashboardOverview';
 import SuperAdminDashboardOverview from '../components/crm/SuperAdminDashboardOverview';
 import PolicyRenewalDeskView from '../components/crm/PolicyRenewalDeskView';
+import AuditTrailView from '../components/crm/AuditTrailView';
 
 export default function AdminDashboard() {
   const { 
@@ -179,6 +180,13 @@ export default function AdminDashboard() {
           category: 'CRM Workspace',
           subtitle: 'Automated milestone tracking, NCB protection, and 1-tap WhatsApp renewal dispatch.',
           icon: <ShieldCheck size={18} color="#16a34a" />
+        };
+      case 'audit':
+        return {
+          title: 'Enterprise Audit Trail & Compliance',
+          category: 'Operations & Management',
+          subtitle: 'Zero-tamper record of all field modifications, stage transitions, and advisor activities.',
+          icon: <ShieldCheck size={18} color="#f59e0b" />
         };
       case 'users':
         return {
@@ -531,6 +539,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
   const navItemsAdmin = [
     ...(canManageUsers ? [{ id: 'users', label: 'User & Team Hierarchy', icon: <Users size={19} />, count: null }] : []),
+    ...((isSuperAdmin || isManager) ? [{ id: 'audit', label: 'Audit Trail & Compliance', icon: <ShieldCheck size={19} />, count: null }] : []),
     { id: 'quotes', label: 'Web Quote Leads', icon: <Briefcase size={19} />, count: quotes.length, badgeColor: '#16a34a' },
     { id: 'posp', label: 'POSP Agent Network', icon: <UserCheck size={19} />, count: pospList.filter(p => p.status === 'PENDING').length, badgeColor: '#d97706' },
     { id: 'claims', label: 'Claims Desk', icon: <Crosshair size={19} />, count: claims.length, badgeColor: '#2563eb' },
@@ -1389,6 +1398,13 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           {/* VIEW: USER MANAGEMENT */}
           {activeView === 'users' && (
             <UserManagementView />
+          )}
+
+          {/* VIEW: AUDIT TRAIL & COMPLIANCE */}
+          {activeView === 'audit' && (
+            <AuditTrailView 
+              onOpenClient360={(client) => setSelectedClient360(client)}
+            />
           )}
 
           {/* VIEW: CUSTOMER QUOTES */}

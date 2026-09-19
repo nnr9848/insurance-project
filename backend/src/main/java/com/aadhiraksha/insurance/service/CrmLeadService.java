@@ -96,46 +96,91 @@ public class CrmLeadService {
     public ClientLeadDto.LeadResponse updateLead(Long leadId, ClientLeadDto.CreateLeadRequest request, User performedBy) {
         ClientLead lead = clientLeadRepository.findById(leadId)
                 .orElseThrow(() -> new IllegalArgumentException("Lead not found with ID: " + leadId));
-
         String oldStage = lead.getStage();
 
-        if (request.getFullName() != null) lead.setFullName(request.getFullName());
-        if (request.getCompanyName() != null) lead.setCompanyName(request.getCompanyName());
-        if (request.getPhoneNumber() != null) lead.setPhoneNumber(request.getPhoneNumber());
-        if (request.getWhatsappNumber() != null) lead.setWhatsappNumber(request.getWhatsappNumber());
-        if (request.getEmail() != null) lead.setEmail(request.getEmail());
-        if (request.getDob() != null) lead.setDob(request.getDob());
-        if (request.getCity() != null) lead.setCity(request.getCity());
-        if (request.getState() != null) lead.setState(request.getState());
-        if (request.getPincode() != null) lead.setPincode(request.getPincode());
-        if (request.getInsuranceType() != null) lead.setInsuranceType(request.getInsuranceType());
-        if (request.getExistingInsurer() != null) lead.setExistingInsurer(request.getExistingInsurer());
-        if (request.getPolicyExpiryDate() != null) lead.setPolicyExpiryDate(request.getPolicyExpiryDate());
-        if (request.getSumInsured() != null) lead.setSumInsured(request.getSumInsured());
-        if (request.getEstimatedPremium() != null) lead.setEstimatedPremium(request.getEstimatedPremium());
-        if (request.getStage() != null) lead.setStage(request.getStage());
-        if (request.getPriority() != null) lead.setPriority(request.getPriority());
-        if (request.getNotes() != null) lead.setNotes(request.getNotes());
+        // Granular Field-Level Audit Trail Tracking
+        if (request.getFullName() != null && !request.getFullName().equals(lead.getFullName())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "Full Name", lead.getFullName(), request.getFullName(), performedBy, null);
+            lead.setFullName(request.getFullName());
+        }
+        if (request.getCompanyName() != null && !request.getCompanyName().equals(lead.getCompanyName())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "Company Name", lead.getCompanyName(), request.getCompanyName(), performedBy, null);
+            lead.setCompanyName(request.getCompanyName());
+        }
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().equals(lead.getPhoneNumber())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "Phone Number", lead.getPhoneNumber(), request.getPhoneNumber(), performedBy, null);
+            lead.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getWhatsappNumber() != null && !request.getWhatsappNumber().equals(lead.getWhatsappNumber())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "WhatsApp Number", lead.getWhatsappNumber(), request.getWhatsappNumber(), performedBy, null);
+            lead.setWhatsappNumber(request.getWhatsappNumber());
+        }
+        if (request.getEmail() != null && !request.getEmail().equals(lead.getEmail())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "Email", lead.getEmail(), request.getEmail(), performedBy, null);
+            lead.setEmail(request.getEmail());
+        }
+        if (request.getDob() != null && !request.getDob().equals(lead.getDob())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "Date of Birth", String.valueOf(lead.getDob()), String.valueOf(request.getDob()), performedBy, null);
+            lead.setDob(request.getDob());
+        }
+        if (request.getCity() != null && !request.getCity().equals(lead.getCity())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "City", lead.getCity(), request.getCity(), performedBy, null);
+            lead.setCity(request.getCity());
+        }
+        if (request.getState() != null && !request.getState().equals(lead.getState())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "State", lead.getState(), request.getState(), performedBy, null);
+            lead.setState(request.getState());
+        }
+        if (request.getPincode() != null && !request.getPincode().equals(lead.getPincode())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "Pincode", lead.getPincode(), request.getPincode(), performedBy, null);
+            lead.setPincode(request.getPincode());
+        }
+        if (request.getInsuranceType() != null && !request.getInsuranceType().equals(lead.getInsuranceType())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "Insurance Vertical", lead.getInsuranceType(), request.getInsuranceType(), performedBy, null);
+            lead.setInsuranceType(request.getInsuranceType());
+        }
+        if (request.getExistingInsurer() != null && !request.getExistingInsurer().equals(lead.getExistingInsurer())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "Existing Insurer", lead.getExistingInsurer(), request.getExistingInsurer(), performedBy, null);
+            lead.setExistingInsurer(request.getExistingInsurer());
+        }
+        if (request.getPolicyExpiryDate() != null && !request.getPolicyExpiryDate().equals(lead.getPolicyExpiryDate())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "Policy Expiry Date", String.valueOf(lead.getPolicyExpiryDate()), String.valueOf(request.getPolicyExpiryDate()), performedBy, null);
+            lead.setPolicyExpiryDate(request.getPolicyExpiryDate());
+        }
+        if (request.getSumInsured() != null && !request.getSumInsured().equals(lead.getSumInsured())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "Sum Insured", lead.getSumInsured(), request.getSumInsured(), performedBy, null);
+            lead.setSumInsured(request.getSumInsured());
+        }
+        if (request.getEstimatedPremium() != null && !request.getEstimatedPremium().equals(lead.getEstimatedPremium())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "Estimated Premium", "₹" + lead.getEstimatedPremium(), "₹" + request.getEstimatedPremium(), performedBy, null);
+            lead.setEstimatedPremium(request.getEstimatedPremium());
+        }
+        if (request.getPriority() != null && !request.getPriority().equals(lead.getPriority())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "Priority", lead.getPriority(), request.getPriority(), performedBy, null);
+            lead.setPriority(request.getPriority());
+        }
+        if (request.getNotes() != null && !request.getNotes().equals(lead.getNotes())) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "UPDATE", "Notes", lead.getNotes(), request.getNotes(), performedBy, null);
+            lead.setNotes(request.getNotes());
+        }
+
+        if (request.getStage() != null && !request.getStage().equals(oldStage)) {
+            auditService.logAction("CLIENT_LEAD", lead.getId(), "STATUS_CHANGE", "Sales Stage", oldStage, request.getStage(), performedBy, null);
+            lead.setStage(request.getStage());
+        }
 
         if (request.getAssignedAdvisorId() != null) {
             User advisor = userRepository.findById(request.getAssignedAdvisorId())
                     .orElse(null);
-            lead.setAssignedAdvisor(advisor);
-            if (advisor != null) {
+            if (advisor != null && (lead.getAssignedAdvisor() == null || !advisor.getId().equals(lead.getAssignedAdvisor().getId()))) {
+                String oldAdvisorName = lead.getAssignedAdvisor() != null ? lead.getAssignedAdvisor().getFullName() : "Unassigned";
+                auditService.logAction("CLIENT_LEAD", lead.getId(), "REASSIGN", "Assigned Advisor", oldAdvisorName, advisor.getFullName(), performedBy, null);
+                lead.setAssignedAdvisor(advisor);
                 lead.setManager(advisor.getManager());
             }
         }
 
         ClientLead updated = clientLeadRepository.save(lead);
-
-        if (request.getStage() != null && !request.getStage().equals(oldStage)) {
-            auditService.logAction("CLIENT_LEAD", updated.getId(), "STATUS_CHANGE", "STAGE", oldStage,
-                    updated.getStage(), performedBy, null);
-        } else {
-            auditService.logAction("CLIENT_LEAD", updated.getId(), "UPDATE", "PROFILE", null,
-                    "Updated lead info for " + updated.getFullName(), performedBy, null);
-        }
-
         return mapToLeadResponse(updated);
     }
 

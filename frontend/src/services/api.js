@@ -143,8 +143,13 @@ export const crmService = {
     const res = await api.post('/crm/renewals/send-reminder', data);
     return res.data;
   },
-  triggerRenewalScan: async () => {
-    const res = await api.post('/crm/renewals/trigger-scan');
+  // Enterprise Audit Trail & Compliance
+  getClientAuditLogs: async (clientId) => {
+    const res = await api.get(`/crm/audit/client/${clientId}`);
+    return res.data;
+  },
+  getCompanyAuditFeed: async () => {
+    const res = await api.get('/crm/audit/company-feed');
     return res.data;
   },
 };
