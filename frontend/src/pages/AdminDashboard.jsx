@@ -667,19 +667,35 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           display: 'flex',
           alignItems: 'center',
           justifyContent: showMiniRail ? 'center' : 'space-between',
-          height: '64px',
+          height: '68px',
           boxSizing: 'border-box',
-          background: 'var(--crm-bg-sidebar)'
+          background: '#ffffff'
         }}>
           {!showMiniRail ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
-              <div style={{ width: '36px', height: '36px', minWidth: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '1.1rem', boxShadow: 'var(--shadow-gold)' }}>
+              <div style={{
+                width: '38px',
+                height: '38px',
+                minWidth: '38px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, var(--primary-navy) 0%, var(--primary-navy-dark) 100%)',
+                border: '1.5px solid rgba(245, 158, 11, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--accent-gold)',
+                fontWeight: 800,
+                fontSize: '1.05rem',
+                boxShadow: '0 2px 8px rgba(15, 43, 72, 0.15)'
+              }}>
                 AR
               </div>
               <div style={{ overflow: 'hidden' }}>
-                <div style={{ fontWeight: 800, fontSize: '0.98rem', letterSpacing: '-0.3px', color: '#0f2b48', whiteSpace: 'nowrap' }}>Aadhiraksha</div>
-                <div style={{ fontSize: '0.68rem', color: 'var(--crm-sidebar-text)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}>
-                  <Sparkles size={11} color="var(--accent-gold)" /> Enterprise CRM
+                <div style={{ fontWeight: 800, fontSize: '1.02rem', letterSpacing: '-0.3px', color: 'var(--primary-navy)', whiteSpace: 'nowrap' }}>
+                  Aadhiraksha
+                </div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--crm-text-secondary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}>
+                  <Sparkles size={12} color="var(--accent-gold)" /> Enterprise CRM
                 </div>
               </div>
             </div>
@@ -687,7 +703,21 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
             <div 
               onClick={toggleSidebar}
               title="Expand Sidebar (Cmd/Ctrl + B)"
-              style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '1.1rem', cursor: 'pointer', boxShadow: 'var(--shadow-gold)' }}
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, var(--primary-navy) 0%, var(--primary-navy-dark) 100%)',
+                border: '1.5px solid rgba(245, 158, 11, 0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--accent-gold)',
+                fontWeight: 800,
+                fontSize: '1.05rem',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(15, 43, 72, 0.15)'
+              }}
             >
               AR
             </div>
@@ -699,9 +729,9 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
               onClick={() => setIsMobileOpen(false)}
               title="Close Drawer"
               style={{
-                background: '#e2e8f0',
-                border: 'none',
-                color: '#475569',
+                background: '#f1f5f9',
+                border: '1px solid var(--border-subtle)',
+                color: 'var(--crm-text-secondary)',
                 borderRadius: '8px',
                 padding: '0.4rem',
                 cursor: 'pointer',
@@ -709,8 +739,8 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                 alignItems: 'center',
                 justifyContent: 'center'
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#cbd5e1'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#e2e8f0'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
             >
               <X size={18} />
             </button>
@@ -720,18 +750,19 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                 onClick={toggleSidebar}
                 title="Collapse Sidebar (Cmd/Ctrl + B)"
                 style={{
-                  background: '#f1f5f9',
+                  background: '#f8fafc',
                   border: '1px solid var(--crm-sidebar-border)',
-                  color: '#64748b',
-                  borderRadius: '6px',
+                  color: 'var(--crm-text-secondary)',
+                  borderRadius: '7px',
                   padding: '0.35rem',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease'
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#0f2b48'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = 'var(--primary-navy)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = 'var(--crm-text-secondary)'; }}
               >
                 <ChevronLeft size={16} />
               </button>
@@ -744,8 +775,19 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           
           {/* CRM WORKSPACE GROUP */}
           {!showMiniRail ? (
-            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', padding: '0.5rem 0.75rem 0.35rem', whiteSpace: 'nowrap' }}>
-              CRM Workspace
+            <div style={{
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              color: '#334155',
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+              padding: '0.6rem 0.75rem 0.4rem',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <span>CRM Workspace</span>
             </div>
           ) : (
             <div style={{ height: '1px', background: 'var(--crm-sidebar-border)', margin: '0.5rem 0.4rem' }} />
@@ -829,8 +871,19 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
           {/* ADMIN & OPERATIONS GROUP */}
           {!showMiniRail ? (
-            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', padding: '0.5rem 0.75rem 0.35rem', whiteSpace: 'nowrap' }}>
-              Operations & Admin
+            <div style={{
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              color: '#334155',
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+              padding: '0.75rem 0.75rem 0.4rem',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <span>Operations & Admin</span>
             </div>
           ) : (
             <div style={{ height: '1px', background: 'var(--crm-sidebar-border)', margin: '0.5rem 0.4rem' }} />

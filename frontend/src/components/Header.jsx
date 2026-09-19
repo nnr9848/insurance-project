@@ -204,12 +204,12 @@ export default function Header() {
                   </div>
 
                   {[
-                    { title: 'Health Insurance', desc: 'Cashless hospital network', icon: <HeartPulse size={18} color="#059669" />, link: '/new-policy-support?category=health' },
-                    { title: 'Term Life Insurance', desc: '₹1 Cr cover from ₹490/mo', icon: <ShieldCheck size={18} color="#0284c7" />, link: '/new-policy-support?category=life' },
-                    { title: 'Car & 2-Wheeler Insurance', desc: 'Instant policy in 2 mins', icon: <Car size={18} color="#d97706" />, link: '/new-policy-support?category=vehicle' },
-                    { title: 'Family Health Floater', desc: 'Cover spouse & kids in 1 plan', icon: <Users size={18} color="#db2777" />, link: '/new-policy-support?category=family_floater' },
-                    { title: 'Corporate / SME Insurance', desc: 'Group health & fire liability', icon: <Briefcase size={18} color="#2563eb" />, link: '/new-policy-support?category=business' },
-                    { title: 'Travel Insurance', desc: 'Schengen & US approved', icon: <Plane size={18} color="#0891b2" />, link: '/new-policy-support?category=travel' }
+                    { title: 'Health Insurance', desc: 'Cashless hospital network', icon: <HeartPulse size={18} color="#059669" />, link: '/insurance/health' },
+                    { title: 'Term Life Insurance', desc: '₹1 Cr cover from ₹410/mo', icon: <ShieldCheck size={18} color="#0284c7" />, link: '/insurance/term-life' },
+                    { title: 'Car & 2-Wheeler Insurance', desc: 'Instant policy in 2 mins', icon: <Car size={18} color="#d97706" />, link: '/insurance/motor' },
+                    { title: 'Family Health Floater', desc: 'Cover spouse & kids in 1 plan', icon: <Users size={18} color="#db2777" />, link: '/insurance/health' },
+                    { title: 'Corporate / SME Insurance', desc: 'Group health & fire liability', icon: <Briefcase size={18} color="#2563eb" />, link: '/insurance/business' },
+                    { title: 'Travel Insurance', desc: 'Schengen & US approved', icon: <Plane size={18} color="#0891b2" />, link: '/insurance/travel' }
                   ].map((item, idx) => (
                     <Link
                       key={idx}
@@ -706,12 +706,12 @@ export default function Header() {
                 background: '#ffffff'
               }}>
                 {[
-                  { title: 'Health Insurance', icon: <HeartPulse size={16} color="#0f2b48" />, link: '/new-policy-support?category=health' },
-                  { title: 'Term Life Insurance', icon: <ShieldCheck size={16} color="#0f2b48" />, link: '/new-policy-support?category=life' },
-                  { title: 'Car & 2-Wheeler Insurance', icon: <Car size={16} color="#0f2b48" />, link: '/new-policy-support?category=vehicle' },
-                  { title: 'Family Health Floater', icon: <Users size={16} color="#0f2b48" />, link: '/new-policy-support?category=family_floater' },
-                  { title: 'Corporate / SME Insurance', icon: <Briefcase size={16} color="#0f2b48" />, link: '/new-policy-support?category=business' },
-                  { title: 'Travel Insurance', icon: <Plane size={16} color="#0f2b48" />, link: '/new-policy-support?category=travel' }
+                  { title: 'Health Insurance', icon: <HeartPulse size={16} color="#0f2b48" />, link: '/insurance/health' },
+                  { title: 'Term Life Insurance', icon: <ShieldCheck size={16} color="#0f2b48" />, link: '/insurance/term-life' },
+                  { title: 'Car & 2-Wheeler Insurance', icon: <Car size={16} color="#0f2b48" />, link: '/insurance/motor' },
+                  { title: 'Family Health Floater', icon: <Users size={16} color="#0f2b48" />, link: '/insurance/health' },
+                  { title: 'Corporate / SME Insurance', icon: <Briefcase size={16} color="#0f2b48" />, link: '/insurance/business' },
+                  { title: 'Travel Insurance', icon: <Plane size={16} color="#0f2b48" />, link: '/insurance/travel' }
                 ].map((item, idx) => (
                   <Link
                     key={idx}

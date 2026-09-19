@@ -3136,3 +3136,163 @@ h1, h2, h3, h4, h5, h6 {
   transform: translateY(-1px);
   filter: brightness(0.96);
 }
+
+/* =========================================================
+   7. Dedicated InsurTech Product Funnel Mobile-First Styles
+   ========================================================= */
+.product-funnel-hero {
+  background: linear-gradient(135deg, #071728 0%, #0f2b48 100%);
+  color: #ffffff;
+  padding: 2.5rem 0 3.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .product-funnel-hero {
+    padding: 1.75rem 0 2.5rem;
+  }
+}
+
+.funnel-hero-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  align-items: center;
+}
+
+@media (min-width: 992px) {
+  .funnel-hero-grid {
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 3rem;
+  }
+}
+
+@media (max-width: 991px) {
+  .funnel-hero-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .funnel-hero-intro {
+    order: 1;
+    text-align: center;
+  }
+
+  .funnel-hero-intro p {
+    display: none; /* Hide heavy body paragraphs above the form on mobile */
+  }
+
+  .funnel-hero-card-col {
+    order: 2;
+    width: 100%;
+  }
+
+  .funnel-hero-trust-col {
+    order: 3;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+}
+
+.funnel-card-container {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 1.75rem;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.35);
+  border: 1px solid #e2e8f0;
+  color: #0f2b48;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .funnel-card-container {
+    padding: 1.25rem 1rem;
+    border-radius: 16px;
+  }
+}
+
+.funnel-responsive-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+@media (min-width: 540px) {
+  .funnel-responsive-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.funnel-responsive-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.45rem;
+}
+
+@media (min-width: 480px) {
+  .funnel-responsive-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.funnel-trust-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 540px) {
+  .funnel-trust-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+}
+
+.funnel-features-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .funnel-features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .funnel-features-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 0 1rem;
+  }
+}
+
+/* Mobile-First Directory Card Presentation for Tables */
+.hospital-desktop-table {
+  display: block;
+}
+
+.hospital-mobile-cards {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .hospital-desktop-table {
+    display: none;
+  }
+  .hospital-mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 0.85rem;
+  }
+}
+

@@ -67,12 +67,27 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
     setCurrentClient(client);
     setTargetAdvisorId(client.assignedAdvisorId ? String(client.assignedAdvisorId) : '');
     if (client?.id) {
+      loadFullLeadDetails(client.id);
       loadClientAuditLogs(client.id);
       loadClientQuotes(client.id);
       loadClientDocs(client.id);
       loadClientCalls(client.id);
     }
   }, [client]);
+
+  const loadFullLeadDetails = async (clientId) => {
+    try {
+      const fullLead = await crmService.getLeadById(clientId);
+      if (fullLead && fullLead.id) {
+        setCurrentClient(prev => ({ ...prev, ...fullLead }));
+        if (fullLead.assignedAdvisorId) {
+          setTargetAdvisorId(String(fullLead.assignedAdvisorId));
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch full lead details, using basic props:', err);
+    }
+  };
 
   const loadClientCalls = async (clientId) => {
     setLoadingCalls(true);
@@ -229,51 +244,127 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
         animation: 'slideLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
       }}>
         
-        {/* Drawer Header */}
+        {/* Drawer Header - Clean Crisp Enterprise UX */}
         <div style={{
-          background: 'linear-gradient(135deg, #0f2b48 0%, #071728 100%)',
-          color: '#ffffff',
-          padding: '1.5rem',
+          background: '#ffffff',
+          color: 'var(--primary-navy)',
+          padding: '1.25rem 1.5rem',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'flex-start'
+          alignItems: 'flex-start',
+          borderBottom: '1px solid var(--border-subtle)',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
         }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', background: 'rgba(255,255,255,0.15)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
-                {client.clientCode}
-              </span>
-              <span style={{ fontSize: '0.75rem', background: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: '9999px', fontWeight: 800 }}>
-                {client.stage}
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+              {currentClient.clientCode ? (
+                <span style={{
+                  fontSize: '0.74rem',
+                  fontFamily: 'monospace',
+                  background: '#f1f5f9',
+                  color: 'var(--primary-navy)',
+                  border: '1px solid var(--border-subtle)',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  fontWeight: 700,
+                  letterSpacing: '0.5px'
+                }}>
+                  {currentClient.clientCode}
+                </span>
+              ) : (
+                <span style={{
+                  fontSize: '0.74rem',
+                  fontFamily: 'monospace',
+                  background: '#f1f5f9',
+                  color: 'var(--text-muted)',
+                  border: '1px solid var(--border-subtle)',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  fontWeight: 700
+                }}>
+                  CL-{currentClient.id || 'LEAD'}
+                </span>
+              )}
+
+              {currentClient.stage ? (
+                <span style={{
+                  fontSize: '0.72rem',
+                  background: 'var(--accent-emerald-light)',
+                  color: 'var(--accent-emerald)',
+                  border: '1px solid #a7f3d0',
+                  padding: '2px 9px',
+                  borderRadius: '9999px',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  {String(currentClient.stage).replace(/_/g, ' ')}
+                </span>
+              ) : (
+                <span style={{
+                  fontSize: '0.72rem',
+                  background: 'var(--accent-gold-light)',
+                  color: 'var(--accent-gold-hover)',
+                  border: '1px solid #fde68a',
+                  padding: '2px 9px',
+                  borderRadius: '9999px',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  SCHEDULED MEETING
+                </span>
+              )}
+
+              {currentClient.insuranceType && (
+                <span style={{
+                  fontSize: '0.72rem',
+                  background: '#f8fafc',
+                  color: 'var(--crm-text-secondary)',
+                  border: '1px solid var(--border-subtle)',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  fontWeight: 600
+                }}>
+                  {currentClient.insuranceType}
+                </span>
+              )}
             </div>
 
-            <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '8px 0 2px 0' }}>
-              {client.fullName}
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 800, margin: '2px 0 2px 0', color: 'var(--primary-navy)', letterSpacing: '-0.3px' }}>
+              {currentClient.fullName || 'Client Profile'}
             </h2>
-            {client.companyName && (
-              <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-                {client.companyName}
+            {currentClient.companyName ? (
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                {currentClient.companyName}
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                {currentClient.city ? `${currentClient.city}, ${currentClient.state || 'India'}` : 'Direct Individual Client'}
               </div>
             )}
           </div>
 
           <button
             onClick={onClose}
+            title="Close Client 360 (Esc)"
             style={{
-              background: 'rgba(255, 255, 255, 0.12)',
-              border: 'none',
-              borderRadius: '50%',
-              width: '36px',
-              height: '36px',
+              background: '#f1f5f9',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '8px',
+              width: '34px',
+              height: '34px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#ffffff',
-              cursor: 'pointer'
+              color: 'var(--crm-text-secondary)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = 'var(--primary-navy)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = 'var(--crm-text-secondary)'; }}
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 

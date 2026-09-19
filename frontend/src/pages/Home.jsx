@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import HeroSection from '../components/HeroSection';
-import CategoryQuoteModal from '../components/CategoryQuoteModal';
 import { portalService } from '../services/api';
 import {
   HeartPulse,
@@ -54,21 +53,6 @@ import nivaBupaLogo from '../assets/partners/niva health insurance logo.png';
 import starHealthLogo from '../assets/partners/star health insurance logo.png';
 
 export default function Home() {
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [modalStep, setModalStep] = useState(1);
-  const [quoteForm, setQuoteForm] = useState({
-    fullName: '',
-    phone: '',
-    email: '',
-    city: '',
-    pincode: '',
-    insuredMembers: ['Self'],
-    vehicleNumber: '',
-    sumInsured: '10 Lakhs',
-    comments: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [activePartnerTab, setActivePartnerTab] = useState('all');
   const [activeComparisonTab, setActiveComparisonTab] = useState('aadhiraksha'); // 'aadhiraksha' | 'traditional'
   const [showAllPartnersMobile, setShowAllPartnersMobile] = useState(false);
@@ -86,12 +70,12 @@ export default function Home() {
       tag: '🔥 Popular',
       bgGradient: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)',
       borderColor: '#a7f3d0',
-      directLink: '/new-policy-support'
+      directLink: '/insurance/health'
     },
     {
       id: 'term_life',
       name: 'Term Life Insurance',
-      subtext: '₹1 Cr cover from ₹490/mo',
+      subtext: '₹1 Cr cover from ₹410/mo',
       discount: 'UP TO 15% OFF ONLINE',
       mobileDiscount: '15% OFF',
       discountType: 'blue',
@@ -99,7 +83,7 @@ export default function Home() {
       tag: 'Tax Saver 80C',
       bgGradient: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
       borderColor: '#bae6fd',
-      directLink: '/new-policy-support'
+      directLink: '/insurance/term-life'
     },
     {
       id: 'car',
@@ -112,7 +96,7 @@ export default function Home() {
       tag: 'Zero Dep Available',
       bgGradient: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
       borderColor: '#fde68a',
-      directLink: '/new-policy-support'
+      directLink: '/insurance/motor'
     },
     {
       id: 'two_wheeler',
@@ -125,7 +109,7 @@ export default function Home() {
       tag: 'Instant NCB Transfer',
       bgGradient: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
       borderColor: '#ddd6fe',
-      directLink: '/new-policy-support'
+      directLink: '/insurance/motor'
     },
     {
       id: 'family_floater',
@@ -138,7 +122,7 @@ export default function Home() {
       tag: 'All-in-One Cover',
       bgGradient: 'linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%)',
       borderColor: '#fbcfe8',
-      directLink: '/new-policy-support'
+      directLink: '/insurance/health'
     },
     {
       id: 'corporate_sme',
@@ -151,7 +135,7 @@ export default function Home() {
       tag: 'Employee Benefits',
       bgGradient: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
       borderColor: '#bfdbfe',
-      directLink: '/new-policy-support'
+      directLink: '/insurance/business'
     },
     {
       id: 'travel',
@@ -164,7 +148,7 @@ export default function Home() {
       tag: 'Global Assistance',
       bgGradient: 'linear-gradient(135deg, #ecfeff 0%, #cffafe 100%)',
       borderColor: '#a5f3fc',
-      directLink: '/new-policy-support'
+      directLink: '/insurance/travel'
     },
     {
       id: 'loans',
@@ -207,51 +191,6 @@ export default function Home() {
   const filteredPartners = activePartnerTab === 'all' 
     ? partners 
     : partners.filter(p => p.category === activePartnerTab);
-
-  const memberOptions = ['Self', 'Spouse', 'Son', 'Daughter', 'Father', 'Mother'];
-
-  const handleMemberToggle = (member) => {
-    if (quoteForm.insuredMembers.includes(member)) {
-      if (quoteForm.insuredMembers.length > 1) {
-        setQuoteForm({
-          ...quoteForm,
-          insuredMembers: quoteForm.insuredMembers.filter(m => m !== member)
-        });
-      }
-    } else {
-      setQuoteForm({
-        ...quoteForm,
-        insuredMembers: [...quoteForm.insuredMembers, member]
-      });
-    }
-  };
-
-  const handleOpenModal = (product) => {
-    setSelectedCategory(product);
-    setModalStep(1);
-    setSubmitSuccess(false);
-  };
-
-  const handleFormSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      await portalService.submitQuote({
-        fullName: quoteForm.fullName,
-        phone: quoteForm.phone,
-        email: quoteForm.email,
-        insuranceType: selectedCategory?.name || 'General Inquiry',
-        comments: `Members: ${quoteForm.insuredMembers.join(', ')} | Sum: ${quoteForm.sumInsured} | City: ${quoteForm.city} | Reg: ${quoteForm.vehicleNumber || 'N/A'}`
-      });
-      setSubmitSuccess(true);
-    } catch (err) {
-      console.error(err);
-      alert('Your quote inquiry has been submitted! Our senior advisor will contact you within 5 minutes.');
-      setSubmitSuccess(true);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   return (
     <div style={{ background: '#f8fafc', minHeight: '100vh', color: '#0f172a' }}>
@@ -302,10 +241,11 @@ export default function Home() {
                 : 'pb-badge-amber';
 
               return (
-                <div
+                <Link
                   key={product.id}
-                  onClick={() => handleOpenModal(product)}
+                  to={product.directLink}
                   className="pb-product-tile"
+                  style={{ textDecoration: 'none', color: 'inherit' }}
                 >
                   {/* Centered Icon Container with Anchored Top-Right Micro Badge */}
                   <div className="pb-tile-icon-wrapper">
@@ -335,7 +275,7 @@ export default function Home() {
                   <p className="pb-tile-subtext">
                     {product.subtext}
                   </p>
-                </div>
+                </Link>
               );
             })}
           </div>
@@ -552,14 +492,6 @@ export default function Home() {
           )}
         </div>
       </section>
-
-      {/* 5. PolicyBazaar-Style Category-Specific Instant Quote Modal */}
-      {selectedCategory && (
-        <CategoryQuoteModal
-          category={selectedCategory}
-          onClose={() => setSelectedCategory(null)}
-        />
-      )}
 
     </div>
   );
