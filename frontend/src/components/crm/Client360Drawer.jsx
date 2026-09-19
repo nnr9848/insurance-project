@@ -19,7 +19,14 @@ import {
   AlertCircle,
   UserCheck,
   Check,
-  RefreshCw
+  RefreshCw,
+  Globe,
+  HeartHandshake,
+  DollarSign,
+  Award,
+  PhoneCall,
+  Sparkles,
+  Trash2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { crmService } from '../../services/api';
@@ -374,66 +381,142 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
         {/* Drawer Scrollable Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.5rem', background: '#f8fafc' }}>
           
-          {/* TAB 1: OVERVIEW */}
+          {/* TAB 1: OVERVIEW & CLIENT 360 INFORMATION */}
           {activeTab === 'overview' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
               
-              {/* Card 1: Insurance Details */}
-              <div style={{ background: '#ffffff', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', marginBottom: '10px' }}>
-                  Insurance Requirements
+              {/* 1. Client Identification & Demographics */}
+              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', marginBottom: '12px', letterSpacing: '0.04em' }}>
+                  <User size={15} color="#2563eb" /> Client Information & Profile
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.85rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '0.85rem' }}>
                   <div>
-                    <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Category</div>
-                    <div style={{ fontWeight: 700, color: '#0f2b48' }}>{client.insuranceType}</div>
-                  </div>
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Desired Sum Insured</div>
-                    <div style={{ fontWeight: 700, color: '#0f2b48' }}>{client.sumInsured || '-'}</div>
-                  </div>
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Est. Premium</div>
-                    <div style={{ fontWeight: 700, color: '#059669' }}>
-                      {client.estimatedPremium ? `₹${Number(client.estimatedPremium).toLocaleString()}` : 'Pending Quote'}
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Client ID</div>
+                    <div style={{ fontWeight: 800, color: '#0f2b48', fontFamily: 'monospace', fontSize: '0.92rem' }}>
+                      {currentClient.clientCode || `CL-${currentClient.id}`}
                     </div>
                   </div>
+
                   <div>
-                    <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Existing Insurer</div>
-                    <div style={{ fontWeight: 700, color: '#d97706' }}>{client.existingInsurer || 'None (New)'}</div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Name</div>
+                    <div style={{ fontWeight: 800, color: '#0f2b48' }}>{currentClient.fullName}</div>
+                  </div>
+
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Company / Account</div>
+                    <div style={{ fontWeight: 700, color: '#334155' }}>
+                      {currentClient.companyName || 'Individual / Retail Client'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Date of Birth (DOB)</div>
+                    <div style={{ fontWeight: 700, color: '#334155' }}>
+                      {currentClient.dob ? new Date(currentClient.dob).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not Specified'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Location</div>
+                    <div style={{ fontWeight: 700, color: '#334155' }}>
+                      {currentClient.city || 'Bengaluru'}{currentClient.state ? `, ${currentClient.state}` : ''} {currentClient.pincode ? `(${currentClient.pincode})` : ''}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Nationality</div>
+                    <div style={{ fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <Globe size={13} /> {currentClient.nationality || 'Indian (Resident)'}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Card 2: Contact & Location */}
-              <div style={{ background: '#ffffff', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', marginBottom: '10px' }}>
-                  Contact Details
+              {/* 2. Direct Communication Channels */}
+              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', marginBottom: '12px', letterSpacing: '0.04em' }}>
+                  <Phone size={15} color="#059669" /> Direct Contact Channels
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155' }}>
-                    <Phone size={14} color="#059669" /> {client.phoneNumber}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '0.85rem' }}>
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Mobile Phone</div>
+                    <div style={{ fontWeight: 700, color: '#091726', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <a href={`tel:${currentClient.phoneNumber}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
+                        {currentClient.phoneNumber}
+                      </a>
+                    </div>
                   </div>
-                  {client.email && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155' }}>
-                      <Mail size={14} color="#2563eb" /> {client.email}
+
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• WhatsApp</div>
+                    <div style={{ fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <MessageSquare size={13} /> {currentClient.whatsappNumber || currentClient.phoneNumber}
                     </div>
-                  )}
-                  {client.city && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155' }}>
-                      <MapPin size={14} color="#ea580c" /> {client.city}, {client.state || 'Telangana'} {client.pincode && `(${client.pincode})`}
+                  </div>
+
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Email Address</div>
+                    <div style={{ fontWeight: 700, color: '#334155' }}>
+                      {currentClient.email ? (
+                        <a href={`mailto:${currentClient.email}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
+                          {currentClient.email}
+                        </a>
+                      ) : 'No email provided'}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
 
-              {/* Card 3: Ownership & Governance */}
-              <div style={{ background: '#ffffff', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48' }}>
-                    Assigned Team & Advisor
+              {/* 3. Insurance Portfolio & Policy Details */}
+              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', marginBottom: '12px', letterSpacing: '0.04em' }}>
+                  <ShieldCheck size={15} color="#d97706" /> Insurance Type & Policy Coverage
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '0.85rem' }}>
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Insurance Type</div>
+                    <div style={{ fontWeight: 800, color: '#0f2b48' }}>{currentClient.insuranceType || 'General Insurance'}</div>
+                  </div>
+
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Existing Policy / Insurer</div>
+                    <div style={{ fontWeight: 700, color: '#d97706' }}>
+                      {currentClient.existingInsurer || 'None (New Policy Requirement)'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Policy Expiry Date</div>
+                    <div style={{ fontWeight: 700, color: currentClient.policyExpiryDate ? '#b45309' : '#64748b' }}>
+                      {currentClient.policyExpiryDate ? new Date(currentClient.policyExpiryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Pending Issuance'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Desired Sum Insured</div>
+                    <div style={{ fontWeight: 800, color: '#059669' }}>
+                      {currentClient.sumInsured || '₹10 Lakhs'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Estimated Premium</div>
+                    <div style={{ fontWeight: 800, color: '#059669' }}>
+                      {currentClient.estimatedPremium ? `₹${Number(currentClient.estimatedPremium).toLocaleString('en-IN')}` : 'Pending Quote Proposal'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Team Ownership, Management & Lead Source */}
+              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', letterSpacing: '0.04em' }}>
+                    <HeartHandshake size={15} color="#7c3aed" /> Assigned Team & Lead Origin
                   </div>
                   {canReassign && (
                     <button
@@ -457,25 +540,37 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                   )}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.85rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '0.85rem' }}>
                   <div>
-                    <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Insurance Advisor</div>
-                    <div style={{ fontWeight: 700, color: '#0f2b48' }}>{currentClient.assignedAdvisorName || 'Unassigned'}</div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Assigned Employee</div>
+                    <div style={{ fontWeight: 800, color: '#0f2b48' }}>
+                      {currentClient.assignedAdvisorName || 'Unassigned'}
+                    </div>
                   </div>
+
                   <div>
-                    <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Branch Manager</div>
-                    <div style={{ fontWeight: 700, color: '#0f2b48' }}>{currentClient.managerName || 'None'}</div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Assigned Manager</div>
+                    <div style={{ fontWeight: 800, color: '#0f2b48' }}>
+                      {currentClient.managerName || 'Branch Management'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Lead Source</div>
+                    <div style={{ fontWeight: 700, color: '#2563eb' }}>
+                      {currentClient.leadSource || 'Web Portal Inquiry'}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Card 4: Notes */}
+              {/* 5. Advisory Notes */}
               {currentClient.notes && (
-                <div style={{ background: '#fef3c7', borderRadius: '12px', padding: '1rem', border: '1px solid #fde68a' }}>
+                <div style={{ background: '#fef3c7', borderRadius: '14px', padding: '1.1rem', border: '1px solid #fde68a' }}>
                   <div style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', color: '#92400e', marginBottom: '4px' }}>
-                    Advisor Notes
+                    Advisor Discussion & Policy Notes
                   </div>
-                  <div style={{ fontSize: '0.85rem', color: '#78350f', lineHeight: 1.4 }}>
+                  <div style={{ fontSize: '0.85rem', color: '#78350f', lineHeight: 1.5 }}>
                     {currentClient.notes}
                   </div>
                 </div>
