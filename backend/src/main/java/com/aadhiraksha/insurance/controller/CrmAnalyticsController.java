@@ -42,4 +42,12 @@ public class CrmAnalyticsController {
     public ResponseEntity<com.aadhiraksha.insurance.dto.AdminAnalyticsDto.SuperAdminDashboardResponse> getSuperAdminSummary(Authentication auth) {
         return ResponseEntity.ok(crmAnalyticsService.getSuperAdminExecutiveAnalytics());
     }
+
+    @GetMapping("/advisor-summary")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
+    @Operation(summary = "Get daily call counts, follow-ups, upcoming meetings, and pipeline telemetry for logged-in employee/advisor")
+    public ResponseEntity<com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.AdvisorDashboardResponse> getAdvisorDashboardSummary(Authentication auth) {
+        User user = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(crmAnalyticsService.getAdvisorDashboardAnalytics(user));
+    }
 }

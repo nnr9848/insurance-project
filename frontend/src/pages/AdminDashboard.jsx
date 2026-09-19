@@ -58,6 +58,7 @@ import Client360Drawer from '../components/crm/Client360Drawer';
 import UserProfileModal from '../components/crm/UserProfileModal';
 import ManagerDashboardOverview from '../components/crm/ManagerDashboardOverview';
 import SuperAdminDashboardOverview from '../components/crm/SuperAdminDashboardOverview';
+import AdvisorDashboardOverview from '../components/crm/AdvisorDashboardOverview';
 import PolicyRenewalDeskView from '../components/crm/PolicyRenewalDeskView';
 import AuditTrailView from '../components/crm/AuditTrailView';
 import QuotationManagementView from '../components/crm/QuotationManagementView';
@@ -276,6 +277,7 @@ export default function AdminDashboard() {
   const [dueFollowUps, setDueFollowUps] = useState([]);
   const [managerAnalytics, setManagerAnalytics] = useState(null);
   const [superAdminAnalytics, setSuperAdminAnalytics] = useState(null);
+  const [advisorAnalytics, setAdvisorAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Global Interactive Drawers / Modals
@@ -379,15 +381,16 @@ export default function AdminDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [qData, pData, cData, hData, lData, fData, mData, sData] = await Promise.all([
+      const [qData, pData, cData, hData, lData, fData, mData, sData, aData] = await Promise.all([
         portalService.getAdminQuotes().catch(() => []),
         portalService.getAdminPOSP().catch(() => []),
         portalService.getAdminClaims().catch(() => []),
         portalService.searchHospitals('', '').catch(() => []),
         crmService.getLeads().catch(() => []),
         crmService.getDueTodayFollowUps().catch(() => []),
-        crmService.getManagerSummary().catch(() => null),
-        crmService.getSuperAdminSummary().catch(() => null)
+        (isSuperAdmin || isManager) ? crmService.getManagerSummary().catch(() => null) : Promise.resolve(null),
+        isSuperAdmin ? crmService.getSuperAdminSummary().catch(() => null) : Promise.resolve(null),
+        crmService.getAdvisorSummary().catch(() => null)
       ]);
       setQuotes(qData || []);
       setPospList(pData || []);
@@ -397,6 +400,7 @@ export default function AdminDashboard() {
       setDueFollowUps(fData || []);
       setManagerAnalytics(mData);
       setSuperAdminAnalytics(sData);
+      setAdvisorAnalytics(aData);
     } catch (err) {
       console.error('Error fetching admin/crm datasets', err);
     } finally {
@@ -1359,7 +1363,15 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
           {/* VIEW: CRM DASHBOARD OVERVIEW */}
           {activeView === 'dashboard' && (
-            user?.roles?.some(r => r === 'ROLE_MANAGER') || user?.role === 'ROLE_MANAGER' ? (
+            isSuperAdmin ? (
+              <SuperAdminDashboardOverview 
+                user={user}
+                analytics={superAdminAnalytics}
+                loading={loading}
+                onRefresh={loadData}
+                onNavigateView={handleNavigateView}
+              />
+            ) : isManager ? (
               <ManagerDashboardOverview 
                 user={user}
                 analytics={managerAnalytics}
@@ -1369,12 +1381,13 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                 onSelectClient={(client) => setSelectedClient360(client)}
               />
             ) : (
-              <SuperAdminDashboardOverview 
+              <AdvisorDashboardOverview 
                 user={user}
-                analytics={superAdminAnalytics}
+                analytics={advisorAnalytics}
                 loading={loading}
                 onRefresh={loadData}
                 onNavigateView={handleNavigateView}
+                onSelectClient={(client) => setSelectedClient360(client)}
               />
             )
           )}

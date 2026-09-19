@@ -495,4 +495,224 @@ public class CrmAnalyticsService {
                 .monthlyConversionTrend(monthlyTrends)
                 .build();
     }
+
+    @Transactional(readOnly = true)
+    public com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.AdvisorDashboardResponse getAdvisorDashboardAnalytics(User advisor) {
+        if (advisor == null) {
+            throw new IllegalArgumentException("User must be authenticated");
+        }
+
+        Long advisorId = advisor.getId();
+        LocalDateTime startOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
+        LocalDateTime endOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1. Advisor Leads
+        List<ClientLead> advisorLeads = clientLeadRepository.findByAssignedAdvisorIdOrderByUpdatedAtDesc(advisorId);
+        long totalLeads = advisorLeads.size();
+
+        // 2. Primary 7 KPIs
+        // A. Calls Today
+        long callsToday = callLogRepository.countCallsTodayForAdvisor(advisorId, startOfDay);
+
+        // B. Overdue Follow-ups
+        long overdueFollowups = followUpTaskRepository.countOverdueForAdvisor(advisorId, now);
+
+        // C. Meetings Today
+        long meetingsToday = clientMeetingRepository.countMeetingsTodayForAdvisor(advisorId, startOfDay, endOfDay);
+
+        // D. New Leads
+        long newLeads = advisorLeads.stream()
+                .filter(l -> "NEW_LEAD".equalsIgnoreCase(l.getStage()) || "UNASSIGNED".equalsIgnoreCase(l.getStage()) || "NEW".equalsIgnoreCase(l.getStage()))
+                .count();
+
+        // E. Interested Clients
+        long interestedClients = advisorLeads.stream()
+                .filter(l -> "INTERESTED".equalsIgnoreCase(l.getStage()) || "FOLLOWUP".equalsIgnoreCase(l.getStage()) || "CONTACTED".equalsIgnoreCase(l.getStage()))
+                .count();
+
+        // F. Quotation Pending
+        long quotationPending = advisorLeads.stream()
+                .filter(l -> "QUOTATION".equalsIgnoreCase(l.getStage()) || "MEETING".equalsIgnoreCase(l.getStage()) || "DOCUMENTS".equalsIgnoreCase(l.getStage()))
+                .count();
+
+        // G. Policies Closed This Month
+        LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
+        long policiesClosedMonth = advisorLeads.stream()
+                .filter(l -> ("POLICY_ISSUED".equalsIgnoreCase(l.getStage()) || "CONVERTED".equalsIgnoreCase(l.getStage()) || "WON".equalsIgnoreCase(l.getStage())) &&
+                             (l.getUpdatedAt() != null && l.getUpdatedAt().toLocalDate().isAfter(startOfMonth.minusDays(1))))
+                .count();
+        if (policiesClosedMonth == 0) {
+            policiesClosedMonth = advisorLeads.stream()
+                    .filter(l -> "POLICY_ISSUED".equalsIgnoreCase(l.getStage()) || "CONVERTED".equalsIgnoreCase(l.getStage()) || "WON".equalsIgnoreCase(l.getStage()))
+                    .count();
+        }
+
+        // Financial Targets
+        BigDecimal monthlyTargetPremium = BigDecimal.valueOf(350000.0);
+        BigDecimal monthlyAchievedPremium = advisorLeads.stream()
+                .filter(l -> "POLICY_ISSUED".equalsIgnoreCase(l.getStage()) || "CONVERTED".equalsIgnoreCase(l.getStage()) || "WON".equalsIgnoreCase(l.getStage()))
+                .map(l -> l.getEstimatedPremium() != null ? l.getEstimatedPremium() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        double targetAchievementPercentage = monthlyTargetPremium.compareTo(BigDecimal.ZERO) > 0
+                ? monthlyAchievedPremium.divide(monthlyTargetPremium, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).setScale(1, RoundingMode.HALF_UP).doubleValue()
+                : 0.0;
+
+        double conversionRate = totalLeads > 0
+                ? BigDecimal.valueOf(((double) policiesClosedMonth / totalLeads) * 100).setScale(1, RoundingMode.HALF_UP).doubleValue()
+                : 0.0;
+
+        // 3. Section 2: Today's Follow-ups
+        List<FollowUpTask> dueTodayTasks = followUpTaskRepository.findDueTodayForAdvisor(advisorId, startOfDay, endOfDay);
+        List<FollowUpTask> overdueTasksList = followUpTaskRepository.findOverdueForAdvisor(advisorId, now);
+
+        List<com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.TodayFollowUpDto> todayFollowUps = new ArrayList<>();
+        
+        // Add overdue first
+        for (FollowUpTask task : overdueTasksList) {
+            ClientLead client = task.getClient();
+            todayFollowUps.add(com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.TodayFollowUpDto.builder()
+                    .followUpId(task.getId())
+                    .clientId(client != null ? client.getId() : null)
+                    .clientName(client != null ? client.getFullName() : "Client #" + task.getId())
+                    .phoneNumber(client != null ? client.getPhoneNumber() : "")
+                    .email(client != null ? client.getEmail() : "")
+                    .policyCategory(client != null ? (client.getInsuranceType() != null ? client.getInsuranceType() : "General") : "General")
+                    .priority("URGENT")
+                    .stage(client != null ? client.getStage() : "FOLLOWUP")
+                    .scheduledTime(task.getScheduledDatetime())
+                    .remarks(task.getNotes() != null ? task.getNotes() : "Overdue Follow-up scheduled")
+                    .isOverdue(true)
+                    .build());
+        }
+        // Add today's due
+        for (FollowUpTask task : dueTodayTasks) {
+            ClientLead client = task.getClient();
+            todayFollowUps.add(com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.TodayFollowUpDto.builder()
+                    .followUpId(task.getId())
+                    .clientId(client != null ? client.getId() : null)
+                    .clientName(client != null ? client.getFullName() : "Client #" + task.getId())
+                    .phoneNumber(client != null ? client.getPhoneNumber() : "")
+                    .email(client != null ? client.getEmail() : "")
+                    .policyCategory(client != null ? (client.getInsuranceType() != null ? client.getInsuranceType() : "General") : "General")
+                    .priority("NORMAL")
+                    .stage(client != null ? client.getStage() : "FOLLOWUP")
+                    .scheduledTime(task.getScheduledDatetime())
+                    .remarks(task.getNotes() != null ? task.getNotes() : "Scheduled Call / Discussion")
+                    .isOverdue(false)
+                    .build());
+        }
+
+        // 4. Section 3: Upcoming Meetings
+        List<ClientMeeting> upcomingMeetingsList = clientMeetingRepository.findMeetingsForAdvisorBetween(advisorId, startOfDay, startOfDay.plusDays(7));
+        List<com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.UpcomingMeetingDto> upcomingMeetings = upcomingMeetingsList.stream()
+                .map(m -> com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.UpcomingMeetingDto.builder()
+                        .meetingId(m.getId())
+                        .clientId(m.getClient() != null ? m.getClient().getId() : null)
+                        .clientName(m.getClient() != null ? m.getClient().getFullName() : "Client #" + m.getId())
+                        .phoneNumber(m.getClient() != null ? m.getClient().getPhoneNumber() : "")
+                        .title(m.getTitle() != null ? m.getTitle() : "Insurance Consultation")
+                        .meetingType(m.getMeetingType() != null ? m.getMeetingType() : "GOOGLE_MEET")
+                        .meetingLink(m.getGoogleMeetUrl() != null ? m.getGoogleMeetUrl() : "https://meet.google.com/new")
+                        .location(m.getLocation() != null ? m.getLocation() : "Online Video Room")
+                        .scheduledStartTime(m.getMeetingDatetime())
+                        .scheduledEndTime(m.getEndDatetime() != null ? m.getEndDatetime() : (m.getMeetingDatetime() != null ? m.getMeetingDatetime().plusMinutes(30) : null))
+                        .status(m.getStatus() != null ? m.getStatus() : "SCHEDULED")
+                        .agenda(m.getPurpose() != null ? m.getPurpose() : (m.getTitle() != null ? m.getTitle() : "Discussion on policy options"))
+                        .build())
+                .collect(Collectors.toList());
+
+        // 5. Section 4: My Sales Pipeline
+        Map<String, String> stages = new LinkedHashMap<>();
+        stages.put("NEW_LEAD", "New Leads");
+        stages.put("CONTACTED", "Contacted");
+        stages.put("FOLLOWUP", "In Follow-up");
+        stages.put("INTERESTED", "Interested");
+        stages.put("QUOTATION", "Quotation Sent");
+        stages.put("MEETING", "Meeting Scheduled");
+        stages.put("DOCUMENTS", "KYC / Documents");
+        stages.put("PAYMENT_PENDING", "Payment Processing");
+        stages.put("POLICY_ISSUED", "Policies Issued 🎉");
+
+        Map<String, String> stageColors = Map.of(
+                "NEW_LEAD", "#3b82f6",
+                "CONTACTED", "#6366f1",
+                "FOLLOWUP", "#f59e0b",
+                "INTERESTED", "#8b5cf6",
+                "QUOTATION", "#0284c7",
+                "MEETING", "#ec4899",
+                "DOCUMENTS", "#eab308",
+                "PAYMENT_PENDING", "#f97316",
+                "POLICY_ISSUED", "#10b981"
+        );
+
+        List<com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.PipelineStageSummaryDto> pipelineBreakdown = new ArrayList<>();
+        for (Map.Entry<String, String> entry : stages.entrySet()) {
+            List<ClientLead> stageLeads = advisorLeads.stream()
+                    .filter(l -> entry.getKey().equalsIgnoreCase(l.getStage()))
+                    .collect(Collectors.toList());
+            
+            BigDecimal stageVal = stageLeads.stream()
+                    .map(l -> l.getEstimatedPremium() != null ? l.getEstimatedPremium() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            pipelineBreakdown.add(com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.PipelineStageSummaryDto.builder()
+                    .stage(entry.getKey())
+                    .label(entry.getValue())
+                    .count(stageLeads.size())
+                    .totalPotentialValue(stageVal)
+                    .badgeColor(stageColors.getOrDefault(entry.getKey(), "#64748b"))
+                    .build());
+        }
+
+        // 6. Section 5: Recent Client Activity
+        List<CallLog> recentCalls = callLogRepository.findByAdvisorIdOrderByCreatedAtDesc(advisorId);
+        List<com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.RecentActivityDto> recentActivities = new ArrayList<>();
+
+        for (CallLog call : recentCalls.stream().limit(10).collect(Collectors.toList())) {
+            ClientLead client = call.getClient();
+            recentActivities.add(com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.RecentActivityDto.builder()
+                    .activityType("CALL_LOG")
+                    .clientId(client != null ? client.getId() : null)
+                    .clientName(client != null ? client.getFullName() : "Client #" + call.getId())
+                    .description("Telephony Call: " + (call.getCallResult() != null ? call.getCallResult() : "Completed") + " (" + (call.getCallDurationSeconds() != null ? call.getCallDurationSeconds() + "s" : "0s") + ") - " + (call.getCallNotes() != null ? call.getCallNotes() : ""))
+                    .outcome(call.getCallResult() != null ? call.getCallResult() : "LOGGED")
+                    .timestamp(call.getCreatedAt())
+                    .iconType("PHONE")
+                    .build());
+        }
+
+        // Profile meta
+        String designation = advisor.getStaffProfile() != null && advisor.getStaffProfile().getDesignationName() != null
+                ? advisor.getStaffProfile().getDesignationName()
+                : (advisor.getStaffProfile() != null && advisor.getStaffProfile().getDesignation() != null ? advisor.getStaffProfile().getDesignation().getName() : "Insurance Advisor");
+
+        String managerName = advisor.getManager() != null ? advisor.getManager().getFullName() : "Executive Management";
+        String branch = "Bengaluru Main Branch";
+
+        return com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.AdvisorDashboardResponse.builder()
+                .advisorId(advisor.getId())
+                .advisorName(advisor.getFullName())
+                .email(advisor.getEmail())
+                .designation(designation)
+                .branch(branch)
+                .managerName(managerName)
+                .callsToday(callsToday)
+                .overdueFollowups(overdueFollowups)
+                .meetingsToday(meetingsToday)
+                .newLeads(newLeads)
+                .interestedClients(interestedClients)
+                .quotationPending(quotationPending)
+                .policiesClosedMonth(policiesClosedMonth)
+                .monthlyTargetPremium(monthlyTargetPremium)
+                .monthlyAchievedPremium(monthlyAchievedPremium)
+                .targetAchievementPercentage(targetAchievementPercentage)
+                .conversionRate(conversionRate)
+                .todayFollowUps(todayFollowUps)
+                .upcomingMeetings(upcomingMeetings)
+                .pipelineBreakdown(pipelineBreakdown)
+                .recentActivities(recentActivities)
+                .build();
+    }
 }

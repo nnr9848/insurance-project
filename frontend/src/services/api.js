@@ -129,6 +129,10 @@ export const crmService = {
   },
 
   // Analytics & Dashboard Summary
+  getAdvisorSummary: async () => {
+    const res = await api.get('/crm/analytics/advisor-summary');
+    return res.data;
+  },
   getManagerSummary: async () => {
     const res = await api.get('/crm/analytics/manager-summary');
     return res.data;
