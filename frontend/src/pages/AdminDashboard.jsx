@@ -44,7 +44,8 @@ import {
   Globe,
   FileSpreadsheet,
   Award,
-  ShieldAlert
+  ShieldAlert,
+  FolderCheck
 } from 'lucide-react';
 import { portalService, crmService } from '../services/api';
 import UserManagementView from '../components/crm/UserManagementView';
@@ -59,6 +60,7 @@ import SuperAdminDashboardOverview from '../components/crm/SuperAdminDashboardOv
 import PolicyRenewalDeskView from '../components/crm/PolicyRenewalDeskView';
 import AuditTrailView from '../components/crm/AuditTrailView';
 import QuotationManagementView from '../components/crm/QuotationManagementView';
+import DocumentLockerView from '../components/crm/DocumentLockerView';
 
 export default function AdminDashboard() {
   const { 
@@ -188,6 +190,13 @@ export default function AdminDashboard() {
           category: 'CRM Workspace',
           subtitle: 'Multi-insurer comparative proposals, automated GST, benefit breakdown, and WhatsApp quote dispatch.',
           icon: <FileSpreadsheet size={18} color="#0284c7" />
+        };
+      case 'documents':
+        return {
+          title: 'Digital KYC & Document Locker',
+          category: 'CRM Workspace',
+          subtitle: 'Centralized repository of Aadhaar, PAN, previous policies, RC books, and medical reports with verification workflows.',
+          icon: <FolderCheck size={18} color="#059669" />
         };
       case 'audit':
         return {
@@ -544,6 +553,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
     { id: 'meetings', label: 'Meeting Calendar', icon: <Calendar size={19} />, count: null },
     { id: 'renewals', label: 'Policy Renewal Desk', icon: <ShieldCheck size={19} />, count: null },
     { id: 'crm-quotes', label: 'Quotation Desk', icon: <FileSpreadsheet size={19} />, count: null },
+    { id: 'documents', label: 'Document Locker', icon: <FolderCheck size={19} />, count: null },
   ];
 
   const navItemsAdmin = [
@@ -1407,6 +1417,13 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           {/* VIEW: QUOTATION MANAGEMENT */}
           {activeView === 'crm-quotes' && (
             <QuotationManagementView 
+              onOpenClient360={(client) => setSelectedClient360(client)}
+            />
+          )}
+
+          {/* VIEW: DIGITAL KYC & DOCUMENT LOCKER */}
+          {activeView === 'documents' && (
+            <DocumentLockerView 
               onOpenClient360={(client) => setSelectedClient360(client)}
             />
           )}

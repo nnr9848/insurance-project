@@ -82,8 +82,7 @@ public class QuotationService {
                 "Quotation Created",
                 null,
                 "Quote " + saved.getQuoteNumber() + " (" + saved.getInsurerName() + " - " + saved.getPlanName() + ") for ₹" + saved.getTotalPremium(),
-                advisor.getId(),
-                advisor.getFullName(),
+                advisor,
                 null
         );
 
@@ -138,8 +137,7 @@ public class QuotationService {
                 "quote_status",
                 oldStatus,
                 newStatus,
-                user.getId(),
-                user.getFullName(),
+                user,
                 null
         );
 
@@ -188,8 +186,7 @@ public class QuotationService {
                 "Quotation Dispatched",
                 null,
                 "Dispatched Quote " + quotation.getQuoteNumber() + " via WhatsApp to " + cleanPhone,
-                user.getId(),
-                user.getFullName(),
+                user,
                 null
         );
 

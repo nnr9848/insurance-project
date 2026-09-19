@@ -35,6 +35,29 @@ public class ClientDocument {
     @Column(name = "file_url", nullable = false, columnDefinition = "TEXT")
     private String fileUrl;
 
+    @Builder.Default
+    @Column(name = "file_size_bytes")
+    private Long fileSizeBytes = 0L;
+
+    @Builder.Default
+    @Column(name = "file_type", length = 100)
+    private String fileType = "application/pdf";
+
+    @Builder.Default
+    @Column(name = "verification_status", length = 40)
+    private String verificationStatus = "PENDING_REVIEW"; // PENDING_REVIEW, VERIFIED, REJECTED
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "verified_by")
+    @JsonIgnoreProperties({"manager", "roles", "password"})
+    private User verifiedBy;
+
+    @Column(name = "verification_notes", columnDefinition = "TEXT")
+    private String verificationNotes;
+
+    @Column(name = "verified_at")
+    private LocalDateTime verifiedAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "uploaded_by")
     @JsonIgnoreProperties({"manager", "roles", "password"})

@@ -164,6 +164,31 @@ export const crmService = {
     const res = await api.post(`/crm/quotations/${quoteId}/send`, dispatchData);
     return res.data;
   },
+  // Digital KYC & Document Collection Engine
+  getDocuments: async () => {
+    const res = await api.get('/crm/documents');
+    return res.data;
+  },
+  getClientDocuments: async (clientId) => {
+    const res = await api.get(`/crm/documents/client/${clientId}`);
+    return res.data;
+  },
+  uploadDocument: async (docData) => {
+    const res = await api.post('/crm/documents/upload', docData);
+    return res.data;
+  },
+  verifyDocument: async (docId, verifyData) => {
+    const res = await api.patch(`/crm/documents/${docId}/verify`, verifyData);
+    return res.data;
+  },
+  deleteDocument: async (docId) => {
+    const res = await api.delete(`/crm/documents/${docId}`);
+    return res.data;
+  },
+  requestDocumentsChecklist: async (clientId, docTypes) => {
+    const res = await api.post(`/crm/documents/client/${clientId}/request-checklist`, { docTypes });
+    return res.data;
+  },
   // Enterprise Audit Trail & Compliance
   getClientAuditLogs: async (clientId) => {
     const res = await api.get(`/crm/audit/client/${clientId}`);

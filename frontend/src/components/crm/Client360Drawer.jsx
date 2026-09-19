@@ -48,14 +48,31 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   const [clientQuotes, setClientQuotes] = useState([]);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
 
+  // Live Documents State
+  const [clientDocs, setClientDocs] = useState([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+
   useEffect(() => {
     setCurrentClient(client);
     setTargetAdvisorId(client.assignedAdvisorId ? String(client.assignedAdvisorId) : '');
     if (client?.id) {
       loadClientAuditLogs(client.id);
       loadClientQuotes(client.id);
+      loadClientDocs(client.id);
     }
   }, [client]);
+
+  const loadClientDocs = async (clientId) => {
+    setLoadingDocs(true);
+    try {
+      const data = await crmService.getClientDocuments(clientId);
+      setClientDocs(data || []);
+    } catch (err) {
+      console.error('Failed to load client documents:', err);
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
 
   const loadClientQuotes = async (clientId) => {
     setLoadingQuotes(true);
@@ -314,8 +331,8 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
           {[
             { id: 'overview', label: 'Overview & Plan' },
             { id: 'quotes', label: `Quotations (${clientQuotes.length})` },
-            { id: 'timeline', label: `Timeline & Audit (${auditLogs.length})` },
-            { id: 'documents', label: 'Document Locker' }
+            { id: 'documents', label: `Documents (${clientDocs.length})` },
+            { id: 'timeline', label: `Timeline & Audit (${auditLogs.length})` }
           ].map(tab => (
             <button
               key={tab.id}
@@ -704,57 +721,170 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
             </div>
           )}
 
-          {/* TAB 3: DOCUMENT LOCKER */}
+          {/* TAB: DOCUMENT LOCKER & KYC */}
           {activeTab === 'documents' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              
+              {/* WhatsApp Checklist & Request Bar */}
               <div style={{
+                background: '#f0fdf4',
+                borderRadius: '12px',
+                padding: '12px 14px',
+                border: '1px solid #bbf7d0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '8px'
+              }}>
+                <div>
+                  <div style={{ fontWeight: 800, color: '#15803d', fontSize: '0.82rem' }}>Request Client Documents</div>
+                  <div style={{ fontSize: '0.72rem', color: '#166534' }}>Send itemized KYC checklist (Aadhaar, PAN, Policy) via WhatsApp</div>
+                </div>
+                <button
+                  onClick={async () => {
+                    const res = await crmService.requestDocumentsChecklist(currentClient.id, ['AADHAAR', 'PAN', 'PREVIOUS_POLICY', 'MEDICAL_RECORD']);
+                    if (res.whatsAppUrl) window.open(res.whatsAppUrl, '_blank');
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: '#16a34a',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <MessageSquare size={13} /> Send WhatsApp Request
+                </button>
+              </div>
+
+              {/* Upload trigger */}
+              <label style={{
                 border: '2px dashed #cbd5e1',
                 borderRadius: '12px',
-                padding: '1.5rem',
+                padding: '1.25rem',
                 textAlign: 'center',
                 background: '#ffffff',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                display: 'block'
               }}>
-                <Upload size={24} color="#059669" style={{ margin: '0 auto 6px auto' }} />
-                <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#0f2b48' }}>
-                  Upload KYC or Proposal Document
+                <input 
+                  type="file" 
+                  style={{ display: 'none' }} 
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      await crmService.uploadDocument({
+                        clientId: currentClient.id,
+                        documentType: 'OTHER',
+                        fileName: file.name,
+                        fileUrl: `https://storage.googleapis.com/aadhiraksha-kyc/${Date.now()}-${file.name}`,
+                        fileSizeBytes: file.size,
+                        fileType: file.type || 'application/pdf'
+                      });
+                      loadClientDocs(currentClient.id);
+                    } catch (err) {
+                      alert('Failed to upload file: ' + (err.response?.data?.message || err.message));
+                    }
+                  }}
+                />
+                <Upload size={22} color="#059669" style={{ margin: '0 auto 4px auto' }} />
+                <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f2b48' }}>
+                  Click to Browse & Upload KYC File
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                  Aadhaar, PAN Card, Previous Policy, Medical Records (PDF, JPG up to 10MB)
+                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                  Aadhaar, PAN Card, Previous Policy, Medical Records (PDF, JPG up to 15MB)
                 </div>
-              </div>
+              </label>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {sampleDocs.map((doc, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      background: '#ffffff',
-                      borderRadius: '10px',
-                      padding: '10px 14px',
-                      border: '1px solid #e2e8f0',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <FileText size={18} color="#2563eb" />
-                      <div>
-                        <div style={{ fontWeight: 700, color: '#0f2b48', fontSize: '0.85rem' }}>{doc.name}</div>
-                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>{doc.type} • {doc.date} • {doc.size}</div>
+              {/* Documents List */}
+              {loadingDocs ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                  <div style={{ width: '24px', height: '24px', border: '2px solid #cbd5e1', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 8px auto' }} />
+                  <span style={{ fontSize: '0.8rem' }}>Loading attached documents...</span>
+                </div>
+              ) : clientDocs.length === 0 ? (
+                <div style={{ background: '#ffffff', borderRadius: '12px', padding: '1.5rem', textAlign: 'center', border: '1px solid #e2e8f0', color: '#94a3b8' }}>
+                  <ShieldCheck size={32} color="#cbd5e1" style={{ margin: '0 auto 8px auto' }} />
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#475569' }}>No KYC documents attached yet</div>
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>Upload proposal files or send WhatsApp document request above.</div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {clientDocs.map((doc) => {
+                    const isVerified = doc.verificationStatus === 'VERIFIED';
+                    return (
+                      <div
+                        key={doc.id}
+                        style={{
+                          background: '#ffffff',
+                          borderRadius: '10px',
+                          padding: '10px 14px',
+                          border: '1px solid #e2e8f0',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <FileText size={20} color={isVerified ? '#16a34a' : '#2563eb'} />
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#0f2b48', fontSize: '0.85rem' }}>{doc.fileName}</div>
+                            <div style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>{doc.documentType.replace('_', ' ')}</span>
+                              <span>•</span>
+                              <span style={{ color: isVerified ? '#15803d' : '#b45309', fontWeight: 700 }}>
+                                {doc.verificationStatus.replace('_', ' ')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {!isVerified && (
+                            <button
+                              onClick={async () => {
+                                await crmService.verifyDocument(doc.id, { status: 'VERIFIED', notes: 'Verified in Client 360' });
+                                loadClientDocs(currentClient.id);
+                              }}
+                              style={{ background: '#dcfce7', border: '1px solid #bbf7d0', color: '#15803d', padding: '4px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}
+                              title="Mark Verified"
+                            >
+                              Verify ✓
+                            </button>
+                          )}
+                          <button
+                            onClick={() => window.open(doc.fileUrl, '_blank')}
+                            style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}
+                            title="Preview / Download"
+                          >
+                            <Download size={14} color="#334155" />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (window.confirm('Delete this document?')) {
+                                await crmService.deleteDocument(doc.id);
+                                loadClientDocs(currentClient.id);
+                              }
+                            }}
+                            style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}
+                            title="Delete"
+                          >
+                            <Trash2 size={14} color="#dc2626" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-
-                    <button
-                      style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}
-                      title="Download"
-                    >
-                      <Download size={14} color="#334155" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
