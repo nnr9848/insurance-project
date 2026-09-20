@@ -1314,7 +1314,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#0f2b48' }}>
-                          ✏️ Edit: {lead.fullName} <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--accent-emerald)' }}>({lead.clientCode})</span>
+                          ✏️ Edit Client Record <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--accent-emerald)' }}>({lead.clientCode})</span>
                         </div>
                         <button
                           onClick={cancelInlineEdit}
@@ -1324,101 +1324,159 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                         </button>
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                        <div>
-                          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Stage</label>
-                          <select
-                            value={editFormData.stage || ''}
-                            onChange={(e) => setEditFormData({ ...editFormData, stage: e.target.value })}
-                            style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', background: '#fff' }}
-                          >
-                            <option value="NEW_LEAD">New Lead</option>
-                            <option value="CONTACTED">Contacted</option>
-                            <option value="FOLLOWUP">Follow-up Due</option>
-                            <option value="INTERESTED">Interested</option>
-                            <option value="QUOTATION">Quotation</option>
-                            <option value="MEETING">Meeting</option>
-                            <option value="DOCUMENTS">Documents</option>
-                            <option value="PAYMENT">Payment</option>
-                            <option value="POLICY_ISSUED">Policy Issued</option>
-                            <option value="LOST">Lost</option>
-                          </select>
+                      {/* 1. Client Identity & Contact Section */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                        <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.04em' }}>
+                          👤 Client & Contact Details
                         </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                          <div>
+                            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Full Name *</label>
+                            <input
+                              type="text"
+                              value={editFormData.fullName || ''}
+                              placeholder="Full Name"
+                              onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
+                              style={{ width: '100%', padding: '5px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
+                            />
+                          </div>
 
-                        <div>
-                          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Priority</label>
-                          <select
-                            value={editFormData.priority || 'MEDIUM'}
-                            onChange={(e) => setEditFormData({ ...editFormData, priority: e.target.value })}
-                            style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', background: '#fff' }}
-                          >
-                            <option value="HIGH">🔥 High</option>
-                            <option value="MEDIUM">⚡ Medium</option>
-                            <option value="LOW">Low</option>
-                          </select>
+                          <div>
+                            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Company / Org</label>
+                            <input
+                              type="text"
+                              value={editFormData.companyName || ''}
+                              placeholder="Company / Retail"
+                              onChange={(e) => setEditFormData({ ...editFormData, companyName: e.target.value })}
+                              style={{ width: '100%', padding: '5px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
+                            />
+                          </div>
+
+                          <div>
+                            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Phone Number *</label>
+                            <input
+                              type="tel"
+                              value={editFormData.phoneNumber || ''}
+                              placeholder="10-digit Phone"
+                              onChange={(e) => setEditFormData({ ...editFormData, phoneNumber: e.target.value })}
+                              style={{ width: '100%', padding: '5px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
+                            />
+                          </div>
+
+                          <div>
+                            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>City / Location</label>
+                            <input
+                              type="text"
+                              value={editFormData.city || ''}
+                              placeholder="City"
+                              onChange={(e) => setEditFormData({ ...editFormData, city: e.target.value })}
+                              style={{ width: '100%', padding: '5px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
+                            />
+                          </div>
                         </div>
+                      </div>
 
-                        <div>
-                          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Product</label>
-                          <select
-                            value={editFormData.insuranceType || ''}
-                            onChange={(e) => setEditFormData({ ...editFormData, insuranceType: e.target.value })}
-                            style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', background: '#fff' }}
-                          >
-                            <option value="Health Insurance">Health</option>
-                            <option value="Term Life Insurance">Term Life</option>
-                            <option value="Vehicle / Motor Insurance">Vehicle</option>
-                            <option value="Group / SME Insurance">Corporate / SME</option>
-                            <option value="Travel Insurance">Travel</option>
-                            <option value="Loans & Financing">Loans</option>
-                          </select>
+                      {/* 2. Policy & Advisory Section */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                        <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.04em' }}>
+                          🛡️ Policy & Pipeline Status
                         </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                          <div>
+                            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Stage</label>
+                            <select
+                              value={editFormData.stage || ''}
+                              onChange={(e) => setEditFormData({ ...editFormData, stage: e.target.value })}
+                              style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', background: '#fff' }}
+                            >
+                              <option value="NEW_LEAD">New Lead</option>
+                              <option value="CONTACTED">Contacted</option>
+                              <option value="FOLLOWUP">Follow-up Due</option>
+                              <option value="INTERESTED">Interested</option>
+                              <option value="QUOTATION">Quotation</option>
+                              <option value="MEETING">Meeting</option>
+                              <option value="DOCUMENTS">Documents</option>
+                              <option value="PAYMENT">Payment</option>
+                              <option value="POLICY_ISSUED">Policy Issued</option>
+                              <option value="LOST">Lost</option>
+                            </select>
+                          </div>
 
-                        <div>
-                          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Coverage / Sum</label>
-                          <input
-                            type="text"
-                            value={editFormData.sumInsured || ''}
-                            placeholder="₹10 Lakhs"
-                            onChange={(e) => setEditFormData({ ...editFormData, sumInsured: e.target.value })}
-                            style={{ width: '100%', padding: '5px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
-                          />
-                        </div>
+                          <div>
+                            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Priority</label>
+                            <select
+                              value={editFormData.priority || 'MEDIUM'}
+                              onChange={(e) => setEditFormData({ ...editFormData, priority: e.target.value })}
+                              style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', background: '#fff' }}
+                            >
+                              <option value="HIGH">🔥 High</option>
+                              <option value="MEDIUM">⚡ Medium</option>
+                              <option value="LOW">Low</option>
+                            </select>
+                          </div>
 
-                        <div>
-                          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Est. Premium (₹)</label>
-                          <input
-                            type="number"
-                            value={editFormData.estimatedPremium || ''}
-                            placeholder="15000"
-                            onChange={(e) => setEditFormData({ ...editFormData, estimatedPremium: e.target.value })}
-                            style={{ width: '100%', padding: '5px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
-                          />
-                        </div>
+                          <div>
+                            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Product</label>
+                            <select
+                              value={editFormData.insuranceType || ''}
+                              onChange={(e) => setEditFormData({ ...editFormData, insuranceType: e.target.value })}
+                              style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', background: '#fff' }}
+                            >
+                              <option value="Health Insurance">Health</option>
+                              <option value="Term Life Insurance">Term Life</option>
+                              <option value="Vehicle / Motor Insurance">Vehicle</option>
+                              <option value="Group / SME Insurance">Corporate / SME</option>
+                              <option value="Travel Insurance">Travel</option>
+                              <option value="Loans & Financing">Loans</option>
+                            </select>
+                          </div>
 
-                        <div>
-                          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Assigned Advisor</label>
-                          <select
-                            value={editFormData.assignedAdvisorId || ''}
-                            onChange={(e) => {
-                              const selectedId = e.target.value;
-                              const adv = advisors.find(a => String(a.id) === String(selectedId));
-                              setEditFormData({
-                                ...editFormData,
-                                assignedAdvisorId: selectedId ? Number(selectedId) : null,
-                                assignedAdvisorName: adv ? adv.fullName : 'Unassigned'
-                              });
-                            }}
-                            disabled={!canReassign}
-                            style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', background: canReassign ? '#fff' : '#f1f5f9' }}
-                          >
-                            <option value="">Unassigned</option>
-                            {advisors.map(adv => (
-                              <option key={adv.id} value={adv.id}>
-                                {adv.fullName}
-                              </option>
-                            ))}
-                          </select>
+                          <div>
+                            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Coverage / Sum</label>
+                            <input
+                              type="text"
+                              value={editFormData.sumInsured || ''}
+                              placeholder="₹10 Lakhs"
+                              onChange={(e) => setEditFormData({ ...editFormData, sumInsured: e.target.value })}
+                              style={{ width: '100%', padding: '5px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
+                            />
+                          </div>
+
+                          <div>
+                            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Est. Premium (₹)</label>
+                            <input
+                              type="number"
+                              value={editFormData.estimatedPremium || ''}
+                              placeholder="15000"
+                              onChange={(e) => setEditFormData({ ...editFormData, estimatedPremium: e.target.value })}
+                              style={{ width: '100%', padding: '5px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
+                            />
+                          </div>
+
+                          <div>
+                            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Assigned Advisor</label>
+                            <select
+                              value={editFormData.assignedAdvisorId || ''}
+                              onChange={(e) => {
+                                const selectedId = e.target.value;
+                                const adv = advisors.find(a => String(a.id) === String(selectedId));
+                                setEditFormData({
+                                  ...editFormData,
+                                  assignedAdvisorId: selectedId ? Number(selectedId) : null,
+                                  assignedAdvisorName: adv ? adv.fullName : 'Unassigned'
+                                });
+                              }}
+                              disabled={!canReassign}
+                              style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', background: canReassign ? '#fff' : '#f1f5f9' }}
+                            >
+                              <option value="">Unassigned</option>
+                              {advisors.map(adv => (
+                                <option key={adv.id} value={adv.id}>
+                                  {adv.fullName}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       </div>
 
