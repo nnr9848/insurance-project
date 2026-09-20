@@ -146,6 +146,14 @@ export default function UserProfileModal({ isOpen, onClose, defaultTab = 'profil
             <KeyRound size={15} color={activeTab === 'security' ? 'var(--accent-emerald)' : 'currentColor'} />
             <span>Security & Password</span>
           </button>
+
+          <button
+            onClick={() => { setActiveTab('preferences'); setStatusMessage(null); }}
+            className={`crm-segmented-btn ${activeTab === 'preferences' ? 'active' : ''}`}
+          >
+            <ShieldCheck size={15} color={activeTab === 'preferences' ? '#7c3aed' : 'currentColor'} />
+            <span>Sandbox & Data Engine</span>
+          </button>
         </div>
 
         {/* Status Toast Alert */}
@@ -357,6 +365,146 @@ export default function UserProfileModal({ isOpen, onClose, defaultTab = 'profil
                 {isSaving ? 'Updating Password...' : 'Update Password'}
               </button>
             </form>
+          )}
+
+          {/* TAB 3: SANDBOX & DATA ENGINE */}
+          {activeTab === 'preferences' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              
+              <div style={{
+                background: '#faf5ff',
+                border: '1px solid #e9d5ff',
+                borderRadius: '10px',
+                padding: '0.85rem 1rem',
+                fontSize: '0.82rem',
+                color: '#6b21a8',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem'
+              }}>
+                <ShieldCheck size={20} color="#7c3aed" />
+                <div>
+                  <div style={{ fontWeight: 800 }}>Sandbox & Enterprise Data Engine</div>
+                  <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>
+                    Reset, purge transactional test leads, or reseed realistic demo data across all CRM modules on-demand.
+                  </div>
+                </div>
+              </div>
+
+              {/* Action 1: Reseed Fresh Demo Data */}
+              <div style={{
+                background: '#ffffff',
+                border: '1px solid var(--crm-border-subtle)',
+                borderRadius: '12px',
+                padding: '1.1rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '1rem',
+                flexWrap: 'wrap'
+              }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--crm-text-primary)' }}>
+                    Reseed Fresh Demo Dataset
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--crm-text-muted)', marginTop: '2px' }}>
+                    Populates CRM leads, quotes, KYC docs, approvals, and scheduled calls.
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={async () => {
+                    if (!window.confirm('Are you sure you want to reseed fresh demo data?')) return;
+                    setIsSaving(true);
+                    setStatusMessage(null);
+                    try {
+                      const res = await crmService.seedDemoData();
+                      setStatusMessage({ type: 'success', text: res.message || 'Demo dataset reseeded afresh!' });
+                      setTimeout(() => window.location.reload(), 1200);
+                    } catch (err) {
+                      setStatusMessage({ type: 'error', text: 'Failed to reseed data: ' + (err.response?.data?.message || err.message) });
+                    } finally {
+                      setIsSaving(false);
+                    }
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #059669, #047857)',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '0.55rem 1rem',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    boxShadow: '0 2px 6px rgba(5,150,105,0.25)'
+                  }}
+                >
+                  <Save size={15} /> {isSaving ? 'Reseeding...' : 'Reseed Fresh Demo Data'}
+                </button>
+              </div>
+
+              {/* Action 2: Purge All Demo Data Cleanly */}
+              <div style={{
+                background: '#ffffff',
+                border: '1px solid #fee2e2',
+                borderRadius: '12px',
+                padding: '1.1rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '1rem',
+                flexWrap: 'wrap'
+              }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#991b1b' }}>
+                    Purge All Demo CRM Data
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
+                    Wipes all transactional leads, inquiries, proposals, and call logs with zero orphan records.
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={async () => {
+                    if (!window.confirm('DANGER: This will delete all demo leads, inquiries, and proposals! Continue?')) return;
+                    setIsSaving(true);
+                    setStatusMessage(null);
+                    try {
+                      const res = await crmService.purgeDemoData();
+                      setStatusMessage({ type: 'success', text: res.message || 'All demo data purged cleanly.' });
+                      setTimeout(() => window.location.reload(), 1200);
+                    } catch (err) {
+                      setStatusMessage({ type: 'error', text: 'Failed to purge data: ' + (err.response?.data?.message || err.message) });
+                    } finally {
+                      setIsSaving(false);
+                    }
+                  }}
+                  style={{
+                    background: '#ef4444',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '0.55rem 1rem',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem'
+                  }}
+                >
+                  <AlertCircle size={15} /> {isSaving ? 'Purging...' : 'Purge All Demo Data'}
+                </button>
+              </div>
+
+            </div>
           )}
         </div>
 

@@ -28,6 +28,7 @@ public class SystemDataService {
     private final CallLogRepository callLogRepository;
     private final FollowUpTaskRepository followUpRepository;
     private final ClientMeetingRepository meetingRepository;
+    private final QuoteInquiryRepository quoteInquiryRepository;
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
 
@@ -43,10 +44,11 @@ public class SystemDataService {
         followUpRepository.deleteAllInBatch();
         meetingRepository.deleteAllInBatch();
         clientLeadRepository.deleteAllInBatch();
+        quoteInquiryRepository.deleteAllInBatch();
         entityManager.flush();
         entityManager.clear();
 
-        log.info("Demo CRM transactional data purged cleanly.");
+        log.info("Demo CRM transactional data and web inquiries purged cleanly.");
         return Map.of(
                 "status", "SUCCESS",
                 "message", "All sample CRM leads, quotations, approvals, call logs, and documents have been purged cleanly.",
@@ -424,7 +426,38 @@ public class SystemDataService {
                 .status("SCHEDULED")
                 .build());
 
-        log.info("Realistic demo dataset seeded successfully with 5 leads, 3 quotations, 4 KYC docs, 2 approvals, 2 call logs, and scheduled meetings.");
+        // 9. Seed Realistic Inbound Web Quote Inquiries
+        quoteInquiryRepository.save(QuoteInquiry.builder()
+                .categorySlug("health-insurance")
+                .fullName("Rajesh Sharma")
+                .phoneNumber("9876543210")
+                .email("rajesh.sharma@example.com")
+                .city("Hyderabad")
+                .planDetails("{\"coverageAmount\":\"₹10 Lakhs\",\"familyMembers\":\"Self + Spouse + 2 Children\",\"pincode\":\"500081\"}")
+                .status("NEW")
+                .build());
+
+        quoteInquiryRepository.save(QuoteInquiry.builder()
+                .categorySlug("vehicle-insurance")
+                .fullName("Sunita Deshmukh")
+                .phoneNumber("9849556677")
+                .email("dr.sunita@apolloclinic.com")
+                .city("Hyderabad")
+                .planDetails("{\"vehicleModel\":\"Hyundai Creta SX 2023\",\"coverageType\":\"Comprehensive Zero-Dep\",\"ncb\":\"35%\"}")
+                .status("NEW")
+                .build());
+
+        quoteInquiryRepository.save(QuoteInquiry.builder()
+                .categorySlug("term-life-insurance")
+                .fullName("Venkatesh Rao")
+                .phoneNumber("9988112233")
+                .email("venkatesh.rao@vrsoftware.com")
+                .city("Hyderabad")
+                .planDetails("{\"sumInsured\":\"₹2 Crore\",\"termYears\":\"30 Years\",\"criticalIllness\":\"Yes\"}")
+                .status("NEW")
+                .build());
+
+        log.info("Realistic demo dataset seeded successfully with 5 leads, 3 web quotes, 3 quotations, 4 KYC docs, 2 approvals, 2 call logs, and scheduled meetings.");
 
         return Map.of(
                 "status", "SUCCESS",
