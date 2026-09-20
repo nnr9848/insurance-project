@@ -25,6 +25,7 @@ import {
   Check,
   RefreshCw,
   UserCheck,
+  UserPlus,
   Users,
   Edit3
 } from 'lucide-react';
@@ -601,33 +602,38 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
 
         {/* Right: Upload Excel, Export Excel, Bulk Reassign, Add Row */}
         <div className="crm-sheet-action-btns" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {canReassign && selectedLeadIds.length > 0 && (
-            <button
-              onClick={() => {
-                setBulkTargetAdvisorId('');
-                setBulkReassignReason('');
-                setShowBulkReassignModal(true);
-              }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: '#4338ca',
-                border: 'none',
-                padding: '8px 14px',
-                borderRadius: '10px',
-                fontSize: '0.84rem',
-                fontWeight: 700,
-                color: '#ffffff',
-                cursor: 'pointer',
-                boxShadow: '0 2px 6px rgba(67, 56, 202, 0.25)',
-                animation: 'pulse 2s infinite'
-              }}
-              title="Reassign selected clients to an advisor"
-            >
-              <UserCheck size={15} /> Reassign ({selectedLeadIds.length})
-            </button>
-          )}
+          {canReassign && selectedLeadIds.length > 0 && (() => {
+            const hasAssigned = leads.some(l => selectedLeadIds.includes(l.id) && l.assignedAdvisorId);
+            const buttonLabel = hasAssigned ? `Assign / Reassign (${selectedLeadIds.length})` : `Assign Advisor (${selectedLeadIds.length})`;
+
+            return (
+              <button
+                onClick={() => {
+                  setBulkTargetAdvisorId('');
+                  setBulkReassignReason('');
+                  setShowBulkReassignModal(true);
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#4338ca',
+                  border: 'none',
+                  padding: '8px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.84rem',
+                  fontWeight: 700,
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(67, 56, 202, 0.25)',
+                  animation: 'pulse 2s infinite'
+                }}
+                title="Assign / Reassign selected clients to an advisor"
+              >
+                {hasAssigned ? <UserCheck size={15} /> : <UserPlus size={15} />} {buttonLabel}
+              </button>
+            );
+          })()}
 
           <input 
             type="file" 
@@ -815,16 +821,17 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               <input
                                 type="text"
+                                placeholder="Full Name"
                                 value={editFormData.fullName || ''}
                                 onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
-                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.82rem', width: '100%' }}
+                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.8rem', width: '100%' }}
                               />
                               <input
                                 type="text"
-                                placeholder="Company"
+                                placeholder="Company Name"
                                 value={editFormData.companyName || ''}
                                 onChange={(e) => setEditFormData({ ...editFormData, companyName: e.target.value })}
-                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--border-subtle)', fontSize: '0.75rem', width: '100%' }}
+                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.74rem', width: '100%' }}
                               />
                             </div>
                           ) : (
@@ -845,12 +852,22 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                         {/* Contact & Location */}
                         <td className="crm-table-td">
                           {isEditing ? (
-                            <input
-                              type="text"
-                              value={editFormData.phoneNumber || ''}
-                              onChange={(e) => setEditFormData({ ...editFormData, phoneNumber: e.target.value })}
-                              style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.82rem', width: '100%' }}
-                            />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <input
+                                type="text"
+                                placeholder="Phone Number"
+                                value={editFormData.phoneNumber || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, phoneNumber: e.target.value })}
+                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.8rem', width: '100%' }}
+                              />
+                              <input
+                                type="text"
+                                placeholder="City / Location"
+                                value={editFormData.city || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, city: e.target.value })}
+                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.74rem', width: '100%' }}
+                              />
+                            </div>
                           ) : (
                             <div>
                               <div style={{ fontWeight: 700, color: '#0f2b48', fontSize: '0.84rem' }}>{lead.phoneNumber}</div>
@@ -865,7 +882,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             <select
                               value={editFormData.insuranceType || ''}
                               onChange={(e) => setEditFormData({ ...editFormData, insuranceType: e.target.value })}
-                              style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.82rem', width: '100%' }}
+                              style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.8rem', width: '100%' }}
                             >
                               <option value="Health Insurance">Health Insurance</option>
                               <option value="Term Life Insurance">Term Life Insurance</option>
@@ -912,13 +929,22 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                         {/* Coverage & Premium */}
                         <td className="crm-table-td">
                           {isEditing ? (
-                            <input
-                              type="text"
-                              placeholder="₹10 Lakhs"
-                              value={editFormData.sumInsured || ''}
-                              onChange={(e) => setEditFormData({ ...editFormData, sumInsured: e.target.value })}
-                              style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.82rem', width: '100%' }}
-                            />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <input
+                                type="text"
+                                placeholder="Sum: ₹10 Lakhs"
+                                value={editFormData.sumInsured || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, sumInsured: e.target.value })}
+                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.78rem', width: '100%' }}
+                              />
+                              <input
+                                type="number"
+                                placeholder="Premium: ₹15,000"
+                                value={editFormData.estimatedPremium || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, estimatedPremium: e.target.value })}
+                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.74rem', width: '100%' }}
+                              />
+                            </div>
                           ) : (
                             <div>
                               <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.84rem' }}>
@@ -934,22 +960,33 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                         {/* Pipeline Stage & Priority */}
                         <td className="crm-table-td">
                           {isEditing ? (
-                            <select
-                              value={editFormData.stage || ''}
-                              onChange={(e) => setEditFormData({ ...editFormData, stage: e.target.value })}
-                              style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.8rem', width: '100%' }}
-                            >
-                              <option value="NEW_LEAD">New Lead</option>
-                              <option value="CONTACTED">Contacted</option>
-                              <option value="FOLLOWUP">Follow-up Due</option>
-                              <option value="INTERESTED">Interested</option>
-                              <option value="QUOTATION">Quotation</option>
-                              <option value="MEETING">Meeting</option>
-                              <option value="DOCUMENTS">Documents</option>
-                              <option value="PAYMENT">Payment</option>
-                              <option value="POLICY_ISSUED">Policy Issued</option>
-                              <option value="LOST">Lost</option>
-                            </select>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <select
+                                value={editFormData.stage || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, stage: e.target.value })}
+                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.78rem', width: '100%' }}
+                              >
+                                <option value="NEW_LEAD">New Lead</option>
+                                <option value="CONTACTED">Contacted</option>
+                                <option value="FOLLOWUP">Follow-up Due</option>
+                                <option value="INTERESTED">Interested</option>
+                                <option value="QUOTATION">Quotation</option>
+                                <option value="MEETING">Meeting</option>
+                                <option value="DOCUMENTS">Documents</option>
+                                <option value="PAYMENT">Payment</option>
+                                <option value="POLICY_ISSUED">Policy Issued</option>
+                                <option value="LOST">Lost</option>
+                              </select>
+                              <select
+                                value={editFormData.priority || 'MEDIUM'}
+                                onChange={(e) => setEditFormData({ ...editFormData, priority: e.target.value })}
+                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.74rem', width: '100%' }}
+                              >
+                                <option value="HIGH">🔥 High Priority</option>
+                                <option value="MEDIUM">⚡ Medium Priority</option>
+                                <option value="LOW">Standard Priority</option>
+                              </select>
+                            </div>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                               <span style={{
@@ -1005,15 +1042,15 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                                   style={{
                                     background: 'none',
                                     border: 'none',
-                                    color: '#4f46e5',
+                                    color: lead.assignedAdvisorName ? '#4f46e5' : '#059669',
                                     cursor: 'pointer',
                                     padding: '2px',
                                     display: 'flex',
                                     alignItems: 'center'
                                   }}
-                                  title="Quick Reassign Advisor"
+                                  title={lead.assignedAdvisorName ? "Reassign to another Advisor" : "Assign to an Insurance Advisor"}
                                 >
-                                  <UserCheck size={13} />
+                                  {lead.assignedAdvisorName ? <UserCheck size={13} /> : <UserPlus size={13} />}
                                 </button>
                               )}
                             </div>
@@ -1697,29 +1734,28 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
             overflow: 'hidden'
           }}>
             <div style={{
-              background: '#ffffff',
               padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #e2e8f0',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center',
-              borderBottom: '1px solid #e2e8f0'
+              alignItems: 'center'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
                   width: '38px',
                   height: '38px',
                   borderRadius: '10px',
-                  background: '#e0e7ff',
+                  background: quickReassignLead.assignedAdvisorId ? '#e0e7ff' : '#dcfce7',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#4338ca'
+                  color: quickReassignLead.assignedAdvisorId ? '#4338ca' : '#15803d'
                 }}>
-                  <UserCheck size={20} />
+                  {quickReassignLead.assignedAdvisorId ? <UserCheck size={20} /> : <UserPlus size={20} />}
                 </div>
                 <div>
                   <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: '#0f2b48' }}>
-                    Reassign Insurance Advisor
+                    {quickReassignLead.assignedAdvisorId ? 'Reassign Insurance Advisor' : 'Assign Insurance Advisor'}
                   </h3>
                   <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
                     {quickReassignLead.fullName} ({quickReassignLead.clientCode})

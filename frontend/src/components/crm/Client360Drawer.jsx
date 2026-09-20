@@ -18,6 +18,7 @@ import {
   User,
   AlertCircle,
   UserCheck,
+  UserPlus,
   Check,
   RefreshCw,
   Globe,
@@ -635,9 +636,9 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '4px',
-                        background: '#e0e7ff',
-                        color: '#4338ca',
-                        border: '1px solid #c7d2fe',
+                        background: currentClient.assignedAdvisorId ? '#e0e7ff' : '#dcfce7',
+                        color: currentClient.assignedAdvisorId ? '#4338ca' : '#15803d',
+                        border: `1px solid ${currentClient.assignedAdvisorId ? '#c7d2fe' : '#bbf7d0'}`,
                         padding: '4px 10px',
                         borderRadius: '6px',
                         fontSize: '0.75rem',
@@ -645,7 +646,8 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                         cursor: 'pointer'
                       }}
                     >
-                      <UserCheck size={13} /> Reassign
+                      {currentClient.assignedAdvisorId ? <UserCheck size={13} /> : <UserPlus size={13} />}
+                      {currentClient.assignedAdvisorId ? 'Reassign' : 'Assign Advisor'}
                     </button>
                   )}
                 </div>
@@ -1393,17 +1395,17 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                   width: '38px',
                   height: '38px',
                   borderRadius: '10px',
-                  background: '#e0e7ff',
+                  background: currentClient.assignedAdvisorId ? '#e0e7ff' : '#dcfce7',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#4338ca'
+                  color: currentClient.assignedAdvisorId ? '#4338ca' : '#15803d'
                 }}>
-                  <UserCheck size={20} />
+                  {currentClient.assignedAdvisorId ? <UserCheck size={20} /> : <UserPlus size={20} />}
                 </div>
                 <div>
                   <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: '#0f2b48' }}>
-                    Reassign Lead Advisor
+                    {currentClient.assignedAdvisorId ? 'Reassign Lead Advisor' : 'Assign Insurance Advisor'}
                   </h3>
                   <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
                     {currentClient.fullName} ({currentClient.clientCode})
