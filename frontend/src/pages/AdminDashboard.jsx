@@ -82,20 +82,13 @@ export default function AdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Active Workspace Navigation View (URL Query Param Synchronized)
-  // 'dashboard' | 'clients' | 'agenda' | 'pipeline' | 'meetings' | 'users' | 'leads' | 'proposals' | 'posp' | 'claims' | 'hospitals'
-  const normalizeTab = (rawTab) => {
-    if (!rawTab || rawTab === 'dashboard') return 'dashboard';
-    if (rawTab === 'quotes') return 'leads';
-    if (rawTab === 'crm-quotes') return 'proposals';
-    return rawTab;
-  };
-
-  const currentTabFromUrl = normalizeTab(searchParams.get('tab'));
+  // 'dashboard' | 'leads' | 'clients' | 'pipeline' | 'agenda' | 'calls' | 'meetings' | 'proposals' | 'renewals' | 'documents' | 'users' | 'approvals' | 'audit' | 'posp' | 'hospitals' | 'claims'
+  const currentTabFromUrl = searchParams.get('tab') || 'dashboard';
   const [activeView, setActiveView] = useState(currentTabFromUrl);
 
   // Sync state when URL query param changes (e.g. Browser Back / Forward buttons)
   useEffect(() => {
-    const tab = normalizeTab(searchParams.get('tab'));
+    const tab = searchParams.get('tab') || 'dashboard';
     if (tab !== activeView) {
       setActiveView(tab);
     }
@@ -203,7 +196,6 @@ export default function AdminDashboard() {
           icon: <ShieldCheck size={18} color="#16a34a" />
         };
       case 'proposals':
-      case 'crm-quotes':
         return {
           title: 'Quotes & Proposals Desk',
           category: 'CRM Workspace',
@@ -239,7 +231,6 @@ export default function AdminDashboard() {
           icon: <Users size={18} color="#059669" />
         };
       case 'leads':
-      case 'quotes':
         return {
           title: 'Leads & Inquiries',
           category: 'CRM Workspace',
@@ -1522,7 +1513,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           )}
 
           {/* VIEW: QUOTATION MANAGEMENT / PROPOSALS */}
-          {(activeView === 'proposals' || activeView === 'crm-quotes') && (
+          {activeView === 'proposals' && (
             <QuotationManagementView 
               onOpenClient360={(client) => setSelectedClient360(client)}
             />
@@ -1555,7 +1546,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           )}
 
           {/* VIEW: LEADS & INQUIRIES */}
-          {(activeView === 'leads' || activeView === 'quotes') && (() => {
+          {activeView === 'leads' && (() => {
             const filteredQuotes = quotes.filter((q) => {
               const matchesSearch = !quoteSearch || 
                 (q.fullName && q.fullName.toLowerCase().includes(quoteSearch.toLowerCase())) ||

@@ -411,7 +411,7 @@ export default function AdvisorDashboardOverview({
 
           {/* 6. Quotation Pending */}
           <div 
-            onClick={() => onNavigateView('crm-quotes')}
+            onClick={() => onNavigateView('proposals')}
             style={{
               background: '#ffffff',
               borderRadius: '14px',
