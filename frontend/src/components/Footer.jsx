@@ -83,13 +83,14 @@ export default function Footer() {
         {/* Bottom Legal Bar */}
         <div className="footer-bottom-bar">
           <div className="footer-copyright">
-            &copy; {new Date().getFullYear()} Aadhiraksha Insurance & Financial Services Pvt Ltd. All Rights Reserved. | Designed by <span className="designer-tag">EsaleMedia</span>
+            &copy; {new Date().getFullYear()} Aadhiraksha Insurance & Financial Services Pvt Ltd. All Rights Reserved. | Designed by <a href="https://www.prabhatech.com/" target="_blank" rel="noopener noreferrer" className="designer-tag" style={{ textDecoration: 'none' }}>PrabhaTech</a>
           </div>
 
           <div className="footer-legal-links">
-            <Link to="/new-policy-support" className="legal-link">Privacy Policy</Link>
-            <Link to="/claim-support" className="legal-link">Terms of Service</Link>
-            <Link to="/renewal-port" className="legal-link">IRDAI Disclaimer</Link>
+            <Link to="/privacy-policy" className="legal-link">Privacy Policy</Link>
+            <Link to="/terms-of-service" className="legal-link">Terms of Service</Link>
+            <Link to="/irdai-disclaimer" className="legal-link">IRDAI Disclaimer</Link>
+            <Link to="/grievance-redressal" className="legal-link">Grievance Redressal</Link>
           </div>
         </div>
       </div>

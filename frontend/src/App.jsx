@@ -14,6 +14,7 @@ import ClaimSupport from './pages/ClaimSupport';
 import NetworkHospitals from './pages/NetworkHospitals';
 import BecomePOSP from './pages/BecomePOSP';
 import Loans from './pages/Loans';
+import LegalCompliance from './pages/LegalCompliance';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import { Navigate } from 'react-router-dom';
@@ -47,6 +48,13 @@ export default function App() {
           <Route path="/network-hospitals" element={<NetworkHospitals />} />
           <Route path="/become-posp" element={<BecomePOSP />} />
           <Route path="/loans" element={<Loans />} />
+
+          {/* Legal, Compliance & IRDAI Regulatory Disclosures */}
+          <Route path="/privacy-policy" element={<LegalCompliance />} />
+          <Route path="/terms-of-service" element={<LegalCompliance />} />
+          <Route path="/irdai-disclaimer" element={<LegalCompliance />} />
+          <Route path="/grievance-redressal" element={<LegalCompliance />} />
+
           <Route path="/login" element={<Login />} />
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
