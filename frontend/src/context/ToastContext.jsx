@@ -31,11 +31,11 @@ export const ToastProvider = ({ children }) => {
     <ToastContext.Provider value={{ showToast, removeToast, success, error, info, warning }}>
       {children}
 
-      {/* Floating Modern Toast Deck */}
+      {/* Floating Modern Toast Deck (Top-Right Industry Standard) */}
       <div
         style={{
           position: 'fixed',
-          bottom: '24px',
+          top: '24px',
           right: '24px',
           zIndex: 99999,
           display: 'flex',
@@ -80,7 +80,7 @@ export const ToastProvider = ({ children }) => {
                 alignItems: 'flex-start',
                 gap: '12px',
                 pointerEvents: 'auto',
-                animation: 'slideUpToast 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                animation: 'slideDownToast 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
                 backdropFilter: 'none'
               }}
             >
