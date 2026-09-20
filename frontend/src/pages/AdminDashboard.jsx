@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { 
   Users, 
@@ -79,6 +80,7 @@ export default function AdminDashboard() {
     canManageUsers,
     canAccessCRM
   } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -1905,13 +1907,26 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                           return exists ? prev.map(l => l.id === createdOrUpdated.id ? createdOrUpdated : l) : [createdOrUpdated, ...prev];
                                         });
 
-                                        alert(matchingClient 
-                                          ? `Inquiry successfully linked as an opportunity to existing client "${matchingClient.fullName} (${matchingClient.clientCode})"!`
-                                          : `New master client created for "${q.fullName || q.phoneNumber}" (${createdOrUpdated.clientCode}) in active CRM pipeline!`
-                                        );
+                                        if (matchingClient) {
+                                          toast.success(
+                                            `Inquiry linked as a new opportunity to "${matchingClient.fullName}" (${matchingClient.clientCode})!`,
+                                            {
+                                              label: 'View Client 360',
+                                              onClick: () => setSelectedClient360(createdOrUpdated)
+                                            }
+                                          );
+                                        } else {
+                                          toast.success(
+                                            `New master client created for "${q.fullName || q.phoneNumber}" (${createdOrUpdated.clientCode})!`,
+                                            {
+                                              label: 'View Client 360',
+                                              onClick: () => setSelectedClient360(createdOrUpdated)
+                                            }
+                                          );
+                                        }
                                       } catch (err) {
                                         console.error('Error converting lead', err);
-                                        alert('Failed to convert inquiry to CRM lead: ' + (err.response?.data?.message || err.message));
+                                        toast.error('Failed to convert inquiry: ' + (err.response?.data?.message || err.message));
                                       }
                                     }}
                                     style={{
@@ -2150,13 +2165,26 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                       return exists ? prev.map(l => l.id === createdOrUpdated.id ? createdOrUpdated : l) : [createdOrUpdated, ...prev];
                                     });
 
-                                    alert(matchingClient 
-                                      ? `Inquiry successfully linked as an opportunity to existing client "${matchingClient.fullName} (${matchingClient.clientCode})"!`
-                                      : `New master client created for "${q.fullName || q.phoneNumber}" (${createdOrUpdated.clientCode}) in active CRM pipeline!`
-                                    );
+                                    if (matchingClient) {
+                                      toast.success(
+                                        `Inquiry linked as a new opportunity to "${matchingClient.fullName}" (${matchingClient.clientCode})!`,
+                                        {
+                                          label: 'View Client 360',
+                                          onClick: () => setSelectedClient360(createdOrUpdated)
+                                        }
+                                      );
+                                    } else {
+                                      toast.success(
+                                        `New master client created for "${q.fullName || q.phoneNumber}" (${createdOrUpdated.clientCode})!`,
+                                        {
+                                          label: 'View Client 360',
+                                          onClick: () => setSelectedClient360(createdOrUpdated)
+                                        }
+                                      );
+                                    }
                                   } catch (err) {
                                     console.error('Error converting lead', err);
-                                    alert('Failed to convert inquiry to CRM lead: ' + (err.response?.data?.message || err.message));
+                                    toast.error('Failed to convert inquiry: ' + (err.response?.data?.message || err.message));
                                   }
                                 }}
                                 style={{
