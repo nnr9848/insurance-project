@@ -1721,8 +1721,8 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                     <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       <tr>
                         <th style={{ padding: '0.9rem 1.25rem', width: '120px' }}>Inquiry Date</th>
-                        <th style={{ padding: '0.9rem 1rem', width: '180px' }}>Category</th>
                         <th style={{ padding: '0.9rem 1.25rem', minWidth: '200px' }}>Prospect & Account</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '180px' }}>Category</th>
                         <th style={{ padding: '0.9rem 1.25rem', minWidth: '220px' }}>Contact & 1-Tap Reach</th>
                         <th style={{ padding: '0.9rem 1.25rem', minWidth: '180px' }}>Plan Specs</th>
                         <th style={{ padding: '0.9rem 1rem', width: '130px', textAlign: 'center' }}>Inquiry Status</th>
@@ -1756,50 +1756,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                 </div>
                               </td>
 
-                              {/* 2. Category with Icon Badge & Multi-Inquiry Count */}
-                              <td style={{ padding: '0.85rem 1rem', verticalAlign: 'middle' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-start' }}>
-                                  <div style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '5px',
-                                    background: catBadge.bg,
-                                    color: catBadge.color,
-                                    border: `1px solid ${catBadge.border}`,
-                                    padding: '0.28rem 0.65rem',
-                                    borderRadius: '6px',
-                                    fontSize: '0.76rem',
-                                    fontWeight: 800,
-                                    whiteSpace: 'nowrap'
-                                  }}>
-                                    {catBadge.icon}
-                                    <span>{catBadge.label}</span>
-                                  </div>
-
-                                  {totalProspectInquiries > 1 && (
-                                    <span
-                                      title={`Prospect has submitted ${totalProspectInquiries - 1} other inquiry(s) in different products (${totalProspectInquiries} total)`}
-                                      style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '3px',
-                                        background: '#fef3c7',
-                                        color: '#b45309',
-                                        border: '1px solid #fde68a',
-                                        padding: '0.12rem 0.45rem',
-                                        borderRadius: '4px',
-                                        fontSize: '0.68rem',
-                                        fontWeight: 800,
-                                        whiteSpace: 'nowrap'
-                                      }}
-                                    >
-                                      🔥 +{totalProspectInquiries - 1} Other Inquiries
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-
-                              {/* 3. Prospect Identity & Account (Name on Line 1, [Code Badge] on Line 2, Client Type on Line 3) */}
+                              {/* 2. Prospect Identity & Account (Primary Column: Name on Line 1, [Code Badge] on Line 2, Status on Line 3) */}
                               <td style={{ padding: '0.85rem 1.25rem', verticalAlign: 'middle' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                                   <div 
@@ -1844,6 +1801,49 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                     <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
                                       New Web Prospect
                                     </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* 3. Category with Icon Badge & Multi-Inquiry Count */}
+                              <td style={{ padding: '0.85rem 1rem', verticalAlign: 'middle' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-start' }}>
+                                  <div style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    background: catBadge.bg,
+                                    color: catBadge.color,
+                                    border: `1px solid ${catBadge.border}`,
+                                    padding: '0.28rem 0.65rem',
+                                    borderRadius: '6px',
+                                    fontSize: '0.76rem',
+                                    fontWeight: 800,
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {catBadge.icon}
+                                    <span>{catBadge.label}</span>
+                                  </div>
+
+                                  {totalProspectInquiries > 1 && (
+                                    <span
+                                      title={`Prospect has submitted ${totalProspectInquiries - 1} other inquiry(s) in different products (${totalProspectInquiries} total)`}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        background: '#fef3c7',
+                                        color: '#b45309',
+                                        border: '1px solid #fde68a',
+                                        padding: '0.12rem 0.45rem',
+                                        borderRadius: '4px',
+                                        fontSize: '0.68rem',
+                                        fontWeight: 800,
+                                        whiteSpace: 'nowrap'
+                                      }}
+                                    >
+                                      🔥 +{totalProspectInquiries - 1} Other Inquiries
+                                    </span>
                                   )}
                                 </div>
                               </td>
