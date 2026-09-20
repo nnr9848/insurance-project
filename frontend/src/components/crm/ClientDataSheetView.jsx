@@ -1272,8 +1272,8 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
               </table>
             </div>
 
-            {/* 2. MOBILE VIEW: TOUCH-FRIENDLY CLIENT CARDS */}
-            <div className="crm-mobile-cards-container">
+            {/* 2. MOBILE VIEW: ULTRA-COMPACT TOUCH-FRIENDLY CLIENT CARDS */}
+            <div className="crm-mobile-cards-container" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
               {filteredLeads.map((lead) => {
                 const stageBadge = getStageBadge(lead.stage);
                 const priorityBadge = getPriorityBadge(lead.priority);
@@ -1291,92 +1291,180 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                   });
                 }
 
+                const maxMobileVisibleOpps = 2;
+                const visibleMobileOpps = cardLinkedOpportunities.slice(0, maxMobileVisibleOpps);
+                const mobileRemainingCount = cardLinkedOpportunities.length - maxMobileVisibleOpps;
+
                 return (
                   <div
                     key={lead.id}
                     className="crm-card"
                     style={{
-                      padding: '1rem',
+                      padding: '0.75rem 0.85rem',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '0.75rem',
-                      borderRadius: '14px',
+                      gap: '0.45rem',
+                      borderRadius: '12px',
                       border: '1px solid #e2e8f0',
                       background: '#ffffff',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.03)'
                     }}
                   >
-                    {/* Header: Name, Code, Company & Status/Priority Badges */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <div 
-                          onClick={() => onOpenClient360 && onOpenClient360(lead)}
-                          style={{ fontWeight: 800, fontSize: '0.98rem', color: '#0f2b48', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                        >
-                          {lead.fullName} <ExternalLink size={13} color="var(--accent-gold)" />
+                    {/* Top Row: Identity + Status Badges + Quick Action Circular Buttons */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span 
+                            onClick={() => onOpenClient360 && onOpenClient360(lead)}
+                            style={{ fontWeight: 800, fontSize: '0.92rem', color: '#0f2b48', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                          >
+                            {lead.fullName} <ExternalLink size={11} color="var(--accent-gold)" />
+                          </span>
+
+                          <span style={{
+                            padding: '1px 6px',
+                            borderRadius: '999px',
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            background: stageBadge.bg,
+                            color: stageBadge.color
+                          }}>
+                            {stageBadge.label}
+                          </span>
+
+                          <span style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            color: priorityBadge.color
+                          }}>
+                            {priorityBadge.label}
+                          </span>
                         </div>
-                        <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+
+                        <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-emerald)' }}>{lead.clientCode}</span>
                           <span>•</span>
-                          <span>{lead.companyName || 'Retail Client'}</span>
+                          <span>{lead.phoneNumber}</span>
+                          {lead.city && (
+                            <>
+                              <span>•</span>
+                              <span>{lead.city}</span>
+                            </>
+                          )}
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
-                        <span style={{
-                          padding: '2px 8px',
-                          borderRadius: '999px',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          background: stageBadge.bg,
-                          color: stageBadge.color
-                        }}>
-                          {stageBadge.label}
-                        </span>
-                        <span style={{
-                          fontSize: '0.68rem',
-                          fontWeight: 700,
-                          color: priorityBadge.color
-                        }}>
-                          {priorityBadge.label}
-                        </span>
+                      {/* 1-Tap Action Pill Icons */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                        <button
+                          onClick={() => onOpenCallModal && onOpenCallModal(lead)}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            background: '#ecfdf5',
+                            color: '#059669',
+                            border: '1px solid #a7f3d0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                          }}
+                          title="Call Client"
+                        >
+                          <Phone size={13} />
+                        </button>
+
+                        <button
+                          onClick={() => openWhatsApp(lead.phoneNumber, lead.fullName, lead.insuranceType)}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            background: '#dcfce7',
+                            color: '#15803d',
+                            border: '1px solid #86efac',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                          }}
+                          title="WhatsApp Client"
+                        >
+                          <MessageSquare size={13} />
+                        </button>
+
+                        <button
+                          onClick={() => onOpenMeetingModal && onOpenMeetingModal(lead)}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            border: '1px solid #bfdbfe',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                          }}
+                          title="Schedule Meeting"
+                        >
+                          <Calendar size={13} />
+                        </button>
+
+                        <button
+                          onClick={() => onOpenClient360 && onOpenClient360(lead)}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            background: '#f8fafc',
+                            color: '#0f2b48',
+                            border: '1px solid #cbd5e1',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                          }}
+                          title="Open 360 Profile"
+                        >
+                          <Shield size={13} />
+                        </button>
                       </div>
                     </div>
 
-                    {/* Contact & Location Strip */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '0.5rem 0.75rem', borderRadius: '8px', fontSize: '0.76rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#0f2b48', fontWeight: 700 }}>
-                        <Phone size={12} color="#059669" />
-                        <span>{lead.phoneNumber}</span>
-                      </div>
-                      <div style={{ color: '#64748b', fontWeight: 600 }}>
-                        📍 {lead.city || 'India'}
-                      </div>
-                    </div>
-
-                    {/* Product Portfolio Deck with Standard Badges */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.04em' }}>
-                        Active Portfolio & Demands
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                    {/* Bottom Consolidated Row: Portfolio Micro-Badges + Coverage + Advisor */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: '#f8fafc',
+                      padding: '0.35rem 0.6rem',
+                      borderRadius: '8px',
+                      fontSize: '0.72rem',
+                      gap: '0.4rem',
+                      flexWrap: 'wrap'
+                    }}>
+                      {/* Products */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexWrap: 'wrap' }}>
                         <div style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '4px',
+                          gap: '3px',
                           background: primaryBadge.bg,
                           color: primaryBadge.color,
                           border: `1px solid ${primaryBadge.border}`,
-                          padding: '0.15rem 0.5rem',
-                          borderRadius: '6px',
-                          fontSize: '0.74rem',
+                          padding: '0.05rem 0.35rem',
+                          borderRadius: '4px',
+                          fontSize: '0.68rem',
                           fontWeight: 800
                         }}>
                           {primaryBadge.icon}
-                          <span>{primaryBadge.label}</span>
+                          <span>{primaryBadge.shortLabel}</span>
                         </div>
 
-                        {cardLinkedOpportunities.map((oppName, oppIdx) => {
+                        {visibleMobileOpps.map((oppName, oppIdx) => {
                           const oppBadge = getProductBadge(oppName);
                           return (
                             <div
@@ -1384,12 +1472,12 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '3px',
+                                gap: '2px',
                                 background: oppBadge.bg,
                                 color: oppBadge.color,
                                 border: `1px solid ${oppBadge.border}`,
-                                padding: '0.1rem 0.4rem',
-                                borderRadius: '5px',
+                                padding: '0.05rem 0.35rem',
+                                borderRadius: '4px',
                                 fontSize: '0.68rem',
                                 fontWeight: 700
                               }}
@@ -1399,113 +1487,24 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             </div>
                           );
                         })}
-                      </div>
-                    </div>
 
-                    {/* Middle Info: Coverage & Assigned Advisor */}
-                    <div style={{ background: '#f8fafc', padding: '0.6rem 0.75rem', borderRadius: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.78rem' }}>
-                      <div>
-                        <div style={{ color: '#64748b', fontSize: '0.7rem', fontWeight: 600 }}>Coverage / Premium</div>
-                        <div style={{ fontWeight: 800, color: '#059669' }}>
+                        {mobileRemainingCount > 0 && (
+                          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748b', background: '#e2e8f0', padding: '0.05rem 0.3rem', borderRadius: '4px' }}>
+                            +{mobileRemainingCount} More
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Coverage & Advisor */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '0.7rem' }}>
+                        <span style={{ fontWeight: 800, color: '#059669' }}>
                           {lead.sumInsured || '₹10L'}
-                        </div>
-                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
-                          {lead.estimatedPremium ? `Est. ₹${Number(lead.estimatedPremium).toLocaleString()}` : 'Quote Pending'}
-                        </div>
+                        </span>
+                        <span>•</span>
+                        <span style={{ fontWeight: 600, color: lead.assignedAdvisorName ? '#0f2b48' : '#94a3b8' }}>
+                          👤 {lead.assignedAdvisorName ? lead.assignedAdvisorName.split(' ')[0] : 'Unassigned'}
+                        </span>
                       </div>
-                      <div>
-                        <div style={{ color: '#64748b', fontSize: '0.7rem', fontWeight: 600 }}>Assigned Advisor</div>
-                        <div style={{ fontWeight: 700, color: lead.assignedAdvisorName ? '#0f2b48' : '#94a3b8' }}>
-                          {lead.assignedAdvisorName || 'Unassigned'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Footer 1-Tap Action Rail */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4rem', paddingTop: '0.25rem' }}>
-                      <button
-                        onClick={() => onOpenCallModal && onOpenCallModal(lead)}
-                        style={{
-                          background: '#ecfdf5',
-                          color: '#059669',
-                          border: '1px solid #a7f3d0',
-                          padding: '0.55rem 0.3rem',
-                          borderRadius: '8px',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: '3px'
-                        }}
-                      >
-                        <Phone size={14} />
-                        <span>Call</span>
-                      </button>
-
-                      <button
-                        onClick={() => openWhatsApp(lead.phoneNumber, lead.fullName, lead.insuranceType)}
-                        style={{
-                          background: '#dcfce7',
-                          color: '#15803d',
-                          border: '1px solid #86efac',
-                          padding: '0.55rem 0.3rem',
-                          borderRadius: '8px',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: '3px'
-                        }}
-                      >
-                        <MessageSquare size={14} />
-                        <span>WhatsApp</span>
-                      </button>
-
-                      <button
-                        onClick={() => onOpenMeetingModal && onOpenMeetingModal(lead)}
-                        style={{
-                          background: '#eff6ff',
-                          color: '#2563eb',
-                          border: '1px solid #bfdbfe',
-                          padding: '0.55rem 0.3rem',
-                          borderRadius: '8px',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: '3px'
-                        }}
-                      >
-                        <Calendar size={14} />
-                        <span>Meet</span>
-                      </button>
-
-                      <button
-                        onClick={() => onOpenClient360 && onOpenClient360(lead)}
-                        style={{
-                          background: '#ffffff',
-                          color: '#0f2b48',
-                          border: '1px solid #cbd5e1',
-                          padding: '0.55rem 0.3rem',
-                          borderRadius: '8px',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: '3px'
-                        }}
-                      >
-                        <Shield size={14} />
-                        <span>360 View</span>
-                      </button>
                     </div>
                   </div>
                 );
