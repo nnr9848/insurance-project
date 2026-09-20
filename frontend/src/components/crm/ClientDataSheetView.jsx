@@ -1540,44 +1540,76 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                     }}
                   >
                     {/* Top Row: Identity + Status Badges + Quick Action Circular Buttons */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem' }}>
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        {/* Row 1.1: Name (Fluid Truncated) + Status + Priority */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap', minWidth: 0 }}>
                           <span 
                             onClick={() => onOpenClient360 && onOpenClient360(lead)}
-                            style={{ fontWeight: 800, fontSize: '0.92rem', color: '#0f2b48', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                            style={{
+                              fontWeight: 800,
+                              fontSize: '0.9rem',
+                              color: '#0f2b48',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '2px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              flexShrink: 1,
+                              minWidth: '50px'
+                            }}
+                            title={lead.fullName}
                           >
-                            {lead.fullName} <ExternalLink size={11} color="var(--accent-gold)" />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lead.fullName}</span>
+                            <ExternalLink size={10} color="var(--accent-gold)" style={{ flexShrink: 0 }} />
                           </span>
 
                           <span style={{
-                            padding: '1px 6px',
+                            padding: '1px 5px',
                             borderRadius: '999px',
-                            fontSize: '0.65rem',
+                            fontSize: '0.62rem',
                             fontWeight: 700,
                             background: stageBadge.bg,
-                            color: stageBadge.color
+                            color: stageBadge.color,
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
                           }}>
                             {stageBadge.label}
                           </span>
 
                           <span style={{
-                            fontSize: '0.65rem',
+                            fontSize: '0.62rem',
                             fontWeight: 700,
-                            color: priorityBadge.color
+                            color: priorityBadge.color,
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
                           }}>
                             {priorityBadge.label}
                           </span>
                         </div>
 
-                        <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-emerald)' }}>{lead.clientCode}</span>
-                          <span>•</span>
-                          <span style={{ fontWeight: 600, color: '#334155' }}>{lead.companyName || 'Retail Client'}</span>
+                        {/* Row 1.2: Code • Company • Location (Fluid Truncated) */}
+                        <div style={{
+                          fontSize: '0.7rem',
+                          color: '#64748b',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-emerald)', flexShrink: 0 }}>{lead.clientCode}</span>
+                          <span style={{ flexShrink: 0 }}>•</span>
+                          <span style={{ fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {lead.companyName || 'Retail Client'}
+                          </span>
                           {lead.city && (
                             <>
-                              <span>•</span>
-                              <span>{lead.city}</span>
+                              <span style={{ flexShrink: 0 }}>•</span>
+                              <span style={{ flexShrink: 0 }}>{lead.city}</span>
                             </>
                           )}
                         </div>
