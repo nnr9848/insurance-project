@@ -32,9 +32,11 @@ import {
 import * as XLSX from 'xlsx';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 
 export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, onOpenMeetingModal }) {
   const { isSuperAdmin, isManager, user } = useAuth();
+  const toast = useToast();
   const canReassign = isSuperAdmin || isManager;
 
   const [leads, setLeads] = useState([]);
@@ -243,6 +245,8 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
     }
   };
 
+  const [isSavingInline, setIsSavingInline] = useState(false);
+
   const startInlineEdit = (lead) => {
     setEditingRowId(lead.id);
     setEditFormData({ ...lead });
@@ -254,12 +258,16 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
   };
 
   const saveInlineEdit = async (leadId) => {
+    setIsSavingInline(true);
     try {
       await crmService.updateLead(leadId, editFormData);
       setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...editFormData } : l));
       setEditingRowId(null);
+      toast.success(`Client record "${editFormData.fullName || 'Client'}" updated successfully!`);
     } catch (err) {
-      alert('Failed to update lead: ' + (err.response?.data?.message || err.message));
+      toast.error('Failed to update client: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsSavingInline(false);
     }
   };
 
@@ -272,7 +280,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
   const handleQuickReassignSubmit = async (e) => {
     e.preventDefault();
     if (!quickTargetAdvisorId || !quickReassignLead) {
-      alert('Please select a target Insurance Advisor');
+      toast.warning('Please select a target Insurance Advisor');
       return;
     }
     setQuickReassigning(true);
@@ -284,8 +292,9 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
       );
       setLeads(prev => prev.map(l => l.id === quickReassignLead.id ? { ...l, ...updatedLead } : l));
       setQuickReassignLead(null);
+      toast.success(`Advisor assigned successfully to "${quickReassignLead.fullName}"!`);
     } catch (err) {
-      alert('Failed to reassign lead: ' + (err.response?.data?.message || err.message));
+      toast.error('Failed to assign advisor: ' + (err.response?.data?.message || err.message));
     } finally {
       setQuickReassigning(false);
     }
@@ -308,7 +317,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
   const handleBulkReassignSubmit = async (e) => {
     e.preventDefault();
     if (!bulkTargetAdvisorId || selectedLeadIds.length === 0) {
-      alert('Please select an advisor and at least one client.');
+      toast.warning('Please select an advisor and at least one client.');
       return;
     }
     setBulkReassigning(true);
@@ -332,12 +341,14 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
 
       // Refresh leads list
       await loadLeads();
+      const count = selectedLeadIds.length;
       setSelectedLeadIds([]);
       setShowBulkReassignModal(false);
       setBulkTargetAdvisorId('');
       setBulkReassignReason('');
+      toast.success(`Successfully assigned ${count} clients to ${targetAdvisorName}!`);
     } catch (err) {
-      alert('Error during bulk reassignment: ' + (err.response?.data?.message || err.message));
+      toast.error('Error during bulk reassignment: ' + (err.response?.data?.message || err.message));
     } finally {
       setBulkReassigning(false);
     }
@@ -349,6 +360,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
       const created = await crmService.createLead(newLeadForm);
       setLeads(prev => [created, ...prev]);
       setShowAddLeadModal(false);
+      const name = newLeadForm.fullName;
       setNewLeadForm({
         fullName: '',
         companyName: '',
@@ -364,8 +376,9 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
         stage: 'NEW_LEAD',
         notes: ''
       });
+      toast.success(`Client record created for "${name}" (${created.clientCode})!`);
     } catch (err) {
-      alert('Failed to create lead: ' + (err.response?.data?.message || err.message));
+      toast.error('Failed to create client: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -393,6 +406,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Clients");
     XLSX.writeFile(workbook, `Aadhiraksha_Client_Data_Sheet_${new Date().toISOString().slice(0,10)}.xlsx`);
+    toast.info('Client Data Sheet exported to Excel successfully!');
   };
 
   const handleFileUpload = (e) => {
@@ -409,7 +423,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
         const rawData = XLSX.utils.sheet_to_json(ws);
 
         if (!rawData || rawData.length === 0) {
-          alert('No data found in uploaded sheet.');
+          toast.warning('No data found in uploaded sheet.');
           return;
         }
 
@@ -432,14 +446,14 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
         })).filter(r => r.fullName && r.phoneNumber);
 
         if (normalized.length === 0) {
-          alert('Could not parse any valid rows. Please ensure your Excel file includes "Full Name" and "Phone Number" columns.');
+          toast.warning('Could not parse valid rows. Please ensure columns include "Full Name" and "Phone Number".');
           return;
         }
 
         setParsedBulkLeads(normalized);
         setShowBulkUploadModal(true);
       } catch (err) {
-        alert('Failed to parse Excel file: ' + err.message);
+        toast.error('Failed to parse Excel file: ' + err.message);
       } finally {
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
@@ -454,9 +468,9 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
       setLeads(prev => [...imported, ...prev]);
       setShowBulkUploadModal(false);
       setParsedBulkLeads([]);
-      alert(`🎉 Successfully imported ${imported.length} clients to your Data Sheet!`);
+      toast.success(`Successfully imported ${imported.length} clients to your Data Sheet!`);
     } catch (err) {
-      alert('Bulk import failed: ' + (err.response?.data?.message || err.message));
+      toast.error('Bulk import failed: ' + (err.response?.data?.message || err.message));
     } finally {
       setBulkImporting(false);
     }
@@ -1063,14 +1077,35 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             <div style={{ display: 'inline-flex', gap: '4px' }}>
                               <button
                                 onClick={() => saveInlineEdit(lead.id)}
-                                style={{ background: 'var(--accent-emerald)', color: '#fff', border: 'none', padding: '5px 8px', borderRadius: '6px', cursor: 'pointer' }}
+                                disabled={isSavingInline}
+                                style={{
+                                  background: 'var(--accent-emerald)',
+                                  color: '#fff',
+                                  border: 'none',
+                                  padding: '5px 8px',
+                                  borderRadius: '6px',
+                                  cursor: isSavingInline ? 'not-allowed' : 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
                                 title="Save Changes"
                               >
-                                <Save size={13} />
+                                {isSavingInline ? <RefreshCw size={13} className="spin" /> : <Save size={13} />}
                               </button>
                               <button
                                 onClick={cancelInlineEdit}
-                                style={{ background: 'var(--border-subtle)', color: 'var(--text-main)', border: 'none', padding: '5px 8px', borderRadius: '6px', cursor: 'pointer' }}
+                                disabled={isSavingInline}
+                                style={{
+                                  background: 'var(--border-subtle)',
+                                  color: 'var(--text-main)',
+                                  border: 'none',
+                                  padding: '5px 8px',
+                                  borderRadius: '6px',
+                                  cursor: isSavingInline ? 'not-allowed' : 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}
                                 title="Cancel Edit"
                               >
                                 <X size={13} />
