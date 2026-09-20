@@ -1060,7 +1060,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
       </aside>
 
       {/* 2. MAIN APP SHELL WORKSPACE */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflow: 'hidden' }}>
         
         {/* TOP CRM APP BAR */}
         <header 
@@ -1670,10 +1670,10 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                       ) : (
                         filteredQuotes.map((q) => (
                           <tr key={q.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = '#ffffff'}>
-                            <td style={{ padding: '1rem 1.25rem', color: '#64748b', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '0.75rem 1.25rem', color: '#64748b', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
                               {new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </td>
-                            <td style={{ padding: '1rem' }}>
+                            <td style={{ padding: '0.75rem 1rem' }}>
                               <span style={{
                                 display: 'inline-block',
                                 background: '#f0f9ff',
@@ -1688,10 +1688,10 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                 {q.categorySlug ? q.categorySlug.replace('-', ' ') : 'General'}
                               </span>
                             </td>
-                            <td style={{ padding: '1rem', fontWeight: 700, color: '#0f2b48' }}>
+                            <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#0f2b48' }}>
                               {q.fullName || 'Anonymous Prospect'}
                             </td>
-                            <td style={{ padding: '1rem' }}>
+                            <td style={{ padding: '0.75rem 1rem' }}>
                               <a 
                                 href={`tel:${q.phoneNumber}`} 
                                 title="Click to call prospect"
@@ -1711,13 +1711,13 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                 📞 {q.phoneNumber}
                               </a>
                             </td>
-                            <td style={{ padding: '1rem', color: '#334155', fontSize: '0.84rem' }}>
+                            <td style={{ padding: '0.75rem 1rem', color: '#334155', fontSize: '0.84rem' }}>
                               {q.city || '-'}
                             </td>
-                            <td style={{ padding: '1rem 1.25rem' }}>
+                            <td style={{ padding: '0.75rem 1.25rem' }}>
                               {renderPlanDetails(q.planDetails)}
                             </td>
-                            <td style={{ padding: '1rem', textAlign: 'center' }}>
+                            <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
                               <span style={{ 
                                 background: q.status === 'NEW' ? '#dcfce7' : '#f1f5f9', 
                                 color: q.status === 'NEW' ? '#15803d' : '#64748b', 
