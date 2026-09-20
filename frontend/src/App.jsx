@@ -17,7 +17,6 @@ import Loans from './pages/Loans';
 import LegalCompliance from './pages/LegalCompliance';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
-import { Navigate } from 'react-router-dom';
 
 export default function App() {
   const location = useLocation();
@@ -38,9 +37,6 @@ export default function App() {
           <Route path="/insurance/business" element={<BusinessInsurance />} />
           <Route path="/insurance/corporate-sme" element={<BusinessInsurance />} />
           <Route path="/insurance/travel" element={<TravelInsurance />} />
-
-          {/* Legacy URL Backward Compatibility Redirect */}
-          <Route path="/new-policy-support" element={<Navigate to="/insurance/health" replace />} />
 
           {/* Unified Support & Operational Desks */}
           <Route path="/renewal-port" element={<RenewalPort />} />
