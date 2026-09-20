@@ -316,9 +316,11 @@ export default function AdminDashboard() {
   const [hospSearch, setHospSearch] = useState('');
   const [hospCityFilter, setHospCityFilter] = useState('');
 
-  // Quotes filters & search
+  // Quotes filters, search & pagination
   const [quoteSearch, setQuoteSearch] = useState('');
   const [quoteCategoryFilter, setQuoteCategoryFilter] = useState('');
+  const [quoteCurrentPage, setQuoteCurrentPage] = useState(1);
+  const [quotePageSize, setQuotePageSize] = useState(5);
 
   // Modals state
   const [showAddHospitalModal, setShowAddHospitalModal] = useState(false);
@@ -1344,7 +1346,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
         </header>
 
         {/* WORKSPACE VIEW CONTENT AREA */}
-        <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '1.5rem 1.5rem 4.5rem 1.5rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
           {/* SLIM IN-PAGE NAVIGATION & BREADCRUMB BAR (Shown on all sub-views) */}
           {activeView !== 'dashboard' && (() => {
@@ -1559,6 +1561,14 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
               return matchesSearch && matchesCategory;
             });
 
+            // Pagination Calculations
+            const totalRecords = filteredQuotes.length;
+            const totalPages = Math.ceil(totalRecords / quotePageSize) || 1;
+            const validCurrentPage = Math.min(quoteCurrentPage, totalPages);
+            const startIndex = (validCurrentPage - 1) * quotePageSize;
+            const endIndex = Math.min(startIndex + quotePageSize, totalRecords);
+            const paginatedQuotes = filteredQuotes.slice(startIndex, endIndex);
+
             // Helper to format JSON planDetails into human-readable chips
             const renderPlanDetails = (planDetailsStr) => {
               if (!planDetailsStr) return <span style={{ color: '#94a3b8' }}>-</span>;
@@ -1607,7 +1617,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
             };
 
             return (
-              <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
                 {/* Quote Leads Toolbar & Search */}
                 <div style={{ padding: '1.25rem 1.5rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1617,7 +1627,10 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                         placeholder="Search by name, phone, city..."
                         className="form-input"
                         value={quoteSearch}
-                        onChange={(e) => setQuoteSearch(e.target.value)}
+                        onChange={(e) => {
+                          setQuoteSearch(e.target.value);
+                          setQuoteCurrentPage(1);
+                        }}
                         style={{ paddingLeft: '2.2rem', paddingRight: '0.75rem', height: '38px', fontSize: '0.85rem' }}
                       />
                       <Search size={15} color="#64748b" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
@@ -1626,7 +1639,10 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                     <select
                       className="form-select"
                       value={quoteCategoryFilter}
-                      onChange={(e) => setQuoteCategoryFilter(e.target.value)}
+                      onChange={(e) => {
+                        setQuoteCategoryFilter(e.target.value);
+                        setQuoteCurrentPage(1);
+                      }}
                       style={{ height: '38px', fontSize: '0.85rem', width: '180px' }}
                     >
                       <option value="">All Categories</option>
@@ -1646,92 +1662,198 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
                 {/* DESKTOP TABLE VIEW (>= 768px) */}
                 <div className="crm-desktop-table-container" style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', minWidth: '950px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
+                  <table style={{ width: '100%', minWidth: '1020px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
                     <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       <tr>
                         <th style={{ padding: '0.9rem 1.25rem', width: '110px' }}>Date</th>
-                        <th style={{ padding: '0.9rem 1rem', width: '160px' }}>Category</th>
-                        <th style={{ padding: '0.9rem 1rem', width: '180px' }}>Customer Name</th>
-                        <th style={{ padding: '0.9rem 1rem', width: '140px' }}>Contact Phone</th>
-                        <th style={{ padding: '0.9rem 1rem', width: '140px' }}>City</th>
-                        <th style={{ padding: '0.9rem 1.25rem', minWidth: '280px' }}>Plan Details & Ingestion Specs</th>
-                        <th style={{ padding: '0.9rem 1rem', width: '100px', textAlign: 'center' }}>Status</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '150px' }}>Category</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '170px' }}>Customer Name</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '190px' }}>Contact & Actions</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '130px' }}>City</th>
+                        <th style={{ padding: '0.9rem 1.25rem', minWidth: '260px' }}>Plan Details & Ingestion Specs</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '120px', textAlign: 'center' }}>Status</th>
+                        <th style={{ padding: '0.9rem 1.25rem', width: '140px', textAlign: 'center' }}>CRM Pipeline</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredQuotes.length === 0 ? (
+                      {paginatedQuotes.length === 0 ? (
                         <tr>
-                          <td colSpan={7} style={{ padding: '3.5rem', textAlign: 'center', color: '#64748b' }}>
+                          <td colSpan={8} style={{ padding: '3.5rem', textAlign: 'center', color: '#64748b' }}>
                             <div style={{ fontWeight: 700, fontSize: '1rem', color: '#0f2b48', marginBottom: '0.25rem' }}>No quote inquiries match your filter</div>
                             <div style={{ fontSize: '0.85rem' }}>Try changing the search keyword or category filter above.</div>
                           </td>
                         </tr>
                       ) : (
-                        filteredQuotes.map((q) => (
-                          <tr key={q.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = '#ffffff'}>
-                            <td style={{ padding: '0.75rem 1.25rem', color: '#64748b', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
-                              {new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </td>
-                            <td style={{ padding: '0.75rem 1rem' }}>
-                              <span style={{
-                                display: 'inline-block',
-                                background: '#f0f9ff',
-                                color: '#0284c7',
-                                border: '1px solid #bae6fd',
-                                padding: '0.2rem 0.55rem',
-                                borderRadius: '6px',
-                                fontSize: '0.78rem',
-                                fontWeight: 800,
-                                textTransform: 'capitalize'
-                              }}>
-                                {q.categorySlug ? q.categorySlug.replace('-', ' ') : 'General'}
-                              </span>
-                            </td>
-                            <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#0f2b48' }}>
-                              {q.fullName || 'Anonymous Prospect'}
-                            </td>
-                            <td style={{ padding: '0.75rem 1rem' }}>
-                              <a 
-                                href={`tel:${q.phoneNumber}`} 
-                                title="Click to call prospect"
-                                style={{ 
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '5px',
-                                  color: '#0f2b48', 
-                                  fontWeight: 800,
-                                  textDecoration: 'none',
-                                  background: '#f8fafc',
-                                  padding: '0.25rem 0.5rem',
+                        paginatedQuotes.map((q) => {
+                          const cleanPhone = (q.phoneNumber || '').replace(/[^0-9]/g, '');
+                          const isAlreadyLead = leads.some(l => l.phoneNumber && cleanPhone.endsWith(l.phoneNumber.replace(/[^0-9]/g, '')));
+
+                          return (
+                            <tr key={q.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = '#ffffff'}>
+                              <td style={{ padding: '0.75rem 1.25rem', color: '#64748b', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                                {new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </td>
+                              <td style={{ padding: '0.75rem 1rem' }}>
+                                <span style={{
+                                  display: 'inline-block',
+                                  background: '#f0f9ff',
+                                  color: '#0284c7',
+                                  border: '1px solid #bae6fd',
+                                  padding: '0.2rem 0.55rem',
                                   borderRadius: '6px',
-                                  border: '1px solid #e2e8f0'
-                                }}
-                              >
-                                📞 {q.phoneNumber}
-                              </a>
-                            </td>
-                            <td style={{ padding: '0.75rem 1rem', color: '#334155', fontSize: '0.84rem' }}>
-                              {q.city || '-'}
-                            </td>
-                            <td style={{ padding: '0.75rem 1.25rem' }}>
-                              {renderPlanDetails(q.planDetails)}
-                            </td>
-                            <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                              <span style={{ 
-                                background: q.status === 'NEW' ? '#dcfce7' : '#f1f5f9', 
-                                color: q.status === 'NEW' ? '#15803d' : '#64748b', 
-                                border: `1px solid ${q.status === 'NEW' ? '#bbf7d0' : '#e2e8f0'}`,
-                                padding: '0.25rem 0.65rem', 
-                                borderRadius: '9999px', 
-                                fontSize: '0.75rem', 
-                                fontWeight: 800,
-                                letterSpacing: '0.02em'
-                              }}>
-                                {q.status || 'NEW'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
+                                  fontSize: '0.78rem',
+                                  fontWeight: 800,
+                                  textTransform: 'capitalize'
+                                }}>
+                                  {q.categorySlug ? q.categorySlug.replace('-', ' ') : 'General'}
+                                </span>
+                              </td>
+                              <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#0f2b48' }}>
+                                {q.fullName || 'Anonymous Prospect'}
+                              </td>
+                              <td style={{ padding: '0.75rem 1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                  <a 
+                                    href={`tel:${q.phoneNumber}`} 
+                                    title="Direct Phone Call"
+                                    style={{ 
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      color: '#0f2b48', 
+                                      fontWeight: 700,
+                                      fontSize: '0.82rem',
+                                      textDecoration: 'none',
+                                      background: '#f8fafc',
+                                      padding: '0.25rem 0.5rem',
+                                      borderRadius: '6px',
+                                      border: '1px solid #e2e8f0'
+                                    }}
+                                  >
+                                    <PhoneCall size={12} color="#0f2b48" /> {q.phoneNumber}
+                                  </a>
+                                  {cleanPhone && (
+                                    <a
+                                      href={`https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(`Hello ${q.fullName || 'Sir/Madam'}, greeting from Aadhiraksha Insurance. Regarding your ${q.categorySlug ? q.categorySlug.replace('-', ' ') : 'insurance'} inquiry...`)}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      title="Chat on WhatsApp"
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '26px',
+                                        height: '26px',
+                                        background: '#ecfdf5',
+                                        color: '#059669',
+                                        border: '1px solid #a7f3d0',
+                                        borderRadius: '6px',
+                                        textDecoration: 'none'
+                                      }}
+                                    >
+                                      <MessageSquare size={13} />
+                                    </a>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={{ padding: '0.75rem 1rem', color: '#334155', fontSize: '0.84rem' }}>
+                                {q.city || '-'}
+                              </td>
+                              <td style={{ padding: '0.75rem 1.25rem' }}>
+                                {renderPlanDetails(q.planDetails)}
+                              </td>
+                              <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                                <select
+                                  value={q.status || 'NEW'}
+                                  onChange={async (e) => {
+                                    const nextStatus = e.target.value;
+                                    try {
+                                      await portalService.updateQuoteStatus(q.id, nextStatus);
+                                      setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: nextStatus } : item));
+                                    } catch (err) {
+                                      console.error('Error updating inquiry status', err);
+                                      alert('Failed to update inquiry status');
+                                    }
+                                  }}
+                                  style={{
+                                    background: q.status === 'CONVERTED' ? '#dcfce7' : q.status === 'CONTACTED' ? '#fef3c7' : '#eff6ff',
+                                    color: q.status === 'CONVERTED' ? '#15803d' : q.status === 'CONTACTED' ? '#b45309' : '#1d4ed8',
+                                    border: `1px solid ${q.status === 'CONVERTED' ? '#bbf7d0' : q.status === 'CONTACTED' ? '#fde68a' : '#bfdbfe'}`,
+                                    padding: '0.2rem 0.45rem',
+                                    borderRadius: '6px',
+                                    fontSize: '0.74rem',
+                                    fontWeight: 800,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <option value="NEW">NEW</option>
+                                  <option value="CONTACTED">CONTACTED</option>
+                                  <option value="CONVERTED">CONVERTED</option>
+                                  <option value="ARCHIVED">ARCHIVED</option>
+                                </select>
+                              </td>
+                              <td style={{ padding: '0.75rem 1.25rem', textAlign: 'center' }}>
+                                {isAlreadyLead ? (
+                                  <button
+                                    onClick={() => handleNavigateView('clients')}
+                                    style={{
+                                      background: '#f1f5f9',
+                                      color: '#0284c7',
+                                      border: '1px solid #cbd5e1',
+                                      padding: '0.35rem 0.65rem',
+                                      borderRadius: '6px',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '0.25rem'
+                                    }}
+                                  >
+                                    <CheckCircle2 size={13} color="#059669" /> In CRM
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        const created = await crmService.createLead({
+                                          fullName: q.fullName || 'Web Prospect',
+                                          phoneNumber: q.phoneNumber,
+                                          email: q.email || '',
+                                          city: q.city || '',
+                                          categorySlug: q.categorySlug || 'general',
+                                          notes: `Ingested from Website Lead Inquiry #${q.id}. Specs: ${q.planDetails || ''}`
+                                        });
+                                        await portalService.updateQuoteStatus(q.id, 'CONVERTED');
+                                        setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: 'CONVERTED' } : item));
+                                        setLeads(prev => [created, ...prev]);
+                                        alert(`Lead "${q.fullName || q.phoneNumber}" successfully pushed to active CRM client pipeline!`);
+                                      } catch (err) {
+                                        console.error('Error converting lead', err);
+                                        alert('Failed to convert inquiry to CRM lead: ' + (err.response?.data?.message || err.message));
+                                      }
+                                    }}
+                                    style={{
+                                      background: '#0f2b48',
+                                      color: '#ffffff',
+                                      border: 'none',
+                                      padding: '0.35rem 0.65rem',
+                                      borderRadius: '6px',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '0.25rem'
+                                    }}
+                                  >
+                                    <Plus size={13} /> Push to CRM
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -1739,85 +1861,295 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
                 {/* MOBILE CARD DECK VIEW (< 768px) */}
                 <div className="crm-mobile-cards-container">
-                  {filteredQuotes.length === 0 ? (
+                  {paginatedQuotes.length === 0 ? (
                     <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: '#64748b', background: '#fff', borderRadius: '12px' }}>
                       <div style={{ fontWeight: 700, fontSize: '1rem', color: '#0f2b48', marginBottom: '0.25rem' }}>No quote inquiries match your filter</div>
                       <div style={{ fontSize: '0.82rem' }}>Try adjusting your search query.</div>
                     </div>
                   ) : (
-                    filteredQuotes.map((q) => (
-                      <div
-                        key={q.id}
+                    paginatedQuotes.map((q) => {
+                      const cleanPhone = (q.phoneNumber || '').replace(/[^0-9]/g, '');
+                      const isAlreadyLead = leads.some(l => l.phoneNumber && cleanPhone.endsWith(l.phoneNumber.replace(/[^0-9]/g, '')));
+
+                      return (
+                        <div
+                          key={q.id}
+                          style={{
+                            background: '#ffffff',
+                            borderRadius: '12px',
+                            border: '1px solid #e2e8f0',
+                            padding: '1rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.75rem',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.03)'
+                          }}
+                        >
+                          {/* Card Header: Customer + Status */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                            <div>
+                              <div style={{ fontWeight: 800, fontSize: '1rem', color: '#0f2b48' }}>
+                                {q.fullName || 'Anonymous Prospect'}
+                              </div>
+                              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>
+                                {new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} • {q.city || 'India'}
+                              </div>
+                            </div>
+
+                            <span style={{
+                              display: 'inline-block',
+                              background: '#f0f9ff',
+                              color: '#0284c7',
+                              border: '1px solid #bae6fd',
+                              padding: '0.2rem 0.55rem',
+                              borderRadius: '6px',
+                              fontSize: '0.74rem',
+                              fontWeight: 800,
+                              textTransform: 'capitalize'
+                            }}>
+                              {q.categorySlug ? q.categorySlug.replace('-', ' ') : 'General'}
+                            </span>
+                          </div>
+
+                          {/* Plan Details Container */}
+                          <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                              Customer Specifications
+                            </div>
+                            {renderPlanDetails(q.planDetails)}
+                          </div>
+
+                          {/* Action Buttons Suite */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.25rem' }}>
+                            <a
+                              href={`tel:${q.phoneNumber}`}
+                              style={{
+                                background: '#0f2b48',
+                                color: '#ffffff',
+                                border: 'none',
+                                padding: '9px 12px',
+                                borderRadius: '8px',
+                                fontWeight: 700,
+                                fontSize: '0.82rem',
+                                textDecoration: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.4rem'
+                              }}
+                            >
+                              <PhoneCall size={14} /> Call
+                            </a>
+
+                            {cleanPhone ? (
+                              <a
+                                href={`https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(`Hello ${q.fullName || 'Sir/Madam'}, greeting from Aadhiraksha Insurance. Regarding your ${q.categorySlug ? q.categorySlug.replace('-', ' ') : 'insurance'} inquiry...`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  background: '#ecfdf5',
+                                  color: '#059669',
+                                  border: '1px solid #a7f3d0',
+                                  padding: '9px 12px',
+                                  borderRadius: '8px',
+                                  fontWeight: 700,
+                                  fontSize: '0.82rem',
+                                  textDecoration: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '0.4rem'
+                                }}
+                              >
+                                <MessageSquare size={14} /> WhatsApp
+                              </a>
+                            ) : null}
+                          </div>
+
+                          {/* 1-Tap Convert / View CRM */}
+                          <div style={{ marginTop: '0.1rem' }}>
+                            {isAlreadyLead ? (
+                              <button
+                                onClick={() => handleNavigateView('clients')}
+                                style={{
+                                  width: '100%',
+                                  background: '#f8fafc',
+                                  color: '#0284c7',
+                                  border: '1px solid #cbd5e1',
+                                  padding: '8px 12px',
+                                  borderRadius: '8px',
+                                  fontWeight: 700,
+                                  fontSize: '0.8rem',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '0.35rem'
+                                }}
+                              >
+                                <CheckCircle2 size={14} color="#059669" /> Existing CRM Client Record
+                              </button>
+                            ) : (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const created = await crmService.createLead({
+                                      fullName: q.fullName || 'Web Prospect',
+                                      phoneNumber: q.phoneNumber,
+                                      email: q.email || '',
+                                      city: q.city || '',
+                                      categorySlug: q.categorySlug || 'general',
+                                      notes: `Ingested from Website Lead Inquiry #${q.id}. Specs: ${q.planDetails || ''}`
+                                    });
+                                    await portalService.updateQuoteStatus(q.id, 'CONVERTED');
+                                    setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: 'CONVERTED' } : item));
+                                    setLeads(prev => [created, ...prev]);
+                                    alert(`Lead "${q.fullName || q.phoneNumber}" successfully pushed to active CRM client pipeline!`);
+                                  } catch (err) {
+                                    console.error('Error converting lead', err);
+                                    alert('Failed to convert inquiry to CRM lead: ' + (err.response?.data?.message || err.message));
+                                  }
+                                }}
+                                style={{
+                                  width: '100%',
+                                  background: 'linear-gradient(135deg, #059669, #047857)',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  padding: '9px 12px',
+                                  borderRadius: '8px',
+                                  fontWeight: 700,
+                                  fontSize: '0.82rem',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '0.35rem'
+                                }}
+                              >
+                                <Plus size={14} /> Push To CRM Sales Pipeline
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* RESPONSIVE ENTERPRISE PAGINATION TOOLBAR */}
+                <div style={{
+                  padding: '0.85rem 1.5rem',
+                  background: '#f8fafc',
+                  borderTop: '1px solid #e2e8f0',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
+                  fontSize: '0.82rem',
+                  color: '#64748b'
+                }}>
+                  {/* Left: Range Summary + Page Size Dropdown */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <span>
+                      Showing <strong style={{ color: '#0f2b48' }}>{totalRecords === 0 ? 0 : startIndex + 1}</strong> - <strong style={{ color: '#0f2b48' }}>{endIndex}</strong> of <strong style={{ color: '#0f2b48' }}>{totalRecords}</strong> inquiries
+                    </span>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <label htmlFor="quotePageSizeSelect" style={{ fontSize: '0.76rem' }}>Per page:</label>
+                      <select
+                        id="quotePageSizeSelect"
+                        value={quotePageSize}
+                        onChange={(e) => {
+                          setQuotePageSize(Number(e.target.value));
+                          setQuoteCurrentPage(1);
+                        }}
                         style={{
                           background: '#ffffff',
-                          borderRadius: '12px',
-                          border: '1px solid #e2e8f0',
-                          padding: '1rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.75rem',
-                          boxShadow: '0 2px 5px rgba(0,0,0,0.03)'
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          padding: '0.2rem 0.4rem',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          color: '#0f2b48',
+                          cursor: 'pointer'
                         }}
                       >
-                        {/* Card Header: Customer + Status */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                          <div>
-                            <div style={{ fontWeight: 800, fontSize: '1rem', color: '#0f2b48' }}>
-                              {q.fullName || 'Anonymous Prospect'}
-                            </div>
-                            <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>
-                              {new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} • {q.city || 'India'}
-                            </div>
-                          </div>
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                      </select>
+                    </div>
+                  </div>
 
-                          <span style={{
-                            display: 'inline-block',
-                            background: '#f0f9ff',
-                            color: '#0284c7',
-                            border: '1px solid #bae6fd',
-                            padding: '0.2rem 0.55rem',
+                  {/* Right: Page Navigation Buttons */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <button
+                      onClick={() => setQuoteCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={validCurrentPage <= 1}
+                      style={{
+                        padding: '0.35rem 0.65rem',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        background: validCurrentPage <= 1 ? '#f1f5f9' : '#ffffff',
+                        color: validCurrentPage <= 1 ? '#94a3b8' : '#0f2b48',
+                        cursor: validCurrentPage <= 1 ? 'not-allowed' : 'pointer',
+                        fontWeight: 700,
+                        fontSize: '0.78rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.2rem'
+                      }}
+                    >
+                      <ChevronLeft size={14} /> Previous
+                    </button>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', margin: '0 0.25rem' }}>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          onClick={() => setQuoteCurrentPage(pageNum)}
+                          style={{
+                            width: '28px',
+                            height: '28px',
                             borderRadius: '6px',
-                            fontSize: '0.74rem',
+                            border: `1px solid ${pageNum === validCurrentPage ? '#0f2b48' : '#e2e8f0'}`,
+                            background: pageNum === validCurrentPage ? '#0f2b48' : '#ffffff',
+                            color: pageNum === validCurrentPage ? '#ffffff' : '#475569',
                             fontWeight: 800,
-                            textTransform: 'capitalize'
-                          }}>
-                            {q.categorySlug ? q.categorySlug.replace('-', ' ') : 'General'}
-                          </span>
-                        </div>
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+                    </div>
 
-                        {/* Plan Details Container */}
-                        <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
-                            Customer Specifications
-                          </div>
-                          {renderPlanDetails(q.planDetails)}
-                        </div>
-
-                        {/* Call Action Button */}
-                        <div style={{ marginTop: '0.25rem' }}>
-                          <a
-                            href={`tel:${q.phoneNumber}`}
-                            style={{
-                              background: '#0f2b48',
-                              color: '#ffffff',
-                              border: 'none',
-                              padding: '10px 14px',
-                              borderRadius: '8px',
-                              fontWeight: 700,
-                              fontSize: '0.84rem',
-                              textDecoration: 'none',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '0.5rem'
-                            }}
-                          >
-                            <PhoneCall size={16} /> Call {q.phoneNumber}
-                          </a>
-                        </div>
-                      </div>
-                    ))
-                  )}
+                    <button
+                      onClick={() => setQuoteCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={validCurrentPage >= totalPages}
+                      style={{
+                        padding: '0.35rem 0.65rem',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        background: validCurrentPage >= totalPages ? '#f1f5f9' : '#ffffff',
+                        color: validCurrentPage >= totalPages ? '#94a3b8' : '#0f2b48',
+                        cursor: validCurrentPage >= totalPages ? 'not-allowed' : 'pointer',
+                        fontWeight: 700,
+                        fontSize: '0.78rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.2rem'
+                      }}
+                    >
+                      Next <ChevronRight size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
             );

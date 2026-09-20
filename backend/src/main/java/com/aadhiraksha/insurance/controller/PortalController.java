@@ -144,6 +144,20 @@ public class PortalController {
         return ResponseEntity.ok(quoteInquiryRepository.findAllByOrderByCreatedAtDesc());
     }
 
+    @PatchMapping("/admin/quotes/{id}/status")
+    @Operation(summary = "Update Quote Inquiry status (NEW, CONTACTED, CONVERTED)")
+    public ResponseEntity<QuoteInquiry> updateQuoteStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        QuoteInquiry inquiry = quoteInquiryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Quote inquiry not found with ID: " + id));
+        String newStatus = body.get("status");
+        if (newStatus != null && !newStatus.isBlank()) {
+            inquiry.setStatus(newStatus.toUpperCase());
+        }
+        return ResponseEntity.ok(quoteInquiryRepository.save(inquiry));
+    }
+
     @GetMapping("/admin/posp-applications")
     @Operation(summary = "Get all POSP agent applications (Admin/Staff only)")
     public ResponseEntity<List<AgentProfile>> getAllPOSP() {
