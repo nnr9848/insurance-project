@@ -25,7 +25,8 @@ import {
   Check,
   RefreshCw,
   UserCheck,
-  Users
+  Users,
+  Edit3
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { crmService } from '../../services/api';
@@ -732,43 +733,32 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                         />
                       </th>
                     )}
-                    <th className="crm-table-th" style={{ width: '110px' }}>Code</th>
+                    <th className="crm-table-th" style={{ width: '130px' }}>Code</th>
                     <th 
                       className="crm-table-th" 
                       onClick={() => toggleSort('name')}
                       style={{ minWidth: '180px', cursor: 'pointer', userSelect: 'none' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <span>Client Name & Company</span>
+                        <span>Client & Organization</span>
                         <ArrowUpDown size={12} color={sortField === 'name' ? 'var(--accent-emerald)' : 'var(--text-muted)'} />
                       </div>
                     </th>
-                    <th className="crm-table-th" style={{ minWidth: '140px' }}>Contact</th>
-                    <th className="crm-table-th" style={{ minWidth: '150px' }}>Insurance Product</th>
+                    <th className="crm-table-th" style={{ minWidth: '150px' }}>Contact & Location</th>
+                    <th className="crm-table-th" style={{ minWidth: '220px' }}>Product Portfolio & Specs</th>
                     <th 
                       className="crm-table-th" 
                       onClick={() => toggleSort('premium')}
-                      style={{ minWidth: '130px', cursor: 'pointer', userSelect: 'none' }}
+                      style={{ minWidth: '150px', cursor: 'pointer', userSelect: 'none' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <span>Sum Insured / Prem</span>
+                        <span>Coverage & Premium</span>
                         <ArrowUpDown size={12} color={sortField === 'premium' ? 'var(--accent-emerald)' : 'var(--text-muted)'} />
                       </div>
                     </th>
-                    <th 
-                      className="crm-table-th" 
-                      onClick={() => toggleSort('deadline')}
-                      style={{ minWidth: '140px', cursor: 'pointer', userSelect: 'none' }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <span>Expiry / Deadline</span>
-                        <ArrowUpDown size={12} color={sortField === 'deadline' ? 'var(--accent-emerald)' : 'var(--text-muted)'} />
-                      </div>
-                    </th>
                     <th className="crm-table-th" style={{ minWidth: '140px' }}>Pipeline Stage</th>
-                    <th className="crm-table-th" style={{ width: '90px' }}>Priority</th>
-                    <th className="crm-table-th" style={{ minWidth: '150px' }}>Advisor</th>
-                    <th className="crm-table-th" style={{ textAlign: 'center', width: '175px' }}>Quick Actions</th>
+                    <th className="crm-table-th" style={{ minWidth: '130px' }}>Advisor</th>
+                    <th className="crm-table-th" style={{ textAlign: 'center', width: '145px' }}>Quick Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -777,6 +767,18 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                     const isSelected = selectedLeadIds.includes(lead.id);
                     const stageBadge = getStageBadge(lead.stage);
                     const priorityBadge = getPriorityBadge(lead.priority);
+
+                    // Parse linked multi-product opportunities from notes if any
+                    const linkedOpportunities = [];
+                    if (lead.notes) {
+                      const lines = lead.notes.split('\n');
+                      lines.forEach(line => {
+                        const match = line.match(/Ingested Opportunity:\s*([A-Z\s]+)/i);
+                        if (match && match[1]) {
+                          linkedOpportunities.push(match[1].trim());
+                        }
+                      });
+                    }
 
                     return (
                       <tr 
@@ -798,10 +800,16 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
 
                         {/* Client Code */}
                         <td className="crm-table-td" style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-emerald)' }}>
-                          {lead.clientCode}
+                          <span 
+                            onClick={() => onOpenClient360 && onOpenClient360(lead)}
+                            style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                            title="Open Client 360 View"
+                          >
+                            {lead.clientCode}
+                          </span>
                         </td>
 
-                        {/* Client Name & Company (Inline Editable) */}
+                        {/* Client Name & Company */}
                         <td className="crm-table-td">
                           {isEditing ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -823,18 +831,18 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             <div>
                               <div 
                                 onClick={() => onOpenClient360 && onOpenClient360(lead)}
-                                style={{ fontWeight: 700, color: 'var(--crm-text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                style={{ fontWeight: 800, color: '#0f2b48', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                               >
                                 {lead.fullName} <ExternalLink size={12} color="var(--accent-gold)" />
                               </div>
-                              {lead.companyName && (
-                                <div style={{ fontSize: '0.74rem', color: 'var(--crm-text-muted)' }}>{lead.companyName}</div>
-                              )}
+                              <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '1px' }}>
+                                {lead.companyName || 'Retail Client'}
+                              </div>
                             </div>
                           )}
                         </td>
 
-                        {/* Contact */}
+                        {/* Contact & Location */}
                         <td className="crm-table-td">
                           {isEditing ? (
                             <input
@@ -845,13 +853,13 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             />
                           ) : (
                             <div>
-                              <div style={{ fontWeight: 600, color: 'var(--crm-text-primary)' }}>{lead.phoneNumber}</div>
-                              {lead.city && <div style={{ fontSize: '0.72rem', color: 'var(--crm-text-muted)' }}>{lead.city}</div>}
+                              <div style={{ fontWeight: 700, color: '#0f2b48', fontSize: '0.84rem' }}>{lead.phoneNumber}</div>
+                              <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{lead.city || 'India'}</div>
                             </div>
                           )}
                         </td>
 
-                        {/* Insurance Product */}
+                        {/* Product Portfolio & Multi-Policy Chips */}
                         <td className="crm-table-td">
                           {isEditing ? (
                             <select
@@ -867,16 +875,41 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                               <option value="Loans & Financing">Loans</option>
                             </select>
                           ) : (
-                            <div>
-                              <div style={{ fontWeight: 700, color: 'var(--crm-text-primary)' }}>{lead.insuranceType}</div>
-                              {lead.existingInsurer && (
-                                <div style={{ fontSize: '0.72rem', color: 'var(--accent-gold)' }}>Prev: {lead.existingInsurer}</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <span style={{
+                                display: 'inline-block',
+                                background: '#f0f9ff',
+                                color: '#0284c7',
+                                border: '1px solid #bae6fd',
+                                padding: '0.15rem 0.5rem',
+                                borderRadius: '6px',
+                                fontSize: '0.74rem',
+                                fontWeight: 800,
+                                width: 'fit-content'
+                              }}>
+                                {lead.insuranceType || 'General Insurance'}
+                              </span>
+
+                              {linkedOpportunities.length > 0 && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
+                                  <span style={{
+                                    fontSize: '0.68rem',
+                                    color: '#059669',
+                                    background: '#ecfdf5',
+                                    border: '1px solid #a7f3d0',
+                                    padding: '0.1rem 0.35rem',
+                                    borderRadius: '4px',
+                                    fontWeight: 700
+                                  }}>
+                                    +{linkedOpportunities.length} More ({linkedOpportunities.join(', ')})
+                                  </span>
+                                </div>
                               )}
                             </div>
                           )}
                         </td>
 
-                        {/* Sum Insured / Premium */}
+                        {/* Coverage & Premium */}
                         <td className="crm-table-td">
                           {isEditing ? (
                             <input
@@ -888,45 +921,17 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             />
                           ) : (
                             <div>
-                              <div style={{ fontWeight: 700, color: 'var(--crm-text-primary)' }}>{lead.sumInsured || '-'}</div>
-                              {lead.estimatedPremium && (
-                                <div style={{ fontSize: '0.74rem', color: 'var(--accent-emerald)', fontWeight: 600 }}>
-                                  ₹{Number(lead.estimatedPremium).toLocaleString()}
-                                </div>
-                              )}
+                              <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.84rem' }}>
+                                {lead.sumInsured || (lead.notes?.match(/₹[\d,]+(\s*Lakhs|\s*Crore|\s*Cr)?/)?.[0] ? `${lead.notes.match(/₹[\d,]+(\s*Lakhs|\s*Crore|\s*Cr)?/)[0]} (Desired)` : 'Quote Pending')}
+                              </div>
+                              <div style={{ fontSize: '0.74rem', color: lead.estimatedPremium ? '#059669' : '#64748b', fontWeight: lead.estimatedPremium ? 700 : 500 }}>
+                                {lead.estimatedPremium ? `Est. ₹${Number(lead.estimatedPremium).toLocaleString()}` : (lead.policyExpiryDate ? `Exp: ${lead.policyExpiryDate}` : 'Pending Proposal')}
+                              </div>
                             </div>
                           )}
                         </td>
 
-                        {/* Expiry / Deadline */}
-                        <td className="crm-table-td">
-                          {isEditing ? (
-                            <input
-                              type="date"
-                              value={editFormData.policyExpiryDate || ''}
-                              onChange={(e) => setEditFormData({ ...editFormData, policyExpiryDate: e.target.value })}
-                              style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.78rem', width: '100%' }}
-                            />
-                          ) : (
-                            <div>
-                              {lead.policyExpiryDate ? (
-                                <div style={{ 
-                                  fontWeight: 600, 
-                                  fontSize: '0.8rem',
-                                  color: new Date(lead.policyExpiryDate).getTime() - new Date().getTime() < 7 * 86400000 
-                                    ? 'var(--danger-red, #dc2626)' 
-                                    : 'var(--crm-text-primary)'
-                                }}>
-                                  {lead.policyExpiryDate}
-                                </div>
-                              ) : (
-                                <span style={{ color: 'var(--crm-text-muted)', fontSize: '0.78rem' }}>-</span>
-                              )}
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Stage (Inline Dropdown) */}
+                        {/* Pipeline Stage & Priority */}
                         <td className="crm-table-td">
                           {isEditing ? (
                             <select
@@ -946,40 +951,27 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                               <option value="LOST">Lost</option>
                             </select>
                           ) : (
-                            <span style={{
-                              display: 'inline-block',
-                              padding: '3px 8px',
-                              borderRadius: '9999px',
-                              fontSize: '0.72rem',
-                              fontWeight: 700,
-                              background: stageBadge.bg,
-                              color: stageBadge.color
-                            }}>
-                              {stageBadge.label}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <span style={{
+                                display: 'inline-block',
+                                padding: '2px 8px',
+                                borderRadius: '9999px',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                background: stageBadge.bg,
+                                color: stageBadge.color,
+                                width: 'fit-content'
+                              }}>
+                                {stageBadge.label}
+                              </span>
+                              <span style={{ fontSize: '0.68rem', fontWeight: 700, color: priorityBadge.color }}>
+                                {priorityBadge.label}
+                              </span>
+                            </div>
                           )}
                         </td>
 
-                        {/* Priority */}
-                        <td className="crm-table-td">
-                          {isEditing ? (
-                            <select
-                              value={editFormData.priority || 'MEDIUM'}
-                              onChange={(e) => setEditFormData({ ...editFormData, priority: e.target.value })}
-                              style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.8rem' }}
-                            >
-                              <option value="HIGH">HIGH</option>
-                              <option value="MEDIUM">MEDIUM</option>
-                              <option value="LOW">LOW</option>
-                            </select>
-                          ) : (
-                            <span style={{ fontWeight: 700, fontSize: '0.78rem', color: priorityBadge.color }}>
-                              {priorityBadge.label}
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Assigned Advisor (Interactive for Admins/Managers) */}
+                        {/* Assigned Advisor */}
                         <td className="crm-table-td">
                           {isEditing && canReassign ? (
                             <select
@@ -998,13 +990,13 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                               <option value="">Unassigned</option>
                               {advisors.map(adv => (
                                 <option key={adv.id} value={adv.id}>
-                                  {adv.fullName} ({adv.branchCity || adv.employeeCode || 'Advisor'})
+                                  {adv.fullName}
                                 </option>
                               ))}
                             </select>
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
-                              <span style={{ color: 'var(--crm-text-muted)', fontWeight: 600, fontSize: '0.82rem' }}>
+                              <span style={{ color: lead.assignedAdvisorName ? '#0f2b48' : '#94a3b8', fontWeight: 700, fontSize: '0.8rem' }}>
                                 {lead.assignedAdvisorName || 'Unassigned'}
                               </span>
                               {canReassign && (
@@ -1019,7 +1011,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                                     display: 'flex',
                                     alignItems: 'center'
                                   }}
-                                  title="Quick Reassign to another Advisor"
+                                  title="Quick Reassign Advisor"
                                 >
                                   <UserCheck size={13} />
                                 </button>
@@ -1028,7 +1020,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           )}
                         </td>
 
-                        {/* Actions */}
+                        {/* Quick Actions */}
                         <td className="crm-table-td" style={{ textAlign: 'center' }}>
                           {isEditing ? (
                             <div style={{ display: 'inline-flex', gap: '4px' }}>
@@ -1041,53 +1033,87 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                               </button>
                               <button
                                 onClick={cancelInlineEdit}
-                                style={{ background: 'var(--bg-main)', color: 'var(--text-muted)', border: 'none', padding: '5px 8px', borderRadius: '6px', cursor: 'pointer' }}
-                                title="Cancel"
+                                style={{ background: 'var(--border-subtle)', color: 'var(--text-main)', border: 'none', padding: '5px 8px', borderRadius: '6px', cursor: 'pointer' }}
+                                title="Cancel Edit"
                               >
                                 <X size={13} />
                               </button>
                             </div>
                           ) : (
-                            <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
-                              {/* 1. Log Call */}
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
                               <button
                                 onClick={() => onOpenCallModal && onOpenCallModal(lead)}
-                                style={{ background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', padding: '5px 7px', borderRadius: '6px', cursor: 'pointer' }}
-                                title="Log Call Disposition & Schedule Followup"
+                                style={{
+                                  background: '#ecfdf5',
+                                  color: '#059669',
+                                  border: '1px solid #a7f3d0',
+                                  padding: '5px 6px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}
+                                title="Log Telephony Call"
                               >
                                 <Phone size={13} />
                               </button>
 
-                              {/* 2. WhatsApp Direct */}
                               <button
-                                onClick={() => openWhatsApp(lead.phoneNumber, lead.fullName, lead.insuranceType)}
-                                style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '5px 7px', borderRadius: '6px', cursor: 'pointer' }}
-                                title="Chat on WhatsApp"
+                                onClick={() => {
+                                  const clean = (lead.whatsappNumber || lead.phoneNumber || '').replace(/[^0-9]/g, '');
+                                  window.open(`https://wa.me/${clean}?text=Hello%20${encodeURIComponent(lead.fullName)},%20Aadhiraksha%20Insurance%20Advisory.`, '_blank');
+                                }}
+                                style={{
+                                  background: '#f0fdf4',
+                                  color: '#16a34a',
+                                  border: '1px solid #bbf7d0',
+                                  padding: '5px 6px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}
+                                title="1-Tap WhatsApp"
                               >
                                 <MessageSquare size={13} />
                               </button>
 
-                              {/* 3. Schedule Google Meet */}
                               <button
                                 onClick={() => onOpenMeetingModal && onOpenMeetingModal(lead)}
-                                style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '5px 7px', borderRadius: '6px', cursor: 'pointer' }}
-                                title="Schedule Google Meet"
+                                style={{
+                                  background: '#eff6ff',
+                                  color: '#2563eb',
+                                  border: '1px solid #bfdbfe',
+                                  padding: '5px 6px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}
+                                title="Schedule Meeting"
                               >
                                 <Calendar size={13} />
                               </button>
 
-                              {/* 4. Inline Edit */}
                               <button
                                 onClick={() => startInlineEdit(lead)}
-                                style={{ background: 'var(--bg-main)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)', padding: '5px 7px', borderRadius: '6px', cursor: 'pointer' }}
-                                title="Edit Row"
+                                style={{
+                                  background: '#f8fafc',
+                                  color: '#64748b',
+                                  border: '1px solid #e2e8f0',
+                                  padding: '5px 6px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}
+                                title="Inline Edit"
                               >
-                                <Edit2 size={13} />
+                                <Edit3 size={13} />
                               </button>
                             </div>
                           )}
                         </td>
-
                       </tr>
                     );
                   })}
