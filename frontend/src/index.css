@@ -2563,6 +2563,93 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* =========================================================
+   ENTERPRISE MINIMALIST CRM FOOTER
+   ========================================================= */
+.crm-minimal-footer {
+  margin-top: 2.5rem;
+  border-top: 1px solid var(--border-subtle, #e2e8f0);
+  background: transparent;
+  padding: 1.25rem 0 0.5rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.78rem;
+  color: var(--text-muted, #64748b);
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.crm-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.crm-footer-divider {
+  color: #cbd5e1;
+}
+
+.crm-footer-version {
+  font-weight: 700;
+  color: var(--primary-navy, #0f2b48);
+  background: #f1f5f9;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+}
+
+.crm-footer-center {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #059669;
+  font-weight: 600;
+}
+
+.crm-footer-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  display: inline-block;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.crm-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.crm-footer-partner-link {
+  color: #f59e0b;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.15s ease, text-decoration 0.15s ease;
+}
+
+.crm-footer-partner-link:hover {
+  color: #d97706;
+  text-decoration: underline !important;
+}
+
+@media (max-width: 900px) {
+  .crm-minimal-footer {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1rem;
+  }
+  .crm-footer-left,
+  .crm-footer-center,
+  .crm-footer-right {
+    justify-content: center;
+  }
+}
+
+/* =========================================================
    MOBILE RESPONSIVE CONSUMER HEADER & CRM WORKSPACE
    ========================================================= */
 

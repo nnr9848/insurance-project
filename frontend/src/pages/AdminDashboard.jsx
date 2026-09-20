@@ -1340,7 +1340,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
         </header>
 
         {/* WORKSPACE VIEW CONTENT AREA */}
-        <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
           {/* SLIM IN-PAGE NAVIGATION & BREADCRUMB BAR (Shown on all sub-views) */}
           {activeView !== 'dashboard' && (() => {
@@ -1936,6 +1936,31 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
             </div>
           )}
 
+          {/* 3. MINIMALIST ENTERPRISE CRM FOOTER (Scrolls naturally at bottom, non-sticky) */}
+          <footer className="crm-minimal-footer">
+            <div className="crm-footer-left">
+              <span>&copy; {new Date().getFullYear()} Aadhiraksha Insurance & Financial Services</span>
+              <span className="crm-footer-divider">•</span>
+              <span className="crm-footer-version">CRM Engine v2.4</span>
+            </div>
+
+            <div className="crm-footer-center">
+              <span className="crm-footer-status-dot"></span>
+              <span>All Systems Operational (IRDAI ISO/IEC 27001)</span>
+            </div>
+
+            <div className="crm-footer-right">
+              <span>Engineered by </span>
+              <a 
+                href="https://www.prabhatech.com/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="crm-footer-partner-link"
+              >
+                PrabhaTech
+              </a>
+            </div>
+          </footer>
         </div>
       </main>
 
