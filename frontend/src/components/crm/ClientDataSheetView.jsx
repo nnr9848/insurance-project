@@ -33,7 +33,9 @@ import {
   Car,
   Briefcase,
   Plane,
-  Building2
+  Building2,
+  Mail,
+  Zap
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { crmService } from '../../services/api';
@@ -70,6 +72,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
 
   const [editingRowId, setEditingRowId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
+  const [activeReachLead, setActiveReachLead] = useState(null); // Active lead for omni-contact popover/bottom-sheet
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [parsedBulkLeads, setParsedBulkLeads] = useState([]);
@@ -1193,57 +1196,24 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           ) : (
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
                               <button
-                                onClick={() => onOpenCallModal && onOpenCallModal(lead)}
+                                onClick={() => setActiveReachLead(lead)}
                                 style={{
                                   background: '#ecfdf5',
                                   color: '#059669',
                                   border: '1px solid #a7f3d0',
-                                  padding: '5px 6px',
+                                  padding: '5px 8px',
                                   borderRadius: '6px',
                                   cursor: 'pointer',
                                   display: 'flex',
-                                  alignItems: 'center'
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontSize: '0.74rem',
+                                  fontWeight: 700
                                 }}
-                                title="Log Telephony Call"
+                                title="Omni-Channel Contact (Call, WhatsApp, Email, Meeting)"
                               >
-                                <Phone size={13} />
-                              </button>
-
-                              <button
-                                onClick={() => {
-                                  const clean = (lead.whatsappNumber || lead.phoneNumber || '').replace(/[^0-9]/g, '');
-                                  window.open(`https://wa.me/${clean}?text=Hello%20${encodeURIComponent(lead.fullName)},%20Aadhiraksha%20Insurance%20Advisory.`, '_blank');
-                                }}
-                                style={{
-                                  background: '#f0fdf4',
-                                  color: '#16a34a',
-                                  border: '1px solid #bbf7d0',
-                                  padding: '5px 6px',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center'
-                                }}
-                                title="1-Tap WhatsApp"
-                              >
-                                <MessageSquare size={13} />
-                              </button>
-
-                              <button
-                                onClick={() => onOpenMeetingModal && onOpenMeetingModal(lead)}
-                                style={{
-                                  background: '#eff6ff',
-                                  color: '#2563eb',
-                                  border: '1px solid #bfdbfe',
-                                  padding: '5px 6px',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center'
-                                }}
-                                title="Schedule Meeting"
-                              >
-                                <Calendar size={13} />
+                                <Zap size={13} />
+                                <span>Reach ▾</span>
                               </button>
 
                               <button
@@ -1252,7 +1222,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                                   background: '#f8fafc',
                                   color: '#64748b',
                                   border: '1px solid #e2e8f0',
-                                  padding: '5px 6px',
+                                  padding: '5px 7px',
                                   borderRadius: '6px',
                                   cursor: 'pointer',
                                   display: 'flex',
@@ -1615,70 +1585,35 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                         </div>
                       </div>
 
-                      {/* 1-Tap Action Pill Icons (Call, WhatsApp, Meeting, Edit) */}
+                      {/* 1-Tap Action Pills: Omni-Contact Reach ▾ + Edit */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                         <button
-                          onClick={() => onOpenCallModal && onOpenCallModal(lead)}
+                          onClick={() => setActiveReachLead(lead)}
                           style={{
-                            width: '32px',
-                            height: '32px',
+                            height: '30px',
+                            padding: '0 8px',
                             borderRadius: '8px',
                             background: '#ecfdf5',
                             color: '#059669',
                             border: '1px solid #a7f3d0',
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
+                            gap: '4px',
+                            fontSize: '0.74rem',
+                            fontWeight: 700,
                             cursor: 'pointer'
                           }}
-                          title={`Call ${lead.fullName}`}
+                          title="Contact Client via Phone, WhatsApp, Email, or Meeting"
                         >
-                          <Phone size={13} />
-                        </button>
-
-                        <button
-                          onClick={() => openWhatsApp(lead.phoneNumber, lead.fullName, lead.insuranceType)}
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '8px',
-                            background: '#dcfce7',
-                            color: '#15803d',
-                            border: '1px solid #86efac',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer'
-                          }}
-                          title="WhatsApp Client"
-                        >
-                          <MessageSquare size={13} />
-                        </button>
-
-                        <button
-                          onClick={() => onOpenMeetingModal && onOpenMeetingModal(lead)}
-                          style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '8px',
-                            background: '#eff6ff',
-                            color: '#2563eb',
-                            border: '1px solid #bfdbfe',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer'
-                          }}
-                          title="Schedule Meeting"
-                        >
-                          <Calendar size={13} />
+                          <Zap size={12} />
+                          <span>Reach ▾</span>
                         </button>
 
                         <button
                           onClick={() => startInlineEdit(lead)}
                           style={{
-                            width: '32px',
-                            height: '32px',
+                            width: '30px',
+                            height: '30px',
                             borderRadius: '8px',
                             background: '#f8fafc',
                             color: '#0f2b48',
@@ -2481,6 +2416,199 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Omni-Channel Quick Reach Popover / Action Sheet */}
+      {activeReachLead && (
+        <div
+          onClick={() => setActiveReachLead(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'none',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+            animation: 'fadeIn 0.15s ease-out'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              maxWidth: '380px',
+              width: '100%',
+              padding: '1.25rem',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+              border: '1px solid #e2e8f0'
+            }}
+          >
+            {/* Header: Client Identity & Quick Close */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#0f2b48' }}>
+                  Reach {activeReachLead.fullName}
+                </div>
+                <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-emerald)' }}>{activeReachLead.clientCode}</span>
+                  <span>•</span>
+                  <span>{activeReachLead.companyName || 'Retail Client'}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveReachLead(null)}
+                style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Contact Information Pill */}
+            <div style={{ background: '#f8fafc', padding: '0.6rem 0.85rem', borderRadius: '10px', fontSize: '0.78rem', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b' }}>Phone:</span>
+                <span style={{ fontWeight: 700, color: '#0f2b48' }}>{activeReachLead.phoneNumber || 'Not provided'}</span>
+              </div>
+              {activeReachLead.email && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748b' }}>Email:</span>
+                  <span style={{ fontWeight: 600, color: '#0284c7' }}>{activeReachLead.email}</span>
+                </div>
+              )}
+            </div>
+
+            {/* 4 Omni-Channel Action Tiles */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {/* 1. Phone Call */}
+              <button
+                onClick={() => {
+                  const target = activeReachLead;
+                  setActiveReachLead(null);
+                  if (onOpenCallModal) onOpenCallModal(target);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  padding: '0.75rem',
+                  borderRadius: '10px',
+                  border: '1px solid #a7f3d0',
+                  background: '#ecfdf5',
+                  color: '#065f46',
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#10b981', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Phone size={18} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Direct Phone Call</div>
+                  <div style={{ fontSize: '0.72rem', color: '#047857' }}>Log telephony interaction with client</div>
+                </div>
+              </button>
+
+              {/* 2. WhatsApp Message */}
+              <button
+                onClick={() => {
+                  const target = activeReachLead;
+                  setActiveReachLead(null);
+                  openWhatsApp(target.phoneNumber, target.fullName, target.insuranceType);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  padding: '0.75rem',
+                  borderRadius: '10px',
+                  border: '1px solid #86efac',
+                  background: '#f0fdf4',
+                  color: '#14532d',
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#22c55e', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <MessageSquare size={18} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>WhatsApp Chat</div>
+                  <div style={{ fontSize: '0.72rem', color: '#15803d' }}>Open 1-tap prefilled WhatsApp message</div>
+                </div>
+              </button>
+
+              {/* 3. Send Email */}
+              <button
+                onClick={() => {
+                  const target = activeReachLead;
+                  setActiveReachLead(null);
+                  if (target.email) {
+                    window.open(`mailto:${target.email}?subject=Insurance%20Advisory%20Proposal%20-%20Aadhiraksha&body=Dear%20${encodeURIComponent(target.fullName)},%0D%0A%0D%0APlease%20find%20attached%20your%20customized%20insurance%20portfolio%20details.`, '_blank');
+                  } else {
+                    toast.info(`No email on file for ${target.fullName}. Opening Client 360 to add.`);
+                    if (onOpenClient360) onOpenClient360(target);
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  padding: '0.75rem',
+                  borderRadius: '10px',
+                  border: '1px solid #bae6fd',
+                  background: '#f0f9ff',
+                  color: '#0369a1',
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#0284c7', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Mail size={18} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Send Email Proposal</div>
+                  <div style={{ fontSize: '0.72rem', color: '#0284c7' }}>{activeReachLead.email ? `Send to ${activeReachLead.email}` : 'Compose proposal via Mail'}</div>
+                </div>
+              </button>
+
+              {/* 4. Schedule Meeting */}
+              <button
+                onClick={() => {
+                  const target = activeReachLead;
+                  setActiveReachLead(null);
+                  if (onOpenMeetingModal) onOpenMeetingModal(target);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  padding: '0.75rem',
+                  borderRadius: '10px',
+                  border: '1px solid #bfdbfe',
+                  background: '#eff6ff',
+                  color: '#1e40af',
+                  cursor: 'pointer',
+                  textAlign: 'left'
+                }}
+              >
+                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#3b82f6', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Calendar size={18} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Schedule Advisor Meeting</div>
+                  <div style={{ fontSize: '0.72rem', color: '#2563eb' }}>Book video or in-person consultation</div>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       )}
