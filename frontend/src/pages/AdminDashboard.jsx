@@ -1778,7 +1778,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
                                   {totalProspectInquiries > 1 && (
                                     <span
-                                      title={`Same prospect has submitted ${totalProspectInquiries} total inquiries across different verticals`}
+                                      title={`Prospect has submitted ${totalProspectInquiries - 1} other inquiry(s) in different products (${totalProspectInquiries} total)`}
                                       style={{
                                         display: 'inline-flex',
                                         alignItems: 'center',
@@ -1793,7 +1793,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                         whiteSpace: 'nowrap'
                                       }}
                                     >
-                                      🔥 {totalProspectInquiries} Inquiries
+                                      🔥 +{totalProspectInquiries - 1} Other Inquiries
                                     </span>
                                   )}
                                 </div>
@@ -2159,6 +2159,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
                               {totalProspectInquiries > 1 && (
                                 <span
+                                  title={`Prospect has submitted ${totalProspectInquiries - 1} other inquiry(s) (${totalProspectInquiries} total)`}
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
@@ -2173,7 +2174,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                     whiteSpace: 'nowrap'
                                   }}
                                 >
-                                  🔥 {totalProspectInquiries} Inquiries
+                                  🔥 +{totalProspectInquiries - 1} More
                                 </span>
                               )}
                             </div>
