@@ -937,6 +937,11 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             </select>
                           ) : (() => {
                             const primaryBadge = getProductBadge(lead.insuranceType);
+                            const maxVisibleOpps = 2;
+                            const visibleOpps = linkedOpportunities.slice(0, maxVisibleOpps);
+                            const remainingCount = linkedOpportunities.length - maxVisibleOpps;
+                            const remainingOpps = linkedOpportunities.slice(maxVisibleOpps);
+
                             return (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 {/* Primary Product Tag */}
@@ -957,10 +962,10 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                                   <span>{primaryBadge.label}</span>
                                 </div>
 
-                                {/* Additional Ingested Opportunities (Clean Distinct Micro-Pills) */}
+                                {/* Additional Ingested Opportunities with Max-2 + Overflow Capsule */}
                                 {linkedOpportunities.length > 0 && (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                                    {linkedOpportunities.map((oppName, oppIdx) => {
+                                    {visibleOpps.map((oppName, oppIdx) => {
                                       const oppBadge = getProductBadge(oppName);
                                       return (
                                         <div
@@ -977,13 +982,36 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                                             fontSize: '0.68rem',
                                             fontWeight: 700
                                           }}
-                                          title={`Ingested Opportunity: ${oppBadge.label}`}
+                                          title={`Opportunity: ${oppBadge.label}`}
                                         >
                                           {oppBadge.icon}
                                           <span>+{oppBadge.shortLabel}</span>
                                         </div>
                                       );
                                     })}
+
+                                    {/* Overflow Capsule */}
+                                    {remainingCount > 0 && (
+                                      <div
+                                        onClick={() => onOpenClient360 && onOpenClient360(lead)}
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '2px',
+                                          background: '#f1f5f9',
+                                          color: '#475569',
+                                          border: '1px solid #cbd5e1',
+                                          padding: '0.1rem 0.4rem',
+                                          borderRadius: '5px',
+                                          fontSize: '0.68rem',
+                                          fontWeight: 800,
+                                          cursor: 'pointer'
+                                        }}
+                                        title={`+${remainingCount} more policies: ${remainingOpps.map(o => getProductBadge(o).label).join(', ')} (Click to view Client 360)`}
+                                      >
+                                        <span>+{remainingCount} More ▾</span>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -1249,6 +1277,19 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
               {filteredLeads.map((lead) => {
                 const stageBadge = getStageBadge(lead.stage);
                 const priorityBadge = getPriorityBadge(lead.priority);
+                const primaryBadge = getProductBadge(lead.insuranceType);
+
+                // Parse linked multi-product opportunities from notes
+                const cardLinkedOpportunities = [];
+                if (lead.notes) {
+                  const lines = lead.notes.split('\n');
+                  lines.forEach(line => {
+                    const match = line.match(/Ingested Opportunity:\s*([A-Z\s]+)/i);
+                    if (match && match[1]) {
+                      cardLinkedOpportunities.push(match[1].trim());
+                    }
+                  });
+                }
 
                 return (
                   <div
@@ -1258,27 +1299,32 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                       padding: '1rem',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '0.65rem'
+                      gap: '0.75rem',
+                      borderRadius: '14px',
+                      border: '1px solid #e2e8f0',
+                      background: '#ffffff',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
                     }}
                   >
-                    {/* Header: Name, Code & Priority */}
+                    {/* Header: Name, Code, Company & Status/Priority Badges */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div>
                         <div 
                           onClick={() => onOpenClient360 && onOpenClient360(lead)}
-                          style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--primary-navy)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                          style={{ fontWeight: 800, fontSize: '0.98rem', color: '#0f2b48', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                         >
                           {lead.fullName} <ExternalLink size={13} color="var(--accent-gold)" />
                         </div>
-                        <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-emerald)' }}>{lead.clientCode}</span>
-                          {lead.companyName && ` • ${lead.companyName}`}
+                          <span>•</span>
+                          <span>{lead.companyName || 'Retail Client'}</span>
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', gap: '0.35rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
                         <span style={{
-                          padding: '2px 7px',
+                          padding: '2px 8px',
                           borderRadius: '999px',
                           fontSize: '0.7rem',
                           fontWeight: 700,
@@ -1288,11 +1334,8 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           {stageBadge.label}
                         </span>
                         <span style={{
-                          padding: '2px 6px',
-                          borderRadius: '999px',
-                          fontSize: '0.7rem',
+                          fontSize: '0.68rem',
                           fontWeight: 700,
-                          background: 'var(--bg-main)',
                           color: priorityBadge.color
                         }}>
                           {priorityBadge.label}
@@ -1300,16 +1343,80 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                       </div>
                     </div>
 
-                    {/* Middle Info: Product & Sum Insured */}
-                    <div style={{ background: 'var(--bg-main)', padding: '0.6rem 0.75rem', borderRadius: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.78rem' }}>
+                    {/* Contact & Location Strip */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc', padding: '0.5rem 0.75rem', borderRadius: '8px', fontSize: '0.76rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#0f2b48', fontWeight: 700 }}>
+                        <Phone size={12} color="#059669" />
+                        <span>{lead.phoneNumber}</span>
+                      </div>
+                      <div style={{ color: '#64748b', fontWeight: 600 }}>
+                        📍 {lead.city || 'India'}
+                      </div>
+                    </div>
+
+                    {/* Product Portfolio Deck with Standard Badges */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.04em' }}>
+                        Active Portfolio & Demands
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                        <div style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          background: primaryBadge.bg,
+                          color: primaryBadge.color,
+                          border: `1px solid ${primaryBadge.border}`,
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '6px',
+                          fontSize: '0.74rem',
+                          fontWeight: 800
+                        }}>
+                          {primaryBadge.icon}
+                          <span>{primaryBadge.label}</span>
+                        </div>
+
+                        {cardLinkedOpportunities.map((oppName, oppIdx) => {
+                          const oppBadge = getProductBadge(oppName);
+                          return (
+                            <div
+                              key={oppIdx}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                background: oppBadge.bg,
+                                color: oppBadge.color,
+                                border: `1px solid ${oppBadge.border}`,
+                                padding: '0.1rem 0.4rem',
+                                borderRadius: '5px',
+                                fontSize: '0.68rem',
+                                fontWeight: 700
+                              }}
+                            >
+                              {oppBadge.icon}
+                              <span>+{oppBadge.shortLabel}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Middle Info: Coverage & Assigned Advisor */}
+                    <div style={{ background: '#f8fafc', padding: '0.6rem 0.75rem', borderRadius: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.78rem' }}>
                       <div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600 }}>Product</div>
-                        <div style={{ fontWeight: 700, color: 'var(--primary-navy)' }}>{lead.insuranceType}</div>
+                        <div style={{ color: '#64748b', fontSize: '0.7rem', fontWeight: 600 }}>Coverage / Premium</div>
+                        <div style={{ fontWeight: 800, color: '#059669' }}>
+                          {lead.sumInsured || '₹10L'}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                          {lead.estimatedPremium ? `Est. ₹${Number(lead.estimatedPremium).toLocaleString()}` : 'Quote Pending'}
+                        </div>
                       </div>
                       <div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 600 }}>Coverage / Prem</div>
-                        <div style={{ fontWeight: 700, color: 'var(--accent-emerald)' }}>
-                          {lead.sumInsured || '₹10L'} {lead.estimatedPremium ? `(₹${Number(lead.estimatedPremium).toLocaleString()})` : ''}
+                        <div style={{ color: '#64748b', fontSize: '0.7rem', fontWeight: 600 }}>Assigned Advisor</div>
+                        <div style={{ fontWeight: 700, color: lead.assignedAdvisorName ? '#0f2b48' : '#94a3b8' }}>
+                          {lead.assignedAdvisorName || 'Unassigned'}
                         </div>
                       </div>
                     </div>
@@ -1322,7 +1429,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           background: '#ecfdf5',
                           color: '#059669',
                           border: '1px solid #a7f3d0',
-                          padding: '0.45rem 0.3rem',
+                          padding: '0.55rem 0.3rem',
                           borderRadius: '8px',
                           fontSize: '0.72rem',
                           fontWeight: 700,
@@ -1330,7 +1437,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          gap: '2px'
+                          gap: '3px'
                         }}
                       >
                         <Phone size={14} />
@@ -1343,7 +1450,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           background: '#dcfce7',
                           color: '#15803d',
                           border: '1px solid #86efac',
-                          padding: '0.45rem 0.3rem',
+                          padding: '0.55rem 0.3rem',
                           borderRadius: '8px',
                           fontSize: '0.72rem',
                           fontWeight: 700,
@@ -1351,7 +1458,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          gap: '2px'
+                          gap: '3px'
                         }}
                       >
                         <MessageSquare size={14} />
@@ -1364,7 +1471,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           background: '#eff6ff',
                           color: '#2563eb',
                           border: '1px solid #bfdbfe',
-                          padding: '0.45rem 0.3rem',
+                          padding: '0.55rem 0.3rem',
                           borderRadius: '8px',
                           fontSize: '0.72rem',
                           fontWeight: 700,
@@ -1372,7 +1479,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          gap: '2px'
+                          gap: '3px'
                         }}
                       >
                         <Calendar size={14} />
@@ -1382,10 +1489,10 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                       <button
                         onClick={() => onOpenClient360 && onOpenClient360(lead)}
                         style={{
-                          background: 'var(--bg-main)',
-                          color: 'var(--primary-navy)',
-                          border: '1px solid var(--border-subtle)',
-                          padding: '0.45rem 0.3rem',
+                          background: '#ffffff',
+                          color: '#0f2b48',
+                          border: '1px solid #cbd5e1',
+                          padding: '0.55rem 0.3rem',
                           borderRadius: '8px',
                           fontSize: '0.72rem',
                           fontWeight: 700,
@@ -1393,7 +1500,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          gap: '2px'
+                          gap: '3px'
                         }}
                       >
                         <Shield size={14} />
