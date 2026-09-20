@@ -26,7 +26,8 @@ import {
   Award,
   PhoneCall,
   Sparkles,
-  Trash2
+  Trash2,
+  Layers
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { crmService } from '../../services/api';
@@ -223,26 +224,44 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
     { name: 'Previous_StarHealth_Policy.pdf', type: 'PREVIOUS_POLICY', date: '16 Sep 2026', size: '2.4 MB' }
   ];
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(15, 23, 42, 0.65)',
-      zIndex: 12000,
-      display: 'flex',
-      justifyContent: 'flex-end',
-      animation: 'fadeIn 0.2s ease-out'
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '580px',
-        background: '#ffffff',
-        height: '100vh',
+    <div 
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.65)',
+        zIndex: 12000,
         display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '-10px 0 35px rgba(0, 0, 0, 0.25)',
-        animation: 'slideLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
-      }}>
+        justifyContent: 'flex-end',
+        animation: 'fadeIn 0.2s ease-out',
+        cursor: 'pointer'
+      }}
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%',
+          maxWidth: '580px',
+          background: '#ffffff',
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '-10px 0 35px rgba(0, 0, 0, 0.25)',
+          animation: 'slideLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          cursor: 'default'
+        }}
+      >
         
         {/* Drawer Header - Clean Crisp Enterprise UX */}
         <div style={{
@@ -655,17 +674,76 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                 </div>
               </div>
 
-              {/* 5. Advisory Notes */}
-              {currentClient.notes && (
-                <div style={{ background: '#fef3c7', borderRadius: '14px', padding: '1.1rem', border: '1px solid #fde68a' }}>
-                  <div style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', color: '#92400e', marginBottom: '4px' }}>
-                    Advisor Discussion & Policy Notes
+              {/* 5. Ingested Opportunities & Multi-Product Portfolio */}
+              {currentClient.notes && (() => {
+                const noteLines = currentClient.notes.split('\n').filter(Boolean);
+                
+                return (
+                  <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', marginBottom: '12px', letterSpacing: '0.04em' }}>
+                      <Layers size={15} color="#0284c7" /> Linked Product Opportunities & Ingestion Specs ({noteLines.length})
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                      {noteLines.map((line, idx) => {
+                        // Check if line contains JSON specs
+                        const jsonMatch = line.match(/\{.*?\}/);
+                        let specsData = null;
+                        let textPortion = line;
+
+                        if (jsonMatch) {
+                          try {
+                            specsData = JSON.parse(jsonMatch[0]);
+                            textPortion = line.replace(jsonMatch[0], '').replace(/Specs:\s*$/, '').trim();
+                          } catch (e) {
+                            // Leave as text
+                          }
+                        }
+
+                        return (
+                          <div 
+                            key={idx}
+                            style={{
+                              background: '#f8fafc',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '10px',
+                              padding: '0.75rem 0.9rem',
+                              fontSize: '0.82rem'
+                            }}
+                          >
+                            <div style={{ fontWeight: 700, color: '#0f2b48', marginBottom: specsData ? '0.4rem' : 0, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0284c7' }} />
+                              <span>{textPortion}</span>
+                            </div>
+
+                            {specsData && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.35rem' }}>
+                                {Object.entries(specsData).map(([k, v]) => (
+                                  <span
+                                    key={k}
+                                    style={{
+                                      background: '#eff6ff',
+                                      color: '#1d4ed8',
+                                      border: '1px solid #bfdbfe',
+                                      padding: '0.15rem 0.45rem',
+                                      borderRadius: '6px',
+                                      fontSize: '0.74rem',
+                                      fontWeight: 600
+                                    }}
+                                  >
+                                    <strong style={{ color: '#1e3a8a' }}>{k.replace(/([A-Z])/g, ' $1').trim()}: </strong>
+                                    <span>{String(v)}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.85rem', color: '#78350f', lineHeight: 1.5 }}>
-                    {currentClient.notes}
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
             </div>
           )}
@@ -937,106 +1015,176 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                   <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>Any status transitions, reassignments, or field edits will appear here.</div>
                 </div>
               ) : (
-                auditLogs.map((log) => {
-                  const isReassign = log.action === 'REASSIGN';
-                  const isStageChange = log.action === 'STATUS_CHANGE' || log.fieldName === 'stage';
-                  const isCallLog = log.action === 'CALL_LOG';
-                  const isMeeting = log.action === 'MEETING_SCHEDULED';
+                <div style={{ position: 'relative', paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* Connected Vertical Timeline Spine */}
+                  <div style={{
+                    position: 'absolute',
+                    left: '11px',
+                    top: '12px',
+                    bottom: '12px',
+                    width: '2px',
+                    background: '#e2e8f0',
+                    zIndex: 0
+                  }} />
 
-                  let badgeColor = '#0f2b48';
-                  let badgeBg = '#f1f5f9';
-                  let icon = <Clock size={14} color="#64748b" />;
+                  {auditLogs.map((log, index) => {
+                    const isCreate = log.action === 'CREATE';
+                    const isLinkOpp = log.action === 'LINK_OPPORTUNITY';
+                    const isReassign = log.action === 'REASSIGN';
+                    const isStageChange = log.action === 'STATUS_CHANGE' || log.fieldName === 'stage';
+                    const isCallLog = log.action === 'CALL_LOG';
+                    const isMeeting = log.action === 'MEETING_SCHEDULED';
 
-                  if (isReassign) {
-                    badgeColor = '#6d28d9';
-                    badgeBg = '#ede9fe';
-                    icon = <UserCheck size={14} color="#6d28d9" />;
-                  } else if (isStageChange) {
-                    badgeColor = '#b45309';
-                    badgeBg = '#fef3c7';
-                    icon = <CheckCircle2 size={14} color="#b45309" />;
-                  } else if (isCallLog) {
-                    badgeColor = '#0369a1';
-                    badgeBg = '#e0f2fe';
-                    icon = <Phone size={14} color="#0369a1" />;
-                  } else if (isMeeting) {
-                    badgeColor = '#a21caf';
-                    badgeBg = '#fae8ff';
-                    icon = <Calendar size={14} color="#a21caf" />;
-                  }
+                    let nodeBg = '#0284c7';
+                    let nodeBorder = '#bae6fd';
+                    let title = log.action.replace('_', ' ');
+                    let icon = <Clock size={12} color="#ffffff" />;
+                    let categoryColor = '#0f2b48';
 
-                  const formattedDate = log.timestamp 
-                    ? new Date(log.timestamp).toLocaleDateString('en-IN', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true
-                      })
-                    : 'Recent';
+                    if (isCreate) {
+                      nodeBg = '#10b981';
+                      nodeBorder = '#a7f3d0';
+                      title = 'Master Client Account Created';
+                      icon = <CheckCircle2 size={12} color="#ffffff" />;
+                    } else if (isLinkOpp) {
+                      nodeBg = '#0284c7';
+                      nodeBorder = '#bae6fd';
+                      title = 'Linked Product Opportunity';
+                      icon = <Layers size={12} color="#ffffff" />;
+                    } else if (isReassign) {
+                      nodeBg = '#8b5cf6';
+                      nodeBorder = '#ddd6fe';
+                      title = 'Advisor Reassignment';
+                      icon = <UserCheck size={12} color="#ffffff" />;
+                    } else if (isStageChange) {
+                      nodeBg = '#f59e0b';
+                      nodeBorder = '#fde68a';
+                      title = 'Pipeline Stage Transition';
+                      icon = <CheckCircle2 size={12} color="#ffffff" />;
+                    } else if (isCallLog) {
+                      nodeBg = '#0ea5e9';
+                      nodeBorder = '#bae6fd';
+                      title = 'Telephony Call Logged';
+                      icon = <Phone size={12} color="#ffffff" />;
+                    } else if (isMeeting) {
+                      nodeBg = '#d946ef';
+                      nodeBorder = '#f5d0fe';
+                      title = 'Client Consultation Scheduled';
+                      icon = <Calendar size={12} color="#ffffff" />;
+                    }
 
-                  return (
-                    <div
-                      key={log.id}
-                      style={{
-                        background: '#ffffff',
-                        borderRadius: '12px',
-                        padding: '1rem',
-                        border: '1px solid #e2e8f0',
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '12px'
-                      }}
-                    >
-                      <div style={{
-                        padding: '8px',
-                        borderRadius: '10px',
-                        background: badgeBg,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}>
-                        {icon}
-                      </div>
+                    const formattedDate = log.timestamp 
+                      ? new Date(log.timestamp).toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })
+                      : 'Recent';
 
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
-                          <div style={{ fontWeight: 700, color: '#0f2b48', fontSize: '0.88rem' }}>
-                            {log.action === 'UPDATE' ? `Updated ${log.fieldName || 'field'}` : log.action.replace('_', ' ')}
+                    return (
+                      <div
+                        key={log.id || index}
+                        style={{
+                          position: 'relative',
+                          zIndex: 1,
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '12px'
+                        }}
+                      >
+                        {/* Timeline Node Bullet */}
+                        <div style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          background: nodeBg,
+                          border: `3px solid #ffffff`,
+                          boxShadow: `0 0 0 2px ${nodeBorder}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          marginTop: '2px'
+                        }}>
+                          {icon}
+                        </div>
+
+                        {/* Event Content Box */}
+                        <div style={{
+                          flex: 1,
+                          background: '#ffffff',
+                          borderRadius: '12px',
+                          padding: '0.85rem 1rem',
+                          border: '1px solid #e2e8f0',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+                            <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <span>{title}</span>
+                            </div>
+
+                            {log.performedByName && (
+                              <span style={{
+                                fontSize: '0.7rem',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                padding: '2px 7px',
+                                borderRadius: '999px',
+                                color: '#475569',
+                                fontWeight: 700,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px'
+                              }}>
+                                <User size={10} /> {log.performedByName}
+                              </span>
+                            )}
                           </div>
-                          {log.performedByName && (
-                            <span style={{ fontSize: '0.72rem', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', color: '#64748b', fontWeight: 600 }}>
-                              by {log.performedByName}
-                            </span>
+
+                          <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px', marginBottom: '6px', fontWeight: 600 }}>
+                            {formattedDate}
+                          </div>
+
+                          {/* Friendly Description / Note */}
+                          {log.description && (
+                            <div style={{
+                              fontSize: '0.8rem',
+                              color: '#334155',
+                              lineHeight: 1.45,
+                              background: isLinkOpp ? '#f0f9ff' : '#f8fafc',
+                              border: `1px solid ${isLinkOpp ? '#bae6fd' : '#f1f5f9'}`,
+                              padding: '0.45rem 0.65rem',
+                              borderRadius: '8px',
+                              marginTop: '4px'
+                            }}>
+                              {log.description}
+                            </div>
+                          )}
+
+                          {/* Value Diff (e.g. Stage Changes) */}
+                          {(log.oldValue || log.newValue) && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', border: '1px solid #f1f5f9', flexWrap: 'wrap', marginTop: '6px' }}>
+                              {log.oldValue && (
+                                <span style={{ color: '#dc2626', textDecoration: 'line-through', background: '#fef2f2', padding: '1px 5px', borderRadius: '4px' }}>
+                                  {log.oldValue}
+                                </span>
+                              )}
+                              {log.oldValue && log.newValue && <span style={{ color: '#94a3b8' }}>→</span>}
+                              {log.newValue && (
+                                <span style={{ color: '#16a34a', fontWeight: 700, background: '#f0fdf4', padding: '1px 5px', borderRadius: '4px' }}>
+                                  {log.newValue}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
-
-                        <div style={{ fontSize: '0.74rem', color: '#94a3b8', margin: '2px 0 6px 0' }}>
-                          {formattedDate}
-                        </div>
-
-                        {/* Value Diff */}
-                        {log.oldValue || log.newValue ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', border: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
-                            {log.oldValue && (
-                              <span style={{ color: '#dc2626', textDecoration: 'line-through', background: '#fef2f2', padding: '1px 4px', borderRadius: '3px' }}>
-                                {log.oldValue}
-                              </span>
-                            )}
-                            {log.oldValue && log.newValue && <span style={{ color: '#94a3b8' }}>→</span>}
-                            {log.newValue && (
-                              <span style={{ color: '#16a34a', fontWeight: 700, background: '#f0fdf4', padding: '1px 4px', borderRadius: '3px' }}>
-                                {log.newValue}
-                              </span>
-                            )}
-                          </div>
-                        ) : null}
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}

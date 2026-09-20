@@ -17,6 +17,9 @@ public interface ClientLeadRepository extends JpaRepository<ClientLead, Long> {
 
     boolean existsByPhoneNumber(String phoneNumber);
 
+    @Query("SELECT c FROM ClientLead c WHERE REPLACE(REPLACE(REPLACE(c.phoneNumber, ' ', ''), '-', ''), '+91', '') LIKE %:phoneSuffix%")
+    List<ClientLead> findByPhoneSuffix(@Param("phoneSuffix") String phoneSuffix);
+
     List<ClientLead> findByAssignedAdvisorIdOrderByUpdatedAtDesc(Long advisorId);
 
     List<ClientLead> findByManagerIdOrderByUpdatedAtDesc(Long managerId);

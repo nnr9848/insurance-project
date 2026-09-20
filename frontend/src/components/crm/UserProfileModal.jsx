@@ -50,6 +50,18 @@ export default function UserProfileModal({ isOpen, onClose, defaultTab = 'profil
     }
   }, [isOpen, defaultTab, user]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleUpdatePassword = async (e) => {
@@ -62,35 +74,28 @@ export default function UserProfileModal({ isOpen, onClose, defaultTab = 'profil
     }
 
     if (newPassword !== confirmPassword) {
-      setStatusMessage({ type: 'error', text: 'New password and confirm password do not match.' });
+      setStatusMessage({ type: 'error', text: 'New passwords do not match.' });
       return;
     }
 
     setIsSaving(true);
     try {
-      if (user?.id) {
-        await crmService.resetPassword(user.id, newPassword);
-      }
+      await authService.changePassword(user.id, newPassword);
       setStatusMessage({ type: 'success', text: 'Password updated successfully!' });
       setNewPassword('');
       setConfirmPassword('');
     } catch (err) {
-      console.error('Failed to change password:', err);
-      setStatusMessage({ 
-        type: 'error', 
-        text: err.response?.data?.message || 'Failed to update password. Please try again.' 
-      });
+      setStatusMessage({ type: 'error', text: err.response?.data?.message || 'Failed to update password.' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const primaryRole = user?.role || (Array.isArray(user?.roles) ? user.roles[0] : 'ROLE_SUPER_ADMIN') || 'ROLE_SUPER_ADMIN';
-  const roleLabel = primaryRole.replace('ROLE_', '').replace(/_/g, ' ');
+  const roleLabel = user?.roles?.[0]?.name?.replace('ROLE_', '').replace('_', ' ') || 'User';
 
   return (
-    <div className="crm-modal-overlay">
-      <div className="crm-modal-card">
+    <div className="crm-modal-overlay" onClick={onClose} style={{ cursor: 'pointer' }}>
+      <div className="crm-modal-card" onClick={(e) => e.stopPropagation()} style={{ cursor: 'default' }}>
         {/* Crisp Light Modal Header */}
         <div className="crm-modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

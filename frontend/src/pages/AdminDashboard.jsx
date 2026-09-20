@@ -46,7 +46,8 @@ import {
   Award,
   ShieldAlert,
   FolderCheck,
-  CheckSquare
+  CheckSquare,
+  Link2
 } from 'lucide-react';
 import { portalService, crmService } from '../services/api';
 import UserManagementView from '../components/crm/UserManagementView';
@@ -1557,6 +1558,15 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
               return matchesSearch && matchesCategory;
             });
 
+            // Precompute phone counts for multi-inquiry badge recognition
+            const phoneCounts = {};
+            quotes.forEach((q) => {
+              const clean = (q.phoneNumber || '').replace(/[^0-9]/g, '').slice(-10);
+              if (clean) {
+                phoneCounts[clean] = (phoneCounts[clean] || 0) + 1;
+              }
+            });
+
             // Pagination Calculations
             const totalRecords = filteredQuotes.length;
             const totalPages = Math.ceil(totalRecords / quotePageSize) || 1;
@@ -1663,12 +1673,12 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                       <tr>
                         <th style={{ padding: '0.9rem 1.25rem', width: '110px' }}>Date</th>
                         <th style={{ padding: '0.9rem 1rem', width: '150px' }}>Category</th>
-                        <th style={{ padding: '0.9rem 1rem', width: '170px' }}>Customer Name</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '190px' }}>Customer & Account</th>
                         <th style={{ padding: '0.9rem 1rem', width: '190px' }}>Contact & Actions</th>
-                        <th style={{ padding: '0.9rem 1rem', width: '130px' }}>City</th>
-                        <th style={{ padding: '0.9rem 1.25rem', minWidth: '260px' }}>Plan Details & Ingestion Specs</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '120px' }}>City</th>
+                        <th style={{ padding: '0.9rem 1.25rem', minWidth: '250px' }}>Plan Details & Ingestion Specs</th>
                         <th style={{ padding: '0.9rem 1rem', width: '120px', textAlign: 'center' }}>Status</th>
-                        <th style={{ padding: '0.9rem 1.25rem', width: '140px', textAlign: 'center' }}>CRM Pipeline</th>
+                        <th style={{ padding: '0.9rem 1.25rem', width: '150px', textAlign: 'center' }}>CRM Pipeline</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1681,8 +1691,9 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                         </tr>
                       ) : (
                         paginatedQuotes.map((q) => {
-                          const cleanPhone = (q.phoneNumber || '').replace(/[^0-9]/g, '');
-                          const isAlreadyLead = leads.some(l => l.phoneNumber && cleanPhone.endsWith(l.phoneNumber.replace(/[^0-9]/g, '')));
+                          const cleanPhone = (q.phoneNumber || '').replace(/[^0-9]/g, '').slice(-10);
+                          const matchingClient = leads.find(l => l.phoneNumber && l.phoneNumber.replace(/[^0-9]/g, '').endsWith(cleanPhone));
+                          const totalProspectInquiries = phoneCounts[cleanPhone] || 1;
 
                           return (
                             <tr key={q.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = '#ffffff'}>
@@ -1704,8 +1715,72 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                   {q.categorySlug ? q.categorySlug.replace('-', ' ') : 'General'}
                                 </span>
                               </td>
-                              <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#0f2b48' }}>
-                                {q.fullName || 'Anonymous Prospect'}
+                              <td style={{ padding: '0.75rem 1rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                  <span style={{ fontWeight: 700, color: '#0f2b48' }}>
+                                    {q.fullName || 'Anonymous Prospect'}
+                                  </span>
+
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                    {matchingClient ? (
+                                      <span
+                                        onClick={() => {
+                                          setSelectedClient360(matchingClient);
+                                        }}
+                                        title="View existing Client 360 profile"
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '2px',
+                                          background: '#ecfdf5',
+                                          color: '#059669',
+                                          border: '1px solid #a7f3d0',
+                                          padding: '0.1rem 0.4rem',
+                                          borderRadius: '4px',
+                                          fontSize: '0.7rem',
+                                          fontWeight: 800,
+                                          cursor: 'pointer'
+                                        }}
+                                      >
+                                        <UserCheck size={11} /> {matchingClient.clientCode}
+                                      </span>
+                                    ) : (
+                                      <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        background: '#f8fafc',
+                                        color: '#64748b',
+                                        border: '1px solid #e2e8f0',
+                                        padding: '0.1rem 0.35rem',
+                                        borderRadius: '4px',
+                                        fontSize: '0.68rem',
+                                        fontWeight: 700
+                                      }}>
+                                        New Prospect
+                                      </span>
+                                    )}
+
+                                    {totalProspectInquiries > 1 && (
+                                      <span
+                                        title={`Same prospect has submitted ${totalProspectInquiries} total inquiries across different products`}
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '2px',
+                                          background: '#fef3c7',
+                                          color: '#b45309',
+                                          border: '1px solid #fde68a',
+                                          padding: '0.1rem 0.35rem',
+                                          borderRadius: '4px',
+                                          fontSize: '0.68rem',
+                                          fontWeight: 800
+                                        }}
+                                      >
+                                        🔥 {totalProspectInquiries} Leads
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
                               </td>
                               <td style={{ padding: '0.75rem 1rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -1730,7 +1805,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                   </a>
                                   {cleanPhone && (
                                     <a
-                                      href={`https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(`Hello ${q.fullName || 'Sir/Madam'}, greeting from Aadhiraksha Insurance. Regarding your ${q.categorySlug ? q.categorySlug.replace('-', ' ') : 'insurance'} inquiry...`)}`}
+                                      href={`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hello ${q.fullName || 'Sir/Madam'}, greeting from Aadhiraksha Insurance. Regarding your ${q.categorySlug ? q.categorySlug.replace('-', ' ') : 'insurance'} inquiry...`)}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       title="Chat on WhatsApp"
@@ -1789,7 +1864,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                 </select>
                               </td>
                               <td style={{ padding: '0.75rem 1.25rem', textAlign: 'center' }}>
-                                {isAlreadyLead ? (
+                                {q.status === 'CONVERTED' && matchingClient ? (
                                   <button
                                     onClick={() => handleNavigateView('clients')}
                                     style={{
@@ -1806,31 +1881,41 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                       gap: '0.25rem'
                                     }}
                                   >
-                                    <CheckCircle2 size={13} color="#059669" /> In CRM
+                                    <CheckCircle2 size={13} color="#059669" /> In CRM ({matchingClient.clientCode})
                                   </button>
                                 ) : (
                                   <button
                                     onClick={async () => {
                                       try {
-                                        const created = await crmService.createLead({
+                                        const createdOrUpdated = await crmService.createLead({
                                           fullName: q.fullName || 'Web Prospect',
                                           phoneNumber: q.phoneNumber,
                                           email: q.email || '',
                                           city: q.city || '',
                                           categorySlug: q.categorySlug || 'general',
-                                          notes: `Ingested from Website Lead Inquiry #${q.id}. Specs: ${q.planDetails || ''}`
+                                          insuranceType: q.categorySlug ? q.categorySlug.replace('-', ' ').toUpperCase() : 'GENERAL',
+                                          notes: `Ingested Inquiry #${q.id}. Specs: ${q.planDetails || ''}`
                                         });
                                         await portalService.updateQuoteStatus(q.id, 'CONVERTED');
                                         setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: 'CONVERTED' } : item));
-                                        setLeads(prev => [created, ...prev]);
-                                        alert(`Lead "${q.fullName || q.phoneNumber}" successfully pushed to active CRM client pipeline!`);
+                                        
+                                        // Update or prepend client
+                                        setLeads(prev => {
+                                          const exists = prev.some(l => l.id === createdOrUpdated.id);
+                                          return exists ? prev.map(l => l.id === createdOrUpdated.id ? createdOrUpdated : l) : [createdOrUpdated, ...prev];
+                                        });
+
+                                        alert(matchingClient 
+                                          ? `Inquiry successfully linked as an opportunity to existing client "${matchingClient.fullName} (${matchingClient.clientCode})"!`
+                                          : `New master client created for "${q.fullName || q.phoneNumber}" (${createdOrUpdated.clientCode}) in active CRM pipeline!`
+                                        );
                                       } catch (err) {
                                         console.error('Error converting lead', err);
                                         alert('Failed to convert inquiry to CRM lead: ' + (err.response?.data?.message || err.message));
                                       }
                                     }}
                                     style={{
-                                      background: '#0f2b48',
+                                      background: matchingClient ? '#0284c7' : '#0f2b48',
                                       color: '#ffffff',
                                       border: 'none',
                                       padding: '0.35rem 0.65rem',
@@ -1843,7 +1928,8 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                       gap: '0.25rem'
                                     }}
                                   >
-                                    <Plus size={13} /> Push to CRM
+                                    {matchingClient ? <Link2 size={13} /> : <Plus size={13} />}
+                                    {matchingClient ? `Link to ${matchingClient.clientCode}` : 'Push to CRM'}
                                   </button>
                                 )}
                               </td>
@@ -1864,8 +1950,9 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                     </div>
                   ) : (
                     paginatedQuotes.map((q) => {
-                      const cleanPhone = (q.phoneNumber || '').replace(/[^0-9]/g, '');
-                      const isAlreadyLead = leads.some(l => l.phoneNumber && cleanPhone.endsWith(l.phoneNumber.replace(/[^0-9]/g, '')));
+                      const cleanPhone = (q.phoneNumber || '').replace(/[^0-9]/g, '').slice(-10);
+                      const matchingClient = leads.find(l => l.phoneNumber && l.phoneNumber.replace(/[^0-9]/g, '').endsWith(cleanPhone));
+                      const totalProspectInquiries = phoneCounts[cleanPhone] || 1;
 
                       return (
                         <div
@@ -1889,6 +1976,63 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                               </div>
                               <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>
                                 {new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} • {q.city || 'India'}
+                              </div>
+
+                              {/* Multi-Inquiry & Account Recognition */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                                {matchingClient ? (
+                                  <span
+                                    onClick={() => setSelectedClient360(matchingClient)}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '2px',
+                                      background: '#ecfdf5',
+                                      color: '#059669',
+                                      border: '1px solid #a7f3d0',
+                                      padding: '0.1rem 0.4rem',
+                                      borderRadius: '4px',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 800,
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    <UserCheck size={11} /> {matchingClient.clientCode}
+                                  </span>
+                                ) : (
+                                  <span style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    background: '#f8fafc',
+                                    color: '#64748b',
+                                    border: '1px solid #e2e8f0',
+                                    padding: '0.1rem 0.35rem',
+                                    borderRadius: '4px',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700
+                                  }}>
+                                    New Prospect
+                                  </span>
+                                )}
+
+                                {totalProspectInquiries > 1 && (
+                                  <span
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '2px',
+                                      background: '#fef3c7',
+                                      color: '#b45309',
+                                      border: '1px solid #fde68a',
+                                      padding: '0.1rem 0.35rem',
+                                      borderRadius: '4px',
+                                      fontSize: '0.68rem',
+                                      fontWeight: 800
+                                    }}
+                                  >
+                                    🔥 {totalProspectInquiries} Inquiries
+                                  </span>
+                                )}
                               </div>
                             </div>
 
@@ -1939,7 +2083,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
                             {cleanPhone ? (
                               <a
-                                href={`https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(`Hello ${q.fullName || 'Sir/Madam'}, greeting from Aadhiraksha Insurance. Regarding your ${q.categorySlug ? q.categorySlug.replace('-', ' ') : 'insurance'} inquiry...`)}`}
+                                href={`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hello ${q.fullName || 'Sir/Madam'}, greeting from Aadhiraksha Insurance. Regarding your ${q.categorySlug ? q.categorySlug.replace('-', ' ') : 'insurance'} inquiry...`)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{
@@ -1964,7 +2108,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
                           {/* 1-Tap Convert / View CRM */}
                           <div style={{ marginTop: '0.1rem' }}>
-                            {isAlreadyLead ? (
+                            {q.status === 'CONVERTED' && matchingClient ? (
                               <button
                                 onClick={() => handleNavigateView('clients')}
                                 style={{
@@ -1983,24 +2127,33 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                   gap: '0.35rem'
                                 }}
                               >
-                                <CheckCircle2 size={14} color="#059669" /> Existing CRM Client Record
+                                <CheckCircle2 size={14} color="#059669" /> In CRM ({matchingClient.clientCode})
                               </button>
                             ) : (
                               <button
                                 onClick={async () => {
                                   try {
-                                    const created = await crmService.createLead({
+                                    const createdOrUpdated = await crmService.createLead({
                                       fullName: q.fullName || 'Web Prospect',
                                       phoneNumber: q.phoneNumber,
                                       email: q.email || '',
                                       city: q.city || '',
                                       categorySlug: q.categorySlug || 'general',
-                                      notes: `Ingested from Website Lead Inquiry #${q.id}. Specs: ${q.planDetails || ''}`
+                                      insuranceType: q.categorySlug ? q.categorySlug.replace('-', ' ').toUpperCase() : 'GENERAL',
+                                      notes: `Ingested Inquiry #${q.id}. Specs: ${q.planDetails || ''}`
                                     });
                                     await portalService.updateQuoteStatus(q.id, 'CONVERTED');
                                     setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: 'CONVERTED' } : item));
-                                    setLeads(prev => [created, ...prev]);
-                                    alert(`Lead "${q.fullName || q.phoneNumber}" successfully pushed to active CRM client pipeline!`);
+                                    
+                                    setLeads(prev => {
+                                      const exists = prev.some(l => l.id === createdOrUpdated.id);
+                                      return exists ? prev.map(l => l.id === createdOrUpdated.id ? createdOrUpdated : l) : [createdOrUpdated, ...prev];
+                                    });
+
+                                    alert(matchingClient 
+                                      ? `Inquiry successfully linked as an opportunity to existing client "${matchingClient.fullName} (${matchingClient.clientCode})"!`
+                                      : `New master client created for "${q.fullName || q.phoneNumber}" (${createdOrUpdated.clientCode}) in active CRM pipeline!`
+                                    );
                                   } catch (err) {
                                     console.error('Error converting lead', err);
                                     alert('Failed to convert inquiry to CRM lead: ' + (err.response?.data?.message || err.message));
@@ -2008,7 +2161,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                 }}
                                 style={{
                                   width: '100%',
-                                  background: 'linear-gradient(135deg, #059669, #047857)',
+                                  background: matchingClient ? '#0284c7' : 'linear-gradient(135deg, #059669, #047857)',
                                   color: '#ffffff',
                                   border: 'none',
                                   padding: '9px 12px',
@@ -2022,7 +2175,8 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                   gap: '0.35rem'
                                 }}
                               >
-                                <Plus size={14} /> Push To CRM Sales Pipeline
+                                {matchingClient ? <Link2 size={14} /> : <Plus size={14} />}
+                                {matchingClient ? `Link to ${matchingClient.clientCode}` : 'Push To CRM Sales Pipeline'}
                               </button>
                             )}
                           </div>

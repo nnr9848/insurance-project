@@ -30,8 +30,47 @@ public class CrmLeadService {
 
     private static final SecureRandom random = new SecureRandom();
 
+    private String normalizePhone(String phone) {
+        if (phone == null) return "";
+        String digits = phone.replaceAll("[^0-9]", "");
+        return digits.length() >= 10 ? digits.substring(digits.length() - 10) : digits;
+    }
+
     @Transactional
     public ClientLeadDto.LeadResponse createLead(ClientLeadDto.CreateLeadRequest request, User performedBy) {
+        String cleanPhone = normalizePhone(request.getPhoneNumber());
+
+        // Check for existing master client by phone number
+        if (!cleanPhone.isEmpty()) {
+            List<ClientLead> existingMatches = clientLeadRepository.findByPhoneSuffix(cleanPhone);
+            if (!existingMatches.isEmpty()) {
+                ClientLead masterClient = existingMatches.get(0);
+                
+                // Append new opportunity / inquiry specs to existing client's notes
+                String newInquiryNote = "\n[" + LocalDate.now() + "] Ingested Opportunity: " + 
+                        (request.getInsuranceType() != null ? request.getInsuranceType() : "Inquiry") +
+                        (request.getNotes() != null ? " - " + request.getNotes() : "");
+
+                String currentNotes = masterClient.getNotes() != null ? masterClient.getNotes() : "";
+                masterClient.setNotes((currentNotes + newInquiryNote).trim());
+
+                // Update city or email if missing on master client
+                if ((masterClient.getCity() == null || masterClient.getCity().isBlank()) && request.getCity() != null) {
+                    masterClient.setCity(request.getCity());
+                }
+                if ((masterClient.getEmail() == null || masterClient.getEmail().isBlank()) && request.getEmail() != null) {
+                    masterClient.setEmail(request.getEmail());
+                }
+
+                ClientLead updated = clientLeadRepository.save(masterClient);
+
+                auditService.logAction("CLIENT_LEAD", updated.getId(), "LINK_OPPORTUNITY", "NOTES", null,
+                        "Linked additional inquiry (" + (request.getInsuranceType() != null ? request.getInsuranceType() : "General") + ") to existing client: " + updated.getFullName() + " (" + updated.getClientCode() + ")", performedBy, null);
+
+                return mapToLeadResponse(updated);
+            }
+        }
+
         String clientCode = "CL-" + (100000 + random.nextInt(900000));
 
         User assignedAdvisor = null;
