@@ -1275,6 +1275,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
             {/* 2. MOBILE VIEW: ULTRA-COMPACT TOUCH-FRIENDLY CLIENT CARDS */}
             <div className="crm-mobile-cards-container" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
               {filteredLeads.map((lead) => {
+                const isEditing = editingRowId === lead.id;
                 const stageBadge = getStageBadge(lead.stage);
                 const priorityBadge = getPriorityBadge(lead.priority);
                 const primaryBadge = getProductBadge(lead.insuranceType);
@@ -1294,6 +1295,176 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                 const maxMobileVisibleOpps = 2;
                 const visibleMobileOpps = cardLinkedOpportunities.slice(0, maxMobileVisibleOpps);
                 const mobileRemainingCount = cardLinkedOpportunities.length - maxMobileVisibleOpps;
+
+                if (isEditing) {
+                  return (
+                    <div
+                      key={lead.id}
+                      className="crm-card"
+                      style={{
+                        padding: '1rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        borderRadius: '12px',
+                        border: '1.5px solid var(--accent-emerald)',
+                        background: '#ffffff',
+                        boxShadow: '0 4px 12px rgba(5, 150, 105, 0.1)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#0f2b48' }}>
+                          ✏️ Edit: {lead.fullName} <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--accent-emerald)' }}>({lead.clientCode})</span>
+                        </div>
+                        <button
+                          onClick={cancelInlineEdit}
+                          style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '2px' }}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                        <div>
+                          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Stage</label>
+                          <select
+                            value={editFormData.stage || ''}
+                            onChange={(e) => setEditFormData({ ...editFormData, stage: e.target.value })}
+                            style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', background: '#fff' }}
+                          >
+                            <option value="NEW_LEAD">New Lead</option>
+                            <option value="CONTACTED">Contacted</option>
+                            <option value="FOLLOWUP">Follow-up Due</option>
+                            <option value="INTERESTED">Interested</option>
+                            <option value="QUOTATION">Quotation</option>
+                            <option value="MEETING">Meeting</option>
+                            <option value="DOCUMENTS">Documents</option>
+                            <option value="PAYMENT">Payment</option>
+                            <option value="POLICY_ISSUED">Policy Issued</option>
+                            <option value="LOST">Lost</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Priority</label>
+                          <select
+                            value={editFormData.priority || 'MEDIUM'}
+                            onChange={(e) => setEditFormData({ ...editFormData, priority: e.target.value })}
+                            style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', background: '#fff' }}
+                          >
+                            <option value="HIGH">🔥 High</option>
+                            <option value="MEDIUM">⚡ Medium</option>
+                            <option value="LOW">Low</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Product</label>
+                          <select
+                            value={editFormData.insuranceType || ''}
+                            onChange={(e) => setEditFormData({ ...editFormData, insuranceType: e.target.value })}
+                            style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', background: '#fff' }}
+                          >
+                            <option value="Health Insurance">Health</option>
+                            <option value="Term Life Insurance">Term Life</option>
+                            <option value="Vehicle / Motor Insurance">Vehicle</option>
+                            <option value="Group / SME Insurance">Corporate / SME</option>
+                            <option value="Travel Insurance">Travel</option>
+                            <option value="Loans & Financing">Loans</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Coverage / Sum</label>
+                          <input
+                            type="text"
+                            value={editFormData.sumInsured || ''}
+                            placeholder="₹10 Lakhs"
+                            onChange={(e) => setEditFormData({ ...editFormData, sumInsured: e.target.value })}
+                            style={{ width: '100%', padding: '5px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Est. Premium (₹)</label>
+                          <input
+                            type="number"
+                            value={editFormData.estimatedPremium || ''}
+                            placeholder="15000"
+                            onChange={(e) => setEditFormData({ ...editFormData, estimatedPremium: e.target.value })}
+                            style={{ width: '100%', padding: '5px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Assigned Advisor</label>
+                          <select
+                            value={editFormData.assignedAdvisorId || ''}
+                            onChange={(e) => {
+                              const selectedId = e.target.value;
+                              const adv = advisors.find(a => String(a.id) === String(selectedId));
+                              setEditFormData({
+                                ...editFormData,
+                                assignedAdvisorId: selectedId ? Number(selectedId) : null,
+                                assignedAdvisorName: adv ? adv.fullName : 'Unassigned'
+                              });
+                            }}
+                            disabled={!canReassign}
+                            style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', background: canReassign ? '#fff' : '#f1f5f9' }}
+                          >
+                            <option value="">Unassigned</option>
+                            {advisors.map(adv => (
+                              <option key={adv.id} value={adv.id}>
+                                {adv.fullName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                        <button
+                          onClick={() => saveInlineEdit(lead.id)}
+                          disabled={isSavingInline}
+                          style={{
+                            flex: 1,
+                            padding: '0.55rem',
+                            borderRadius: '8px',
+                            background: 'var(--accent-emerald)',
+                            color: '#fff',
+                            border: 'none',
+                            fontWeight: 700,
+                            fontSize: '0.82rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            cursor: isSavingInline ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          {isSavingInline ? <RefreshCw size={14} className="spin" /> : <Save size={14} />}
+                          <span>Save Changes</span>
+                        </button>
+                        <button
+                          onClick={cancelInlineEdit}
+                          disabled={isSavingInline}
+                          style={{
+                            padding: '0.55rem 0.85rem',
+                            borderRadius: '8px',
+                            background: '#f1f5f9',
+                            color: '#475569',
+                            border: '1px solid #cbd5e1',
+                            fontWeight: 700,
+                            fontSize: '0.82rem',
+                            cursor: isSavingInline ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
 
                 return (
                   <div
@@ -1414,7 +1585,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                         </button>
 
                         <button
-                          onClick={() => onOpenClient360 && onOpenClient360(lead)}
+                          onClick={() => startInlineEdit(lead)}
                           style={{
                             width: '32px',
                             height: '32px',
@@ -1427,7 +1598,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             justifyContent: 'center',
                             cursor: 'pointer'
                           }}
-                          title="Edit / View Client 360"
+                          title="Quick Edit Client Record"
                         >
                           <Edit3 size={13} />
                         </button>
