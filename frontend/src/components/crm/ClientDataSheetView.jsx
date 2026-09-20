@@ -27,7 +27,13 @@ import {
   UserCheck,
   UserPlus,
   Users,
-  Edit3
+  Edit3,
+  HeartPulse,
+  ShieldCheck,
+  Car,
+  Briefcase,
+  Plane,
+  Building2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { crmService } from '../../services/api';
@@ -101,6 +107,30 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
       case 'LOST': return { label: 'Lost Lead', bg: '#fee2e2', color: '#dc2626' };
       default: return { label: stage || 'Active', bg: '#f1f5f9', color: '#475569' };
     }
+  };
+
+  const getProductBadge = (productName) => {
+    if (!productName) return { label: 'General Insurance', shortLabel: 'General', bg: '#f1f5f9', color: '#475569', border: '#e2e8f0', icon: <Shield size={12} /> };
+    const p = productName.toLowerCase();
+    if (p.includes('health') || p.includes('medical')) {
+      return { label: 'Health Insurance', shortLabel: 'Health', bg: '#ecfdf5', color: '#059669', border: '#a7f3d0', icon: <HeartPulse size={12} color="#059669" /> };
+    }
+    if (p.includes('life') || p.includes('term')) {
+      return { label: 'Term Life', shortLabel: 'Life', bg: '#f0f9ff', color: '#0284c7', border: '#bae6fd', icon: <ShieldCheck size={12} color="#0284c7" /> };
+    }
+    if (p.includes('motor') || p.includes('vehicle') || p.includes('car') || p.includes('bike') || p.includes('two wheeler')) {
+      return { label: 'Vehicle Insurance', shortLabel: 'Vehicle', bg: '#fffbeb', color: '#d97706', border: '#fde68a', icon: <Car size={12} color="#d97706" /> };
+    }
+    if (p.includes('sme') || p.includes('group') || p.includes('corporate') || p.includes('business')) {
+      return { label: 'Corporate / SME', shortLabel: 'SME', bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe', icon: <Briefcase size={12} color="#2563eb" /> };
+    }
+    if (p.includes('travel')) {
+      return { label: 'Travel Insurance', shortLabel: 'Travel', bg: '#ecfeff', color: '#0891b2', border: '#a5f3fc', icon: <Plane size={12} color="#0891b2" /> };
+    }
+    if (p.includes('loan') || p.includes('finance')) {
+      return { label: 'Loans & Financing', shortLabel: 'Loans', bg: '#fff7ed', color: '#ea580c', border: '#fed7aa', icon: <Building2 size={12} color="#ea580c" /> };
+    }
+    return { label: productName, shortLabel: productName.replace(/insurance/i, '').trim(), bg: '#f1f5f9', color: '#475569', border: '#e2e8f0', icon: <Shield size={12} /> };
   };
 
   const getPriorityBadge = (priority) => {
@@ -905,39 +935,60 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                               <option value="Travel Insurance">Travel Insurance</option>
                               <option value="Loans & Financing">Loans</option>
                             </select>
-                          ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                              <span style={{
-                                display: 'inline-block',
-                                background: '#f0f9ff',
-                                color: '#0284c7',
-                                border: '1px solid #bae6fd',
-                                padding: '0.15rem 0.5rem',
-                                borderRadius: '6px',
-                                fontSize: '0.74rem',
-                                fontWeight: 800,
-                                width: 'fit-content'
-                              }}>
-                                {lead.insuranceType || 'General Insurance'}
-                              </span>
-
-                              {linkedOpportunities.length > 0 && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
-                                  <span style={{
-                                    fontSize: '0.68rem',
-                                    color: '#059669',
-                                    background: '#ecfdf5',
-                                    border: '1px solid #a7f3d0',
-                                    padding: '0.1rem 0.35rem',
-                                    borderRadius: '4px',
-                                    fontWeight: 700
-                                  }}>
-                                    +{linkedOpportunities.length} More ({linkedOpportunities.join(', ')})
-                                  </span>
+                          ) : (() => {
+                            const primaryBadge = getProductBadge(lead.insuranceType);
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {/* Primary Product Tag */}
+                                <div style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: primaryBadge.bg,
+                                  color: primaryBadge.color,
+                                  border: `1px solid ${primaryBadge.border}`,
+                                  padding: '0.15rem 0.5rem',
+                                  borderRadius: '6px',
+                                  fontSize: '0.74rem',
+                                  fontWeight: 800,
+                                  width: 'fit-content'
+                                }}>
+                                  {primaryBadge.icon}
+                                  <span>{primaryBadge.label}</span>
                                 </div>
-                              )}
-                            </div>
-                          )}
+
+                                {/* Additional Ingested Opportunities (Clean Distinct Micro-Pills) */}
+                                {linkedOpportunities.length > 0 && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                    {linkedOpportunities.map((oppName, oppIdx) => {
+                                      const oppBadge = getProductBadge(oppName);
+                                      return (
+                                        <div
+                                          key={oppIdx}
+                                          style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                            background: oppBadge.bg,
+                                            color: oppBadge.color,
+                                            border: `1px solid ${oppBadge.border}`,
+                                            padding: '0.1rem 0.4rem',
+                                            borderRadius: '5px',
+                                            fontSize: '0.68rem',
+                                            fontWeight: 700
+                                          }}
+                                          title={`Ingested Opportunity: ${oppBadge.label}`}
+                                        >
+                                          {oppBadge.icon}
+                                          <span>+{oppBadge.shortLabel}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
 
                         {/* Coverage & Premium */}
