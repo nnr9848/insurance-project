@@ -320,7 +320,7 @@ export default function AdminDashboard() {
   const [quoteSearch, setQuoteSearch] = useState('');
   const [quoteCategoryFilter, setQuoteCategoryFilter] = useState('');
   const [quoteCurrentPage, setQuoteCurrentPage] = useState(1);
-  const [quotePageSize, setQuotePageSize] = useState(5);
+  const [quotePageSize, setQuotePageSize] = useState(10);
 
   // Modals state
   const [showAddHospitalModal, setShowAddHospitalModal] = useState(false);
@@ -629,7 +629,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', height: '100vh', background: 'var(--bg-main)', color: 'var(--text-main)', fontFamily: 'var(--font-sans)', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-main)', color: 'var(--text-main)', fontFamily: 'var(--font-sans)' }}>
       
       {/* MOBILE BACKDROP OVERLAY */}
       {isMobileOpen && (
@@ -648,7 +648,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
         />
       )}
 
-      {/* 1. COLLAPSIBLE LEFT CRM SIDEBAR */}
+      {/* 1. COLLAPSIBLE LEFT CRM SIDEBAR (Sticky on Desktop, Drawer on Mobile) */}
       <aside 
         className={`crm-workspace-aside ${isMobileOpen ? 'mobile-open' : ''}`}
         style={{
@@ -659,11 +659,12 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           display: 'flex',
           flexDirection: 'column',
           height: '100vh',
-          zIndex: 9999,
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
           boxShadow: 'var(--shadow-lg)',
           transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s ease',
-          overflow: 'hidden',
-          position: 'relative'
+          overflow: 'hidden'
         }}
       >
         {/* Sidebar Brand Header */}
@@ -1061,10 +1062,10 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
         </div>
       </aside>
 
-      {/* 2. MAIN APP SHELL WORKSPACE */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflow: 'hidden' }}>
+      {/* 2. MAIN APP SHELL WORKSPACE (Natural Document Window Scrolling) */}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         
-        {/* TOP CRM APP BAR */}
+        {/* TOP CRM APP BAR (Sticky to Viewport Top) */}
         <header 
           className="crm-top-appbar"
           style={{
@@ -1166,13 +1167,14 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                 cursor: 'pointer'
               }}
             >
-              <Calendar size={14} color="#9333ea" />
+              <Calendar size={14} color="#7c3aed" />
               <span className="crm-action-btn-text">Calendar</span>
             </button>
 
+            {/* Refresh Button */}
             <button
               onClick={loadData}
-              title="Refresh CRM Data"
+              title="Refresh Portal Data"
               style={{
                 background: 'var(--bg-main)',
                 border: '1px solid var(--border-subtle)',
@@ -1214,54 +1216,45 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                   </div>
                   <span style={{
                     position: 'absolute',
-                    bottom: '0px',
-                    right: '0px',
+                    bottom: 0,
+                    right: 0,
                     width: '8px',
                     height: '8px',
                     borderRadius: '50%',
-                    background: 'var(--accent-emerald)',
+                    background: '#10b981',
                     border: '1.5px solid #ffffff'
                   }} />
                 </div>
 
-                {/* User Name & Role on Desktop */}
                 <div className="crm-header-user-text" style={{ textAlign: 'left', lineHeight: 1.2 }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--crm-text-primary)', maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {user?.fullName || 'User'}
+                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--crm-text-primary)' }}>
+                    {user?.fullName ? user.fullName.split(' ')[0] : 'Admin'}
                   </div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--crm-info)', fontWeight: 600 }}>
-                    {formatRoleName(userRoleKey)}
+                  <div style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--accent-gold)' }}>
+                    👑 {formatRoleName(userRoleKey)}
                   </div>
                 </div>
 
-                <ChevronDown 
-                  size={14} 
-                  color="var(--crm-text-muted)" 
-                  style={{
-                    transition: 'transform var(--transition-fast)',
-                    transform: showUserMenu ? 'rotate(180deg)' : 'rotate(0deg)'
-                  }} 
-                />
+                <ChevronDown size={14} color="var(--crm-text-muted)" style={{ transition: 'transform var(--transition-fast)', transform: showUserMenu ? 'rotate(180deg)' : 'none' }} />
               </button>
 
-              {/* Profile Dropdown Popover */}
+              {/* Popover Dropdown Card */}
               {showUserMenu && (
                 <div className="crm-popover-card">
-                  {/* Identity Header Card */}
+                  {/* User Identity Header */}
                   <div className="crm-popover-identity">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                       <div style={{
-                        width: '38px',
-                        height: '38px',
-                        minWidth: '38px',
+                        width: '36px',
+                        height: '36px',
                         borderRadius: '50%',
                         background: 'linear-gradient(135deg, var(--primary-navy), var(--primary-navy-light))',
+                        color: '#fff',
+                        fontWeight: 800,
+                        fontSize: '0.9rem',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#ffffff',
-                        fontWeight: 800,
-                        fontSize: '0.95rem'
+                        justifyContent: 'center'
                       }}>
                         {user?.fullName ? user.fullName.charAt(0).toUpperCase() : 'A'}
                       </div>
@@ -1313,18 +1306,21 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                       }}
                       className="crm-popover-btn"
                     >
-                      <Lock size={15} color="var(--accent-emerald-dark)" />
+                      <Lock size={15} color="var(--accent-gold)" />
                       <span>Security & Password</span>
                     </button>
 
-                    <Link
-                      to="/"
-                      onClick={() => setShowUserMenu(false)}
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setProfileModalTab('preferences');
+                        setShowProfileModal(true);
+                      }}
                       className="crm-popover-btn"
                     >
-                      <Globe size={15} color="var(--crm-info)" />
-                      <span>Back to Customer Portal</span>
-                    </Link>
+                      <Sparkles size={15} color="#7c3aed" />
+                      <span>CRM Preferences</span>
+                    </button>
 
                     <div style={{ height: '1px', background: 'var(--crm-border-subtle)', margin: '0.35rem 0' }} />
 
@@ -1345,8 +1341,8 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           </div>
         </header>
 
-        {/* WORKSPACE VIEW CONTENT AREA */}
-        <div style={{ padding: '1.5rem 1.5rem 4.5rem 1.5rem', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        {/* WORKSPACE VIEW CONTENT AREA (Full-Page Document Stream) */}
+        <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
 
           {/* SLIM IN-PAGE NAVIGATION & BREADCRUMB BAR (Shown on all sub-views) */}
           {activeView !== 'dashboard' && (() => {
@@ -2075,10 +2071,10 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                           cursor: 'pointer'
                         }}
                       >
-                        <option value={5}>5</option>
                         <option value={10}>10</option>
-                        <option value={20}>20</option>
+                        <option value={25}>25</option>
                         <option value={50}>50</option>
+                        <option value={100}>100</option>
                       </select>
                     </div>
                   </div>
