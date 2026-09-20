@@ -316,6 +316,10 @@ export default function AdminDashboard() {
   const [hospSearch, setHospSearch] = useState('');
   const [hospCityFilter, setHospCityFilter] = useState('');
 
+  // Quotes filters & search
+  const [quoteSearch, setQuoteSearch] = useState('');
+  const [quoteCategoryFilter, setQuoteCategoryFilter] = useState('');
+
   // Modals state
   const [showAddHospitalModal, setShowAddHospitalModal] = useState(false);
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
@@ -1542,69 +1546,283 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
           )}
 
           {/* VIEW: CUSTOMER QUOTES */}
-          {activeView === 'quotes' && (
-            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#091726', margin: '0 0 0.2rem' }}>Customer Quote Inquiries</h3>
-                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>Incoming inquiries from consumer web portal</p>
+          {/* VIEW: CUSTOMER QUOTE INQUIRIES */}
+          {activeView === 'quotes' && (() => {
+            const filteredQuotes = quotes.filter((q) => {
+              const matchesSearch = !quoteSearch || 
+                (q.fullName && q.fullName.toLowerCase().includes(quoteSearch.toLowerCase())) ||
+                (q.phoneNumber && q.phoneNumber.includes(quoteSearch)) ||
+                (q.city && q.city.toLowerCase().includes(quoteSearch.toLowerCase()));
+              
+              const matchesCategory = !quoteCategoryFilter || 
+                (q.categorySlug && q.categorySlug.toLowerCase() === quoteCategoryFilter.toLowerCase());
+
+              return matchesSearch && matchesCategory;
+            });
+
+            // Helper to format JSON planDetails into human-readable chips
+            const renderPlanDetails = (planDetailsStr) => {
+              if (!planDetailsStr) return <span style={{ color: '#94a3b8' }}>-</span>;
+              try {
+                const data = typeof planDetailsStr === 'string' ? JSON.parse(planDetailsStr) : planDetailsStr;
+                if (typeof data !== 'object' || data === null) {
+                  return <span>{String(planDetailsStr)}</span>;
+                }
+
+                return (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                    {Object.entries(data).map(([key, val]) => {
+                      if (!val) return null;
+                      // Format key name nicely
+                      const formattedKey = key
+                        .replace(/([A-Z])/g, ' $1')
+                        .replace(/^./, str => str.toUpperCase())
+                        .replace(/Slug|Details/gi, '')
+                        .trim();
+
+                      return (
+                        <span
+                          key={key}
+                          style={{
+                            background: '#f1f5f9',
+                            color: '#334155',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '6px',
+                            padding: '0.15rem 0.45rem',
+                            fontSize: '0.74rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem'
+                          }}
+                        >
+                          <strong style={{ color: '#0f2b48' }}>{formattedKey}:</strong>
+                          <span>{String(val)}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                );
+              } catch (err) {
+                return <span style={{ fontSize: '0.8rem', color: '#475569' }}>{planDetailsStr}</span>;
+              }
+            };
+
+            return (
+              <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                {/* Quote Leads Toolbar & Search */}
+                <div style={{ padding: '1.25rem 1.5rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ position: 'relative', width: '260px' }}>
+                      <input
+                        type="text"
+                        placeholder="Search by name, phone, city..."
+                        className="form-input"
+                        value={quoteSearch}
+                        onChange={(e) => setQuoteSearch(e.target.value)}
+                        style={{ paddingLeft: '2.2rem', paddingRight: '0.75rem', height: '38px', fontSize: '0.85rem' }}
+                      />
+                      <Search size={15} color="#64748b" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                    </div>
+
+                    <select
+                      className="form-select"
+                      value={quoteCategoryFilter}
+                      onChange={(e) => setQuoteCategoryFilter(e.target.value)}
+                      style={{ height: '38px', fontSize: '0.85rem', width: '180px' }}
+                    >
+                      <option value="">All Categories</option>
+                      <option value="health-insurance">Health Insurance</option>
+                      <option value="motor-insurance">Motor Insurance</option>
+                      <option value="term-life-insurance">Term Life Shield</option>
+                      <option value="business-insurance">Business & SME</option>
+                      <option value="travel-insurance">Travel Insurance</option>
+                      <option value="loans-mortgages">Loans & Mortgages</option>
+                    </select>
+                  </div>
+
+                  <span style={{ background: '#eff6ff', color: '#1d4ed8', fontSize: '0.82rem', fontWeight: 800, padding: '0.35rem 0.85rem', borderRadius: '999px', border: '1px solid #bfdbfe' }}>
+                    {filteredQuotes.length} Inquiries Received
+                  </span>
                 </div>
-                <span style={{ background: '#eff6ff', color: '#1d4ed8', fontSize: '0.78rem', fontWeight: 700, padding: '0.25rem 0.65rem', borderRadius: '999px' }}>
-                  {quotes.length} Inquiries
-                </span>
-              </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
-                  <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <tr>
-                      <th style={{ padding: '1rem' }}>Date</th>
-                      <th style={{ padding: '1rem' }}>Category</th>
-                      <th style={{ padding: '1rem' }}>Customer Name</th>
-                      <th style={{ padding: '1rem' }}>Contact</th>
-                      <th style={{ padding: '1rem' }}>City</th>
-                      <th style={{ padding: '1rem' }}>Plan Details</th>
-                      <th style={{ padding: '1rem' }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {quotes.length === 0 ? (
+
+                {/* DESKTOP TABLE VIEW (>= 768px) */}
+                <div className="crm-desktop-table-container" style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', minWidth: '950px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
+                    <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       <tr>
-                        <td colSpan={7} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-                          No inquiries received yet. Submit a test quote from the home page.
-                        </td>
+                        <th style={{ padding: '0.9rem 1.25rem', width: '110px' }}>Date</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '160px' }}>Category</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '180px' }}>Customer Name</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '140px' }}>Contact Phone</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '140px' }}>City</th>
+                        <th style={{ padding: '0.9rem 1.25rem', minWidth: '280px' }}>Plan Details & Ingestion Specs</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '100px', textAlign: 'center' }}>Status</th>
                       </tr>
-                    ) : (
-                      quotes.map((q) => (
-                        <tr key={q.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '1rem', color: '#64748b' }}>
-                            {new Date(q.createdAt).toLocaleDateString()}
-                          </td>
-                          <td style={{ padding: '1rem', fontWeight: 700, textTransform: 'capitalize' }}>
-                            {q.categorySlug.replace('-', ' ')}
-                          </td>
-                          <td style={{ padding: '1rem', fontWeight: 600 }}>{q.fullName}</td>
-                          <td style={{ padding: '1rem' }}>
-                            <a href={`tel:${q.phoneNumber}`} style={{ color: '#091726', fontWeight: 600 }}>
-                              {q.phoneNumber}
-                            </a>
-                          </td>
-                          <td style={{ padding: '1rem' }}>{q.city || '-'}</td>
-                          <td style={{ padding: '1rem', fontSize: '0.8rem', color: '#475569', maxWidth: '240px' }}>
-                            {q.planDetails || '-'}
-                          </td>
-                          <td style={{ padding: '1rem' }}>
-                            <span style={{ background: '#dcfce7', color: '#15803d', padding: '0.2rem 0.6rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 700 }}>
-                              {q.status}
-                            </span>
+                    </thead>
+                    <tbody>
+                      {filteredQuotes.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} style={{ padding: '3.5rem', textAlign: 'center', color: '#64748b' }}>
+                            <div style={{ fontWeight: 700, fontSize: '1rem', color: '#0f2b48', marginBottom: '0.25rem' }}>No quote inquiries match your filter</div>
+                            <div style={{ fontSize: '0.85rem' }}>Try changing the search keyword or category filter above.</div>
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        filteredQuotes.map((q) => (
+                          <tr key={q.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = '#ffffff'}>
+                            <td style={{ padding: '1rem 1.25rem', color: '#64748b', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                              {new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </td>
+                            <td style={{ padding: '1rem' }}>
+                              <span style={{
+                                display: 'inline-block',
+                                background: '#f0f9ff',
+                                color: '#0284c7',
+                                border: '1px solid #bae6fd',
+                                padding: '0.2rem 0.55rem',
+                                borderRadius: '6px',
+                                fontSize: '0.78rem',
+                                fontWeight: 800,
+                                textTransform: 'capitalize'
+                              }}>
+                                {q.categorySlug ? q.categorySlug.replace('-', ' ') : 'General'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '1rem', fontWeight: 700, color: '#0f2b48' }}>
+                              {q.fullName || 'Anonymous Prospect'}
+                            </td>
+                            <td style={{ padding: '1rem' }}>
+                              <a 
+                                href={`tel:${q.phoneNumber}`} 
+                                title="Click to call prospect"
+                                style={{ 
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '5px',
+                                  color: '#0f2b48', 
+                                  fontWeight: 800,
+                                  textDecoration: 'none',
+                                  background: '#f8fafc',
+                                  padding: '0.25rem 0.5rem',
+                                  borderRadius: '6px',
+                                  border: '1px solid #e2e8f0'
+                                }}
+                              >
+                                📞 {q.phoneNumber}
+                              </a>
+                            </td>
+                            <td style={{ padding: '1rem', color: '#334155', fontSize: '0.84rem' }}>
+                              {q.city || '-'}
+                            </td>
+                            <td style={{ padding: '1rem 1.25rem' }}>
+                              {renderPlanDetails(q.planDetails)}
+                            </td>
+                            <td style={{ padding: '1rem', textAlign: 'center' }}>
+                              <span style={{ 
+                                background: q.status === 'NEW' ? '#dcfce7' : '#f1f5f9', 
+                                color: q.status === 'NEW' ? '#15803d' : '#64748b', 
+                                border: `1px solid ${q.status === 'NEW' ? '#bbf7d0' : '#e2e8f0'}`,
+                                padding: '0.25rem 0.65rem', 
+                                borderRadius: '9999px', 
+                                fontSize: '0.75rem', 
+                                fontWeight: 800,
+                                letterSpacing: '0.02em'
+                              }}>
+                                {q.status || 'NEW'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* MOBILE CARD DECK VIEW (< 768px) */}
+                <div className="crm-mobile-cards-container">
+                  {filteredQuotes.length === 0 ? (
+                    <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: '#64748b', background: '#fff', borderRadius: '12px' }}>
+                      <div style={{ fontWeight: 700, fontSize: '1rem', color: '#0f2b48', marginBottom: '0.25rem' }}>No quote inquiries match your filter</div>
+                      <div style={{ fontSize: '0.82rem' }}>Try adjusting your search query.</div>
+                    </div>
+                  ) : (
+                    filteredQuotes.map((q) => (
+                      <div
+                        key={q.id}
+                        style={{
+                          background: '#ffffff',
+                          borderRadius: '12px',
+                          border: '1px solid #e2e8f0',
+                          padding: '1rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.75rem',
+                          boxShadow: '0 2px 5px rgba(0,0,0,0.03)'
+                        }}
+                      >
+                        {/* Card Header: Customer + Status */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '1rem', color: '#0f2b48' }}>
+                              {q.fullName || 'Anonymous Prospect'}
+                            </div>
+                            <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>
+                              {new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} • {q.city || 'India'}
+                            </div>
+                          </div>
+
+                          <span style={{
+                            display: 'inline-block',
+                            background: '#f0f9ff',
+                            color: '#0284c7',
+                            border: '1px solid #bae6fd',
+                            padding: '0.2rem 0.55rem',
+                            borderRadius: '6px',
+                            fontSize: '0.74rem',
+                            fontWeight: 800,
+                            textTransform: 'capitalize'
+                          }}>
+                            {q.categorySlug ? q.categorySlug.replace('-', ' ') : 'General'}
+                          </span>
+                        </div>
+
+                        {/* Plan Details Container */}
+                        <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                            Customer Specifications
+                          </div>
+                          {renderPlanDetails(q.planDetails)}
+                        </div>
+
+                        {/* Call Action Button */}
+                        <div style={{ marginTop: '0.25rem' }}>
+                          <a
+                            href={`tel:${q.phoneNumber}`}
+                            style={{
+                              background: '#0f2b48',
+                              color: '#ffffff',
+                              border: 'none',
+                              padding: '10px 14px',
+                              borderRadius: '8px',
+                              fontWeight: 700,
+                              fontSize: '0.84rem',
+                              textDecoration: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.5rem'
+                            }}
+                          >
+                            <PhoneCall size={16} /> Call {q.phoneNumber}
+                          </a>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* VIEW: POSP AGENTS */}
           {activeView === 'posp' && (
@@ -1618,7 +1836,9 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                   {pospList.filter(p => p.status === 'PENDING').length} Pending Approval
                 </span>
               </div>
-              <div style={{ overflowX: 'auto' }}>
+
+              {/* DESKTOP TABLE VIEW (>= 768px) */}
+              <div className="crm-desktop-table-container" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
                   <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                     <tr>
@@ -1644,20 +1864,20 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                           <td style={{ padding: '1rem', color: '#64748b' }}>
                             {new Date(posp.appliedAt).toLocaleDateString()}
                           </td>
-                          <td style={{ padding: '1rem', fontWeight: 600 }}>
-                            {posp.user?.fullName}
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{posp.user?.email}</div>
-                          </td>
                           <td style={{ padding: '1rem' }}>
-                            <div><strong>PAN:</strong> {posp.panNumber}</div>
-                            {posp.aadhaarNumber && <div style={{ fontSize: '0.75rem', color: '#64748b' }}>UID: {posp.aadhaarNumber}</div>}
+                            <div style={{ fontWeight: 700, color: '#091726' }}>{posp.user?.fullName}</div>
+                            <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{posp.user?.email} • {posp.user?.phoneNumber}</div>
+                          </td>
+                          <td style={{ padding: '1rem', fontSize: '0.82rem' }}>
+                            <div>PAN: <strong>{posp.panNumber}</strong></div>
+                            <div>Aadhaar: <strong>{posp.aadhaarNumber || '-'}</strong></div>
                           </td>
                           <td style={{ padding: '1rem' }}>{posp.city}, {posp.state}</td>
-                          <td style={{ padding: '1rem' }}>{posp.experienceYears} Yrs</td>
+                          <td style={{ padding: '1rem' }}>{posp.experienceYears} Years</td>
                           <td style={{ padding: '1rem' }}>
                             <span style={{
-                              background: posp.status === 'APPROVED' ? '#dcfce7' : posp.status === 'REJECTED' ? '#fee2e2' : '#fef3c7',
-                              color: posp.status === 'APPROVED' ? '#15803d' : posp.status === 'REJECTED' ? '#b91c1c' : '#b45309',
+                              background: posp.status === 'APPROVED' ? '#dcfce7' : posp.status === 'PENDING' ? '#fef3c7' : '#fee2e2',
+                              color: posp.status === 'APPROVED' ? '#15803d' : posp.status === 'PENDING' ? '#b45309' : '#b91c1c',
                               padding: '0.2rem 0.6rem',
                               borderRadius: '9999px',
                               fontSize: '0.75rem',
@@ -1668,7 +1888,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                           </td>
                           <td style={{ padding: '1rem' }}>
                             {posp.status === 'PENDING' ? (
-                              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <div style={{ display: 'flex', gap: '0.4rem' }}>
                                 <button
                                   onClick={() => handleUpdatePOSP(posp.id, 'APPROVED')}
                                   style={{ background: '#10b981', color: '#fff', border: 'none', padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
@@ -1692,6 +1912,93 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                   </tbody>
                 </table>
               </div>
+
+              {/* MOBILE CARD DECK VIEW (< 768px) */}
+              <div className="crm-mobile-cards-container">
+                {pospList.length === 0 ? (
+                  <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: '#64748b', background: '#fff', borderRadius: '12px' }}>
+                    No POSP applications found.
+                  </div>
+                ) : (
+                  pospList.map((posp) => (
+                    <div
+                      key={posp.id}
+                      style={{
+                        background: '#ffffff',
+                        borderRadius: '12px',
+                        border: '1px solid #e2e8f0',
+                        padding: '1rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.03)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: '1rem', color: '#0f2b48' }}>{posp.user?.fullName}</div>
+                          <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>
+                            {posp.city}, {posp.state} • {posp.experienceYears} Yrs Exp
+                          </div>
+                        </div>
+                        <span style={{
+                          background: posp.status === 'APPROVED' ? '#dcfce7' : posp.status === 'PENDING' ? '#fef3c7' : '#fee2e2',
+                          color: posp.status === 'APPROVED' ? '#15803d' : posp.status === 'PENDING' ? '#b45309' : '#b91c1c',
+                          padding: '0.2rem 0.6rem',
+                          borderRadius: '9999px',
+                          fontSize: '0.72rem',
+                          fontWeight: 800
+                        }}>
+                          {posp.status}
+                        </span>
+                      </div>
+
+                      <div style={{ background: '#f8fafc', padding: '0.65rem 0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.78rem' }}>
+                        <div>PAN: <strong>{posp.panNumber}</strong></div>
+                        <div>Aadhaar: <strong>{posp.aadhaarNumber || '-'}</strong></div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: posp.status === 'PENDING' ? '1fr 1fr auto' : '1fr', gap: '0.5rem' }}>
+                        {posp.status === 'PENDING' && (
+                          <>
+                            <button
+                              onClick={() => handleUpdatePOSP(posp.id, 'APPROVED')}
+                              style={{ background: '#059669', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}
+                            >
+                              Approve Partner
+                            </button>
+                            <button
+                              onClick={() => handleUpdatePOSP(posp.id, 'REJECTED')}
+                              style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                        <a
+                          href={`tel:${posp.user?.phoneNumber}`}
+                          style={{
+                            background: '#0f2b48',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            textDecoration: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.35rem'
+                          }}
+                        >
+                          <PhoneCall size={14} /> Call Agent
+                        </a>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 
@@ -1707,7 +2014,9 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                   {claims.length} Claims Lodged
                 </span>
               </div>
-              <div style={{ overflowX: 'auto' }}>
+
+              {/* DESKTOP TABLE VIEW (>= 768px) */}
+              <div className="crm-desktop-table-container" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
                   <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                     <tr>
@@ -1753,6 +2062,68 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* MOBILE CARD DECK VIEW (< 768px) */}
+              <div className="crm-mobile-cards-container">
+                {claims.length === 0 ? (
+                  <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: '#64748b', background: '#fff', borderRadius: '12px' }}>
+                    No claims submitted yet.
+                  </div>
+                ) : (
+                  claims.map((claim) => (
+                    <div
+                      key={claim.id}
+                      style={{
+                        background: '#ffffff',
+                        borderRadius: '12px',
+                        border: '1px solid #e2e8f0',
+                        padding: '1rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.03)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: '1rem', color: '#0f2b48' }}>{claim.claimantName}</div>
+                          <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>
+                            Policy: <strong>{claim.policyNumber}</strong>
+                          </div>
+                        </div>
+                        <span style={{ background: '#dbeafe', color: '#1e40af', padding: '0.2rem 0.6rem', borderRadius: '9999px', fontSize: '0.72rem', fontWeight: 800 }}>
+                          {claim.status}
+                        </span>
+                      </div>
+
+                      <div style={{ background: '#f8fafc', padding: '0.65rem 0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.78rem' }}>
+                        <div>Type: <strong>{claim.claimType}</strong></div>
+                        <div>Hospital / Garage: <strong>{claim.hospitalOrGarage || 'General Intimation'}</strong></div>
+                      </div>
+
+                      <a
+                        href={`tel:${claim.contactPhone}`}
+                        style={{
+                          background: '#0f2b48',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '0.8rem',
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.35rem'
+                        }}
+                      >
+                        <PhoneCall size={14} /> Call Claimant ({claim.contactPhone})
+                      </a>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}

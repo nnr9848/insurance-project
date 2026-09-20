@@ -5,6 +5,7 @@ import {
   Clock, 
   AlertTriangle, 
   Phone, 
+  PhoneCall,
   MessageSquare, 
   Mail, 
   CheckCircle2, 
@@ -352,7 +353,8 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        {/* DESKTOP TABLE VIEW (>= 768px) */}
+        <div className="crm-desktop-table-container" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
             <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
               <tr>
@@ -519,6 +521,163 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* MOBILE CARD DECK VIEW (< 768px) */}
+        <div className="crm-mobile-cards-container">
+          {loading ? (
+            <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: '#64748b', background: '#fff', borderRadius: '12px' }}>
+              <RefreshCw size={18} className="animate-spin" style={{ margin: '0 auto 0.5rem' }} />
+              <div>Loading renewal portfolio...</div>
+            </div>
+          ) : filteredRenewals.length === 0 ? (
+            <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: '#64748b', background: '#fff', borderRadius: '12px' }}>
+              <ShieldCheck size={32} color="#16a34a" style={{ margin: '0 auto 0.5rem' }} />
+              <div style={{ fontWeight: 700, color: '#091726' }}>No policies due in this bucket</div>
+            </div>
+          ) : (
+            filteredRenewals.map((r) => {
+              const urgency = getUrgencyBadge(r.urgencyBucket, r.daysUntilExpiry);
+              return (
+                <div 
+                  key={r.clientId}
+                  style={{
+                    background: '#ffffff',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                    padding: '1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.03)'
+                  }}
+                >
+                  {/* Card Header: Client + Urgency Badge */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                    <div>
+                      <div 
+                        onClick={() => onOpenClient360 && onOpenClient360({ id: r.clientId, fullName: r.fullName, phoneNumber: r.phoneNumber })}
+                        style={{ fontWeight: 800, fontSize: '0.98rem', color: '#0f2b48', display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}
+                      >
+                        {r.fullName} <ExternalLink size={12} color="#f59e0b" />
+                      </div>
+                      <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>{r.clientCode}</span> • {r.city || 'Hyderabad'}
+                      </div>
+                    </div>
+
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '3px 8px',
+                      borderRadius: '8px',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      background: urgency.bg,
+                      color: urgency.color,
+                      border: `1px solid ${urgency.border}`,
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {urgency.label}
+                    </span>
+                  </div>
+
+                  {/* Policy & Financial Details Grid */}
+                  <div style={{
+                    background: '#f8fafc',
+                    padding: '0.65rem 0.75rem',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '0.5rem',
+                    fontSize: '0.78rem'
+                  }}>
+                    <div>
+                      <div style={{ color: '#64748b', fontSize: '0.7rem' }}>Insurance & Insurer</div>
+                      <div style={{ fontWeight: 700, color: '#0f2b48' }}>{r.insuranceType}</div>
+                      <div style={{ color: '#475569', fontSize: '0.72rem' }}>{r.existingInsurer}</div>
+                    </div>
+
+                    <div>
+                      <div style={{ color: '#64748b', fontSize: '0.7rem' }}>Sum Insured & Premium</div>
+                      <div style={{ fontWeight: 700, color: '#0f2b48' }}>{r.sumInsured || '₹10 Lakhs'}</div>
+                      <div style={{ color: '#15803d', fontWeight: 700, fontSize: '0.72rem' }}>
+                        {r.estimatedPremium ? `₹${r.estimatedPremium.toLocaleString('en-IN')}` : 'Market Prem'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Expiry: <strong>{r.policyExpiryDate}</strong></span>
+                    <span>Advisor: <strong>{r.assignedAdvisorName}</strong></span>
+                  </div>
+
+                  {/* 1-Tap Action Buttons Row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.5rem', marginTop: '0.25rem' }}>
+                    <button
+                      onClick={() => handleOpenReminderModal(r, 'WHATSAPP')}
+                      style={{
+                        background: '#dcfce7',
+                        color: '#15803d',
+                        border: '1px solid #86efac',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        fontWeight: 700,
+                        fontSize: '0.78rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.35rem'
+                      }}
+                    >
+                      <MessageSquare size={14} /> WhatsApp
+                    </button>
+
+                    <a
+                      href={`tel:${r.phoneNumber}`}
+                      style={{
+                        background: '#0f2b48',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        fontWeight: 700,
+                        fontSize: '0.78rem',
+                        textDecoration: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.35rem'
+                      }}
+                    >
+                      <PhoneCall size={14} /> Call
+                    </a>
+
+                    <button
+                      onClick={() => onOpenMeetingModal && onOpenMeetingModal({ id: r.clientId, fullName: r.fullName, phoneNumber: r.phoneNumber, insuranceType: r.insuranceType })}
+                      style={{
+                        background: '#f1f5f9',
+                        color: '#334155',
+                        border: '1px solid #cbd5e1',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        fontWeight: 700,
+                        fontSize: '0.78rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      title="Schedule Meeting"
+                    >
+                      <Calendar size={14} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
