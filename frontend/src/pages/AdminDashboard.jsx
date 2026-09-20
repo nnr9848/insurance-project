@@ -1756,37 +1756,74 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                 </div>
                               </td>
 
-                              {/* 2. Category with Icon Badge (Strictly 1 line nowrap) */}
-                              <td style={{ padding: '0.85rem 1rem', whiteSpace: 'nowrap' }}>
-                                <div style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '5px',
-                                  background: catBadge.bg,
-                                  color: catBadge.color,
-                                  border: `1px solid ${catBadge.border}`,
-                                  padding: '0.28rem 0.65rem',
-                                  borderRadius: '6px',
-                                  fontSize: '0.76rem',
-                                  fontWeight: 800,
-                                  whiteSpace: 'nowrap'
-                                }}>
-                                  {catBadge.icon}
-                                  <span>{catBadge.label}</span>
+                              {/* 2. Category with Icon Badge & Multi-Inquiry Count */}
+                              <td style={{ padding: '0.85rem 1rem', verticalAlign: 'middle' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-start' }}>
+                                  <div style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    background: catBadge.bg,
+                                    color: catBadge.color,
+                                    border: `1px solid ${catBadge.border}`,
+                                    padding: '0.28rem 0.65rem',
+                                    borderRadius: '6px',
+                                    fontSize: '0.76rem',
+                                    fontWeight: 800,
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    {catBadge.icon}
+                                    <span>{catBadge.label}</span>
+                                  </div>
+
+                                  {totalProspectInquiries > 1 && (
+                                    <span
+                                      title={`Same prospect has submitted ${totalProspectInquiries} total inquiries across different verticals`}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        background: '#fef3c7',
+                                        color: '#b45309',
+                                        border: '1px solid #fde68a',
+                                        padding: '0.12rem 0.45rem',
+                                        borderRadius: '4px',
+                                        fontSize: '0.68rem',
+                                        fontWeight: 800,
+                                        whiteSpace: 'nowrap'
+                                      }}
+                                    >
+                                      🔥 {totalProspectInquiries} Inquiries
+                                    </span>
+                                  )}
                                 </div>
                               </td>
 
-                              {/* 3. Prospect & Account */}
-                              <td style={{ padding: '0.85rem 1.25rem' }}>
+                              {/* 3. Prospect Identity & Account (Name on Line 1, [Code Badge] on Line 2, Client Type on Line 3) */}
+                              <td style={{ padding: '0.85rem 1.25rem', verticalAlign: 'middle' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                    <span style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.86rem' }}>
-                                      {q.fullName || 'Anonymous Prospect'}
-                                    </span>
-                                    {matchingClient && (
+                                  <div 
+                                    onClick={() => matchingClient && setSelectedClient360(matchingClient)}
+                                    style={{ 
+                                      fontWeight: 800, 
+                                      color: '#0f2b48', 
+                                      fontSize: '0.86rem',
+                                      cursor: matchingClient ? 'pointer' : 'default',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                    title={matchingClient ? "View Client 360 Profile" : undefined}
+                                  >
+                                    <span>{q.fullName || 'Anonymous Prospect'}</span>
+                                    {matchingClient && <ExternalLink size={11} color="var(--accent-gold)" />}
+                                  </div>
+
+                                  {matchingClient ? (
+                                    <div>
                                       <span
                                         onClick={() => setSelectedClient360(matchingClient)}
-                                        title="Click to view existing Client 360 profile"
+                                        title="Client Identifier Code"
                                         style={{
                                           fontFamily: 'monospace',
                                           fontWeight: 700,
@@ -1796,40 +1833,18 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                           padding: '1px 5px',
                                           borderRadius: '4px',
                                           fontSize: '0.68rem',
-                                          cursor: 'pointer'
+                                          cursor: 'pointer',
+                                          display: 'inline-block'
                                         }}
                                       >
                                         {matchingClient.clientCode}
                                       </span>
-                                    )}
-                                  </div>
-
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                                    {!matchingClient && (
-                                      <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                                        New Web Inquirer
-                                      </span>
-                                    )}
-                                    {totalProspectInquiries > 1 && (
-                                      <span
-                                        title={`Same prospect has submitted ${totalProspectInquiries} total inquiries across different verticals`}
-                                        style={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '2px',
-                                          background: '#fef3c7',
-                                          color: '#b45309',
-                                          border: '1px solid #fde68a',
-                                          padding: '0.08rem 0.4rem',
-                                          borderRadius: '4px',
-                                          fontSize: '0.68rem',
-                                          fontWeight: 800
-                                        }}
-                                      >
-                                        🔥 {totalProspectInquiries} Inquiries
-                                      </span>
-                                    )}
-                                  </div>
+                                    </div>
+                                  ) : (
+                                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                      New Web Prospect
+                                    </div>
+                                  )}
                                 </div>
                               </td>
 
@@ -2074,14 +2089,27 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                             boxShadow: '0 2px 5px rgba(0,0,0,0.03)'
                           }}
                         >
-                          {/* Card Header: Customer + Status */}
+                          {/* Card Header: Customer Identity + Category Suite */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
                             <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                <span style={{ fontWeight: 800, fontSize: '1rem', color: '#0f2b48' }}>
-                                  {q.fullName || 'Anonymous Prospect'}
-                                </span>
-                                {matchingClient && (
+                              <div 
+                                onClick={() => matchingClient && setSelectedClient360(matchingClient)}
+                                style={{ 
+                                  fontWeight: 800, 
+                                  fontSize: '1rem', 
+                                  color: '#0f2b48',
+                                  cursor: matchingClient ? 'pointer' : 'default',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <span>{q.fullName || 'Anonymous Prospect'}</span>
+                                {matchingClient && <ExternalLink size={12} color="var(--accent-gold)" />}
+                              </div>
+
+                              {matchingClient ? (
+                                <div style={{ marginTop: '2px' }}>
                                   <span
                                     onClick={() => setSelectedClient360(matchingClient)}
                                     style={{
@@ -2093,54 +2121,61 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                       padding: '1px 5px',
                                       borderRadius: '4px',
                                       fontSize: '0.68rem',
-                                      cursor: 'pointer'
+                                      cursor: 'pointer',
+                                      display: 'inline-block'
                                     }}
                                   >
                                     {matchingClient.clientCode}
                                   </span>
-                                )}
-                              </div>
-                              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>
+                                </div>
+                              ) : (
+                                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '1px' }}>
+                                  New Web Prospect
+                                </div>
+                              )}
+
+                              <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>
                                 {new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} • {q.city || 'India'}
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                              <div style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                background: catBadge.bg,
+                                color: catBadge.color,
+                                border: `1px solid ${catBadge.border}`,
+                                padding: '0.2rem 0.55rem',
+                                borderRadius: '6px',
+                                fontSize: '0.74rem',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {catBadge.icon}
+                                <span>{catBadge.label}</span>
                               </div>
 
                               {totalProspectInquiries > 1 && (
-                                <div style={{ marginTop: '0.35rem' }}>
-                                  <span
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '2px',
-                                      background: '#fef3c7',
-                                      color: '#b45309',
-                                      border: '1px solid #fde68a',
-                                      padding: '0.1rem 0.4rem',
-                                      borderRadius: '4px',
-                                      fontSize: '0.68rem',
-                                      fontWeight: 800
-                                    }}
-                                  >
-                                    🔥 {totalProspectInquiries} Total Inquiries
-                                  </span>
-                                </div>
+                                <span
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '2px',
+                                    background: '#fef3c7',
+                                    color: '#b45309',
+                                    border: '1px solid #fde68a',
+                                    padding: '0.1rem 0.4rem',
+                                    borderRadius: '4px',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 800,
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  🔥 {totalProspectInquiries} Inquiries
+                                </span>
                               )}
-                            </div>
-
-                            <div style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              background: catBadge.bg,
-                              color: catBadge.color,
-                              border: `1px solid ${catBadge.border}`,
-                              padding: '0.2rem 0.55rem',
-                              borderRadius: '6px',
-                              fontSize: '0.74rem',
-                              fontWeight: 800,
-                              whiteSpace: 'nowrap'
-                            }}>
-                              {catBadge.icon}
-                              <span>{catBadge.label}</span>
                             </div>
                           </div>
 
