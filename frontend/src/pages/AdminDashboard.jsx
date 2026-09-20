@@ -82,13 +82,20 @@ export default function AdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Active Workspace Navigation View (URL Query Param Synchronized)
-  // 'dashboard' | 'clients' | 'agenda' | 'pipeline' | 'meetings' | 'users' | 'quotes' | 'posp' | 'claims' | 'hospitals'
-  const currentTabFromUrl = searchParams.get('tab') || 'dashboard';
+  // 'dashboard' | 'clients' | 'agenda' | 'pipeline' | 'meetings' | 'users' | 'leads' | 'proposals' | 'posp' | 'claims' | 'hospitals'
+  const normalizeTab = (rawTab) => {
+    if (!rawTab || rawTab === 'dashboard') return 'dashboard';
+    if (rawTab === 'quotes') return 'leads';
+    if (rawTab === 'crm-quotes') return 'proposals';
+    return rawTab;
+  };
+
+  const currentTabFromUrl = normalizeTab(searchParams.get('tab'));
   const [activeView, setActiveView] = useState(currentTabFromUrl);
 
   // Sync state when URL query param changes (e.g. Browser Back / Forward buttons)
   useEffect(() => {
-    const tab = searchParams.get('tab') || 'dashboard';
+    const tab = normalizeTab(searchParams.get('tab'));
     if (tab !== activeView) {
       setActiveView(tab);
     }
@@ -195,9 +202,10 @@ export default function AdminDashboard() {
           subtitle: 'Automated milestone tracking, NCB protection, and 1-tap WhatsApp renewal dispatch.',
           icon: <ShieldCheck size={18} color="#16a34a" />
         };
+      case 'proposals':
       case 'crm-quotes':
         return {
-          title: 'Quotation Management & Comparison',
+          title: 'Quotes & Proposals Desk',
           category: 'CRM Workspace',
           subtitle: 'Multi-insurer comparative proposals, automated GST, benefit breakdown, and WhatsApp quote dispatch.',
           icon: <FileSpreadsheet size={18} color="#0284c7" />
@@ -230,12 +238,13 @@ export default function AdminDashboard() {
           subtitle: 'Manage branch managers, insurance advisors, staff permissions, and hierarchy teams.',
           icon: <Users size={18} color="#059669" />
         };
+      case 'leads':
       case 'quotes':
         return {
-          title: 'Customer Quote Inquiries',
-          category: 'Operations & Management',
-          subtitle: 'Real-time prospective customer insurance quote inquiries from the web portal.',
-          icon: <FileText size={18} color="#2563eb" />
+          title: 'Leads & Inquiries',
+          category: 'CRM Workspace',
+          subtitle: 'Real-time prospective customer insurance and loan inquiries from the web portal.',
+          icon: <Briefcase size={18} color="#16a34a" />
         };
       case 'posp':
         return {
@@ -572,13 +581,14 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
   // Navigation Items
   const navItemsCRM = [
     { id: 'dashboard', label: 'CRM Dashboard', icon: <LayoutDashboard size={19} />, count: null },
+    { id: 'leads', label: 'Leads', icon: <Briefcase size={19} />, count: quotes.length, badgeColor: '#16a34a' },
     { id: 'clients', label: 'Client Data Sheet', icon: <FileText size={19} />, count: leads.length, badgeColor: '#0284c7' },
+    { id: 'pipeline', label: 'Sales Pipeline', icon: <TrendingUp size={19} />, count: null },
     { id: 'agenda', label: 'Daily Call Agenda', icon: <PhoneCall size={19} />, count: dueFollowUps.length, badgeColor: '#ea580c' },
     { id: 'calls', label: 'Call History Log', icon: <PhoneCall size={19} />, count: null },
-    { id: 'pipeline', label: 'Sales Pipeline', icon: <TrendingUp size={19} />, count: null },
     { id: 'meetings', label: 'Meeting Calendar', icon: <Calendar size={19} />, count: null },
+    { id: 'proposals', label: 'Quotes & Proposals', icon: <FileSpreadsheet size={19} />, count: null },
     { id: 'renewals', label: 'Policy Renewal Desk', icon: <ShieldCheck size={19} />, count: null },
-    { id: 'crm-quotes', label: 'Quotation Desk', icon: <FileSpreadsheet size={19} />, count: null },
     { id: 'documents', label: 'Document Locker', icon: <FolderCheck size={19} />, count: null },
   ];
 
@@ -588,10 +598,9 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
       { id: 'approvals', label: 'Manager Approvals Desk', icon: <CheckSquare size={19} />, count: null },
       { id: 'audit', label: 'Audit Trail & Compliance', icon: <ShieldCheck size={19} />, count: null }
     ] : []),
-    { id: 'quotes', label: 'Web Quote Leads', icon: <Briefcase size={19} />, count: quotes.length, badgeColor: '#16a34a' },
     { id: 'posp', label: 'POSP Agent Network', icon: <UserCheck size={19} />, count: pospList.filter(p => p.status === 'PENDING').length, badgeColor: '#d97706' },
-    { id: 'claims', label: 'Claims Desk', icon: <Crosshair size={19} />, count: claims.length, badgeColor: '#2563eb' },
     { id: 'hospitals', label: 'Cashless Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' },
+    { id: 'claims', label: 'Claims Desk', icon: <Crosshair size={19} />, count: claims.length, badgeColor: '#2563eb' },
   ];
 
   const showMiniRail = !isMobile && isCollapsed;
@@ -1512,8 +1521,8 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
             />
           )}
 
-          {/* VIEW: QUOTATION MANAGEMENT */}
-          {activeView === 'crm-quotes' && (
+          {/* VIEW: QUOTATION MANAGEMENT / PROPOSALS */}
+          {(activeView === 'proposals' || activeView === 'crm-quotes') && (
             <QuotationManagementView 
               onOpenClient360={(client) => setSelectedClient360(client)}
             />
@@ -1545,9 +1554,8 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
             />
           )}
 
-          {/* VIEW: CUSTOMER QUOTES */}
-          {/* VIEW: CUSTOMER QUOTE INQUIRIES */}
-          {activeView === 'quotes' && (() => {
+          {/* VIEW: LEADS & INQUIRIES */}
+          {(activeView === 'leads' || activeView === 'quotes') && (() => {
             const filteredQuotes = quotes.filter((q) => {
               const matchesSearch = !quoteSearch || 
                 (q.fullName && q.fullName.toLowerCase().includes(quoteSearch.toLowerCase())) ||
