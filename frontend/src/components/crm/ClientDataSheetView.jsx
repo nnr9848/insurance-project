@@ -1341,10 +1341,10 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           </span>
                         </div>
 
-                        <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                           <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-emerald)' }}>{lead.clientCode}</span>
                           <span>•</span>
-                          <span>{lead.phoneNumber}</span>
+                          <span style={{ fontWeight: 600, color: '#334155' }}>{lead.companyName || 'Retail Client'}</span>
                           {lead.city && (
                             <>
                               <span>•</span>
@@ -1354,7 +1354,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                         </div>
                       </div>
 
-                      {/* 1-Tap Action Pill Icons */}
+                      {/* 1-Tap Action Pill Icons (Call, WhatsApp, Meeting, Edit) */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                         <button
                           onClick={() => onOpenCallModal && onOpenCallModal(lead)}
@@ -1370,7 +1370,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             justifyContent: 'center',
                             cursor: 'pointer'
                           }}
-                          title="Call Client"
+                          title={`Call ${lead.fullName}`}
                         >
                           <Phone size={13} />
                         </button>
@@ -1427,9 +1427,9 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             justifyContent: 'center',
                             cursor: 'pointer'
                           }}
-                          title="Open 360 Profile"
+                          title="Edit / View Client 360"
                         >
-                          <Shield size={13} />
+                          <Edit3 size={13} />
                         </button>
                       </div>
                     </div>
