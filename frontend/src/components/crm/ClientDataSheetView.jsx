@@ -42,6 +42,24 @@ import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 
+// Official WhatsApp Brand SVG Component (Proportionate Vector Geometry)
+const WhatsAppIcon = ({ size = 18, color = 'currentColor', style = {} }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.63C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 6.46 17.5 2 12.04 2ZM12.04 20.15C10.56 20.15 9.11 19.76 7.85 19.01L7.55 18.83L4.44 19.65L5.27 16.61L5.07 16.3C4.24 14.98 3.81 13.47 3.81 11.91C3.81 7.37 7.5 3.68 12.04 3.68C16.58 3.68 20.27 7.37 20.27 11.91C20.27 16.45 16.58 20.15 12.04 20.15ZM16.53 14.41C16.28 14.28 15.06 13.68 14.83 13.6C14.6 13.51 14.44 13.47 14.27 13.72C14.11 13.97 13.63 14.54 13.49 14.71C13.34 14.87 13.2 14.89 12.95 14.77C12.7 14.64 11.9 14.38 10.95 13.53C10.21 12.87 9.71 12.06 9.57 11.81C9.42 11.56 9.55 11.43 9.68 11.3C9.79 11.19 9.92 11.01 10.05 10.87C10.17 10.72 10.21 10.62 10.3 10.45C10.38 10.29 10.34 10.14 10.28 10.02C10.22 9.89 9.73 8.69 9.52 8.2C9.33 7.71 9.12 7.78 8.97 7.77C8.83 7.76 8.66 7.76 8.5 7.76C8.33 7.76 8.06 7.82 7.83 8.07C7.6 8.32 6.95 8.93 6.95 10.16C6.95 11.39 7.85 12.57 7.97 12.74C8.1 12.9 9.73 15.42 12.23 16.5C12.82 16.76 13.28 16.91 13.64 17.03C14.24 17.22 14.79 17.19 15.22 17.13C15.7 17.06 16.7 16.52 16.91 15.94C17.12 15.37 17.12 14.87 17.06 14.77C16.99 14.66 16.78 14.54 16.53 14.41Z"
+      fill={color}
+    />
+  </svg>
+);
+
 export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, onOpenMeetingModal }) {
   const { isSuperAdmin, isManager, user } = useAuth();
   const toast = useToast();
@@ -73,6 +91,27 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
   const [editingRowId, setEditingRowId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [activeReachLead, setActiveReachLead] = useState(null); // Active lead for omni-contact popover/bottom-sheet
+  
+  // In-Context Schedule Meeting Modal (Keeps user on Client Data Sheet view without background redirects)
+  const [inContextMeetingLead, setInContextMeetingLead] = useState(null);
+  const [meetingForm, setMeetingForm] = useState({
+    title: '',
+    meetingDate: new Date().toISOString().slice(0, 10),
+    startTime: '11:00',
+    endTime: '11:30',
+    product: 'Health Insurance',
+    purpose: 'Detailed Plan Comparison & Policy Finalization',
+    meetingType: 'GOOGLE_MEET',
+    location: '',
+    notes: ''
+  });
+  const [schedulingMeeting, setSchedulingMeeting] = useState(false);
+
+  // Dedicated Quick Email Prompt Modal
+  const [quickEmailLead, setQuickEmailLead] = useState(null);
+  const [quickEmailInput, setQuickEmailInput] = useState('');
+  const [savingQuickEmail, setSavingQuickEmail] = useState(false);
+
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [parsedBulkLeads, setParsedBulkLeads] = useState([]);
@@ -786,11 +825,10 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                         />
                       </th>
                     )}
-                    <th className="crm-table-th" style={{ width: '130px' }}>Code</th>
                     <th 
                       className="crm-table-th" 
                       onClick={() => toggleSort('name')}
-                      style={{ minWidth: '180px', cursor: 'pointer', userSelect: 'none' }}
+                      style={{ minWidth: '220px', cursor: 'pointer', userSelect: 'none' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                         <span>Client & Organization</span>
@@ -811,7 +849,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                     </th>
                     <th className="crm-table-th" style={{ minWidth: '140px' }}>Pipeline Stage</th>
                     <th className="crm-table-th" style={{ minWidth: '130px' }}>Advisor</th>
-                    <th className="crm-table-th" style={{ textAlign: 'center', width: '145px' }}>Quick Actions</th>
+                    <th className="crm-table-th" style={{ textAlign: 'center', width: '160px' }}>Quick Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -851,18 +889,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           </td>
                         )}
 
-                        {/* Client Code */}
-                        <td className="crm-table-td" style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-emerald)' }}>
-                          <span 
-                            onClick={() => onOpenClient360 && onOpenClient360(lead)}
-                            style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                            title="Open Client 360 View"
-                          >
-                            {lead.clientCode}
-                          </span>
-                        </td>
-
-                        {/* Client Name & Company */}
+                        {/* Client Identity & Organization (Consolidated Code + Name + Company) */}
                         <td className="crm-table-td">
                           {isEditing ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -883,13 +910,34 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             </div>
                           ) : (
                             <div>
-                              <div 
-                                onClick={() => onOpenClient360 && onOpenClient360(lead)}
-                                style={{ fontWeight: 800, color: '#0f2b48', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                              >
-                                {lead.fullName} <ExternalLink size={12} color="var(--accent-gold)" />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <div 
+                                  onClick={() => onOpenClient360 && onOpenClient360(lead)}
+                                  style={{ fontWeight: 800, color: '#0f2b48', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                                  title="Open Client 360 Profile"
+                                >
+                                  <span>{lead.fullName}</span>
+                                  <ExternalLink size={11} color="var(--accent-gold)" />
+                                </div>
+                                <span 
+                                  onClick={() => onOpenClient360 && onOpenClient360(lead)}
+                                  style={{
+                                    fontFamily: 'monospace',
+                                    fontWeight: 700,
+                                    color: '#059669',
+                                    background: '#ecfdf5',
+                                    border: '1px solid #a7f3d0',
+                                    padding: '1px 5px',
+                                    borderRadius: '4px',
+                                    fontSize: '0.68rem',
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Client Identifier Code"
+                                >
+                                  {lead.clientCode}
+                                </span>
                               </div>
-                              <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '1px' }}>
+                              <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>
                                 {lead.companyName || 'Retail Client'}
                               </div>
                             </div>
@@ -908,6 +956,13 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                                 style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.8rem', width: '100%' }}
                               />
                               <input
+                                type="email"
+                                placeholder="Email Address"
+                                value={editFormData.email || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.74rem', width: '100%' }}
+                              />
+                              <input
                                 type="text"
                                 placeholder="City / Location"
                                 value={editFormData.city || ''}
@@ -918,6 +973,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           ) : (
                             <div>
                               <div style={{ fontWeight: 700, color: '#0f2b48', fontSize: '0.84rem' }}>{lead.phoneNumber}</div>
+                              {lead.email && <div style={{ fontSize: '0.72rem', color: '#0284c7' }}>{lead.email}</div>}
                               <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{lead.city || 'India'}</div>
                             </div>
                           )}
@@ -1194,41 +1250,135 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                               </button>
                             </div>
                           ) : (
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}>
+                              {/* 1. Direct Phone Call */}
                               <button
-                                onClick={() => setActiveReachLead(lead)}
+                                onClick={() => {
+                                  const cleanPhone = (lead.phoneNumber || '').replace(/[^0-9+]/g, '');
+                                  if (cleanPhone) {
+                                    window.location.href = `tel:${cleanPhone}`;
+                                  } else {
+                                    toast.error('No phone number recorded for this client.');
+                                  }
+                                }}
                                 style={{
                                   background: '#ecfdf5',
                                   color: '#059669',
                                   border: '1px solid #a7f3d0',
-                                  padding: '5px 8px',
+                                  width: '28px',
+                                  height: '28px',
                                   borderRadius: '6px',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '4px',
-                                  fontSize: '0.74rem',
-                                  fontWeight: 700
+                                  justifyContent: 'center',
+                                  transition: 'all 0.15s ease'
                                 }}
-                                title="Omni-Channel Contact (Call, WhatsApp, Email, Meeting)"
+                                title={`Call ${lead.fullName} (${lead.phoneNumber || 'No Phone'})`}
                               >
-                                <Zap size={13} />
-                                <span>Reach ▾</span>
+                                <Phone size={13} />
                               </button>
 
+                              {/* 2. 1-Tap WhatsApp */}
+                              <button
+                                onClick={() => openWhatsApp(lead.phoneNumber, lead.fullName, lead.insuranceType)}
+                                style={{
+                                  background: '#f0fdf4',
+                                  color: '#16a34a',
+                                  border: '1px solid #bbf7d0',
+                                  width: '28px',
+                                  height: '28px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                title={`WhatsApp ${lead.fullName}`}
+                              >
+                                <WhatsAppIcon size={14} color="#16a34a" />
+                              </button>
+
+                              {/* 3. Send Email Proposal */}
+                              <button
+                                onClick={() => {
+                                  if (lead.email) {
+                                    window.open(`mailto:${lead.email}?subject=Insurance%20Advisory%20Proposal%20-%20Aadhiraksha&body=Dear%20${encodeURIComponent(lead.fullName)},%0D%0A%0D%0APlease%20find%20attached%20your%20customized%20insurance%20portfolio%20details.`, '_blank');
+                                  } else {
+                                    setQuickEmailLead(lead);
+                                    setQuickEmailInput('');
+                                  }
+                                }}
+                                style={{
+                                  background: '#f0f9ff',
+                                  color: '#0284c7',
+                                  border: '1px solid #bae6fd',
+                                  width: '28px',
+                                  height: '28px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                title={lead.email ? `Email ${lead.email}` : `+ Add Email for ${lead.fullName}`}
+                              >
+                                <Mail size={13} />
+                              </button>
+
+                              {/* 4. Schedule Consultation (In-Context Modal) */}
+                              <button
+                                onClick={() => {
+                                  setMeetingForm({
+                                    title: `Insurance Consultation with ${lead.fullName}`,
+                                    meetingDate: new Date().toISOString().slice(0, 10),
+                                    startTime: '11:00',
+                                    endTime: '11:30',
+                                    product: lead.insuranceType || 'Health Insurance',
+                                    purpose: 'Detailed Plan Comparison & Policy Finalization',
+                                    meetingType: 'GOOGLE_MEET',
+                                    location: '',
+                                    notes: ''
+                                  });
+                                  setInContextMeetingLead(lead);
+                                }}
+                                style={{
+                                  background: '#eff6ff',
+                                  color: '#2563eb',
+                                  border: '1px solid #bfdbfe',
+                                  width: '28px',
+                                  height: '28px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'all 0.15s ease'
+                                }}
+                                title="Schedule Meeting Consultation"
+                              >
+                                <Calendar size={13} />
+                              </button>
+
+                              {/* 5. Inline Edit */}
                               <button
                                 onClick={() => startInlineEdit(lead)}
                                 style={{
                                   background: '#f8fafc',
                                   color: '#64748b',
                                   border: '1px solid #e2e8f0',
-                                  padding: '5px 7px',
+                                  width: '28px',
+                                  height: '28px',
                                   borderRadius: '6px',
                                   cursor: 'pointer',
                                   display: 'flex',
-                                  alignItems: 'center'
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'all 0.15s ease'
                                 }}
-                                title="Inline Edit"
+                                title="Quick Edit Client Record"
                               >
                                 <Edit3 size={13} />
                               </button>
@@ -1334,6 +1484,17 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           </div>
 
                           <div>
+                            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Email Address</label>
+                            <input
+                              type="email"
+                              value={editFormData.email || ''}
+                              placeholder="client@mail.com"
+                              onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                              style={{ width: '100%', padding: '5px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
+                            />
+                          </div>
+
+                          <div style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>City / Location</label>
                             <input
                               type="text"
@@ -2493,7 +2654,12 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                 onClick={() => {
                   const target = activeReachLead;
                   setActiveReachLead(null);
-                  if (onOpenCallModal) onOpenCallModal(target);
+                  const cleanPhone = (target.phoneNumber || '').replace(/[^0-9+]/g, '');
+                  if (cleanPhone) {
+                    window.location.href = `tel:${cleanPhone}`;
+                  } else {
+                    toast.error('No phone number recorded for this client.');
+                  }
                 }}
                 style={{
                   display: 'flex',
@@ -2513,7 +2679,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Direct Phone Call</div>
-                  <div style={{ fontSize: '0.72rem', color: '#047857' }}>Log telephony interaction with client</div>
+                  <div style={{ fontSize: '0.72rem', color: '#047857' }}>Trigger native dialer ({activeReachLead.phoneNumber || 'No phone'})</div>
                 </div>
               </button>
 
@@ -2537,8 +2703,8 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                   textAlign: 'left'
                 }}
               >
-                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#22c55e', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <MessageSquare size={18} />
+                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#25D366', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <WhatsAppIcon size={20} color="#ffffff" />
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>WhatsApp Chat</div>
@@ -2554,8 +2720,8 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                   if (target.email) {
                     window.open(`mailto:${target.email}?subject=Insurance%20Advisory%20Proposal%20-%20Aadhiraksha&body=Dear%20${encodeURIComponent(target.fullName)},%0D%0A%0D%0APlease%20find%20attached%20your%20customized%20insurance%20portfolio%20details.`, '_blank');
                   } else {
-                    toast.info(`No email on file for ${target.fullName}. Opening Client 360 to add.`);
-                    if (onOpenClient360) onOpenClient360(target);
+                    setQuickEmailLead(target);
+                    setQuickEmailInput('');
                   }
                 }}
                 style={{
@@ -2576,16 +2742,27 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Send Email Proposal</div>
-                  <div style={{ fontSize: '0.72rem', color: '#0284c7' }}>{activeReachLead.email ? `Send to ${activeReachLead.email}` : 'Compose proposal via Mail'}</div>
+                  <div style={{ fontSize: '0.72rem', color: '#0284c7' }}>{activeReachLead.email ? `Send to ${activeReachLead.email}` : '+ Add Email & Compose'}</div>
                 </div>
               </button>
 
-              {/* 4. Schedule Meeting */}
+              {/* 4. Schedule Meeting (In-Context Modal) */}
               <button
                 onClick={() => {
                   const target = activeReachLead;
                   setActiveReachLead(null);
-                  if (onOpenMeetingModal) onOpenMeetingModal(target);
+                  setMeetingForm({
+                    title: `Insurance Consultation with ${target.fullName}`,
+                    meetingDate: new Date().toISOString().slice(0, 10),
+                    startTime: '11:00',
+                    endTime: '11:30',
+                    product: target.insuranceType || 'Health Insurance',
+                    purpose: 'Detailed Plan Comparison & Policy Finalization',
+                    meetingType: 'GOOGLE_MEET',
+                    location: '',
+                    notes: ''
+                  });
+                  setInContextMeetingLead(target);
                 }}
                 style={{
                   display: 'flex',
@@ -2605,10 +2782,283 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Schedule Advisor Meeting</div>
-                  <div style={{ fontSize: '0.72rem', color: '#2563eb' }}>Book video or in-person consultation</div>
+                  <div style={{ fontSize: '0.72rem', color: '#2563eb' }}>Book in-context video or in-person consultation</div>
                 </div>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: In-Context Schedule Meeting (No background view switching) */}
+      {inContextMeetingLead && (
+        <div
+          onClick={() => setInContextMeetingLead(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'none',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              maxWidth: '520px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '1.5rem',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid #e2e8f0'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Calendar size={20} color="#2563eb" />
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#091726', margin: 0 }}>
+                  Schedule Meeting: {inContextMeetingLead.fullName}
+                </h3>
+              </div>
+              <button
+                onClick={() => setInContextMeetingLead(null)}
+                style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', cursor: 'pointer' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setSchedulingMeeting(true);
+              try {
+                const meetingDatetime = `${meetingForm.meetingDate}T${meetingForm.startTime}:00`;
+                const endDatetime = `${meetingForm.meetingDate}T${meetingForm.endTime}:00`;
+                
+                await crmService.createMeeting({
+                  clientId: inContextMeetingLead.id,
+                  title: meetingForm.title,
+                  purpose: meetingForm.purpose,
+                  product: meetingForm.product,
+                  meetingDatetime,
+                  endDatetime,
+                  meetingType: meetingForm.meetingType,
+                  location: meetingForm.location,
+                  notes: meetingForm.notes
+                });
+
+                toast.success(`Consultation scheduled with ${inContextMeetingLead.fullName} on ${meetingForm.meetingDate}!`);
+                setInContextMeetingLead(null);
+              } catch (err) {
+                toast.error('Failed to schedule meeting: ' + (err.response?.data?.message || err.message));
+              } finally {
+                setSchedulingMeeting(false);
+              }
+            }}>
+              <div style={{ marginBottom: '0.85rem' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '3px' }}>Meeting Title *</label>
+                <input
+                  type="text"
+                  required
+                  value={meetingForm.title}
+                  onChange={(e) => setMeetingForm({ ...meetingForm, title: e.target.value })}
+                  style={{ width: '100%', padding: '7px 9px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '3px' }}>Meeting Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={meetingForm.meetingDate}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, meetingDate: e.target.value })}
+                    style={{ width: '100%', padding: '7px 9px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '3px' }}>Consultation Type</label>
+                  <select
+                    value={meetingForm.meetingType}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, meetingType: e.target.value })}
+                    style={{ width: '100%', padding: '7px 9px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', background: '#fff' }}
+                  >
+                    <option value="GOOGLE_MEET">🎥 Google Meet (Video)</option>
+                    <option value="IN_PERSON">🏢 In-Person (Branch / Office)</option>
+                    <option value="PHONE_CALL">📞 Phone Consultation</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '3px' }}>Start Time *</label>
+                  <input
+                    type="time"
+                    required
+                    value={meetingForm.startTime}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, startTime: e.target.value })}
+                    style={{ width: '100%', padding: '7px 9px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '3px' }}>End Time *</label>
+                  <input
+                    type="time"
+                    required
+                    value={meetingForm.endTime}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, endTime: e.target.value })}
+                    style={{ width: '100%', padding: '7px 9px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '3px' }}>Agenda & Notes</label>
+                <textarea
+                  rows={2}
+                  value={meetingForm.notes}
+                  placeholder="e.g. Plan discussion, critical illness rider review, premium quote finalization"
+                  onChange={(e) => setMeetingForm({ ...meetingForm, notes: e.target.value })}
+                  style={{ width: '100%', padding: '7px 9px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setInContextMeetingLead(null)}
+                  disabled={schedulingMeeting}
+                  style={{ flex: 1, padding: '0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={schedulingMeeting}
+                  style={{ flex: 2, padding: '0.65rem', borderRadius: '8px', border: 'none', background: 'var(--accent-emerald)', color: '#ffffff', fontWeight: 700, fontSize: '0.82rem', cursor: schedulingMeeting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  {schedulingMeeting ? <RefreshCw size={14} className="spin" /> : <Check size={16} />}
+                  <span>{schedulingMeeting ? 'Scheduling...' : 'Confirm Consultation'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Quick Email Prompt & Dispatch Modal */}
+      {quickEmailLead && (
+        <div
+          onClick={() => setQuickEmailLead(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'none',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              maxWidth: '420px',
+              width: '100%',
+              padding: '1.5rem',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid #e2e8f0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Mail size={20} color="#0284c7" />
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#091726', margin: 0 }}>
+                  Add Email for {quickEmailLead.fullName}
+                </h3>
+              </div>
+              <button
+                onClick={() => setQuickEmailLead(null)}
+                style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', cursor: 'pointer' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.78rem', color: '#64748b', margin: 0, lineHeight: 1.4 }}>
+              Enter the client's email address. We'll save it directly to their CRM profile and immediately launch your mail composer.
+            </p>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!quickEmailInput.trim()) return;
+              setSavingQuickEmail(true);
+              try {
+                await crmService.updateLead(quickEmailLead.id, { email: quickEmailInput.trim() });
+                setLeads(prev => prev.map(l => l.id === quickEmailLead.id ? { ...l, email: quickEmailInput.trim() } : l));
+                
+                const clientEmail = quickEmailInput.trim();
+                const clientName = quickEmailLead.fullName;
+                setQuickEmailLead(null);
+                toast.success(`Email saved! Opening mail draft for ${clientName}...`);
+                
+                window.open(`mailto:${clientEmail}?subject=Insurance%20Advisory%20Proposal%20-%20Aadhiraksha&body=Dear%20${encodeURIComponent(clientName)},%0D%0A%0D%0APlease%20find%20attached%20your%20customized%20insurance%20portfolio%20details.`, '_blank');
+              } catch (err) {
+                toast.error('Failed to save email: ' + (err.response?.data?.message || err.message));
+              } finally {
+                setSavingQuickEmail(false);
+              }
+            }}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  placeholder="e.g. client@example.com"
+                  value={quickEmailInput}
+                  onChange={(e) => setQuickEmailInput(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1.5px solid #0284c7', fontSize: '0.84rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setQuickEmailLead(null)}
+                  disabled={savingQuickEmail}
+                  style={{ flex: 1, padding: '0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingQuickEmail}
+                  style={{ flex: 2, padding: '0.65rem', borderRadius: '8px', border: 'none', background: '#0284c7', color: '#ffffff', fontWeight: 700, fontSize: '0.82rem', cursor: savingQuickEmail ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  {savingQuickEmail ? <RefreshCw size={14} className="spin" /> : <Mail size={15} />}
+                  <span>{savingQuickEmail ? 'Saving...' : 'Save & Compose'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
