@@ -48,7 +48,11 @@ import {
   ShieldAlert,
   FolderCheck,
   CheckSquare,
-  Link2
+  Link2,
+  Car,
+  HeartPulse,
+  Plane,
+  Building
 } from 'lucide-react';
 import { portalService, crmService } from '../services/api';
 import UserManagementView from '../components/crm/UserManagementView';
@@ -58,6 +62,24 @@ import SalesPipelineView from '../components/crm/SalesPipelineView';
 import MeetingCalendarView from '../components/crm/MeetingCalendarView';
 import Client360Drawer from '../components/crm/Client360Drawer';
 import UserProfileModal from '../components/crm/UserProfileModal';
+
+// Official WhatsApp Brand SVG Component (Proportionate Vector Geometry)
+const WhatsAppIcon = ({ size = 18, color = 'currentColor', style = {} }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.63C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 6.46 17.5 2 12.04 2ZM12.04 20.15C10.56 20.15 9.11 19.76 7.85 19.01L7.55 18.83L4.44 19.65L5.27 16.61L5.07 16.3C4.24 14.98 3.81 13.47 3.81 11.91C3.81 7.37 7.5 3.68 12.04 3.68C16.58 3.68 20.27 7.37 20.27 11.91C20.27 16.45 16.58 20.15 12.04 20.15ZM16.53 14.41C16.28 14.28 15.06 13.68 14.83 13.6C14.6 13.51 14.44 13.47 14.27 13.72C14.11 13.97 13.63 14.54 13.49 14.71C13.34 14.87 13.2 14.89 12.95 14.77C12.7 14.64 11.9 14.38 10.95 13.53C10.21 12.87 9.71 12.06 9.57 11.81C9.42 11.56 9.55 11.43 9.68 11.3C9.79 11.19 9.92 11.01 10.05 10.87C10.17 10.72 10.21 10.62 10.3 10.45C10.38 10.29 10.34 10.14 10.28 10.02C10.22 9.89 9.73 8.69 9.52 8.2C9.33 7.71 9.12 7.78 8.97 7.77C8.83 7.76 8.66 7.76 8.5 7.76C8.33 7.76 8.06 7.82 7.83 8.07C7.6 8.32 6.95 8.93 6.95 10.16C6.95 11.39 7.85 12.57 7.97 12.74C8.1 12.9 9.73 15.42 12.23 16.5C12.82 16.76 13.28 16.91 13.64 17.03C14.24 17.22 14.79 17.19 15.22 17.13C15.7 17.06 16.7 16.52 16.91 15.94C17.12 15.37 17.12 14.87 17.06 14.77C16.99 14.66 16.78 14.54 16.53 14.41Z"
+      fill={color}
+    />
+  </svg>
+);
 import ManagerDashboardOverview from '../components/crm/ManagerDashboardOverview';
 import SuperAdminDashboardOverview from '../components/crm/SuperAdminDashboardOverview';
 import AdvisorDashboardOverview from '../components/crm/AdvisorDashboardOverview';
@@ -1624,12 +1646,36 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
               }
             };
 
+            // Category badge helper with icons & curated styles
+            const getLeadCategoryBadge = (slug) => {
+              const lower = (slug || '').toLowerCase();
+              if (lower.includes('health')) {
+                return { label: 'Health Insurance', icon: <HeartPulse size={12} />, bg: '#ecfdf5', color: '#065f46', border: '#a7f3d0' };
+              }
+              if (lower.includes('motor') || lower.includes('vehicle')) {
+                return { label: 'Vehicle Insurance', icon: <Car size={12} />, bg: '#eff6ff', color: '#1e40af', border: '#bfdbfe' };
+              }
+              if (lower.includes('life') || lower.includes('term')) {
+                return { label: 'Term Life Shield', icon: <ShieldCheck size={12} />, bg: '#f5f3ff', color: '#5b21b6', border: '#ddd6fe' };
+              }
+              if (lower.includes('loan') || lower.includes('mortgage')) {
+                return { label: 'Loans & Financing', icon: <Building size={12} />, bg: '#fffbeb', color: '#92400e', border: '#fde68a' };
+              }
+              if (lower.includes('business') || lower.includes('sme')) {
+                return { label: 'Business & SME', icon: <Briefcase size={12} />, bg: '#f0fdf4', color: '#166534', border: '#bbf7d0' };
+              }
+              if (lower.includes('travel')) {
+                return { label: 'Travel Insurance', icon: <Plane size={12} />, bg: '#fdf4ff', color: '#86198f', border: '#f5d0fe' };
+              }
+              return { label: slug ? slug.replace('-', ' ') : 'General', icon: <FileText size={12} />, bg: '#f1f5f9', color: '#334155', border: '#e2e8f0' };
+            };
+
             return (
               <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
                 {/* Quote Leads Toolbar & Search */}
                 <div style={{ padding: '1.25rem 1.5rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <div style={{ position: 'relative', width: '260px' }}>
+                    <div style={{ position: 'relative', width: '280px' }}>
                       <input
                         type="text"
                         placeholder="Search by name, phone, city..."
@@ -1651,15 +1697,15 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                         setQuoteCategoryFilter(e.target.value);
                         setQuoteCurrentPage(1);
                       }}
-                      style={{ height: '38px', fontSize: '0.85rem', width: '180px' }}
+                      style={{ height: '38px', fontSize: '0.85rem', width: '190px' }}
                     >
                       <option value="">All Categories</option>
-                      <option value="health-insurance">Health Insurance</option>
-                      <option value="motor-insurance">Motor Insurance</option>
-                      <option value="term-life-insurance">Term Life Shield</option>
-                      <option value="business-insurance">Business & SME</option>
-                      <option value="travel-insurance">Travel Insurance</option>
-                      <option value="loans-mortgages">Loans & Mortgages</option>
+                      <option value="health-insurance">🛡️ Health Insurance</option>
+                      <option value="motor-insurance">🚗 Motor Insurance</option>
+                      <option value="term-life-insurance">☂️ Term Life Shield</option>
+                      <option value="business-insurance">💼 Business & SME</option>
+                      <option value="travel-insurance">✈️ Travel Insurance</option>
+                      <option value="loans-mortgages">🏦 Loans & Mortgages</option>
                     </select>
                   </div>
 
@@ -1670,17 +1716,17 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
 
                 {/* DESKTOP TABLE VIEW (>= 768px) */}
                 <div className="crm-desktop-table-container" style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', minWidth: '1020px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
+                  <table style={{ width: '100%', minWidth: '1080px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
                     <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       <tr>
-                        <th style={{ padding: '0.9rem 1.25rem', width: '110px' }}>Date</th>
-                        <th style={{ padding: '0.9rem 1rem', width: '150px' }}>Category</th>
-                        <th style={{ padding: '0.9rem 1rem', width: '190px' }}>Customer & Account</th>
-                        <th style={{ padding: '0.9rem 1rem', width: '190px' }}>Contact & Actions</th>
-                        <th style={{ padding: '0.9rem 1rem', width: '120px' }}>City</th>
-                        <th style={{ padding: '0.9rem 1.25rem', minWidth: '250px' }}>Plan Details & Ingestion Specs</th>
-                        <th style={{ padding: '0.9rem 1rem', width: '120px', textAlign: 'center' }}>Status</th>
-                        <th style={{ padding: '0.9rem 1.25rem', width: '150px', textAlign: 'center' }}>CRM Pipeline</th>
+                        <th style={{ padding: '0.9rem 1.25rem', width: '120px' }}>Inquiry Date</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '160px' }}>Category</th>
+                        <th style={{ padding: '0.9rem 1.25rem', minWidth: '200px' }}>Prospect & Account</th>
+                        <th style={{ padding: '0.9rem 1.25rem', minWidth: '180px' }}>Contact & Location</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '150px', textAlign: 'center' }}>1-Tap Reach</th>
+                        <th style={{ padding: '0.9rem 1.25rem', minWidth: '220px' }}>Plan Details & Specs</th>
+                        <th style={{ padding: '0.9rem 1rem', width: '120px', textAlign: 'center' }}>Inquiry Status</th>
+                        <th style={{ padding: '0.9rem 1.25rem', width: '160px', textAlign: 'center' }}>CRM Pipeline</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1696,75 +1742,76 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                           const cleanPhone = (q.phoneNumber || '').replace(/[^0-9]/g, '').slice(-10);
                           const matchingClient = leads.find(l => l.phoneNumber && l.phoneNumber.replace(/[^0-9]/g, '').endsWith(cleanPhone));
                           const totalProspectInquiries = phoneCounts[cleanPhone] || 1;
+                          const catBadge = getLeadCategoryBadge(q.categorySlug);
 
                           return (
                             <tr key={q.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = '#ffffff'}>
-                              <td style={{ padding: '0.75rem 1.25rem', color: '#64748b', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
-                                {new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              {/* 1. Date & Time */}
+                              <td style={{ padding: '0.85rem 1.25rem', whiteSpace: 'nowrap' }}>
+                                <div style={{ fontWeight: 700, color: '#0f2b48', fontSize: '0.82rem' }}>
+                                  {new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                                  {new Date(q.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                </div>
                               </td>
-                              <td style={{ padding: '0.75rem 1rem' }}>
-                                <span style={{
-                                  display: 'inline-block',
-                                  background: '#f0f9ff',
-                                  color: '#0284c7',
-                                  border: '1px solid #bae6fd',
-                                  padding: '0.2rem 0.55rem',
-                                  borderRadius: '6px',
-                                  fontSize: '0.78rem',
-                                  fontWeight: 800,
-                                  textTransform: 'capitalize'
-                                }}>
-                                  {q.categorySlug ? q.categorySlug.replace('-', ' ') : 'General'}
-                                </span>
-                              </td>
-                              <td style={{ padding: '0.75rem 1rem' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                  <span style={{ fontWeight: 700, color: '#0f2b48' }}>
-                                    {q.fullName || 'Anonymous Prospect'}
-                                  </span>
 
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                                    {matchingClient ? (
+                              {/* 2. Category with Icon Badge */}
+                              <td style={{ padding: '0.85rem 1rem' }}>
+                                <div style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: catBadge.bg,
+                                  color: catBadge.color,
+                                  border: `1px solid ${catBadge.border}`,
+                                  padding: '0.25rem 0.6rem',
+                                  borderRadius: '6px',
+                                  fontSize: '0.76rem',
+                                  fontWeight: 800
+                                }}>
+                                  {catBadge.icon}
+                                  <span>{catBadge.label}</span>
+                                </div>
+                              </td>
+
+                              {/* 3. Prospect & Account (Name + Monospace Code on line 1, multi-lead sub-pill on line 2) */}
+                              <td style={{ padding: '0.85rem 1.25rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                    <span style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.86rem' }}>
+                                      {q.fullName || 'Anonymous Prospect'}
+                                    </span>
+                                    {matchingClient && (
                                       <span
-                                        onClick={() => {
-                                          setSelectedClient360(matchingClient);
-                                        }}
-                                        title="View existing Client 360 profile"
+                                        onClick={() => setSelectedClient360(matchingClient)}
+                                        title="Click to view existing Client 360 profile"
                                         style={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '2px',
-                                          background: '#ecfdf5',
+                                          fontFamily: 'monospace',
+                                          fontWeight: 700,
                                           color: '#059669',
+                                          background: '#ecfdf5',
                                           border: '1px solid #a7f3d0',
-                                          padding: '0.1rem 0.4rem',
+                                          padding: '1px 5px',
                                           borderRadius: '4px',
-                                          fontSize: '0.7rem',
-                                          fontWeight: 800,
+                                          fontSize: '0.68rem',
                                           cursor: 'pointer'
                                         }}
                                       >
-                                        <UserCheck size={11} /> {matchingClient.clientCode}
-                                      </span>
-                                    ) : (
-                                      <span style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        background: '#f8fafc',
-                                        color: '#64748b',
-                                        border: '1px solid #e2e8f0',
-                                        padding: '0.1rem 0.35rem',
-                                        borderRadius: '4px',
-                                        fontSize: '0.68rem',
-                                        fontWeight: 700
-                                      }}>
-                                        New Prospect
+                                        {matchingClient.clientCode}
                                       </span>
                                     )}
+                                  </div>
 
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                                    {!matchingClient && (
+                                      <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                        New Web Inquirer
+                                      </span>
+                                    )}
                                     {totalProspectInquiries > 1 && (
                                       <span
-                                        title={`Same prospect has submitted ${totalProspectInquiries} total inquiries across different products`}
+                                        title={`Same prospect has submitted ${totalProspectInquiries} total inquiries across different verticals`}
                                         style={{
                                           display: 'inline-flex',
                                           alignItems: 'center',
@@ -1772,70 +1819,105 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                           background: '#fef3c7',
                                           color: '#b45309',
                                           border: '1px solid #fde68a',
-                                          padding: '0.1rem 0.35rem',
+                                          padding: '0.08rem 0.4rem',
                                           borderRadius: '4px',
                                           fontSize: '0.68rem',
                                           fontWeight: 800
                                         }}
                                       >
-                                        🔥 {totalProspectInquiries} Leads
+                                        🔥 {totalProspectInquiries} Inquiries
                                       </span>
                                     )}
                                   </div>
                                 </div>
                               </td>
-                              <td style={{ padding: '0.75rem 1rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                  <a 
-                                    href={`tel:${q.phoneNumber}`} 
-                                    title="Direct Phone Call"
-                                    style={{ 
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                      color: '#0f2b48', 
-                                      fontWeight: 700,
-                                      fontSize: '0.82rem',
-                                      textDecoration: 'none',
-                                      background: '#f8fafc',
-                                      padding: '0.25rem 0.5rem',
+
+                              {/* 4. Contact & Location (Phone + City consolidated) */}
+                              <td style={{ padding: '0.85rem 1.25rem' }}>
+                                <div style={{ fontWeight: 700, color: '#0f2b48', fontSize: '0.84rem' }}>
+                                  {q.phoneNumber || 'Not provided'}
+                                </div>
+                                <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                  <MapPin size={11} color="#94a3b8" /> {q.city || 'India'}
+                                </div>
+                              </td>
+
+                              {/* 5. 1-Tap Quick Action Strip */}
+                              <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}>
+                                  {/* Call */}
+                                  <a
+                                    href={`tel:${q.phoneNumber}`}
+                                    title={`Call ${q.fullName || q.phoneNumber}`}
+                                    style={{
+                                      background: '#ecfdf5',
+                                      color: '#059669',
+                                      border: '1px solid #a7f3d0',
+                                      width: '28px',
+                                      height: '28px',
                                       borderRadius: '6px',
-                                      border: '1px solid #e2e8f0'
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      textDecoration: 'none'
                                     }}
                                   >
-                                    <PhoneCall size={12} color="#0f2b48" /> {q.phoneNumber}
+                                    <Phone size={13} />
                                   </a>
-                                  {cleanPhone && (
+
+                                  {/* WhatsApp */}
+                                  {cleanPhone ? (
                                     <a
                                       href={`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hello ${q.fullName || 'Sir/Madam'}, greeting from Aadhiraksha Insurance. Regarding your ${q.categorySlug ? q.categorySlug.replace('-', ' ') : 'insurance'} inquiry...`)}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      title="Chat on WhatsApp"
+                                      title="Open WhatsApp Chat"
                                       style={{
-                                        display: 'inline-flex',
+                                        background: '#f0fdf4',
+                                        color: '#16a34a',
+                                        border: '1px solid #bbf7d0',
+                                        width: '28px',
+                                        height: '28px',
+                                        borderRadius: '6px',
+                                        display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        width: '26px',
-                                        height: '26px',
-                                        background: '#ecfdf5',
-                                        color: '#059669',
-                                        border: '1px solid #a7f3d0',
-                                        borderRadius: '6px',
                                         textDecoration: 'none'
                                       }}
                                     >
-                                      <MessageSquare size={13} />
+                                      <WhatsAppIcon size={14} color="#16a34a" />
                                     </a>
-                                  )}
+                                  ) : null}
+
+                                  {/* Email */}
+                                  <a
+                                    href={`mailto:${q.email || ''}?subject=Insurance%20Proposal%20-%20Aadhiraksha&body=Dear%20${encodeURIComponent(q.fullName || 'Client')},%0D%0A%0D%0AThank%20you%20for%20your%20inquiry%20regarding%20${encodeURIComponent(q.categorySlug || 'insurance')}.`}
+                                    title={q.email ? `Email ${q.email}` : 'Compose Email'}
+                                    style={{
+                                      background: '#f0f9ff',
+                                      color: '#0284c7',
+                                      border: '1px solid #bae6fd',
+                                      width: '28px',
+                                      height: '28px',
+                                      borderRadius: '6px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      textDecoration: 'none'
+                                    }}
+                                  >
+                                    <Mail size={13} />
+                                  </a>
                                 </div>
                               </td>
-                              <td style={{ padding: '0.75rem 1rem', color: '#334155', fontSize: '0.84rem' }}>
-                                {q.city || '-'}
-                              </td>
-                              <td style={{ padding: '0.75rem 1.25rem' }}>
+
+                              {/* 6. Plan Details & Specs */}
+                              <td style={{ padding: '0.85rem 1.25rem' }}>
                                 {renderPlanDetails(q.planDetails)}
                               </td>
-                              <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+
+                              {/* 7. Inquiry Status */}
+                              <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
                                 <select
                                   value={q.status || 'NEW'}
                                   onChange={async (e) => {
@@ -1845,45 +1927,49 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                       setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: nextStatus } : item));
                                     } catch (err) {
                                       console.error('Error updating inquiry status', err);
-                                      alert('Failed to update inquiry status');
+                                      toast.error('Failed to update inquiry status');
                                     }
                                   }}
                                   style={{
                                     background: q.status === 'CONVERTED' ? '#dcfce7' : q.status === 'CONTACTED' ? '#fef3c7' : '#eff6ff',
                                     color: q.status === 'CONVERTED' ? '#15803d' : q.status === 'CONTACTED' ? '#b45309' : '#1d4ed8',
                                     border: `1px solid ${q.status === 'CONVERTED' ? '#bbf7d0' : q.status === 'CONTACTED' ? '#fde68a' : '#bfdbfe'}`,
-                                    padding: '0.2rem 0.45rem',
+                                    padding: '0.25rem 0.55rem',
                                     borderRadius: '6px',
                                     fontSize: '0.74rem',
                                     fontWeight: 800,
                                     cursor: 'pointer'
                                   }}
                                 >
-                                  <option value="NEW">NEW</option>
-                                  <option value="CONTACTED">CONTACTED</option>
-                                  <option value="CONVERTED">CONVERTED</option>
-                                  <option value="ARCHIVED">ARCHIVED</option>
+                                  <option value="NEW">🟢 NEW</option>
+                                  <option value="CONTACTED">⚡ CONTACTED</option>
+                                  <option value="CONVERTED">✅ CONVERTED</option>
+                                  <option value="ARCHIVED">❌ ARCHIVED</option>
                                 </select>
                               </td>
-                              <td style={{ padding: '0.75rem 1.25rem', textAlign: 'center' }}>
+
+                              {/* 8. CRM Pipeline Action Button */}
+                              <td style={{ padding: '0.85rem 1.25rem', textAlign: 'center' }}>
                                 {q.status === 'CONVERTED' && matchingClient ? (
                                   <button
-                                    onClick={() => handleNavigateView('clients')}
+                                    onClick={() => setSelectedClient360(matchingClient)}
                                     style={{
-                                      background: '#f1f5f9',
+                                      background: '#f8fafc',
                                       color: '#0284c7',
                                       border: '1px solid #cbd5e1',
                                       padding: '0.35rem 0.65rem',
                                       borderRadius: '6px',
                                       fontSize: '0.75rem',
-                                      fontWeight: 700,
+                                      fontWeight: 800,
                                       cursor: 'pointer',
                                       display: 'inline-flex',
                                       alignItems: 'center',
-                                      gap: '0.25rem'
+                                      gap: '4px'
                                     }}
+                                    title="View Master Client 360"
                                   >
-                                    <CheckCircle2 size={13} color="#059669" /> In CRM ({matchingClient.clientCode})
+                                    <ExternalLink size={12} color="#0284c7" />
+                                    <span>In CRM ({matchingClient.clientCode})</span>
                                   </button>
                                 ) : (
                                   <button
@@ -1930,21 +2016,22 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                       }
                                     }}
                                     style={{
-                                      background: matchingClient ? '#0284c7' : '#0f2b48',
+                                      background: matchingClient ? '#0284c7' : 'var(--accent-emerald)',
                                       color: '#ffffff',
                                       border: 'none',
                                       padding: '0.35rem 0.65rem',
                                       borderRadius: '6px',
                                       fontSize: '0.75rem',
-                                      fontWeight: 700,
+                                      fontWeight: 800,
                                       cursor: 'pointer',
                                       display: 'inline-flex',
                                       alignItems: 'center',
-                                      gap: '0.25rem'
+                                      gap: '4px',
+                                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                                     }}
                                   >
-                                    {matchingClient ? <Link2 size={13} /> : <Plus size={13} />}
-                                    {matchingClient ? `Link to ${matchingClient.clientCode}` : 'Push to CRM'}
+                                    {matchingClient ? <Link2 size={12} /> : <Plus size={12} />}
+                                    <span>{matchingClient ? `Link to ${matchingClient.clientCode}` : '+ Push to CRM'}</span>
                                   </button>
                                 )}
                               </td>
@@ -1968,6 +2055,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                       const cleanPhone = (q.phoneNumber || '').replace(/[^0-9]/g, '').slice(-10);
                       const matchingClient = leads.find(l => l.phoneNumber && l.phoneNumber.replace(/[^0-9]/g, '').endsWith(cleanPhone));
                       const totalProspectInquiries = phoneCounts[cleanPhone] || 1;
+                      const catBadge = getLeadCategoryBadge(q.categorySlug);
 
                       return (
                         <div
@@ -1986,51 +2074,35 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                           {/* Card Header: Customer + Status */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
                             <div>
-                              <div style={{ fontWeight: 800, fontSize: '1rem', color: '#0f2b48' }}>
-                                {q.fullName || 'Anonymous Prospect'}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 800, fontSize: '1rem', color: '#0f2b48' }}>
+                                  {q.fullName || 'Anonymous Prospect'}
+                                </span>
+                                {matchingClient && (
+                                  <span
+                                    onClick={() => setSelectedClient360(matchingClient)}
+                                    style={{
+                                      fontFamily: 'monospace',
+                                      fontWeight: 700,
+                                      color: '#059669',
+                                      background: '#ecfdf5',
+                                      border: '1px solid #a7f3d0',
+                                      padding: '1px 5px',
+                                      borderRadius: '4px',
+                                      fontSize: '0.68rem',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    {matchingClient.clientCode}
+                                  </span>
+                                )}
                               </div>
                               <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>
                                 {new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} • {q.city || 'India'}
                               </div>
 
-                              {/* Multi-Inquiry & Account Recognition */}
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
-                                {matchingClient ? (
-                                  <span
-                                    onClick={() => setSelectedClient360(matchingClient)}
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '2px',
-                                      background: '#ecfdf5',
-                                      color: '#059669',
-                                      border: '1px solid #a7f3d0',
-                                      padding: '0.1rem 0.4rem',
-                                      borderRadius: '4px',
-                                      fontSize: '0.7rem',
-                                      fontWeight: 800,
-                                      cursor: 'pointer'
-                                    }}
-                                  >
-                                    <UserCheck size={11} /> {matchingClient.clientCode}
-                                  </span>
-                                ) : (
-                                  <span style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    background: '#f8fafc',
-                                    color: '#64748b',
-                                    border: '1px solid #e2e8f0',
-                                    padding: '0.1rem 0.35rem',
-                                    borderRadius: '4px',
-                                    fontSize: '0.68rem',
-                                    fontWeight: 700
-                                  }}>
-                                    New Prospect
-                                  </span>
-                                )}
-
-                                {totalProspectInquiries > 1 && (
+                              {totalProspectInquiries > 1 && (
+                                <div style={{ marginTop: '0.35rem' }}>
                                   <span
                                     style={{
                                       display: 'inline-flex',
@@ -2039,31 +2111,33 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                       background: '#fef3c7',
                                       color: '#b45309',
                                       border: '1px solid #fde68a',
-                                      padding: '0.1rem 0.35rem',
+                                      padding: '0.1rem 0.4rem',
                                       borderRadius: '4px',
                                       fontSize: '0.68rem',
                                       fontWeight: 800
                                     }}
                                   >
-                                    🔥 {totalProspectInquiries} Inquiries
+                                    🔥 {totalProspectInquiries} Total Inquiries
                                   </span>
-                                )}
-                              </div>
+                                </div>
+                              )}
                             </div>
 
-                            <span style={{
-                              display: 'inline-block',
-                              background: '#f0f9ff',
-                              color: '#0284c7',
-                              border: '1px solid #bae6fd',
+                            <div style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: catBadge.bg,
+                              color: catBadge.color,
+                              border: `1px solid ${catBadge.border}`,
                               padding: '0.2rem 0.55rem',
                               borderRadius: '6px',
                               fontSize: '0.74rem',
-                              fontWeight: 800,
-                              textTransform: 'capitalize'
+                              fontWeight: 800
                             }}>
-                              {q.categorySlug ? q.categorySlug.replace('-', ' ') : 'General'}
-                            </span>
+                              {catBadge.icon}
+                              <span>{catBadge.label}</span>
+                            </div>
                           </div>
 
                           {/* Plan Details Container */}
@@ -2116,7 +2190,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                   gap: '0.4rem'
                                 }}
                               >
-                                <MessageSquare size={14} /> WhatsApp
+                                <WhatsAppIcon size={15} color="#059669" /> WhatsApp
                               </a>
                             ) : null}
                           </div>
@@ -2125,7 +2199,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                           <div style={{ marginTop: '0.1rem' }}>
                             {q.status === 'CONVERTED' && matchingClient ? (
                               <button
-                                onClick={() => handleNavigateView('clients')}
+                                onClick={() => setSelectedClient360(matchingClient)}
                                 style={{
                                   width: '100%',
                                   background: '#f8fafc',
@@ -2142,7 +2216,7 @@ Fortis Hospital,Maharashtra,Mumbai,"Mulund Goregaon Link Road, Mulund West",4000
                                   gap: '0.35rem'
                                 }}
                               >
-                                <CheckCircle2 size={14} color="#059669" /> In CRM ({matchingClient.clientCode})
+                                <ExternalLink size={14} color="#0284c7" /> View Client 360 ({matchingClient.clientCode})
                               </button>
                             ) : (
                               <button
