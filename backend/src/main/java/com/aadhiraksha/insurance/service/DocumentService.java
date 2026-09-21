@@ -82,9 +82,9 @@ public class DocumentService {
         if (isSuperAdmin) {
             docs = clientDocumentRepository.findAllByOrderByCreatedAtDesc();
         } else if (isManager) {
-            docs = clientDocumentRepository.findByManagerIdOrderByCreatedAtDesc(user.getId());
+            docs = clientDocumentRepository.findByManagerId(user.getId());
         } else {
-            docs = clientDocumentRepository.findByAdvisorIdOrderByCreatedAtDesc(user.getId());
+            docs = clientDocumentRepository.findByAdvisorId(user.getId());
         }
 
         return docs.stream().map(this::mapToResponse).collect(Collectors.toList());
@@ -107,8 +107,8 @@ public class DocumentService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
 
         String oldStatus = doc.getVerificationStatus();
-        doc.setVerificationStatus(request.getVerificationStatus());
-        doc.setVerificationNotes(request.getVerificationNotes());
+        doc.setVerificationStatus(request.getStatus());
+        doc.setVerificationNotes(request.getNotes());
         doc.setVerifiedBy(verifier);
         doc.setVerifiedAt(LocalDateTime.now());
 
@@ -121,7 +121,7 @@ public class DocumentService {
                 "UPDATE",
                 "Verification Status",
                 oldStatus,
-                request.getVerificationStatus() + (request.getVerificationNotes() != null ? " - " + request.getVerificationNotes() : ""),
+                request.getStatus() + (request.getNotes() != null ? " - " + request.getNotes() : ""),
                 verifier,
                 null
         );
