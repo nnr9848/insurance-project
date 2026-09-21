@@ -21,9 +21,9 @@ public class AuditController {
 
     @GetMapping("/client/{clientId}")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
-    @Operation(summary = "Get historical audit logs for a specific client lead")
+    @Operation(summary = "Get historical audit logs for a specific client lead (including pre-conversion inquiry heritage)")
     public ResponseEntity<List<AuditLogDto>> getClientAuditLogs(@PathVariable Long clientId) {
-        return ResponseEntity.ok(auditService.getAuditLogsForEntity("CLIENT_LEAD", clientId));
+        return ResponseEntity.ok(auditService.getCompositeClientAuditTimeline(clientId));
     }
 
     @GetMapping("/company-feed")

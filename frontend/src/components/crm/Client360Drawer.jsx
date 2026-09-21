@@ -28,7 +28,8 @@ import {
   PhoneCall,
   Sparkles,
   Trash2,
-  Layers
+  Layers,
+  Activity
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { crmService } from '../../services/api';
@@ -1034,6 +1035,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                     const isCreate = log.action === 'CREATE';
                     const isLinkOpp = log.action === 'LINK_OPPORTUNITY';
                     const isReassign = log.action === 'REASSIGN';
+                    const isQuoteInquiry = log.entityName === 'QUOTE_INQUIRY';
                     const isStageChange = log.action === 'STATUS_CHANGE' || log.fieldName === 'stage';
                     const isCallLog = log.action === 'CALL_LOG';
                     const isMeeting = log.action === 'MEETING_SCHEDULED';
@@ -1044,7 +1046,12 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                     let icon = <Clock size={12} color="#ffffff" />;
                     let categoryColor = '#0f2b48';
 
-                    if (isCreate) {
+                    if (isQuoteInquiry) {
+                      nodeBg = log.newValue === 'QUALIFIED' ? '#059669' : log.newValue === 'CONTACTED' ? '#2563eb' : log.newValue === 'ARCHIVED' ? '#dc2626' : '#0284c7';
+                      nodeBorder = '#bfdbfe';
+                      title = log.action === 'STATUS_CHANGE' ? `Inbound Inquiry Status: ${log.newValue || ''}` : 'Inbound Inquiry Activity';
+                      icon = <Activity size={12} color="#ffffff" />;
+                    } else if (isCreate) {
                       nodeBg = '#10b981';
                       nodeBorder = '#a7f3d0';
                       title = 'Master Client Account Created';

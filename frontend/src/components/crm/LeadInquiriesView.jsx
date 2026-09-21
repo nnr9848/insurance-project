@@ -19,7 +19,9 @@ import {
   Edit3, 
   Check, 
   X, 
-  Loader2 
+  Loader2,
+  ArrowUpDown,
+  Filter
 } from 'lucide-react';
 import { portalService, crmService } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -41,10 +43,20 @@ export default function LeadInquiriesView({
   const toast = useToast();
 
   // Quotes filters, search & pagination
+  const [triageTab, setTriageTab] = useState('ACTIVE'); // 'ACTIVE' (NEW+CONTACTED) | 'QUALIFIED' | 'ARCHIVED' | 'ALL'
   const [quoteSearch, setQuoteSearch] = useState('');
   const [quoteCategoryFilter, setQuoteCategoryFilter] = useState('');
+  const [sortField, setSortField] = useState('createdAt'); // 'createdAt' | 'name' | 'status'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'desc' (LIFO default) | 'asc' (FIFO)
+  const [showMobileFilterModal, setShowMobileFilterModal] = useState(false);
   const [quoteCurrentPage, setQuoteCurrentPage] = useState(1);
   const [quotePageSize, setQuotePageSize] = useState(10);
+
+  // Computed Triage Counts for Smart Tabs
+  const activeCount = quotes.filter(q => (q.status || 'NEW') === 'NEW' || q.status === 'CONTACTED').length;
+  const qualifiedCount = quotes.filter(q => q.status === 'QUALIFIED' || q.status === 'CONVERTED').length;
+  const archivedCount = quotes.filter(q => q.status === 'ARCHIVED').length;
+  const allCount = quotes.length;
 
   // Quick-Edit state for Quote Inquiries / Leads
   const [editingQuoteId, setEditingQuoteId] = useState(null);
@@ -171,8 +183,32 @@ export default function LeadInquiriesView({
     }
   };
 
-  // Filter quotes
+  // 1-Tap Reach Auto-Contact Helper (Progressive One-Way Advancement: NEW -> CONTACTED)
+  const handleAutoContactOnReach = async (quote, channelName = 'Call') => {
+    if (!quote || quote.status !== 'NEW') return; // Do not downgrade if already QUALIFIED, CONTACTED, or ARCHIVED
+    try {
+      await portalService.updateQuoteStatus(quote.id, 'CONTACTED');
+      setQuotes(prev => prev.map(item => item.id === quote.id ? { ...item, status: 'CONTACTED' } : item));
+      toast.success(`Inquiry #${quote.id} marked as ⚡ CONTACTED via ${channelName}`);
+    } catch (err) {
+      console.error('Failed to auto-advance inquiry status on reach', err);
+    }
+  };
+
+  // Filter & Sort quotes
   const filteredQuotes = quotes.filter((q) => {
+    // 1. Triage Tab filter
+    const status = q.status || 'NEW';
+    let matchesTab = true;
+    if (triageTab === 'ACTIVE') {
+      matchesTab = status === 'NEW' || status === 'CONTACTED';
+    } else if (triageTab === 'QUALIFIED') {
+      matchesTab = status === 'QUALIFIED' || status === 'CONVERTED';
+    } else if (triageTab === 'ARCHIVED') {
+      matchesTab = status === 'ARCHIVED';
+    }
+
+    // 2. Search keyword filter
     const matchesSearch = !quoteSearch || 
       (q.fullName && q.fullName.toLowerCase().includes(quoteSearch.toLowerCase())) ||
       (q.phoneNumber && q.phoneNumber.includes(quoteSearch)) ||
@@ -180,19 +216,46 @@ export default function LeadInquiriesView({
       (q.email && q.email.toLowerCase().includes(quoteSearch.toLowerCase())) ||
       (q.city && q.city.toLowerCase().includes(quoteSearch.toLowerCase()));
     
+    // 3. Category filter
     const matchesCategory = !quoteCategoryFilter || 
       (q.categorySlug && q.categorySlug.toLowerCase() === quoteCategoryFilter.toLowerCase());
 
-    return matchesSearch && matchesCategory;
+    return matchesTab && matchesSearch && matchesCategory;
   });
 
+  const sortedQuotes = [...filteredQuotes].sort((a, b) => {
+    if (sortField === 'name') {
+      const nameA = a.fullName || '';
+      const nameB = b.fullName || '';
+      return sortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+    }
+    if (sortField === 'status') {
+      const statA = a.status || '';
+      const statB = b.status || '';
+      return sortOrder === 'asc' ? statA.localeCompare(statB) : statB.localeCompare(statA);
+    }
+    // Default: createdAt (LIFO default)
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+  });
+
+  const toggleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder(field === 'name' ? 'asc' : 'desc');
+    }
+  };
+
   // Pagination Calculations
-  const totalRecords = filteredQuotes.length;
+  const totalRecords = sortedQuotes.length;
   const totalPages = Math.ceil(totalRecords / quotePageSize) || 1;
   const validCurrentPage = Math.min(quoteCurrentPage, totalPages);
   const startIndex = (validCurrentPage - 1) * quotePageSize;
   const endIndex = Math.min(startIndex + quotePageSize, totalRecords);
-  const paginatedQuotes = filteredQuotes.slice(startIndex, endIndex);
+  const paginatedQuotes = sortedQuotes.slice(startIndex, endIndex);
 
   // Helper to format JSON planDetails into human-readable chips
   const renderPlanDetails = (planDetailsStr) => {
@@ -271,13 +334,78 @@ export default function LeadInquiriesView({
   return (
     <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
       {/* Quote Leads Toolbar & Search */}
-      <div style={{ padding: '0.85rem 1.25rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+      <div style={{ padding: '0.85rem 1.25rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        
+        {/* Row 0: Industry-Standard Smart Triage Tabs */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div className="crm-triage-tabs-rail">
+            <button
+              type="button"
+              className={`crm-triage-tab ${triageTab === 'ACTIVE' ? 'active' : ''}`}
+              onClick={() => {
+                setTriageTab('ACTIVE');
+                setQuoteCurrentPage(1);
+              }}
+              title="Unprocessed or in-progress inbound quote requests"
+            >
+              <span>⚡ Action Required</span>
+              <span className={`crm-triage-badge ${activeCount > 0 ? 'urgent' : ''}`}>{activeCount}</span>
+            </button>
+
+            <button
+              type="button"
+              className={`crm-triage-tab ${triageTab === 'QUALIFIED' ? 'active' : ''}`}
+              onClick={() => {
+                setTriageTab('QUALIFIED');
+                setQuoteCurrentPage(1);
+              }}
+              title="Leads qualified and ingested into Client Data Sheet"
+            >
+              <span>✨ In CRM / Qualified</span>
+              <span className="crm-triage-badge">{qualifiedCount}</span>
+            </button>
+
+            <button
+              type="button"
+              className={`crm-triage-tab ${triageTab === 'ARCHIVED' ? 'active' : ''}`}
+              onClick={() => {
+                setTriageTab('ARCHIVED');
+                setQuoteCurrentPage(1);
+              }}
+              title="Disqualified, lost, or junk quote inquiries"
+            >
+              <span>🗄️ Archived</span>
+              <span className="crm-triage-badge">{archivedCount}</span>
+            </button>
+
+            <button
+              type="button"
+              className={`crm-triage-tab ${triageTab === 'ALL' ? 'active' : ''}`}
+              onClick={() => {
+                setTriageTab('ALL');
+                setQuoteCurrentPage(1);
+              }}
+              title="All raw inquiries regardless of lifecycle state"
+            >
+              <span>📁 All Inquiries</span>
+              <span className="crm-triage-badge">{allCount}</span>
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', padding: '3px 10px', borderRadius: '20px' }}>
+              Showing {sortedQuotes.length} of {allCount}
+            </span>
+          </div>
+        </div>
+
+        {/* Row 1: Search, Filter dropdowns & Sort */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: '0.65rem', flex: 1, minWidth: '240px', alignItems: 'center' }}>
             <form 
               role="search" 
               onSubmit={(e) => e.preventDefault()} 
-              style={{ position: 'relative', flex: 1, maxWidth: '360px', margin: 0 }}
+              style={{ position: 'relative', flex: 1, maxWidth: '320px', margin: 0 }}
             >
               <input
                 type="search"
@@ -298,6 +426,44 @@ export default function LeadInquiriesView({
               <Search size={15} color="#64748b" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
             </form>
 
+            {/* Mobile Filter Sheet Trigger Button */}
+            <button
+              type="button"
+              className="crm-mobile-filter-trigger-btn"
+              onClick={() => setShowMobileFilterModal(true)}
+              style={{
+                display: 'none', // Controlled via CSS media query
+                alignItems: 'center',
+                gap: '5px',
+                background: (quoteCategoryFilter || sortField !== 'createdAt' || sortOrder !== 'desc') ? 'var(--primary-navy)' : 'var(--bg-card)',
+                color: (quoteCategoryFilter || sortField !== 'createdAt' || sortOrder !== 'desc') ? '#ffffff' : 'var(--text-main)',
+                border: `1px solid ${(quoteCategoryFilter || sortField !== 'createdAt' || sortOrder !== 'desc') ? 'var(--primary-navy)' : 'var(--border-subtle)'}`,
+                padding: '7px 12px',
+                borderRadius: '10px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                flexShrink: 0
+              }}
+              title="Open Sort & Filters"
+            >
+              <Filter size={14} />
+              <span>Filter / Sort</span>
+              {(quoteCategoryFilter || sortField !== 'createdAt' || sortOrder !== 'desc') && (
+                <span style={{
+                  background: 'var(--accent-gold)',
+                  color: '#ffffff',
+                  borderRadius: '999px',
+                  padding: '1px 6px',
+                  fontSize: '0.68rem',
+                  fontWeight: 800
+                }}>
+                  ●
+                </span>
+              )}
+            </button>
+
+            {/* Desktop Category Filter */}
             <select
               className="form-select crm-desktop-filter-dropdowns"
               value={quoteCategoryFilter}
@@ -305,7 +471,7 @@ export default function LeadInquiriesView({
                 setQuoteCategoryFilter(e.target.value);
                 setQuoteCurrentPage(1);
               }}
-              style={{ height: '36px', fontSize: '0.84rem', width: '180px', borderRadius: '10px' }}
+              style={{ height: '36px', fontSize: '0.82rem', minWidth: '155px', width: 'auto', borderRadius: '10px' }}
             >
               <option value="">All Categories</option>
               <option value="health-insurance">Health Insurance</option>
@@ -315,11 +481,31 @@ export default function LeadInquiriesView({
               <option value="business-insurance">Business & SME</option>
               <option value="travel-insurance">Travel Insurance</option>
             </select>
+
+            {/* Desktop Sort Dropdown */}
+            <select
+              className="form-select crm-desktop-filter-dropdowns"
+              value={`${sortField}_${sortOrder}`}
+              onChange={(e) => {
+                const [f, o] = e.target.value.split('_');
+                setSortField(f);
+                setSortOrder(o);
+                setQuoteCurrentPage(1);
+              }}
+              style={{ height: '36px', fontSize: '0.82rem', minWidth: '195px', width: 'auto', borderRadius: '10px' }}
+              title="Sort Inquiries"
+            >
+              <option value="createdAt_desc">⚡ Newest First (LIFO)</option>
+              <option value="createdAt_asc">⏳ Oldest First (FIFO)</option>
+              <option value="name_asc">🔤 Prospect Name (A–Z)</option>
+              <option value="name_desc">🔤 Prospect Name (Z–A)</option>
+              <option value="status_asc">📊 Status (Ascending)</option>
+            </select>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-main)', background: '#ffffff', border: '1px solid var(--border-subtle)', padding: '4px 10px', borderRadius: '20px' }}>
-              {filteredQuotes.length} Inquiries
+              {sortedQuotes.length} Inquiries
             </span>
           </div>
         </div>
@@ -355,13 +541,37 @@ export default function LeadInquiriesView({
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.86rem' }}>
           <thead>
             <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              <th style={{ padding: '0.85rem 1.25rem', fontWeight: 700, whiteSpace: 'nowrap' }}>Inquiry Date</th>
-              <th style={{ padding: '0.85rem 1.25rem', fontWeight: 700 }}>Prospect & Account</th>
-              <th style={{ padding: '0.85rem 1.25rem', fontWeight: 700 }}>Category</th>
-              <th style={{ padding: '0.85rem 1.25rem', fontWeight: 700 }}>Contact & 1-Tap Reach</th>
-              <th style={{ padding: '0.85rem 1.25rem', fontWeight: 700 }}>Plan Specs</th>
-              <th style={{ padding: '0.85rem 1rem', fontWeight: 700, textAlign: 'center' }}>Inquiry Status</th>
-              <th style={{ padding: '0.85rem 1.25rem', fontWeight: 700, textAlign: 'center' }}>CRM Pipeline</th>
+              <th 
+                style={{ padding: '0.85rem 1.15rem', fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none', minWidth: '135px' }}
+                onClick={() => toggleSort('createdAt')}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span>Inquiry Date</span>
+                  <ArrowUpDown size={12} color={sortField === 'createdAt' ? 'var(--accent-emerald)' : '#94a3b8'} />
+                </div>
+              </th>
+              <th 
+                style={{ padding: '0.85rem 1.15rem', fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none', minWidth: '185px' }}
+                onClick={() => toggleSort('name')}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span>Prospect & Account</span>
+                  <ArrowUpDown size={12} color={sortField === 'name' ? 'var(--accent-emerald)' : '#94a3b8'} />
+                </div>
+              </th>
+              <th style={{ padding: '0.85rem 1.15rem', fontWeight: 700, whiteSpace: 'nowrap', minWidth: '150px' }}>Category</th>
+              <th style={{ padding: '0.85rem 1.15rem', fontWeight: 700, minWidth: '180px' }}>Contact & 1-Tap Reach</th>
+              <th style={{ padding: '0.85rem 1.15rem', fontWeight: 700, minWidth: '160px' }}>Plan Specs</th>
+              <th 
+                style={{ padding: '0.85rem 1rem', fontWeight: 700, whiteSpace: 'nowrap', textAlign: 'center', cursor: 'pointer', userSelect: 'none', minWidth: '125px' }}
+                onClick={() => toggleSort('status')}
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span>Inquiry Status</span>
+                  <ArrowUpDown size={12} color={sortField === 'status' ? 'var(--accent-emerald)' : '#94a3b8'} />
+                </div>
+              </th>
+              <th style={{ padding: '0.85rem 1.15rem', fontWeight: 700, whiteSpace: 'nowrap', textAlign: 'center', minWidth: '130px' }}>CRM Pipeline</th>
             </tr>
           </thead>
           <tbody>
@@ -529,7 +739,7 @@ export default function LeadInquiriesView({
                         >
                           <option value="NEW">🟢 NEW</option>
                           <option value="CONTACTED">⚡ CONTACTED</option>
-                          <option value="CONVERTED">✅ CONVERTED</option>
+                          <option value="QUALIFIED">✨ QUALIFIED (IN CRM)</option>
                           <option value="ARCHIVED">❌ ARCHIVED</option>
                         </select>
                       </td>
@@ -711,6 +921,7 @@ export default function LeadInquiriesView({
                           {/* Call */}
                           <a
                             href={`tel:${q.phoneNumber}`}
+                            onClick={() => handleAutoContactOnReach(q, 'Call')}
                             title={`Call ${q.fullName || q.phoneNumber}`}
                             style={{
                               background: '#ecfdf5',
@@ -734,6 +945,7 @@ export default function LeadInquiriesView({
                               href={`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hello ${q.fullName || 'Sir/Madam'}, greeting from Aadhiraksha Insurance. Regarding your ${q.categorySlug ? q.categorySlug.replace('-', ' ') : 'insurance'} inquiry...`)}`}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={() => handleAutoContactOnReach(q, 'WhatsApp')}
                               title="Open WhatsApp Chat"
                               style={{
                                 background: '#f0fdf4',
@@ -755,6 +967,7 @@ export default function LeadInquiriesView({
                           {/* Email */}
                           <a
                             href={`mailto:${q.email || ''}?subject=Insurance%20Proposal%20-%20Aadhiraksha&body=Dear%20${encodeURIComponent(q.fullName || 'Client')},%0D%0A%0D%0AThank%20you%20for%20your%20inquiry%20regarding%20${encodeURIComponent(q.categorySlug || 'insurance')}.`}
+                            onClick={() => handleAutoContactOnReach(q, 'Email')}
                             title={q.email ? `Email ${q.email}` : 'Compose Email'}
                             style={{
                               background: '#f0f9ff',
@@ -796,9 +1009,9 @@ export default function LeadInquiriesView({
                           }
                         }}
                         style={{
-                          background: q.status === 'NEW' ? '#ecfdf5' : q.status === 'CONTACTED' ? '#eff6ff' : q.status === 'CONVERTED' ? '#f0fdf4' : '#f8fafc',
-                          color: q.status === 'NEW' ? '#059669' : q.status === 'CONTACTED' ? '#2563eb' : q.status === 'CONVERTED' ? '#16a34a' : '#64748b',
-                          border: `1px solid ${q.status === 'NEW' ? '#a7f3d0' : q.status === 'CONTACTED' ? '#bfdbfe' : q.status === 'CONVERTED' ? '#bbf7d0' : '#e2e8f0'}`,
+                          background: q.status === 'NEW' ? '#ecfdf5' : q.status === 'CONTACTED' ? '#eff6ff' : (q.status === 'QUALIFIED' || q.status === 'CONVERTED') ? '#f0fdf4' : '#f8fafc',
+                          color: q.status === 'NEW' ? '#059669' : q.status === 'CONTACTED' ? '#2563eb' : (q.status === 'QUALIFIED' || q.status === 'CONVERTED') ? '#16a34a' : '#64748b',
+                          border: `1px solid ${q.status === 'NEW' ? '#a7f3d0' : q.status === 'CONTACTED' ? '#bfdbfe' : (q.status === 'QUALIFIED' || q.status === 'CONVERTED') ? '#bbf7d0' : '#e2e8f0'}`,
                           padding: '0.25rem 0.5rem',
                           borderRadius: '6px',
                           fontSize: '0.74rem',
@@ -809,7 +1022,7 @@ export default function LeadInquiriesView({
                       >
                         <option value="NEW">🟢 NEW</option>
                         <option value="CONTACTED">⚡ CONTACTED</option>
-                        <option value="CONVERTED">✅ CONVERTED</option>
+                        <option value="QUALIFIED">✨ QUALIFIED</option>
                         <option value="ARCHIVED">❌ ARCHIVED</option>
                       </select>
                     </td>
@@ -817,7 +1030,7 @@ export default function LeadInquiriesView({
                     {/* 7. Action: CRM Link / Ingest + Quick Edit */}
                     <td style={{ padding: '0.85rem 1.25rem', textAlign: 'center' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                        {q.status === 'CONVERTED' && matchingClient ? (
+                        {(q.status === 'QUALIFIED' || q.status === 'CONVERTED') && matchingClient ? (
                           <button
                             onClick={() => onOpenClient360(matchingClient)}
                             style={{
@@ -858,8 +1071,8 @@ export default function LeadInquiriesView({
                                   insuranceType: q.categorySlug ? q.categorySlug.replace('-', ' ').toUpperCase() : 'GENERAL',
                                   notes: formattedNotes
                                 });
-                                await portalService.updateQuoteStatus(q.id, 'CONVERTED');
-                                setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: 'CONVERTED' } : item));
+                                await portalService.updateQuoteStatus(q.id, 'QUALIFIED');
+                                setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: 'QUALIFIED' } : item));
                                 
                                 // Update or prepend client
                                 setLeads(prev => {
@@ -1090,7 +1303,7 @@ export default function LeadInquiriesView({
                       >
                         <option value="NEW">🟢 NEW</option>
                         <option value="CONTACTED">⚡ CONTACTED</option>
-                        <option value="CONVERTED">✅ CONVERTED</option>
+                        <option value="QUALIFIED">✨ QUALIFIED (IN CRM)</option>
                         <option value="ARCHIVED">❌ ARCHIVED</option>
                       </select>
                     </div>
@@ -1260,9 +1473,9 @@ export default function LeadInquiriesView({
                             }
                           }}
                           style={{
-                            background: q.status === 'NEW' ? '#ecfdf5' : q.status === 'CONTACTED' ? '#eff6ff' : q.status === 'CONVERTED' ? '#f0fdf4' : '#f8fafc',
-                            color: q.status === 'NEW' ? '#059669' : q.status === 'CONTACTED' ? '#2563eb' : q.status === 'CONVERTED' ? '#16a34a' : '#64748b',
-                            border: `1px solid ${q.status === 'NEW' ? '#a7f3d0' : q.status === 'CONTACTED' ? '#bfdbfe' : q.status === 'CONVERTED' ? '#bbf7d0' : '#e2e8f0'}`,
+                            background: q.status === 'NEW' ? '#ecfdf5' : q.status === 'CONTACTED' ? '#eff6ff' : (q.status === 'QUALIFIED' || q.status === 'CONVERTED') ? '#f0fdf4' : '#f8fafc',
+                            color: q.status === 'NEW' ? '#059669' : q.status === 'CONTACTED' ? '#2563eb' : (q.status === 'QUALIFIED' || q.status === 'CONVERTED') ? '#16a34a' : '#64748b',
+                            border: `1px solid ${q.status === 'NEW' ? '#a7f3d0' : q.status === 'CONTACTED' ? '#bfdbfe' : (q.status === 'QUALIFIED' || q.status === 'CONVERTED') ? '#bbf7d0' : '#e2e8f0'}`,
                             padding: '1px 5px',
                             borderRadius: '6px',
                             fontSize: '0.66rem',
@@ -1274,7 +1487,7 @@ export default function LeadInquiriesView({
                         >
                           <option value="NEW">🟢 NEW</option>
                           <option value="CONTACTED">⚡ CONTACTED</option>
-                          <option value="CONVERTED">✅ CONVERTED</option>
+                          <option value="QUALIFIED">✨ QUALIFIED</option>
                           <option value="ARCHIVED">❌ ARCHIVED</option>
                         </select>
                       </div>
@@ -1360,6 +1573,7 @@ export default function LeadInquiriesView({
                     {/* Call */}
                     <a
                       href={`tel:${q.phoneNumber}`}
+                      onClick={() => handleAutoContactOnReach(q, 'Call')}
                       title={`Call ${q.fullName || q.phoneNumber}`}
                       style={{
                         width: '28px',
@@ -1383,6 +1597,7 @@ export default function LeadInquiriesView({
                         href={`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hello ${q.fullName || 'Sir/Madam'}, greeting from Aadhiraksha Insurance. Regarding your ${q.categorySlug ? q.categorySlug.replace('-', ' ') : 'insurance'} inquiry...`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={() => handleAutoContactOnReach(q, 'WhatsApp')}
                         title="Open WhatsApp Chat"
                         style={{
                           width: '28px',
@@ -1404,6 +1619,7 @@ export default function LeadInquiriesView({
                     {/* Email */}
                     <a
                       href={`mailto:${q.email || ''}?subject=Insurance%20Proposal%20-%20Aadhiraksha&body=Dear%20${encodeURIComponent(q.fullName || 'Client')},%0D%0A%0D%0AThank%20you%20for%20your%20inquiry%20regarding%20${encodeURIComponent(q.categorySlug || 'insurance')}.`}
+                      onClick={() => handleAutoContactOnReach(q, 'Email')}
                       title={q.email ? `Email ${q.email}` : 'Compose Email'}
                       style={{
                         width: '28px',
@@ -1479,7 +1695,7 @@ export default function LeadInquiriesView({
                       </div>
                     )}
 
-                    {q.status === 'CONVERTED' && matchingClient ? (
+                    {(q.status === 'QUALIFIED' || q.status === 'CONVERTED') && matchingClient ? (
                       <button
                         onClick={() => onOpenClient360(matchingClient)}
                         style={{
@@ -1520,8 +1736,8 @@ export default function LeadInquiriesView({
                               insuranceType: q.categorySlug ? q.categorySlug.replace('-', ' ').toUpperCase() : 'GENERAL',
                               notes: formattedNotes
                             });
-                            await portalService.updateQuoteStatus(q.id, 'CONVERTED');
-                            setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: 'CONVERTED' } : item));
+                            await portalService.updateQuoteStatus(q.id, 'QUALIFIED');
+                            setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: 'QUALIFIED' } : item));
                             
                             setLeads(prev => {
                               const exists = prev.some(l => l.id === createdOrUpdated.id);
@@ -1670,7 +1886,6 @@ export default function LeadInquiriesView({
               </button>
             ))}
           </div>
-
           <button
             onClick={() => setQuoteCurrentPage(prev => Math.min(prev + 1, totalPages))}
             disabled={validCurrentPage >= totalPages}
@@ -1692,6 +1907,196 @@ export default function LeadInquiriesView({
           </button>
         </div>
       </div>
+
+      {/* 5. Mobile Sort & Filter Bottom-Sheet Modal */}
+      {showMobileFilterModal && (
+        <div 
+          className="crm-modal-overlay" 
+          style={{ alignItems: 'flex-end', padding: 0 }}
+          onClick={() => setShowMobileFilterModal(false)}
+        >
+          <div 
+            className="crm-modal-card"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: '100%',
+              borderRadius: '20px 20px 0 0',
+              maxHeight: '85vh',
+              animation: 'crmSlideUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+          >
+            {/* Header */}
+            <div className="crm-modal-header" style={{ padding: '1rem 1.25rem' }}>
+              <div>
+                <h3 className="crm-modal-title" style={{ fontSize: '1rem' }}>Inquiry Filters & Sorting</h3>
+                <div className="crm-modal-subtitle">Configure sort sequence & product scope</div>
+              </div>
+              <button 
+                type="button" 
+                className="crm-modal-close-btn"
+                onClick={() => setShowMobileFilterModal(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="crm-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem', padding: '1.25rem' }}>
+              
+              {/* 0. Triage Queue Scope */}
+              <div>
+                <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                  Queue View & Lifecycle Scope
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                  {[
+                    { label: `⚡ Action Required (${activeCount})`, value: 'ACTIVE' },
+                    { label: `✨ In CRM (${qualifiedCount})`, value: 'QUALIFIED' },
+                    { label: `🗄️ Archived (${archivedCount})`, value: 'ARCHIVED' },
+                    { label: `📁 All (${allCount})`, value: 'ALL' },
+                  ].map(tab => {
+                    const isSelected = triageTab === tab.value;
+                    return (
+                      <button
+                        key={tab.value}
+                        type="button"
+                        onClick={() => {
+                          setTriageTab(tab.value);
+                          setQuoteCurrentPage(1);
+                        }}
+                        style={{
+                          padding: '9px 8px',
+                          borderRadius: '8px',
+                          fontSize: '0.76rem',
+                          fontWeight: 700,
+                          border: `1px solid ${isSelected ? 'var(--primary-navy)' : 'var(--border-subtle)'}`,
+                          background: isSelected ? 'var(--primary-navy)' : 'var(--bg-main)',
+                          color: isSelected ? '#ffffff' : 'var(--text-main)',
+                          cursor: 'pointer',
+                          textAlign: 'center'
+                        }}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 1. Sort Sequencing Selection */}
+              <div>
+                <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                  Sort Order
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                  {[
+                    { label: '⚡ Newest (LIFO)', field: 'createdAt', order: 'desc' },
+                    { label: '⏳ Oldest (FIFO)', field: 'createdAt', order: 'asc' },
+                    { label: '🔤 Name (A–Z)', field: 'name', order: 'asc' },
+                    { label: '🔤 Name (Z–A)', field: 'name', order: 'desc' },
+                    { label: '📊 Status (Asc)', field: 'status', order: 'asc' },
+                    { label: '📊 Status (Desc)', field: 'status', order: 'desc' }
+                  ].map(opt => {
+                    const isSelected = sortField === opt.field && sortOrder === opt.order;
+                    return (
+                      <button
+                        key={`${opt.field}_${opt.order}`}
+                        type="button"
+                        onClick={() => {
+                          setSortField(opt.field);
+                          setSortOrder(opt.order);
+                          setQuoteCurrentPage(1);
+                        }}
+                        style={{
+                          padding: '9px 8px',
+                          borderRadius: '8px',
+                          fontSize: '0.76rem',
+                          fontWeight: 700,
+                          border: `1px solid ${isSelected ? 'var(--primary-navy)' : 'var(--border-subtle)'}`,
+                          background: isSelected ? 'var(--primary-navy)' : 'var(--bg-main)',
+                          color: isSelected ? '#ffffff' : 'var(--text-main)',
+                          cursor: 'pointer',
+                          textAlign: 'center'
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 2. Category Filter */}
+              <div>
+                <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                  Insurance Category
+                </label>
+                <select
+                  value={quoteCategoryFilter}
+                  onChange={(e) => {
+                    setQuoteCategoryFilter(e.target.value);
+                    setQuoteCurrentPage(1);
+                  }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-subtle)', fontSize: '0.84rem', fontWeight: 600, background: 'var(--bg-card)', color: 'var(--text-main)' }}
+                >
+                  <option value="">All Categories ({quotes.length})</option>
+                  <option value="health-insurance">Health Insurance</option>
+                  <option value="motor-insurance">Vehicle Insurance</option>
+                  <option value="life-insurance">Term Life Shield</option>
+                  <option value="loans">Loans & Financing</option>
+                  <option value="business-insurance">Business & SME</option>
+                  <option value="travel-insurance">Travel Insurance</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '0.85rem 1.25rem', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: '0.65rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setQuoteCategoryFilter('');
+                  setSortField('createdAt');
+                  setSortOrder('desc');
+                  setQuoteCurrentPage(1);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--bg-main)',
+                  color: 'var(--text-muted)',
+                  fontWeight: 700,
+                  fontSize: '0.84rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMobileFilterModal(false)}
+                style={{
+                  flex: 2,
+                  padding: '0.75rem',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: 'var(--primary-navy)',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.84rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Apply & View ({sortedQuotes.length})
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

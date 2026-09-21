@@ -146,26 +146,62 @@ public class PortalController {
     }
 
     @PatchMapping("/admin/quotes/{id}/status")
-    @Operation(summary = "Update Quote Inquiry status (NEW, CONTACTED, CONVERTED)")
+    @Operation(summary = "Update Quote Inquiry status (NEW, CONTACTED, QUALIFIED, ARCHIVED)")
     public ResponseEntity<QuoteInquiry> updateQuoteStatus(
             @PathVariable Long id,
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, String> body,
+            org.springframework.security.core.Authentication authentication) {
         QuoteInquiry inquiry = quoteInquiryRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Quote inquiry not found with ID: " + id));
+        String oldStatus = inquiry.getStatus();
         String newStatus = body.get("status");
         if (newStatus != null && !newStatus.isBlank()) {
             inquiry.setStatus(newStatus.toUpperCase());
+            QuoteInquiry saved = quoteInquiryRepository.save(inquiry);
+
+            User performedBy = null;
+            if (authentication != null && authentication.getPrincipal() instanceof User) {
+                performedBy = (User) authentication.getPrincipal();
+            } else if (authentication != null && authentication.getName() != null) {
+                performedBy = userRepository.findByEmail(authentication.getName()).orElse(null);
+            }
+
+            auditService.logAction(
+                    "QUOTE_INQUIRY",
+                    saved.getId(),
+                    "STATUS_CHANGE",
+                    "Status",
+                    oldStatus != null ? oldStatus : "NEW",
+                    saved.getStatus(),
+                    performedBy,
+                    null
+            );
+
+            return ResponseEntity.ok(saved);
         }
-        return ResponseEntity.ok(quoteInquiryRepository.save(inquiry));
+        return ResponseEntity.ok(inquiry);
     }
 
     @PutMapping("/admin/quotes/{id}")
     @Operation(summary = "Update full Quote Inquiry details (Admin/Staff only)")
     public ResponseEntity<QuoteInquiry> updateQuote(
             @PathVariable Long id,
-            @RequestBody QuoteInquiry updated) {
+            @RequestBody QuoteInquiry updated,
+            org.springframework.security.core.Authentication authentication) {
         QuoteInquiry inquiry = quoteInquiryRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Quote inquiry not found with ID: " + id));
+        
+        User performedBy = null;
+        if (authentication != null && authentication.getPrincipal() instanceof User) {
+            performedBy = (User) authentication.getPrincipal();
+        } else if (authentication != null && authentication.getName() != null) {
+            performedBy = userRepository.findByEmail(authentication.getName()).orElse(null);
+        }
+
+        if (updated.getStatus() != null && !updated.getStatus().equals(inquiry.getStatus())) {
+            auditService.logAction("QUOTE_INQUIRY", inquiry.getId(), "STATUS_CHANGE", "Status", inquiry.getStatus(), updated.getStatus(), performedBy, null);
+            inquiry.setStatus(updated.getStatus().toUpperCase());
+        }
         if (updated.getFullName() != null && !updated.getFullName().isBlank()) {
             inquiry.setFullName(updated.getFullName().trim());
         }
@@ -187,9 +223,18 @@ public class PortalController {
         if (updated.getPlanDetails() != null) {
             inquiry.setPlanDetails(updated.getPlanDetails());
         }
-        if (updated.getStatus() != null && !updated.getStatus().isBlank()) {
-            inquiry.setStatus(updated.getStatus().toUpperCase().trim());
-        }
+
+        auditService.logAction(
+                "QUOTE_INQUIRY",
+                inquiry.getId(),
+                "UPDATE",
+                "DETAILS",
+                null,
+                "Updated inquiry details for " + inquiry.getFullName(),
+                performedBy,
+                null
+        );
+
         return ResponseEntity.ok(quoteInquiryRepository.save(inquiry));
     }
 

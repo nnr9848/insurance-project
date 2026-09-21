@@ -687,16 +687,15 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
             {/* Desktop Filter Dropdowns */}
             <div className="crm-desktop-filter-dropdowns" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <select
+                className="form-select"
                 value={stageFilter}
                 onChange={(e) => setStageFilter(e.target.value)}
                 style={{
-                  padding: '7px 12px',
+                  height: '36px',
                   borderRadius: '10px',
-                  border: '1px solid var(--border-subtle)',
                   fontSize: '0.82rem',
-                  fontWeight: 600,
-                  background: 'var(--bg-card)',
-                  color: 'var(--text-main)'
+                  minWidth: '150px',
+                  width: 'auto'
                 }}
               >
                 <option value="ALL">All Stages ({leads.length})</option>
@@ -709,16 +708,15 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
               </select>
 
               <select
+                className="form-select"
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
                 style={{
-                  padding: '7px 12px',
+                  height: '36px',
                   borderRadius: '10px',
-                  border: '1px solid var(--border-subtle)',
                   fontSize: '0.82rem',
-                  fontWeight: 600,
-                  background: 'var(--bg-card)',
-                  color: 'var(--text-main)'
+                  minWidth: '140px',
+                  width: 'auto'
                 }}
               >
                 <option value="ALL">All Priorities</option>
@@ -728,16 +726,15 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
               </select>
 
               <select
+                className="form-select"
                 value={insuranceTypeFilter}
                 onChange={(e) => setInsuranceTypeFilter(e.target.value)}
                 style={{
-                  padding: '7px 12px',
+                  height: '36px',
                   borderRadius: '10px',
-                  border: '1px solid var(--border-subtle)',
                   fontSize: '0.82rem',
-                  fontWeight: 600,
-                  background: 'var(--bg-card)',
-                  color: 'var(--text-main)'
+                  minWidth: '150px',
+                  width: 'auto'
                 }}
               >
                 <option value="ALL">All Products</option>
@@ -746,6 +743,31 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                 <option value="Vehicle / Motor Insurance">Vehicle</option>
                 <option value="Commercial / SME Insurance">Business & SME</option>
                 <option value="Travel Insurance">Travel</option>
+              </select>
+
+              {/* Desktop Sort Dropdown */}
+              <select
+                className="form-select"
+                value={`${sortField}_${sortOrder}`}
+                onChange={(e) => {
+                  const [f, o] = e.target.value.split('_');
+                  setSortField(f);
+                  setSortOrder(o);
+                }}
+                style={{
+                  height: '36px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  minWidth: '190px',
+                  width: 'auto'
+                }}
+                title="Sort Client Records"
+              >
+                <option value="updatedAt_desc">⚡ Recently Active (LIFO)</option>
+                <option value="deadline_asc">⏳ Nearest Expiry (FIFO)</option>
+                <option value="premium_desc">💎 Premium (High to Low)</option>
+                <option value="name_asc">🔤 Client Name (A–Z)</option>
+                <option value="name_desc">🔤 Client Name (Z–A)</option>
               </select>
             </div>
           </div>
@@ -3600,7 +3622,47 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                 </div>
               </div>
 
-              {/* 3. Product / Insurance Type */}
+              {/* 3. Sort Sequencing Selector */}
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                  Sort Sequence
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                  {[
+                    { label: '⚡ Active (LIFO)', field: 'updatedAt', order: 'desc' },
+                    { label: '⏳ Expiry (FIFO)', field: 'deadline', order: 'asc' },
+                    { label: '💎 Premium (High)', field: 'premium', order: 'desc' },
+                    { label: '🔤 Name (A–Z)', field: 'name', order: 'asc' },
+                  ].map(s => {
+                    const isSelected = sortField === s.field && sortOrder === s.order;
+                    return (
+                      <button
+                        key={`${s.field}_${s.order}`}
+                        type="button"
+                        onClick={() => {
+                          setSortField(s.field);
+                          setSortOrder(s.order);
+                        }}
+                        style={{
+                          padding: '8px 4px',
+                          borderRadius: '8px',
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          border: `1px solid ${isSelected ? 'var(--primary-navy)' : 'var(--border-subtle)'}`,
+                          background: isSelected ? 'var(--primary-navy)' : 'var(--bg-main)',
+                          color: isSelected ? '#ffffff' : 'var(--text-main)',
+                          cursor: 'pointer',
+                          textAlign: 'center'
+                        }}
+                      >
+                        {s.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 4. Product / Insurance Type */}
               <div>
                 <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
                   Product Category
@@ -3619,7 +3681,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                 </select>
               </div>
 
-              {/* 4. Advisor Assignment Filter */}
+              {/* 5. Advisor Assignment Filter */}
               {canReassign && advisors.length > 0 && (
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>

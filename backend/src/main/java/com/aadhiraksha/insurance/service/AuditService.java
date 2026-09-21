@@ -19,6 +19,8 @@ import java.util.stream.Collectors;
 public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
+    private final com.aadhiraksha.insurance.repository.ClientLeadRepository clientLeadRepository;
+    private final com.aadhiraksha.insurance.repository.QuoteInquiryRepository quoteInquiryRepository;
 
     @Async
     public void logAction(String entityName, Long entityId, String action, String fieldName, 
@@ -47,6 +49,44 @@ public class AuditService {
                 .stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<AuditLogDto> getCompositeClientAuditTimeline(Long clientId) {
+        List<AuditLog> allLogs = new java.util.ArrayList<>(
+                auditLogRepository.findByEntityNameAndEntityIdOrderByTimestampDesc("CLIENT_LEAD", clientId)
+        );
+
+        // Fetch matched quote inquiries for this client to inherit top-of-funnel inquiry heritage audit logs
+        try {
+            clientLeadRepository.findById(clientId).ifPresent(client -> {
+                String phone = client.getPhoneNumber();
+                if (phone != null && !phone.isBlank()) {
+                    String digits = phone.replaceAll("[^0-9]", "");
+                    String suffix = digits.length() >= 10 ? digits.substring(digits.length() - 10) : digits;
+                    if (!suffix.isEmpty()) {
+                        List<com.aadhiraksha.insurance.model.QuoteInquiry> matchedQuotes = quoteInquiryRepository.findByPhoneSuffix(suffix);
+                        List<Long> quoteIds = matchedQuotes.stream()
+                                .map(com.aadhiraksha.insurance.model.QuoteInquiry::getId)
+                                .collect(Collectors.toList());
+                        if (!quoteIds.isEmpty()) {
+                            List<AuditLog> quoteLogs = auditLogRepository.findByEntityNameAndEntityIdInOrderByTimestampDesc("QUOTE_INQUIRY", quoteIds);
+                            allLogs.addAll(quoteLogs);
+                        }
+                    }
+                }
+            });
+        } catch (Exception e) {
+            log.warn("Failed to fetch heritage quote inquiry logs for client ID: {}", clientId, e);
+        }
+
+        allLogs.sort((a, b) -> {
+            if (a.getTimestamp() == null) return 1;
+            if (b.getTimestamp() == null) return -1;
+            return b.getTimestamp().compareTo(a.getTimestamp());
+        });
+
+        return allLogs.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
