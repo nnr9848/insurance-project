@@ -1435,6 +1435,13 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                                 <option value="MEDIUM">⚡ Medium Priority</option>
                                 <option value="LOW">Standard Priority</option>
                               </select>
+                              <input
+                                type="text"
+                                placeholder="📝 Notes / Remarks"
+                                value={editFormData.notes || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #fde68a', background: '#fffbeb', fontSize: '0.72rem', width: '100%' }}
+                              />
                             </div>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -1931,6 +1938,17 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                                 </option>
                               ))}
                             </select>
+                          </div>
+
+                          <div style={{ gridColumn: 'span 2' }}>
+                            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#b45309', display: 'block', marginBottom: '2px' }}>📝 Notes & Opportunity History</label>
+                            <textarea
+                              rows={2}
+                              value={editFormData.notes || ''}
+                              placeholder="Client requirements, policy preferences, or remarks..."
+                              onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                              style={{ width: '100%', padding: '5px 8px', borderRadius: '6px', border: '1px solid #fde68a', background: '#fffbeb', fontSize: '0.78rem', resize: 'vertical' }}
+                            />
                           </div>
                         </div>
                       </div>

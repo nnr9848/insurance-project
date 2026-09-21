@@ -61,26 +61,28 @@ export default function LeadInquiriesView({
     return s;
   };
 
-  // Helper to unpack planDetails JSON into human-friendly coverage and specs fields
+  // Helper to unpack planDetails JSON into human-friendly coverage, specs, and notes fields
   const unpackPlanDetails = (raw) => {
-    if (!raw) return { coverageAmount: '', planSpecs: '' };
+    if (!raw) return { coverageAmount: '', planSpecs: '', notes: '' };
     try {
       const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
       if (typeof data !== 'object' || data === null) {
-        return { coverageAmount: '', planSpecs: sanitizeSpecsString(raw) };
+        return { coverageAmount: '', planSpecs: sanitizeSpecsString(raw), notes: '' };
       }
       let coverage = data.coverage || data.coverageAmount || data.sumInsured || data.sumAssured || data.loanAmount || '';
+      let notes = data.notes || data.remarks || data.comments || '';
       
       let directSpecs = data.specs || data.details || data.planSpecs || '';
       if (directSpecs) {
         return {
           coverageAmount: coverage,
-          planSpecs: sanitizeSpecsString(directSpecs)
+          planSpecs: sanitizeSpecsString(directSpecs),
+          notes: String(notes || '').trim()
         };
       }
 
       const otherEntries = Object.entries(data).filter(([k, v]) => 
-        !['coverage', 'coverageAmount', 'sumInsured', 'sumAssured', 'loanAmount', 'coverage_amount', 'specs', 'details', 'planSpecs'].includes(k) && Boolean(v)
+        !['coverage', 'coverageAmount', 'sumInsured', 'sumAssured', 'loanAmount', 'coverage_amount', 'specs', 'details', 'planSpecs', 'notes', 'remarks', 'comments'].includes(k) && Boolean(v)
       );
 
       const specs = otherEntries.map(([k, v]) => {
@@ -90,14 +92,15 @@ export default function LeadInquiriesView({
       
       return {
         coverageAmount: coverage,
-        planSpecs: sanitizeSpecsString(specs)
+        planSpecs: sanitizeSpecsString(specs),
+        notes: String(notes || '').trim()
       };
     } catch {
-      return { coverageAmount: '', planSpecs: sanitizeSpecsString(raw) };
+      return { coverageAmount: '', planSpecs: sanitizeSpecsString(raw), notes: '' };
     }
   };
 
-  const packPlanDetails = (coverageAmount, planSpecs) => {
+  const packPlanDetails = (coverageAmount, planSpecs, notes) => {
     const obj = {};
     if (coverageAmount && coverageAmount.trim()) {
       obj.coverage = coverageAmount.trim();
@@ -105,11 +108,14 @@ export default function LeadInquiriesView({
     if (planSpecs && planSpecs.trim()) {
       obj.specs = sanitizeSpecsString(planSpecs.trim());
     }
+    if (notes && notes.trim()) {
+      obj.notes = notes.trim();
+    }
     return Object.keys(obj).length > 0 ? JSON.stringify(obj) : '';
   };
 
   const startEditQuote = (quote) => {
-    const { coverageAmount, planSpecs } = unpackPlanDetails(quote.planDetails);
+    const { coverageAmount, planSpecs, notes } = unpackPlanDetails(quote.planDetails);
     setEditingQuoteId(quote.id);
     setEditQuoteFormData({
       fullName: quote.fullName || '',
@@ -120,6 +126,7 @@ export default function LeadInquiriesView({
       categorySlug: quote.categorySlug || 'health-insurance',
       coverageAmount: coverageAmount || '',
       planSpecs: planSpecs || '',
+      notes: notes || '',
       status: quote.status || 'NEW'
     });
   };
@@ -147,7 +154,7 @@ export default function LeadInquiriesView({
         email: editQuoteFormData.email ? editQuoteFormData.email.trim() : '',
         city: editQuoteFormData.city ? editQuoteFormData.city.trim() : '',
         categorySlug: editQuoteFormData.categorySlug || 'health-insurance',
-        planDetails: packPlanDetails(editQuoteFormData.coverageAmount, editQuoteFormData.planSpecs),
+        planDetails: packPlanDetails(editQuoteFormData.coverageAmount, editQuoteFormData.planSpecs, editQuoteFormData.notes),
         status: editQuoteFormData.status || 'NEW'
       };
 
@@ -497,7 +504,18 @@ export default function LeadInquiriesView({
                           value={editQuoteFormData.planSpecs || ''}
                           placeholder="Specs (e.g. Family Floater)"
                           onChange={(e) => setEditQuoteFormData({ ...editQuoteFormData, planSpecs: e.target.value })}
-                          style={{ width: '100%', padding: '3px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.72rem' }}
+                          style={{ width: '100%', padding: '3px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.72rem', marginBottom: '3px' }}
+                        />
+                        <input
+                          type="text"
+                          name={`quote-edit-notes-${q.id}`}
+                          autoComplete="off"
+                          data-lpignore="true"
+                          data-form-type="other"
+                          value={editQuoteFormData.notes || ''}
+                          placeholder="📝 Notes / Client Remarks"
+                          onChange={(e) => setEditQuoteFormData({ ...editQuoteFormData, notes: e.target.value })}
+                          style={{ width: '100%', padding: '3px 6px', borderRadius: '4px', border: '1px solid #fde68a', background: '#fffbeb', fontSize: '0.72rem' }}
                         />
                       </td>
 
@@ -824,6 +842,12 @@ export default function LeadInquiriesView({
                           <button
                             onClick={async () => {
                               try {
+                                const { coverageAmount, planSpecs, notes: inquiryNote } = unpackPlanDetails(q.planDetails);
+                                let formattedNotes = `Inquiry #${q.id} (${q.categorySlug || 'Insurance'})`;
+                                if (coverageAmount) formattedNotes += ` | Coverage: ${coverageAmount}`;
+                                if (planSpecs) formattedNotes += ` | Specs: ${planSpecs}`;
+                                if (inquiryNote) formattedNotes += ` | 📝 Note: ${inquiryNote}`;
+
                                 const createdOrUpdated = await crmService.createLead({
                                   fullName: q.fullName || 'Web Prospect',
                                   phoneNumber: q.phoneNumber,
@@ -832,7 +856,7 @@ export default function LeadInquiriesView({
                                   city: q.city || '',
                                   categorySlug: q.categorySlug || 'general',
                                   insuranceType: q.categorySlug ? q.categorySlug.replace('-', ' ').toUpperCase() : 'GENERAL',
-                                  notes: `Ingested Inquiry #${q.id}. Specs: ${q.planDetails || ''}`
+                                  notes: formattedNotes
                                 });
                                 await portalService.updateQuoteStatus(q.id, 'CONVERTED');
                                 setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: 'CONVERTED' } : item));
@@ -1100,6 +1124,21 @@ export default function LeadInquiriesView({
                           style={{ width: '100%', padding: '5px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
                         />
                       </div>
+                    </div>
+
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#b45309', display: 'block', marginBottom: '2px' }}>📝 Notes / Client Remarks</label>
+                      <input
+                        type="text"
+                        name={`m-quote-edit-notes-${q.id}`}
+                        autoComplete="off"
+                        data-lpignore="true"
+                        data-form-type="other"
+                        value={editQuoteFormData.notes || ''}
+                        placeholder="e.g. Diabetic client, requested quote with zero room rent cap"
+                        onChange={(e) => setEditQuoteFormData({ ...editQuoteFormData, notes: e.target.value })}
+                        style={{ width: '100%', padding: '5px 6px', borderRadius: '6px', border: '1px solid #fde68a', background: '#fffbeb', fontSize: '0.78rem' }}
+                      />
                     </div>
                   </div>
 
@@ -1465,6 +1504,12 @@ export default function LeadInquiriesView({
                       <button
                         onClick={async () => {
                           try {
+                            const { coverageAmount, planSpecs, notes: inquiryNote } = unpackPlanDetails(q.planDetails);
+                            let formattedNotes = `Inquiry #${q.id} (${q.categorySlug || 'Insurance'})`;
+                            if (coverageAmount) formattedNotes += ` | Coverage: ${coverageAmount}`;
+                            if (planSpecs) formattedNotes += ` | Specs: ${planSpecs}`;
+                            if (inquiryNote) formattedNotes += ` | 📝 Note: ${inquiryNote}`;
+
                             const createdOrUpdated = await crmService.createLead({
                               fullName: q.fullName || 'Web Prospect',
                               phoneNumber: q.phoneNumber,
@@ -1473,7 +1518,7 @@ export default function LeadInquiriesView({
                               city: q.city || '',
                               categorySlug: q.categorySlug || 'general',
                               insuranceType: q.categorySlug ? q.categorySlug.replace('-', ' ').toUpperCase() : 'GENERAL',
-                              notes: `Ingested Inquiry #${q.id}. Specs: ${q.planDetails || ''}`
+                              notes: formattedNotes
                             });
                             await portalService.updateQuoteStatus(q.id, 'CONVERTED');
                             setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: 'CONVERTED' } : item));
