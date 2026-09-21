@@ -468,160 +468,188 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
               return (
                 <div
                   key={item.id}
+                  className="crm-agenda-compact-card"
                   style={{
+                    background: isCompleted ? '#f0fdf4' : (isOverdue ? '#fff1f2' : '#ffffff'),
+                    border: isCompleted ? '1px solid #bbf7d0' : (isOverdue ? '1px solid #fecdd3' : '1px solid #e2e8f0'),
+                    borderRadius: '10px',
+                    padding: '0.75rem 0.85rem',
                     display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '1rem',
-                    background: isCompleted ? '#f0fdf4' : (isOverdue ? '#fff1f2' : (isMeet ? '#f8faff' : '#f8fafc')),
-                    border: isCompleted ? '1px solid #bbf7d0' : (isOverdue ? '1px solid #fecdd3' : (isMeet ? '1px solid #dbeafe' : '1px solid #e2e8f0')),
-                    borderRadius: '14px',
-                    padding: '1rem 1.25rem',
-                    transition: 'all 0.15s ease'
+                    flexDirection: 'column',
+                    gap: '0.45rem',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
                   }}
                 >
-                  {/* Left: Time & Activity Info */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: '1 1 400px', minWidth: '0' }}>
+                  {/* Row 1: Left (Time Badge + Prospect Name + Code + Category + Status) | Right (1-Tap Circular Channels & Status) */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
                     
-                    {/* Time Slot Badge (12-hour AM/PM) */}
-                    <div style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: isCompleted ? '#dcfce7' : (isOverdue ? '#fee2e2' : '#ffffff'),
-                      border: `1px solid ${isCompleted ? '#bbf7d0' : (isOverdue ? '#fecaca' : '#cbd5e1')}`,
-                      borderRadius: '10px',
-                      padding: '6px 8px',
-                      minWidth: '72px',
-                      textAlign: 'center',
-                      flexShrink: 0
-                    }}>
-                      <span style={{ fontSize: '0.62rem', fontWeight: 800, textTransform: 'uppercase', color: isOverdue ? '#dc2626' : (isCompleted ? '#16a34a' : '#64748b'), letterSpacing: '0.4px' }}>
-                        {isMeet ? 'MEET' : 'CALL'}
+                    {/* Identity & Badges */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
+                      {/* Compact Time Pill */}
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        background: isCompleted ? '#dcfce7' : (isOverdue ? '#fee2e2' : (isMeet ? '#eff6ff' : '#ecfdf5')),
+                        color: isCompleted ? '#15803d' : (isOverdue ? '#dc2626' : (isMeet ? '#2563eb' : '#059669')),
+                        border: `1px solid ${isCompleted ? '#bbf7d0' : (isOverdue ? '#fecaca' : (isMeet ? '#bfdbfe' : '#a7f3d0'))}`,
+                        padding: '1px 6px',
+                        borderRadius: '6px',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
+                      }}>
+                        {isMeet ? <Video size={11} /> : <PhoneCall size={11} />}
+                        <span>{timeDigits} {timePeriod}</span>
                       </span>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', marginTop: '1px' }}>
-                        <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#0f2b48' }}>
-                          {timeDigits}
-                        </span>
-                        <span style={{ fontSize: '0.66rem', fontWeight: 800, color: isOverdue ? '#dc2626' : '#2563eb' }}>
-                          {timePeriod}
-                        </span>
-                      </div>
-                    </div>
 
-                    {/* Icon Badge */}
-                    <div style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '10px',
-                      background: isCompleted ? '#dcfce7' : (isOverdue ? '#fee2e2' : (isMeet ? '#eff6ff' : '#ecfdf5')),
-                      color: isCompleted ? '#16a34a' : (isOverdue ? '#dc2626' : (isMeet ? '#2563eb' : '#059669')),
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}>
-                      {isMeet ? <Video size={20} /> : <PhoneCall size={20} />}
-                    </div>
+                      {/* Prospect Name */}
+                      <span 
+                        onClick={() => onOpenClient360 && onOpenClient360({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone })}
+                        style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.88rem', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                      >
+                        {item.clientName}
+                      </span>
 
-                    {/* Details */}
-                    <div style={{ minWidth: '0', flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      {/* Client Code */}
+                      {item.clientCode && (
                         <span 
                           onClick={() => onOpenClient360 && onOpenClient360({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone })}
-                          style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.96rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          style={{ fontFamily: 'monospace', fontWeight: 700, color: '#059669', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '0px 4px', borderRadius: '4px', fontSize: '0.65rem', cursor: 'pointer', flexShrink: 0 }}
                         >
-                          {item.clientName}
+                          {item.clientCode}
                         </span>
-                        
-                        {item.clientCode && (
-                          <span style={{ fontSize: '0.7rem', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', fontWeight: 700, color: '#475569', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>
-                            {item.clientCode}
-                          </span>
-                        )}
+                      )}
 
-                        <span style={{ fontSize: '0.72rem', background: isMeet ? '#eff6ff' : '#ecfdf5', color: isMeet ? '#1d4ed8' : '#047857', border: `1px solid ${isMeet ? '#bfdbfe' : '#a7f3d0'}`, padding: '1px 7px', borderRadius: '6px', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                          {item.insuranceType}
+                      {/* Vertical Badge */}
+                      <span style={{ fontSize: '0.68rem', background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', padding: '1px 5px', borderRadius: '4px', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        {item.insuranceType}
+                      </span>
+
+                      {/* Status Pill */}
+                      {isCompleted ? (
+                        <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#15803d', fontWeight: 800, padding: '1px 5px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                          ✓ COMPLETED
                         </span>
+                      ) : isOverdue ? (
+                        <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#dc2626', fontWeight: 800, padding: '1px 5px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                          ⚠️ OVERDUE
+                        </span>
+                      ) : item.datetime < new Date() ? (
+                        <span style={{ fontSize: '0.65rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                          ⏱️ Outcome Pending
+                        </span>
+                      ) : null}
+                    </div>
 
-                        {isCompleted ? (
-                          <span style={{ fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', fontWeight: 800, padding: '1px 7px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
-                            ✓ COMPLETED
-                          </span>
-                        ) : isOverdue ? (
-                          <span style={{ fontSize: '0.7rem', background: '#fee2e2', color: '#dc2626', fontWeight: 800, padding: '1px 7px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
-                            ⚠️ OVERDUE
-                          </span>
-                        ) : item.datetime < new Date() ? (
-                          <span style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontWeight: 700, padding: '1px 7px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
-                            ⏱️ Outcome Pending
-                          </span>
-                        ) : null}
-                      </div>
+                    {/* Right: Quick Reach Touch Icons (Call, WhatsApp, Meet Link) */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                      {/* 1-Tap Telephony Phone Call */}
+                      {item.clientPhone && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCallModal(item)}
+                          title={`Call ${item.clientName} (${item.clientPhone})`}
+                          style={{
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '6px',
+                            background: '#ecfdf5',
+                            color: '#059669',
+                            border: '1px solid #a7f3d0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                        >
+                          <Phone size={12} />
+                        </button>
+                      )}
 
-                      <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: '3px' }}>
-                        {item.title}
-                        {item.advisorName && (
-                          <span style={{ marginLeft: '8px', fontSize: '0.74rem', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', color: '#475569', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                            Advisor: {item.advisorName}
-                          </span>
-                        )}
-                      </div>
+                      {/* 1-Tap WhatsApp */}
+                      {item.clientPhone && (
+                        <button
+                          type="button"
+                          onClick={() => openWhatsApp(item.clientPhone, item.clientName)}
+                          title="Open WhatsApp"
+                          style={{
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '6px',
+                            background: '#f0fdf4',
+                            color: '#16a34a',
+                            border: '1px solid #bbf7d0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: 0
+                          }}
+                        >
+                          <WhatsAppIcon size={12} color="#16a34a" />
+                        </button>
+                      )}
 
-                      {(item.purpose || item.notes || item.outcomeNotes) && (
-                        <div style={{ fontSize: '0.76rem', color: item.outcomeNotes ? '#059669' : '#64748b', marginTop: '2px', fontStyle: item.notes ? 'italic' : 'normal' }}>
-                          {item.outcomeNotes ? `✓ Outcome: ${item.outcomeNotes}` : (item.purpose || `"${item.notes}"`)}
-                        </div>
+                      {/* 1-Tap Google Meet Video Link */}
+                      {isMeet && item.googleMeetUrl && (
+                        <a
+                          href={item.googleMeetUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Open Google Meet"
+                          style={{
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '6px',
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            border: '1px solid #bfdbfe',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            textDecoration: 'none'
+                          }}
+                        >
+                          <Video size={12} />
+                        </a>
                       )}
                     </div>
                   </div>
 
-                  {/* Right: Actions Bar */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, marginLeft: 'auto' }}>
-                    
-                    {/* Meet Actions */}
-                    {isMeet && !isCompleted && item.googleMeetUrl && (
-                      <a
-                        href={item.googleMeetUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          background: '#2563eb',
-                          color: '#ffffff',
-                          padding: '8px 14px',
-                          borderRadius: '8px',
-                          fontWeight: 700,
-                          fontSize: '0.82rem',
-                          textDecoration: 'none'
-                        }}
-                      >
-                        <Video size={14} /> Join Meet
-                      </a>
-                    )}
-
-                    {isMeet && (
-                      isCompleted ? (
-                        <span style={{
-                          background: '#dcfce7',
-                          color: '#15803d',
-                          border: '1px solid #bbf7d0',
-                          padding: '6px 12px',
-                          borderRadius: '8px',
-                          fontWeight: 700,
-                          fontSize: '0.78rem',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}>
-                          <CheckCircle2 size={13} /> Completed
+                  {/* Row 2: Topic / Notes & Action Buttons */}
+                  <div style={{
+                    borderTop: '1px dashed #e2e8f0',
+                    paddingTop: '0.4rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '0.4rem'
+                  }}>
+                    {/* Left: Title & Purpose */}
+                    <div style={{ fontSize: '0.74rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', minWidth: 0, flex: 1 }}>
+                      <span style={{ fontWeight: 600, color: '#334155' }}>{item.title}</span>
+                      {item.advisorName && (
+                        <span style={{ fontSize: '0.68rem', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '0px 4px', borderRadius: '3px', color: '#64748b' }}>
+                          Advisor: {item.advisorName}
                         </span>
-                      ) : (
+                      )}
+                      {(item.purpose || item.notes || item.outcomeNotes) && (
+                        <span style={{ color: item.outcomeNotes ? '#059669' : '#64748b', fontStyle: item.notes ? 'italic' : 'normal', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>
+                          • {item.outcomeNotes ? `✓ ${item.outcomeNotes}` : (item.purpose || `"${item.notes}"`)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Right: Compact Action Buttons */}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 0, marginLeft: 'auto' }}>
+                      {/* Mark Completed (for Meetings) */}
+                      {isMeet && !isCompleted && (
                         <button
+                          type="button"
                           onClick={() => {
                             setMeetingOutcomeModal(item);
                             setOutcomeForm({
@@ -633,130 +661,108 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                             background: '#059669',
                             color: '#ffffff',
                             border: 'none',
-                            padding: '8px 12px',
-                            borderRadius: '8px',
+                            padding: '3px 7px',
+                            borderRadius: '5px',
+                            fontSize: '0.72rem',
                             fontWeight: 700,
-                            fontSize: '0.8rem',
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            gap: '3px'
                           }}
                         >
-                          <CheckCircle2 size={14} /> Mark Completed
+                          <CheckCircle2 size={11} /> Mark Done
                         </button>
-                      )
-                    )}
+                      )}
 
-                    {/* Phone Callback Actions */}
-                    {!isMeet && (
+                      {/* Log Call (for Phone tasks) */}
+                      {!isMeet && !isCompleted && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCallModal(item)}
+                          style={{
+                            background: '#059669',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '3px 7px',
+                            borderRadius: '5px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}
+                        >
+                          <PhoneCall size={11} /> Log Call
+                        </button>
+                      )}
+
+                      {/* Reassign (if manager & overdue) */}
+                      {canReassign && isOverdue && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReassignTask(item);
+                            setTargetAdvisorId(item.advisorId ? String(item.advisorId) : '');
+                            setReassignReason('');
+                          }}
+                          style={{
+                            background: '#e0e7ff',
+                            color: '#4338ca',
+                            border: '1px solid #c7d2fe',
+                            padding: '3px 6px',
+                            borderRadius: '5px',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Reassign
+                        </button>
+                      )}
+
+                      {/* Schedule Followup Meeting Link */}
+                      {!isMeet && (
+                        <button
+                          type="button"
+                          onClick={() => onOpenMeetingModal && onOpenMeetingModal({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone, insuranceType: item.insuranceType })}
+                          style={{
+                            background: '#eff6ff',
+                            color: '#2563eb',
+                            border: '1px solid #bfdbfe',
+                            padding: '3px 7px',
+                            borderRadius: '5px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}
+                        >
+                          <Calendar size={11} /> Meet
+                        </button>
+                      )}
+
+                      {/* Client 360 */}
                       <button
-                        onClick={() => handleOpenCallModal(item)}
+                        type="button"
+                        onClick={() => onOpenClient360 && onOpenClient360({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone })}
                         style={{
-                          background: 'linear-gradient(135deg, #059669, #047857)',
-                          color: '#ffffff',
-                          border: 'none',
-                          padding: '8px 14px',
-                          borderRadius: '8px',
+                          background: '#f8fafc',
+                          border: '1px solid #cbd5e1',
+                          color: '#475569',
+                          padding: '3px 7px',
+                          borderRadius: '5px',
+                          fontSize: '0.72rem',
                           fontWeight: 700,
-                          fontSize: '0.82rem',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px'
-                        }}
-                      >
-                        <PhoneCall size={14} /> Call & Log
-                      </button>
-                    )}
-
-                    {/* Reassign Action for Managers on Overdue Items */}
-                    {canReassign && isOverdue && (
-                      <button
-                        onClick={() => {
-                          setReassignTask(item);
-                          setTargetAdvisorId(item.advisorId ? String(item.advisorId) : '');
-                          setReassignReason('');
-                        }}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          background: '#e0e7ff',
-                          color: '#4338ca',
-                          border: '1px solid #c7d2fe',
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          fontWeight: 700,
-                          fontSize: '0.8rem',
-                          cursor: 'pointer'
-                        }}
-                        title="Reassign to another Advisor"
-                      >
-                        <UserCheck size={14} /> Reassign
-                      </button>
-                    )}
-
-                    {/* WhatsApp button */}
-                    {item.clientPhone && (
-                      <button
-                        onClick={() => openWhatsApp(item.clientPhone, item.clientName)}
-                        style={{
-                          background: '#f0fdf4',
-                          border: '1px solid #bbf7d0',
-                          color: '#16a34a',
-                          borderRadius: '8px',
-                          padding: '8px 10px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontSize: '0.8rem',
-                          fontWeight: 700
-                        }}
-                      >
-                        <WhatsAppIcon size={14} color="#16a34a" /> WhatsApp
-                      </button>
-                    )}
-
-                    {/* Schedule Consultation Modal Link */}
-                    {!isMeet && (
-                      <button
-                        onClick={() => onOpenMeetingModal && onOpenMeetingModal({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone, insuranceType: item.insuranceType })}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          background: '#eff6ff',
-                          color: '#2563eb',
-                          border: '1px solid #bfdbfe',
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          fontWeight: 700,
-                          fontSize: '0.8rem',
                           cursor: 'pointer'
                         }}
                       >
-                        <Calendar size={14} /> Meet
+                        Client 360 &rarr;
                       </button>
-                    )}
-
-                    {/* Client 360 link */}
-                    <button
-                      onClick={() => onOpenClient360 && onOpenClient360({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone })}
-                      style={{
-                        background: '#ffffff',
-                        border: '1px solid #cbd5e1',
-                        color: '#475569',
-                        borderRadius: '8px',
-                        padding: '8px 12px',
-                        fontSize: '0.8rem',
-                        fontWeight: 700,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Client 360
-                    </button>
+                    </div>
 
                   </div>
                 </div>
