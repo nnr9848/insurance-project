@@ -482,7 +482,7 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                   }}
                 >
                   {/* Left: Time & Activity Info */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '240px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: '1 1 400px', minWidth: '0' }}>
                     
                     {/* Time Slot Badge (12-hour AM/PM) */}
                     <div style={{
@@ -495,7 +495,8 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                       borderRadius: '10px',
                       padding: '6px 8px',
                       minWidth: '72px',
-                      textAlign: 'center'
+                      textAlign: 'center',
+                      flexShrink: 0
                     }}>
                       <span style={{ fontSize: '0.62rem', fontWeight: 800, textTransform: 'uppercase', color: isOverdue ? '#dc2626' : (isCompleted ? '#16a34a' : '#64748b'), letterSpacing: '0.4px' }}>
                         {isMeet ? 'MEET' : 'CALL'}
@@ -526,35 +527,35 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                     </div>
 
                     {/* Details */}
-                    <div>
+                    <div style={{ minWidth: '0', flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <span 
                           onClick={() => onOpenClient360 && onOpenClient360({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone })}
-                          style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.96rem', cursor: 'pointer' }}
+                          style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.96rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
                         >
                           {item.clientName}
                         </span>
                         
                         {item.clientCode && (
-                          <span style={{ fontSize: '0.7rem', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', fontWeight: 700, color: '#475569', letterSpacing: '0.3px' }}>
+                          <span style={{ fontSize: '0.7rem', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', fontWeight: 700, color: '#475569', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>
                             {item.clientCode}
                           </span>
                         )}
 
-                        <span style={{ fontSize: '0.72rem', background: isMeet ? '#eff6ff' : '#ecfdf5', color: isMeet ? '#1d4ed8' : '#047857', border: `1px solid ${isMeet ? '#bfdbfe' : '#a7f3d0'}`, padding: '1px 7px', borderRadius: '6px', fontWeight: 700 }}>
+                        <span style={{ fontSize: '0.72rem', background: isMeet ? '#eff6ff' : '#ecfdf5', color: isMeet ? '#1d4ed8' : '#047857', border: `1px solid ${isMeet ? '#bfdbfe' : '#a7f3d0'}`, padding: '1px 7px', borderRadius: '6px', fontWeight: 700, whiteSpace: 'nowrap' }}>
                           {item.insuranceType}
                         </span>
 
                         {isCompleted ? (
-                          <span style={{ fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', fontWeight: 800, padding: '1px 7px', borderRadius: '4px' }}>
+                          <span style={{ fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', fontWeight: 800, padding: '1px 7px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
                             ✓ COMPLETED
                           </span>
                         ) : isOverdue ? (
-                          <span style={{ fontSize: '0.7rem', background: '#fee2e2', color: '#dc2626', fontWeight: 800, padding: '1px 7px', borderRadius: '4px' }}>
+                          <span style={{ fontSize: '0.7rem', background: '#fee2e2', color: '#dc2626', fontWeight: 800, padding: '1px 7px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
                             ⚠️ OVERDUE
                           </span>
                         ) : item.datetime < new Date() ? (
-                          <span style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontWeight: 700, padding: '1px 7px', borderRadius: '4px' }}>
+                          <span style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontWeight: 700, padding: '1px 7px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
                             ⏱️ Outcome Pending
                           </span>
                         ) : null}
@@ -563,7 +564,7 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                       <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: '3px' }}>
                         {item.title}
                         {item.advisorName && (
-                          <span style={{ marginLeft: '8px', fontSize: '0.74rem', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', color: '#475569', fontWeight: 600 }}>
+                          <span style={{ marginLeft: '8px', fontSize: '0.74rem', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', color: '#475569', fontWeight: 600, whiteSpace: 'nowrap' }}>
                             Advisor: {item.advisorName}
                           </span>
                         )}
@@ -578,7 +579,7 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                   </div>
 
                   {/* Right: Actions Bar */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, marginLeft: 'auto' }}>
                     
                     {/* Meet Actions */}
                     {isMeet && !isCompleted && item.googleMeetUrl && (
