@@ -39,7 +39,7 @@ export default function SalesPipelineView({ onOpenClient360, onOpenCallModal, on
   const loadLeads = async () => {
     setLoading(true);
     try {
-      const data = await crmService.getLeads();
+      const data = await crmService.getClients();
       setLeads(data);
     } catch (err) {
       console.error('Failed to load pipeline leads:', err);

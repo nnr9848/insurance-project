@@ -21,7 +21,7 @@ public class SystemDataService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
-    private final ClientLeadRepository clientLeadRepository;
+    private final ClientRepository clientRepository;
     private final QuotationRepository quotationRepository;
     private final ClientDocumentRepository documentRepository;
     private final ApprovalRequestRepository approvalRepository;
@@ -43,7 +43,7 @@ public class SystemDataService {
         callLogRepository.deleteAllInBatch();
         followUpRepository.deleteAllInBatch();
         meetingRepository.deleteAllInBatch();
-        clientLeadRepository.deleteAllInBatch();
+        clientRepository.deleteAllInBatch();
         quoteInquiryRepository.deleteAllInBatch();
         entityManager.flush();
         entityManager.clear();
@@ -115,7 +115,7 @@ public class SystemDataService {
 
         // 3. Seed Realistic Client Leads Across Diverse Insurance Verticals
         // Lead 1: Health Porting (Follow-up)
-        ClientLead lead1 = clientLeadRepository.save(ClientLead.builder()
+        Client lead1 = clientRepository.save(Client.builder()
                 .clientCode("CL-801245")
                 .fullName("Ahmed Ali")
                 .companyName("Ali Logistics Pvt Ltd")
@@ -139,7 +139,7 @@ public class SystemDataService {
                 .build());
 
         // Lead 2: High Sum Insured Term Life (Quotation Stage)
-        ClientLead lead2 = clientLeadRepository.save(ClientLead.builder()
+        Client lead2 = clientRepository.save(Client.builder()
                 .clientCode("CL-801246")
                 .fullName("Venkatesh Rao")
                 .companyName("VR Software Solutions")
@@ -161,7 +161,7 @@ public class SystemDataService {
                 .build());
 
         // Lead 3: Motor Zero-Depreciation (Meeting Scheduled)
-        ClientLead lead3 = clientLeadRepository.save(ClientLead.builder()
+        Client lead3 = clientRepository.save(Client.builder()
                 .clientCode("CL-801247")
                 .fullName("Dr. Sunita Deshmukh")
                 .companyName("Apollo Clinic ECIL")
@@ -185,7 +185,7 @@ public class SystemDataService {
                 .build());
 
         // Lead 4: Corporate Group GMC (Documents Collection)
-        ClientLead lead4 = clientLeadRepository.save(ClientLead.builder()
+        Client lead4 = clientRepository.save(Client.builder()
                 .clientCode("CL-801248")
                 .fullName("Rohan Malhotra")
                 .companyName("Nexus FinTech Labs")
@@ -207,7 +207,7 @@ public class SystemDataService {
                 .build());
 
         // Lead 5: International Travel Shield (New Lead)
-        ClientLead lead5 = clientLeadRepository.save(ClientLead.builder()
+        Client lead5 = clientRepository.save(Client.builder()
                 .clientCode("CL-801249")
                 .fullName("Ananya Iyer")
                 .companyName(null)

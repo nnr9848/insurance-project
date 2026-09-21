@@ -26,6 +26,13 @@ public class AuditController {
         return ResponseEntity.ok(auditService.getCompositeClientAuditTimeline(clientId));
     }
 
+    @GetMapping("/inquiry/{inquiryId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @Operation(summary = "Get historical audit logs for a specific web quote inquiry / lead")
+    public ResponseEntity<List<AuditLogDto>> getInquiryAuditLogs(@PathVariable Long inquiryId) {
+        return ResponseEntity.ok(auditService.getAuditLogsForEntity("LEAD_INQUIRY", inquiryId));
+    }
+
     @GetMapping("/company-feed")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER')")
     @Operation(summary = "Get recent company-wide activity audit feed for managers & admins")

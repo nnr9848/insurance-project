@@ -24,7 +24,7 @@ public class ClientDocument {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
     @JsonIgnoreProperties({"assignedAdvisor", "manager"})
-    private ClientLead client;
+    private Client client;
 
     @Column(name = "document_type", nullable = false, length = 60)
     private String documentType; // AADHAAR, PAN, RC_BOOK, MEDICAL_RECORD, PREVIOUS_POLICY, PROPOSAL_FORM, OTHER

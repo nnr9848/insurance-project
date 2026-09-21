@@ -78,7 +78,7 @@ export default function DocumentLockerView({ onOpenClient360 }) {
 
   const fetchClients = async () => {
     try {
-      const data = await crmService.getLeads();
+      const data = await crmService.getClients();
       setClients(data || []);
     } catch (err) {
       console.error('Failed to fetch clients:', err);

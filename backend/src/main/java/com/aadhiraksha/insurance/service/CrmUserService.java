@@ -6,7 +6,7 @@ import com.aadhiraksha.insurance.model.Designation;
 import com.aadhiraksha.insurance.model.Role;
 import com.aadhiraksha.insurance.model.StaffProfile;
 import com.aadhiraksha.insurance.model.User;
-import com.aadhiraksha.insurance.repository.ClientLeadRepository;
+import com.aadhiraksha.insurance.repository.ClientRepository;
 import com.aadhiraksha.insurance.repository.DepartmentRepository;
 import com.aadhiraksha.insurance.repository.DesignationRepository;
 import com.aadhiraksha.insurance.repository.RoleRepository;
@@ -32,7 +32,7 @@ public class CrmUserService {
     private final DepartmentRepository departmentRepository;
     private final DesignationRepository designationRepository;
     private final StaffProfileRepository staffProfileRepository;
-    private final ClientLeadRepository clientLeadRepository;
+    private final ClientRepository clientRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
 
@@ -426,7 +426,7 @@ public class CrmUserService {
     }
 
     public CrmUserDto.UserResponse mapToResponse(User user) {
-        long clientCount = clientLeadRepository.countByAssignedAdvisorId(user.getId());
+        long clientCount = clientRepository.countByAssignedAdvisorId(user.getId());
 
         StaffProfile staff = staffProfileRepository.findByUserId(user.getId()).orElse(null);
 

@@ -2,10 +2,10 @@ package com.aadhiraksha.insurance.service;
 
 import com.aadhiraksha.insurance.dto.ApprovalDto;
 import com.aadhiraksha.insurance.model.ApprovalRequest;
-import com.aadhiraksha.insurance.model.ClientLead;
+import com.aadhiraksha.insurance.model.Client;
 import com.aadhiraksha.insurance.model.User;
 import com.aadhiraksha.insurance.repository.ApprovalRequestRepository;
-import com.aadhiraksha.insurance.repository.ClientLeadRepository;
+import com.aadhiraksha.insurance.repository.ClientRepository;
 import com.aadhiraksha.insurance.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 public class ApprovalService {
 
     private final ApprovalRequestRepository approvalRequestRepository;
-    private final ClientLeadRepository clientLeadRepository;
+    private final ClientRepository clientRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
 
@@ -31,9 +31,9 @@ public class ApprovalService {
         User requester = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
 
-        ClientLead client = null;
+        Client client = null;
         if (request.getClientId() != null) {
-            client = clientLeadRepository.findById(request.getClientId()).orElse(null);
+            client = clientRepository.findById(request.getClientId()).orElse(null);
         }
 
         User targetAdvisor = null;
@@ -119,10 +119,10 @@ public class ApprovalService {
 
         // If approved and is a lead reassignment, apply the reassignment directly
         if ("APPROVED".equals(request.getStatus()) && "LEAD_REASSIGNMENT".equals(approval.getRequestType()) && approval.getClient() != null && approval.getTargetAdvisor() != null) {
-            ClientLead client = approval.getClient();
+            Client client = approval.getClient();
             client.setAssignedAdvisor(approval.getTargetAdvisor());
             client.setManager(approval.getTargetAdvisor().getManager());
-            clientLeadRepository.save(client);
+            clientRepository.save(client);
         }
 
         // Audit Trail
@@ -165,3 +165,4 @@ public class ApprovalService {
                 .build();
     }
 }
+

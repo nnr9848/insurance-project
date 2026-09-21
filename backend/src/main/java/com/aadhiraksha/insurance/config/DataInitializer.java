@@ -23,7 +23,6 @@ public class DataInitializer {
     @Bean
     public CommandLineRunner initDefaultAdmin(UserRepository userRepository,
                                               RoleRepository roleRepository,
-                                              ClientLeadRepository clientLeadRepository,
                                               FollowUpTaskRepository followUpTaskRepository,
                                               PasswordEncoder passwordEncoder) {
         return args -> {

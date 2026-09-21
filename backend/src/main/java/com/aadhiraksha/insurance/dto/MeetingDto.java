@@ -21,6 +21,7 @@ public class MeetingDto {
         private LocalDateTime meetingDatetime;
         private LocalDateTime endDatetime;
         private String meetingType; // GOOGLE_MEET, IN_PERSON, PHONE
+        private String googleMeetUrl;
         private String location;
         private String notes;
     }
@@ -42,6 +43,7 @@ public class MeetingDto {
     public static class MeetingResponse {
         private Long id;
         private Long clientId;
+        private String clientCode;
         private String clientName;
         private String clientEmail;
         private String clientPhone;

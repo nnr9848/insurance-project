@@ -9,13 +9,13 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-public class ClientLeadDto {
+public class ClientDto {
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class CreateLeadRequest {
+    public static class CreateClientRequest {
         private String fullName;
         private String companyName;
         private String phoneNumber;
@@ -41,7 +41,7 @@ public class ClientLeadDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class LeadResponse {
+    public static class ClientResponse {
         private Long id;
         private String clientCode;
         private String fullName;
@@ -76,7 +76,7 @@ public class ClientLeadDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class ReassignLeadRequest {
+    public static class ReassignClientRequest {
         private Long targetAdvisorId;
         private String reassignmentReason;
     }

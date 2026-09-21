@@ -97,13 +97,15 @@ export default function AdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Active Workspace Navigation View (URL Query Param Synchronized)
-  // 'dashboard' | 'leads' | 'clients' | 'pipeline' | 'agenda' | 'calls' | 'meetings' | 'proposals' | 'renewals' | 'documents' | 'users' | 'approvals' | 'audit' | 'posp' | 'hospitals' | 'claims'
-  const currentTabFromUrl = searchParams.get('tab') || 'dashboard';
+  // 'dashboard' | 'leads' | 'clients' | 'pipeline' | 'agenda' | 'calls' | 'meetings' | 'calendar' | 'proposals' | 'renewals' | 'documents' | 'users' | 'approvals' | 'audit' | 'posp' | 'hospitals' | 'claims'
+  const rawTab = searchParams.get('tab') || 'dashboard';
+  const currentTabFromUrl = rawTab === 'calendar' ? 'meetings' : rawTab;
   const [activeView, setActiveView] = useState(currentTabFromUrl);
 
   // Sync state when URL query param changes (e.g. Browser Back / Forward buttons)
   useEffect(() => {
-    const tab = searchParams.get('tab') || 'dashboard';
+    const raw = searchParams.get('tab') || 'dashboard';
+    const tab = raw === 'calendar' ? 'meetings' : raw;
     if (tab !== activeView) {
       setActiveView(tab);
     }
@@ -177,9 +179,9 @@ export default function AdminDashboard() {
         };
       case 'agenda':
         return {
-          title: 'Daily Call Agenda',
+          title: 'Daily Work Agenda',
           category: 'CRM Workspace',
-          subtitle: 'Scheduled client follow-up calls, overdue pipeline reminders, and call logging.',
+          subtitle: 'Unified daily schedule: scheduled Google Meets, client callbacks, and overdue task recovery.',
           icon: <PhoneCall size={18} color="#ea580c" />
         };
       case 'calls':
@@ -375,7 +377,7 @@ export default function AdminDashboard() {
         portalService.getAdminPOSP().catch(() => []),
         portalService.getAdminClaims().catch(() => []),
         portalService.searchHospitals('', '').catch(() => []),
-        crmService.getLeads().catch(() => []),
+        crmService.getClients().catch(() => []),
         crmService.getDueTodayFollowUps().catch(() => []),
         (isSuperAdmin || isManager) ? crmService.getManagerSummary().catch(() => null) : Promise.resolve(null),
         isSuperAdmin ? crmService.getSuperAdminSummary().catch(() => null) : Promise.resolve(null),
@@ -414,7 +416,7 @@ export default function AdminDashboard() {
     { id: 'leads', label: 'Leads', icon: <Briefcase size={19} />, count: quotes.length, badgeColor: '#16a34a' },
     { id: 'clients', label: 'Client Data Sheet', icon: <FileText size={19} />, count: leads.length, badgeColor: '#0284c7' },
     { id: 'pipeline', label: 'Sales Pipeline', icon: <TrendingUp size={19} />, count: null },
-    { id: 'agenda', label: 'Daily Call Agenda', icon: <PhoneCall size={19} />, count: dueFollowUps.length, badgeColor: '#ea580c' },
+    { id: 'agenda', label: 'Daily Work Agenda', icon: <PhoneCall size={19} />, count: dueFollowUps.length, badgeColor: '#ea580c' },
     { id: 'calls', label: 'Call History Log', icon: <PhoneCall size={19} />, count: null },
     { id: 'meetings', label: 'Meeting Calendar', icon: <Calendar size={19} />, count: null },
     { id: 'proposals', label: 'Quotes & Proposals', icon: <FileSpreadsheet size={19} />, count: null },
@@ -987,7 +989,7 @@ export default function AdminDashboard() {
             </button>
 
             <button
-              onClick={() => setActiveView('meetings')}
+              onClick={() => handleNavigateView('meetings')}
               className="crm-action-btn"
               title="Meeting Calendar"
               style={{

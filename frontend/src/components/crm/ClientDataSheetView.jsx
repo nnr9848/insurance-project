@@ -41,6 +41,7 @@ import * as XLSX from 'xlsx';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { formatWhatsAppNumber } from '../../utils/crmDeduplication';
 import WhatsAppIcon from '../common/WhatsAppIcon';
 
 export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, onOpenMeetingModal }) {
@@ -174,7 +175,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
 
   const openWhatsApp = (phone, name, product) => {
     if (!phone) return;
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const cleanPhone = formatWhatsAppNumber(phone);
     const text = encodeURIComponent(`Hello ${name || 'Client'}, regarding your ${product || 'insurance'} inquiry at Aadhiraksha InsurTech...`);
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
   };
@@ -198,7 +199,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
   const loadLeads = async () => {
     setLoading(true);
     try {
-      const data = await crmService.getLeads();
+      const data = await crmService.getClients();
       setLeads(data);
     } catch (err) {
       console.error('Failed to load CRM leads:', err);

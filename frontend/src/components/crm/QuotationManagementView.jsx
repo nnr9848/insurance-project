@@ -23,9 +23,14 @@ import {
   Layers,
   Award,
   Check,
-  X
+  X,
+  Eye,
+  Edit3,
+  Printer,
+  Copy
 } from 'lucide-react';
 import { crmService } from '../../services/api';
+import WhatsAppIcon from '../common/WhatsAppIcon';
 
 const INSURERS = [
   'Star Health and Allied Insurance',
@@ -48,9 +53,16 @@ export default function QuotationManagementView({ onOpenClient360 }) {
   const [insurerFilter, setInsurerFilter] = useState('ALL');
   const [selectedQuoteForCompare, setSelectedQuoteForCompare] = useState([]);
 
+  // View & Edit Modal States
+  const [viewingQuote, setViewingQuote] = useState(null);
+  const [editingQuote, setEditingQuote] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
   // Create Quote Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [clients, setClients] = useState([]);
+  const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     clientId: '',
     insuranceType: 'HEALTH_INSURANCE',
@@ -72,6 +84,24 @@ export default function QuotationManagementView({ onOpenClient360 }) {
   });
   const [submitting, setSubmitting] = useState(false);
 
+  const selectedClientObj = clients.find(c => String(c.id) === String(formData.clientId));
+  const searchedClients = clients.filter(c => {
+    if (!clientSearchTerm.trim()) return false;
+    const term = clientSearchTerm.toLowerCase();
+    const cleanDigits = term.replace(/[^0-9]/g, '');
+    const clientPhoneDigits = (c.phoneNumber || '').replace(/[^0-9]/g, '');
+
+    return (
+      (c.fullName && c.fullName.toLowerCase().includes(term)) ||
+      (c.phoneNumber && c.phoneNumber.includes(term)) ||
+      (cleanDigits && clientPhoneDigits.includes(cleanDigits)) ||
+      (c.email && c.email.toLowerCase().includes(term)) ||
+      (c.clientCode && c.clientCode.toLowerCase().includes(term)) ||
+      (c.id && String(c.id).includes(term)) ||
+      (c.companyName && c.companyName.toLowerCase().includes(term))
+    );
+  });
+
   useEffect(() => {
     fetchQuotations();
     fetchClients();
@@ -91,7 +121,7 @@ export default function QuotationManagementView({ onOpenClient360 }) {
 
   const fetchClients = async () => {
     try {
-      const res = await crmService.getLeads();
+      const res = await crmService.getClients();
       setClients(res || []);
     } catch (err) {
       console.error('Failed to fetch client list:', err);
@@ -162,6 +192,52 @@ export default function QuotationManagementView({ onOpenClient360 }) {
       fetchQuotations();
     } catch (err) {
       alert('Failed to update status: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleOpenEdit = (quote) => {
+    setEditingQuote(quote);
+    setEditFormData({
+      insuranceType: quote.insuranceType || 'HEALTH_INSURANCE',
+      insurerName: quote.insurerName || INSURERS[0],
+      planName: quote.planName || '',
+      planVariant: quote.planVariant || 'Comprehensive',
+      sumInsured: quote.sumInsured || '₹10,00,000',
+      policyTenureYears: quote.policyTenureYears || 1,
+      basePremium: quote.basePremium || '',
+      ncbDiscountPercent: quote.ncbDiscountPercent || 0,
+      roomRentLimit: quote.roomRentLimit || 'No Cap / Single Private Room',
+      copayPercentage: quote.copayPercentage || '0%',
+      restorationBenefit: quote.restorationBenefit || '100% Unlimited Recharge',
+      prePostHospitalization: quote.prePostHospitalization || '60 Days Pre / 180 Days Post',
+      maternityCovered: !!quote.maternityCovered,
+      opdCovered: !!quote.opdCovered,
+      notes: quote.notes || '',
+      status: quote.status || 'DRAFT'
+    });
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editFormData.planName || !editFormData.basePremium) {
+      alert('Plan Name and Base Premium are required.');
+      return;
+    }
+
+    setEditSubmitting(true);
+    try {
+      await crmService.updateQuotation(editingQuote.id, {
+        ...editFormData,
+        clientId: editingQuote.clientId,
+        basePremium: Number(editFormData.basePremium),
+        ncbDiscountPercent: Number(editFormData.ncbDiscountPercent || 0)
+      });
+      setEditingQuote(null);
+      fetchQuotations();
+    } catch (err) {
+      alert('Failed to update quotation: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -430,21 +506,10 @@ export default function QuotationManagementView({ onOpenClient360 }) {
                     <td key={q.id} style={{ padding: '12px', borderLeft: '1px solid #e2e8f0' }}>
                       <button
                         onClick={() => handleSendQuote(q)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          background: '#16a34a',
-                          color: '#ffffff',
-                          border: 'none',
-                          padding: '6px 12px',
-                          borderRadius: '6px',
-                          fontSize: '0.78rem',
-                          fontWeight: 700,
-                          cursor: 'pointer'
-                        }}
+                        className="crm-btn-whatsapp-solid"
                       >
-                        <Send size={13} /> Send Option via WhatsApp
+                        <WhatsAppIcon size={14} color="#ffffff" />
+                        <span>Send Option via WhatsApp</span>
                       </button>
                     </td>
                   ))}
@@ -600,6 +665,24 @@ export default function QuotationManagementView({ onOpenClient360 }) {
                         <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
                           {q.createdAt ? new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
                         </div>
+                        {q.inquiryId && (
+                          <div style={{ marginTop: '4px' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontSize: '0.66rem',
+                              fontWeight: 800,
+                              color: '#15803d',
+                              background: '#ecfdf5',
+                              border: '1px solid #bbf7d0',
+                              padding: '1px 5px',
+                              borderRadius: '4px'
+                            }}>
+                              <Tag size={9} /> Web Lead #{q.inquiryId}
+                            </span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Client */}
@@ -608,7 +691,10 @@ export default function QuotationManagementView({ onOpenClient360 }) {
                           <div style={{ fontWeight: 700, color: '#0f2b48' }}>{q.clientName}</div>
                           {onOpenClient360 && (
                             <button
-                              onClick={() => onOpenClient360({ id: q.clientId })}
+                              onClick={() => {
+                                const matchedClient = clients.find(c => String(c.id) === String(q.clientId));
+                                onOpenClient360(matchedClient || { id: q.clientId, fullName: q.clientName, phoneNumber: q.clientPhone });
+                              }}
                               style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', padding: 0 }}
                               title="Open Client 360"
                             >
@@ -659,23 +745,52 @@ export default function QuotationManagementView({ onOpenClient360 }) {
                       <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                           <button
-                            onClick={() => handleSendQuote(q)}
-                            title="Dispatch via WhatsApp"
+                            onClick={() => setViewingQuote(q)}
+                            title="View Quotation Summary Sheet"
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '4px',
-                              background: '#dcfce7',
+                              background: '#f0fdf4',
                               color: '#15803d',
                               border: '1px solid #bbf7d0',
-                              padding: '5px 10px',
+                              padding: '5px 8px',
                               borderRadius: '6px',
                               fontSize: '0.75rem',
                               fontWeight: 700,
                               cursor: 'pointer'
                             }}
                           >
-                            <Send size={12} /> Dispatch
+                            <Eye size={13} color="#15803d" /> View
+                          </button>
+
+                          <button
+                            onClick={() => handleOpenEdit(q)}
+                            title="Edit / Revise Quotation"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: '#f8fafc',
+                              color: '#0284c7',
+                              border: '1px solid #cbd5e1',
+                              padding: '5px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Edit3 size={13} color="#0284c7" /> Edit
+                          </button>
+
+                          <button
+                            onClick={() => handleSendQuote(q)}
+                            title="Dispatch via WhatsApp"
+                            className="crm-btn-whatsapp-outline"
+                          >
+                            <WhatsAppIcon size={13} color="currentColor" />
+                            <span>Dispatch</span>
                           </button>
 
                           {q.status !== 'ACCEPTED' && (
@@ -749,22 +864,131 @@ export default function QuotationManagementView({ onOpenClient360 }) {
 
             <form onSubmit={handleCreateQuote} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               
-              {/* Select Client */}
+              {/* Select Client with Smart Search Autocomplete */}
               <div>
                 <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
                   Target Client *
                 </label>
-                <select
-                  required
-                  value={formData.clientId}
-                  onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
-                >
-                  <option value="">-- Select Client from CRM --</option>
-                  {clients.map(c => (
-                    <option key={c.id} value={c.id}>{c.fullName} ({c.phoneNumber}) - {c.insuranceType}</option>
-                  ))}
-                </select>
+                {selectedClientObj ? (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    background: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '8px',
+                    padding: '8px 12px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.75rem' }}>
+                        {selectedClientObj.fullName?.charAt(0) || 'C'}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.86rem' }}>
+                          {selectedClientObj.fullName} <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>({selectedClientObj.clientCode || `CL-${selectedClientObj.id}`})</span>
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>
+                          {selectedClientObj.phoneNumber} • {selectedClientObj.insuranceType || 'Health Insurance'}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, clientId: '' });
+                        setClientSearchTerm('');
+                      }}
+                      style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '3px 8px', fontSize: '0.72rem', color: '#64748b', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      Change Client
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                      <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '10px' }} />
+                      <input
+                        type="text"
+                        placeholder="Search by client name, mobile (+91), or CL code..."
+                        value={clientSearchTerm}
+                        onChange={(e) => setClientSearchTerm(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px 8px 32px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '0.84rem'
+                        }}
+                      />
+                    </div>
+
+                    {/* Filtered Dropdown Popover */}
+                    {clientSearchTerm.trim() && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        zIndex: 10,
+                        background: '#ffffff',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+                        maxHeight: '180px',
+                        overflowY: 'auto',
+                        marginTop: '4px'
+                      }}>
+                        {searchedClients.length === 0 ? (
+                          <div style={{ padding: '10px 12px', fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center' }}>
+                            No matching clients found for "{clientSearchTerm}"
+                          </div>
+                        ) : (
+                          searchedClients.map(c => (
+                            <div
+                              key={c.id}
+                              onClick={() => {
+                                setFormData({
+                                  ...formData,
+                                  clientId: String(c.id),
+                                  sumInsured: c.sumInsured || formData.sumInsured
+                                });
+                                setClientSearchTerm('');
+                              }}
+                              style={{
+                                padding: '8px 12px',
+                                borderBottom: '1px solid #f1f5f9',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                transition: 'background 0.1s'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = '#ffffff'}
+                            >
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <strong style={{ color: '#0f2b48', fontSize: '0.84rem' }}>{c.fullName}</strong>
+                                  <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>
+                                    ({c.clientCode || `CL-${c.id}`})
+                                  </span>
+                                </div>
+                                {c.email && (
+                                  <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '1px' }}>
+                                    {c.email}
+                                  </div>
+                                )}
+                              </div>
+                              <span style={{ fontSize: '0.72rem', background: '#eff6ff', color: '#2563eb', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                                {c.phoneNumber}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Insurer & Plan */}
@@ -912,6 +1136,460 @@ export default function QuotationManagementView({ onOpenClient360 }) {
                   style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#f59e0b', color: '#091726', fontWeight: 800, cursor: 'pointer' }}
                 >
                   {submitting ? 'Generating...' : 'Save & Calculate Quote'}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW QUOTATION DETAILS MODAL */}
+      {viewingQuote && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'none',
+          zIndex: 13000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            maxWidth: '680px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #091726 0%, #0f2b48 100%)',
+              color: '#ffffff',
+              borderRadius: '16px 16px 0 0'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.2)', padding: '2px 8px', borderRadius: '4px' }}>
+                    {viewingQuote.quoteNumber}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8' }}>
+                    Version v{viewingQuote.versionNumber || 1}
+                  </span>
+                </div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '4px 0 0 0', color: '#ffffff' }}>
+                  {viewingQuote.insurerName}
+                </h3>
+                <div style={{ fontSize: '0.84rem', color: '#cbd5e1' }}>
+                  {viewingQuote.planName} • {viewingQuote.planVariant || 'Comprehensive'}
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingQuote(null)}
+                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#ffffff', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              
+              {/* Client & Advisor Snapshot */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#f8fafc', padding: '12px 14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Client Details</div>
+                  <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.92rem', marginTop: '2px' }}>{viewingQuote.clientName}</div>
+                  <div style={{ fontSize: '0.78rem', color: '#475569' }}>{viewingQuote.clientPhone} • {viewingQuote.clientEmail || 'No Email'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Created By Advisor</div>
+                  <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.92rem', marginTop: '2px' }}>{viewingQuote.createdByAdvisorName || 'Specialist Advisor'}</div>
+                  <div style={{ fontSize: '0.78rem', color: '#475569' }}>Status: <strong style={{ color: viewingQuote.status === 'ACCEPTED' ? '#16a34a' : '#0284c7' }}>{viewingQuote.status}</strong></div>
+                </div>
+              </div>
+
+              {/* Financial Pricing Card */}
+              <div style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)', border: '1.5px solid #a7f3d0', borderRadius: '12px', padding: '14px 16px' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  Premium & Financial Calculation
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Sum Insured</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f2b48', marginTop: '2px' }}>{viewingQuote.sumInsured}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Base Premium</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 700, color: '#334155', marginTop: '2px' }}>₹{viewingQuote.basePremium}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>18% GST</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 700, color: '#334155', marginTop: '2px' }}>₹{viewingQuote.taxGst}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 800 }}>Total Annual</div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#16a34a', marginTop: '2px' }}>₹{viewingQuote.totalPremium}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Policy Features & Benefits Matrix */}
+              <div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155', marginBottom: '8px' }}>
+                  Coverage Benefits & Terms
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.82rem' }}>
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>Room Rent Limit:</span> <strong style={{ color: '#0f2b48' }}>{viewingQuote.roomRentLimit || 'No Cap'}</strong>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>Restoration Benefit:</span> <strong style={{ color: '#0f2b48' }}>{viewingQuote.restorationBenefit || '100% Unlimited'}</strong>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>Co-Payment:</span> <strong style={{ color: '#0f2b48' }}>{viewingQuote.copayPercentage || '0%'}</strong>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>Pre/Post Hospitalization:</span> <strong style={{ color: '#0f2b48' }}>{viewingQuote.prePostHospitalization || '60/180 Days'}</strong>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>Maternity Coverage:</span> <strong style={{ color: viewingQuote.maternityCovered ? '#16a34a' : '#94a3b8' }}>{viewingQuote.maternityCovered ? '✓ Covered' : '✗ Not Included'}</strong>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>OPD / Diagnostics:</span> <strong style={{ color: viewingQuote.opdCovered ? '#16a34a' : '#94a3b8' }}>{viewingQuote.opdCovered ? '✓ Covered' : '✗ Not Included'}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dedicated Linked Web Inquiry Heritage Card */}
+              {viewingQuote.inquiryId && (
+                <div style={{
+                  background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                  border: '1.5px solid #86efac',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#166534', background: '#dcfce7', padding: '2px 7px', borderRadius: '4px' }}>
+                        LINKED WEB INQUIRY #{viewingQuote.inquiryId}
+                      </span>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#047857', textTransform: 'uppercase' }}>
+                        {viewingQuote.inquiryCategorySlug?.replace(/-/g, ' ') || viewingQuote.insuranceType?.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#15803d', marginTop: '3px' }}>
+                      Origin: Customer submitted quote form on web portal • Triage Status: <strong>{viewingQuote.inquiryStatus || 'QUALIFIED'}</strong>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const inq = await leadInquiryService.getInquiryById(viewingQuote.inquiryId);
+                        if (inq) {
+                          const logs = await crmService.getInquiryAuditLogs(inq.id);
+                          alert(`Inquiry #${inq.id} Heritage & Audit Trail:\n\n• Applicant: ${inq.fullName}\n• Phone: ${inq.phoneNumber}\n• Category: ${inq.categorySlug}\n• Status: ${inq.status}\n\nActivity Logs (${logs ? logs.length : 0}):\n${logs && logs.length > 0 ? logs.map(l => `[${new Date(l.timestamp).toLocaleDateString('en-IN')}] ${l.action}: ${l.oldValue || 'None'} -> ${l.newValue || ''} (by ${l.performedByName || 'System'})`).join('\n') : 'No audit entries logged'}`);
+                        }
+                      } catch (err) {
+                        alert(`Could not load Inquiry #${viewingQuote.inquiryId}: ${err.message}`);
+                      }
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      background: '#15803d',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      flexShrink: 0
+                    }}
+                  >
+                    <Eye size={12} color="#ffffff" /> View Inquiry & Logs
+                  </button>
+                </div>
+              )}
+
+              {/* Notes */}
+              {viewingQuote.notes && (
+                <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: '10px 14px', borderRadius: '10px', fontSize: '0.82rem', color: '#92400e' }}>
+                  <strong>Advisor Notes:</strong> {viewingQuote.notes}
+                </div>
+              )}
+
+              {/* Footer Actions */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const quote = viewingQuote;
+                    setViewingQuote(null);
+                    handleOpenEdit(quote);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #0284c7',
+                    background: '#f0f9ff',
+                    color: '#0369a1',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Edit3 size={14} /> Edit / Revise Quote
+                </button>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleSendQuote(viewingQuote)}
+                    className="crm-btn-whatsapp-solid"
+                  >
+                    <WhatsAppIcon size={14} color="#ffffff" />
+                    <span>Dispatch WhatsApp</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewingQuote(null)}
+                    style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT / REVISE QUOTATION MODAL */}
+      {editingQuote && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'none',
+          zIndex: 13000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            maxWidth: '620px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: '#0f2b48',
+              color: '#ffffff',
+              borderRadius: '16px 16px 0 0'
+            }}>
+              <div>
+                <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 800 }}>
+                  EDIT / REVISE QUOTE • {editingQuote.quoteNumber} (v{editingQuote.versionNumber || 1})
+                </div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '2px 0 0 0', color: '#ffffff' }}>
+                  {editingQuote.clientName}
+                </h3>
+              </div>
+              <button
+                onClick={() => setEditingQuote(null)}
+                style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveEdit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                    Insurer Provider *
+                  </label>
+                  <select
+                    value={editFormData.insurerName}
+                    onChange={(e) => setEditFormData({ ...editFormData, insurerName: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  >
+                    {INSURERS.map(ins => (
+                      <option key={ins} value={ins}>{ins}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                    Plan Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.planName}
+                    onChange={(e) => setEditFormData({ ...editFormData, planName: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                    Sum Insured (Coverage) *
+                  </label>
+                  <select
+                    value={editFormData.sumInsured}
+                    onChange={(e) => setEditFormData({ ...editFormData, sumInsured: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  >
+                    <option value="₹5,00,000">₹5,00,000 (5 Lakhs)</option>
+                    <option value="₹10,00,000">₹10,00,000 (10 Lakhs)</option>
+                    <option value="₹15,00,000">₹15,00,000 (15 Lakhs)</option>
+                    <option value="₹25,00,000">₹25,00,000 (25 Lakhs)</option>
+                    <option value="₹50,00,000">₹50,00,000 (50 Lakhs)</option>
+                    <option value="₹1,00,00,000">₹1,00,00,000 (1 Crore)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                    Base Premium (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="100"
+                    value={editFormData.basePremium}
+                    onChange={(e) => setEditFormData({ ...editFormData, basePremium: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  />
+                  {editFormData.basePremium && (
+                    <div style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: 700, marginTop: '2px' }}>
+                      Total with 18% GST: ₹{Math.round(Number(editFormData.basePremium) * 1.18)}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                    Room Rent Limit
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.roomRentLimit}
+                    onChange={(e) => setEditFormData({ ...editFormData, roomRentLimit: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                    Restoration Benefit
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.restorationBenefit}
+                    onChange={(e) => setEditFormData({ ...editFormData, restorationBenefit: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                    Quote Status
+                  </label>
+                  <select
+                    value={editFormData.status}
+                    onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  >
+                    <option value="DRAFT">DRAFT</option>
+                    <option value="SENT">SENT</option>
+                    <option value="ACCEPTED">ACCEPTED</option>
+                    <option value="REJECTED">REJECTED</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                    Co-Pay / Deductible
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.copayPercentage}
+                    onChange={(e) => setEditFormData({ ...editFormData, copayPercentage: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                  Advisor Notes & Benefit Highlights
+                </label>
+                <textarea
+                  rows="2"
+                  value={editFormData.notes}
+                  onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingQuote(null)}
+                  disabled={editSubmitting}
+                  style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: 'var(--primary-navy)', color: '#ffffff', fontWeight: 700, cursor: editSubmitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  {editSubmitting ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
+                  Save Changes
                 </button>
               </div>
 

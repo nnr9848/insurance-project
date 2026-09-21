@@ -14,10 +14,14 @@ import {
   ArrowRight,
   UserCheck,
   Check,
-  RefreshCw
+  RefreshCw,
+  Video,
+  ExternalLink
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { formatWhatsAppNumber } from '../../utils/crmDeduplication';
+import WhatsAppIcon from '../common/WhatsAppIcon';
 
 export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModal }) {
   const { isSuperAdmin, isManager, user } = useAuth();
@@ -25,8 +29,9 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
 
   const [dueToday, setDueToday] = useState([]);
   const [overdue, setOverdue] = useState([]);
+  const [todayMeetings, setTodayMeetings] = useState([]);
   const [advisors, setAdvisors] = useState([]);
-  const [activeTab, setActiveTab] = useState('dueToday'); // 'dueToday' | 'overdue'
+  const [activeTab, setActiveTab] = useState('dueToday'); // 'dueToday' | 'overdue' | 'meetings'
   const [loading, setLoading] = useState(true);
 
   // Quick Reassign Modal state for Overdue cards
@@ -89,55 +94,16 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
   const loadAgenda = async () => {
     setLoading(true);
     try {
-      const [dueData, overdueData] = await Promise.all([
-        crmService.getDueTodayFollowUps(),
-        crmService.getOverdueFollowUps()
+      const [dueData, overdueData, meetingsData] = await Promise.all([
+        crmService.getDueTodayFollowUps().catch(() => []),
+        crmService.getOverdueFollowUps().catch(() => []),
+        crmService.getUpcomingMeetings().catch(() => [])
       ]);
-      setDueToday(dueData);
-      setOverdue(overdueData);
+      setDueToday(dueData || []);
+      setOverdue(overdueData || []);
+      setTodayMeetings(meetingsData || []);
     } catch (err) {
       console.error('Failed to load call agenda:', err);
-      // Fallback demo data
-      setDueToday([
-        {
-          id: 101,
-          clientId: 1,
-          clientCode: 'CL-801245',
-          clientName: 'Ahmed Ali',
-          clientPhone: '+91 9849012345',
-          insuranceType: 'Health Insurance',
-          scheduledDatetime: new Date(Date.now() + 3600000).toISOString(),
-          channel: 'PHONE_CALL',
-          status: 'PENDING',
-          notes: 'Client requested health quotation comparison with Star Health and Care.'
-        },
-        {
-          id: 102,
-          clientId: 2,
-          clientCode: 'CL-801246',
-          clientName: 'Venkatesh Rao',
-          clientPhone: '+91 9988112233',
-          insuranceType: 'Term Life Insurance',
-          scheduledDatetime: new Date(Date.now() + 7200000).toISOString(),
-          channel: 'PHONE_CALL',
-          status: 'PENDING',
-          notes: 'Discuss 1 Cr term quote options and tax savings under 80C.'
-        }
-      ]);
-      setOverdue([
-        {
-          id: 103,
-          clientId: 3,
-          clientCode: 'CL-801247',
-          clientName: 'Dr. Sunita Deshmukh',
-          clientPhone: '+91 9849556677',
-          insuranceType: 'Vehicle / Motor Insurance',
-          scheduledDatetime: new Date(Date.now() - 86400000).toISOString(),
-          channel: 'PHONE_CALL',
-          status: 'PENDING',
-          notes: 'Policy expiring in 10 days - urgent callback needed for NCB retention.'
-        }
-      ]);
     } finally {
       setLoading(false);
     }
@@ -189,67 +155,181 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
   };
 
   const openWhatsApp = (phone, name) => {
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const cleanPhone = formatWhatsAppNumber(phone);
     const text = encodeURIComponent(`Hello ${name}, I tried calling you regarding your insurance inquiry at Aadhiraksha InsurTech. When would be a good time to connect?`);
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
   };
 
-  const activeList = activeTab === 'dueToday' ? dueToday : overdue;
+  const [filterType, setFilterType] = useState('PENDING'); // 'PENDING' | 'ALL' | 'COMPLETED' | 'MEETING' | 'CALL' | 'OVERDUE'
+  const [selectedEventModal, setSelectedEventModal] = useState(null);
+  const [meetingOutcomeModal, setMeetingOutcomeModal] = useState(null);
+  const [outcomeForm, setOutcomeForm] = useState({
+    outcomeTag: 'INTERESTED',
+    notes: ''
+  });
+
+  // Unify today's items into a single chronological agenda
+  const unifiedTodayItems = [
+    ...todayMeetings.map(m => {
+      const dt = m.meetingDatetime ? new Date(m.meetingDatetime) : new Date();
+      return {
+        id: `meet-${m.id}`,
+        originalId: m.id,
+        kind: 'MEETING',
+        datetime: dt,
+        title: m.title || `Advisory Consultation`,
+        clientName: m.clientName,
+        clientId: m.clientId,
+        clientPhone: m.clientPhone,
+        clientCode: m.clientCode,
+        insuranceType: m.product || 'General Advisory',
+        status: m.status,
+        googleMeetUrl: m.googleMeetUrl,
+        purpose: m.purpose,
+        advisorName: m.advisorName,
+        outcomeNotes: m.outcomeNotes,
+        badgeColor: '#2563eb',
+        bgColor: '#eff6ff',
+        borderColor: '#bfdbfe'
+      };
+    }),
+    ...dueToday.map(d => {
+      const dt = d.scheduledDatetime ? new Date(d.scheduledDatetime) : new Date();
+      return {
+        id: `call-${d.id}`,
+        originalId: d.id,
+        kind: 'CALL',
+        datetime: dt,
+        title: d.title || `Scheduled Follow-up Callback`,
+        clientName: d.clientName,
+        clientId: d.clientId,
+        clientPhone: d.clientPhone,
+        clientCode: d.clientCode,
+        insuranceType: d.insuranceType || 'Insurance Lead',
+        status: 'PENDING_CALL',
+        notes: d.notes,
+        advisorName: d.advisorName,
+        advisorId: d.advisorId,
+        badgeColor: '#059669',
+        bgColor: '#ecfdf5',
+        borderColor: '#a7f3d0'
+      };
+    })
+  ].sort((a, b) => a.datetime - b.datetime);
+
+  const completedMeetingsCount = todayMeetings.filter(m => m.status === 'COMPLETED').length;
+  const pendingTasksCount = unifiedTodayItems.filter(i => i.status !== 'COMPLETED').length;
+  const totalTodayTasks = unifiedTodayItems.length;
+  const overdueTasksCount = overdue.length;
+
+  // Filtered dataset
+  const displayedItems = (() => {
+    if (filterType === 'OVERDUE') {
+      return overdue.map(o => {
+        const dt = o.scheduledDatetime ? new Date(o.scheduledDatetime) : new Date();
+        return {
+          id: `overdue-${o.id}`,
+          originalId: o.id,
+          kind: 'OVERDUE_CALL',
+          datetime: dt,
+          title: o.title || `Missed Follow-up Callback`,
+          clientName: o.clientName,
+          clientId: o.clientId,
+          clientPhone: o.clientPhone,
+          clientCode: o.clientCode || `CL-${o.clientId}`,
+          insuranceType: o.insuranceType || 'Insurance Lead',
+          status: 'OVERDUE',
+          notes: o.notes,
+          advisorName: o.advisorName,
+          advisorId: o.advisorId,
+          badgeColor: '#dc2626',
+          bgColor: '#fef2f2',
+          borderColor: '#fecaca'
+        };
+      });
+    }
+    if (filterType === 'PENDING') return unifiedTodayItems.filter(i => i.status !== 'COMPLETED');
+    if (filterType === 'COMPLETED') return unifiedTodayItems.filter(i => i.status === 'COMPLETED');
+    if (filterType === 'MEETING') return unifiedTodayItems.filter(i => i.kind === 'MEETING');
+    if (filterType === 'CALL') return unifiedTodayItems.filter(i => i.kind === 'CALL');
+    return unifiedTodayItems;
+  })();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       
-      {/* Top Cockpit Stats Banner */}
+      {/* 1. Unified Cockpit KPI Ribbon */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
         
-        <div style={{
-          background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-          color: '#ffffff',
-          borderRadius: '16px',
-          padding: '1.25rem 1.5rem',
-          boxShadow: '0 4px 14px rgba(5, 150, 105, 0.25)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
+        {/* Card 1: Today's Total Work Schedule */}
+        <div 
+          onClick={() => setFilterType('ALL')}
+          style={{
+            background: filterType !== 'OVERDUE' ? 'linear-gradient(135deg, #0f2b48 0%, #1e40af 100%)' : '#ffffff',
+            color: filterType !== 'OVERDUE' ? '#ffffff' : '#0f2b48',
+            border: filterType !== 'OVERDUE' ? 'none' : '1px solid #e2e8f0',
+            borderRadius: '16px',
+            padding: '1.25rem 1.5rem',
+            boxShadow: filterType !== 'OVERDUE' ? '0 8px 20px -4px rgba(15, 43, 72, 0.3)' : '0 2px 6px rgba(0,0,0,0.02)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+        >
           <div>
-            <div style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#a7f3d0' }}>
-              Calls Due Today
+            <div style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: filterType !== 'OVERDUE' ? '#93c5fd' : '#64748b' }}>
+              Today's Schedule
             </div>
-            <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '2px' }}>
-              {dueToday.length}
+            <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '2px', lineHeight: 1 }}>
+              {totalTodayTasks}
             </div>
-            <div style={{ fontSize: '0.78rem', color: '#d1fae5' }}>Scheduled client follow-ups</div>
+            <div style={{ fontSize: '0.76rem', color: filterType !== 'OVERDUE' ? '#dbeafe' : '#64748b', marginTop: '6px' }}>
+              {todayMeetings.length} Meets • {dueToday.length} Callbacks
+            </div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '14px' }}>
-            <PhoneCall size={28} />
+          <div style={{ background: filterType !== 'OVERDUE' ? 'rgba(255,255,255,0.15)' : '#eff6ff', color: filterType !== 'OVERDUE' ? '#ffffff' : '#2563eb', padding: '12px', borderRadius: '14px' }}>
+            <Calendar size={28} />
           </div>
         </div>
 
-        <div style={{
-          background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-          color: '#ffffff',
-          borderRadius: '16px',
-          padding: '1.25rem 1.5rem',
-          boxShadow: '0 4px 14px rgba(220, 38, 38, 0.25)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
+        {/* Card 2: Overdue Action Required */}
+        <div 
+          onClick={() => setFilterType('OVERDUE')}
+          style={{
+            background: filterType === 'OVERDUE' 
+              ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' 
+              : (overdue.length > 0 ? '#fff1f2' : '#ffffff'),
+            color: filterType === 'OVERDUE' ? '#ffffff' : (overdue.length > 0 ? '#991b1b' : '#0f2b48'),
+            border: filterType === 'OVERDUE' ? 'none' : (overdue.length > 0 ? '1px solid #fecdd3' : '1px solid #e2e8f0'),
+            borderRadius: '16px',
+            padding: '1.25rem 1.5rem',
+            boxShadow: filterType === 'OVERDUE' ? '0 8px 20px -4px rgba(220, 38, 38, 0.3)' : '0 2px 6px rgba(0,0,0,0.02)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+        >
           <div>
-            <div style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#fecaca' }}>
-              Overdue Follow-ups
+            <div style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: filterType === 'OVERDUE' ? '#fecaca' : '#dc2626' }}>
+              Overdue Tasks
             </div>
-            <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '2px' }}>
-              {overdue.length}
+            <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '2px', lineHeight: 1 }}>
+              {overdueTasksCount}
             </div>
-            <div style={{ fontSize: '0.78rem', color: '#fee2e2' }}>Requires immediate advisor action</div>
+            <div style={{ fontSize: '0.76rem', color: filterType === 'OVERDUE' ? '#fee2e2' : (overdue.length > 0 ? '#b91c1c' : '#64748b'), marginTop: '6px' }}>
+              {overdue.length > 0 ? '⚠️ Immediate action needed' : '✓ Zero overdue tasks'}
+            </div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '14px' }}>
+          <div style={{ background: filterType === 'OVERDUE' ? 'rgba(255,255,255,0.15)' : (overdue.length > 0 ? '#fee2e2' : '#f8fafc'), color: filterType === 'OVERDUE' ? '#ffffff' : '#dc2626', padding: '12px', borderRadius: '14px' }}>
             <AlertCircle size={28} />
           </div>
         </div>
 
+        {/* Card 3: Completion Progress */}
         <div style={{
           background: '#ffffff',
           border: '1px solid #e2e8f0',
@@ -258,16 +338,18 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+          boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
         }}>
           <div>
-            <div style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
-              Call Completion Target
+            <div style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748b' }}>
+              Completed Today
             </div>
-            <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#0f2b48', marginTop: '2px' }}>
-              85%
+            <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#0f2b48', marginTop: '2px', lineHeight: 1 }}>
+              {completedMeetingsCount}
             </div>
-            <div style={{ fontSize: '0.78rem', color: '#059669', fontWeight: 600 }}>↑ 12% vs yesterday</div>
+            <div style={{ fontSize: '0.76rem', color: '#059669', fontWeight: 700, marginTop: '6px' }}>
+              {totalTodayTasks > 0 ? `${Math.round((completedMeetingsCount / totalTodayTasks) * 100)}% of today's workload completed` : 'All tasks up to date'}
+            </div>
           </div>
           <div style={{ background: '#f0fdf4', color: '#059669', padding: '12px', borderRadius: '14px' }}>
             <CheckCircle2 size={28} />
@@ -276,142 +358,297 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
 
       </div>
 
-      {/* Agenda Tabs & Queue */}
+      {/* 2. Unified Chronological Activity Feed */}
       <div style={{
         background: '#ffffff',
         borderRadius: '16px',
         border: '1px solid #e2e8f0',
-        padding: '1.25rem',
+        padding: '1.25rem 1.5rem',
         boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
       }}>
-        {/* Navigation Tabs */}
-        <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginBottom: '1.25rem' }}>
-          <button
-            onClick={() => setActiveTab('dueToday')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '10px',
-              border: 'none',
-              background: activeTab === 'dueToday' ? '#0f2b48' : '#f1f5f9',
-              color: activeTab === 'dueToday' ? '#ffffff' : '#64748b',
-              fontWeight: 700,
-              fontSize: '0.88rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <Clock size={16} /> Due Today ({dueToday.length})
-          </button>
+        
+        {/* Header & Filter Pills Bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
+          <div>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f2b48', margin: 0 }}>
+              {filterType === 'OVERDUE' ? '⚠️ Overdue Action Queue' : 'Today\'s Chronological Work Schedule'}
+            </h2>
+            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+              {filterType === 'OVERDUE' 
+                ? 'Tasks requiring immediate catch-up or advisor reallocation' 
+                : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+            </div>
+          </div>
 
-          <button
-            onClick={() => setActiveTab('overdue')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '10px',
-              border: 'none',
-              background: activeTab === 'overdue' ? '#b91c1c' : '#f1f5f9',
-              color: activeTab === 'overdue' ? '#ffffff' : '#64748b',
-              fontWeight: 700,
-              fontSize: '0.88rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <AlertCircle size={16} /> Overdue Queue ({overdue.length})
-          </button>
+          {/* Quick Filter Pill Chips */}
+          <div style={{ display: 'flex', gap: '6px', background: '#f1f5f9', padding: '4px', borderRadius: '10px', flexWrap: 'wrap' }}>
+            {[
+              { id: 'ALL', label: `All Today (${totalTodayTasks})` },
+              { id: 'PENDING', label: `⏳ Pending (${pendingTasksCount})` },
+              { id: 'COMPLETED', label: `✓ Completed (${completedMeetingsCount})` },
+              { id: 'MEETING', label: `🎥 Meets (${todayMeetings.length})` },
+              { id: 'CALL', label: `📞 Calls (${dueToday.length})` },
+              { id: 'OVERDUE', label: `⚠️ Overdue (${overdue.length})` }
+            ].map(pill => (
+              <button
+                key={pill.id}
+                onClick={() => setFilterType(pill.id)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '7px',
+                  border: 'none',
+                  background: filterType === pill.id ? '#ffffff' : 'transparent',
+                  color: filterType === pill.id ? '#0f2b48' : '#64748b',
+                  fontWeight: filterType === pill.id ? 800 : 600,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  boxShadow: filterType === pill.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {pill.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Task Cards List */}
+        {/* Task Feed List */}
         {loading ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
-            Loading call agenda...
+            <div style={{ width: '32px', height: '32px', border: '3px solid #cbd5e1', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px auto' }} />
+            <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>Syncing today's agenda...</div>
           </div>
-        ) : activeList.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>
-            <CheckCircle2 size={40} color="#059669" style={{ margin: '0 auto 0.75rem auto' }} />
-            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f2b48' }}>All Caught Up!</div>
-            <p style={{ fontSize: '0.85rem', margin: '4px 0 0 0' }}>No pending tasks in this queue right now.</p>
+        ) : displayedItems.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3.5rem 1rem', color: '#64748b' }}>
+            <CheckCircle2 size={44} color="#059669" style={{ margin: '0 auto 0.75rem auto' }} />
+            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f2b48' }}>All Caught Up!</div>
+            <p style={{ fontSize: '0.84rem', color: '#64748b', maxWidth: '420px', margin: '4px auto 0 auto' }}>
+              {filterType === 'OVERDUE' 
+                ? 'No overdue follow-ups in the queue. Great job maintaining customer SLAs!' 
+                : 'No pending meetings or callbacks scheduled for this view.'}
+            </p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {activeList.map((task) => {
-              const taskDate = new Date(task.scheduledDatetime);
-              const timeFormatted = taskDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            {displayedItems.map((item) => {
+              const isMeet = item.kind === 'MEETING';
+              const isCompleted = item.status === 'COMPLETED';
+              // An item is overdue only if it has an explicit OVERDUE status or came from the overdue past queue
+              const isOverdue = !isCompleted && (item.kind === 'OVERDUE_CALL' || item.status === 'OVERDUE');
+              const timeParts = item.datetime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).split(' ');
+              const timeDigits = timeParts[0];
+              const timePeriod = timeParts[1] || '';
 
               return (
                 <div
-                  key={task.id}
+                  key={item.id}
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     flexWrap: 'wrap',
                     gap: '1rem',
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
+                    background: isCompleted ? '#f0fdf4' : (isOverdue ? '#fff1f2' : (isMeet ? '#f8faff' : '#f8fafc')),
+                    border: isCompleted ? '1px solid #bbf7d0' : (isOverdue ? '1px solid #fecdd3' : (isMeet ? '1px solid #dbeafe' : '1px solid #e2e8f0')),
                     borderRadius: '14px',
                     padding: '1rem 1.25rem',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.15s ease'
                   }}
                 >
-                  {/* Left: Client & Call info */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  {/* Left: Time & Activity Info */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '240px' }}>
+                    
+                    {/* Time Slot Badge (12-hour AM/PM) */}
                     <div style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '12px',
-                      background: activeTab === 'overdue' ? '#fee2e2' : '#ecfdf5',
-                      color: activeTab === 'overdue' ? '#dc2626' : '#059669',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: isCompleted ? '#dcfce7' : (isOverdue ? '#fee2e2' : '#ffffff'),
+                      border: `1px solid ${isCompleted ? '#bbf7d0' : (isOverdue ? '#fecaca' : '#cbd5e1')}`,
+                      borderRadius: '10px',
+                      padding: '6px 8px',
+                      minWidth: '72px',
+                      textAlign: 'center'
+                    }}>
+                      <span style={{ fontSize: '0.62rem', fontWeight: 800, textTransform: 'uppercase', color: isOverdue ? '#dc2626' : (isCompleted ? '#16a34a' : '#64748b'), letterSpacing: '0.4px' }}>
+                        {isMeet ? 'MEET' : 'CALL'}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', marginTop: '1px' }}>
+                        <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#0f2b48' }}>
+                          {timeDigits}
+                        </span>
+                        <span style={{ fontSize: '0.66rem', fontWeight: 800, color: isOverdue ? '#dc2626' : '#2563eb' }}>
+                          {timePeriod}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Icon Badge */}
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '10px',
+                      background: isCompleted ? '#dcfce7' : (isOverdue ? '#fee2e2' : (isMeet ? '#eff6ff' : '#ecfdf5')),
+                      color: isCompleted ? '#16a34a' : (isOverdue ? '#dc2626' : (isMeet ? '#2563eb' : '#059669')),
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0
                     }}>
-                      <PhoneCall size={20} />
+                      {isMeet ? <Video size={20} /> : <PhoneCall size={20} />}
                     </div>
 
+                    {/* Details */}
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.95rem' }}>
-                          {task.clientName}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span 
+                          onClick={() => onOpenClient360 && onOpenClient360({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone })}
+                          style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.96rem', cursor: 'pointer' }}
+                        >
+                          {item.clientName}
                         </span>
-                        <span style={{ fontSize: '0.72rem', background: '#ffffff', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', fontWeight: 600, color: '#475569' }}>
-                          {task.clientCode}
+                        
+                        {item.clientCode && (
+                          <span style={{ fontSize: '0.7rem', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', fontWeight: 700, color: '#475569', letterSpacing: '0.3px' }}>
+                            {item.clientCode}
+                          </span>
+                        )}
+
+                        <span style={{ fontSize: '0.72rem', background: isMeet ? '#eff6ff' : '#ecfdf5', color: isMeet ? '#1d4ed8' : '#047857', border: `1px solid ${isMeet ? '#bfdbfe' : '#a7f3d0'}`, padding: '1px 7px', borderRadius: '6px', fontWeight: 700 }}>
+                          {item.insuranceType}
                         </span>
-                        <span style={{ fontSize: '0.74rem', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '9999px', fontWeight: 700 }}>
-                          {task.insuranceType}
-                        </span>
+
+                        {isCompleted ? (
+                          <span style={{ fontSize: '0.7rem', background: '#dcfce7', color: '#15803d', fontWeight: 800, padding: '1px 7px', borderRadius: '4px' }}>
+                            ✓ COMPLETED
+                          </span>
+                        ) : isOverdue ? (
+                          <span style={{ fontSize: '0.7rem', background: '#fee2e2', color: '#dc2626', fontWeight: 800, padding: '1px 7px', borderRadius: '4px' }}>
+                            ⚠️ OVERDUE
+                          </span>
+                        ) : item.datetime < new Date() ? (
+                          <span style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontWeight: 700, padding: '1px 7px', borderRadius: '4px' }}>
+                            ⏱️ Outcome Pending
+                          </span>
+                        ) : null}
                       </div>
 
-                      <div style={{ fontSize: '0.84rem', color: '#475569', marginTop: '3px' }}>
-                        📞 <strong>{task.clientPhone}</strong> • Scheduled: <strong>{timeFormatted}</strong>
-                        {task.advisorName && (
-                          <span style={{ marginLeft: '8px', fontSize: '0.75rem', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', color: '#475569', fontWeight: 600 }}>
-                            Advisor: {task.advisorName}
+                      <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: '3px' }}>
+                        {item.title}
+                        {item.advisorName && (
+                          <span style={{ marginLeft: '8px', fontSize: '0.74rem', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 6px', borderRadius: '4px', color: '#475569', fontWeight: 600 }}>
+                            Advisor: {item.advisorName}
                           </span>
                         )}
                       </div>
 
-                      {task.notes && (
-                        <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '4px', fontStyle: 'italic' }}>
-                          "{task.notes}"
+                      {(item.purpose || item.notes || item.outcomeNotes) && (
+                        <div style={{ fontSize: '0.76rem', color: item.outcomeNotes ? '#059669' : '#64748b', marginTop: '2px', fontStyle: item.notes ? 'italic' : 'normal' }}>
+                          {item.outcomeNotes ? `✓ Outcome: ${item.outcomeNotes}` : (item.purpose || `"${item.notes}"`)}
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Right: Quick Action Trigger Buttons */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {/* Manager Reassign Action */}
-                    {canReassign && (
+                  {/* Right: Actions Bar */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    
+                    {/* Meet Actions */}
+                    {isMeet && !isCompleted && item.googleMeetUrl && (
+                      <a
+                        href={item.googleMeetUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          background: '#2563eb',
+                          color: '#ffffff',
+                          padding: '8px 14px',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        <Video size={14} /> Join Meet
+                      </a>
+                    )}
+
+                    {isMeet && (
+                      isCompleted ? (
+                        <span style={{
+                          background: '#dcfce7',
+                          color: '#15803d',
+                          border: '1px solid #bbf7d0',
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '0.78rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          <CheckCircle2 size={13} /> Completed
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setMeetingOutcomeModal(item);
+                            setOutcomeForm({
+                              outcomeTag: 'INTERESTED',
+                              notes: ''
+                            });
+                          }}
+                          style={{
+                            background: '#059669',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <CheckCircle2 size={14} /> Mark Completed
+                        </button>
+                      )
+                    )}
+
+                    {/* Phone Callback Actions */}
+                    {!isMeet && (
+                      <button
+                        onClick={() => handleOpenCallModal(item)}
+                        style={{
+                          background: 'linear-gradient(135deg, #059669, #047857)',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '8px 14px',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px'
+                        }}
+                      >
+                        <PhoneCall size={14} /> Call & Log
+                      </button>
+                    )}
+
+                    {/* Reassign Action for Managers on Overdue Items */}
+                    {canReassign && isOverdue && (
                       <button
                         onClick={() => {
-                          setReassignTask(task);
-                          setTargetAdvisorId(task.advisorId ? String(task.advisorId) : '');
+                          setReassignTask(item);
+                          setTargetAdvisorId(item.advisorId ? String(item.advisorId) : '');
                           setReassignReason('');
                         }}
                         style={{
@@ -422,9 +659,9 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                           color: '#4338ca',
                           border: '1px solid #c7d2fe',
                           padding: '8px 12px',
-                          borderRadius: '10px',
+                          borderRadius: '8px',
                           fontWeight: 700,
-                          fontSize: '0.82rem',
+                          fontSize: '0.8rem',
                           cursor: 'pointer'
                         }}
                         title="Reassign to another Advisor"
@@ -433,72 +670,74 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                       </button>
                     )}
 
-                    {/* Call & Log Button */}
-                    <button
-                      onClick={() => handleOpenCallModal(task)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                        color: '#ffffff',
-                        border: 'none',
-                        padding: '9px 16px',
-                        borderRadius: '10px',
-                        fontWeight: 700,
-                        fontSize: '0.84rem',
-                        cursor: 'pointer',
-                        boxShadow: '0 4px 10px rgba(5, 150, 105, 0.2)'
-                      }}
-                    >
-                      <Phone size={14} /> Call & Log Result
-                    </button>
+                    {/* WhatsApp button */}
+                    {item.clientPhone && (
+                      <button
+                        onClick={() => openWhatsApp(item.clientPhone, item.clientName)}
+                        style={{
+                          background: '#f0fdf4',
+                          border: '1px solid #bbf7d0',
+                          color: '#16a34a',
+                          borderRadius: '8px',
+                          padding: '8px 10px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '0.8rem',
+                          fontWeight: 700
+                        }}
+                      >
+                        <WhatsAppIcon size={14} color="#16a34a" /> WhatsApp
+                      </button>
+                    )}
 
-                    {/* WhatsApp */}
+                    {/* Schedule Consultation Modal Link */}
+                    {!isMeet && (
+                      <button
+                        onClick={() => onOpenMeetingModal && onOpenMeetingModal({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone, insuranceType: item.insuranceType })}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          background: '#eff6ff',
+                          color: '#2563eb',
+                          border: '1px solid #bfdbfe',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          fontWeight: 700,
+                          fontSize: '0.8rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Calendar size={14} /> Meet
+                      </button>
+                    )}
+
+                    {/* Client 360 link */}
                     <button
-                      onClick={() => openWhatsApp(task.clientPhone, task.clientName)}
+                      onClick={() => onOpenClient360 && onOpenClient360({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone })}
                       style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        background: '#dcfce7',
-                        color: '#15803d',
-                        border: '1px solid #86efac',
+                        background: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        color: '#475569',
+                        borderRadius: '8px',
                         padding: '8px 12px',
-                        borderRadius: '10px',
+                        fontSize: '0.8rem',
                         fontWeight: 700,
-                        fontSize: '0.82rem',
                         cursor: 'pointer'
                       }}
                     >
-                      <MessageSquare size={14} /> WhatsApp
+                      Client 360
                     </button>
 
-                    {/* Schedule Meet */}
-                    <button
-                      onClick={() => onOpenMeetingModal && onOpenMeetingModal({ id: task.clientId, fullName: task.clientName, phoneNumber: task.clientPhone, insuranceType: task.insuranceType })}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        background: '#eff6ff',
-                        color: '#2563eb',
-                        border: '1px solid #bfdbfe',
-                        padding: '8px 12px',
-                        borderRadius: '10px',
-                        fontWeight: 700,
-                        fontSize: '0.82rem',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Calendar size={14} /> Meet
-                    </button>
                   </div>
                 </div>
               );
             })}
           </div>
         )}
+
       </div>
 
       {/* Standardized 11-Point Call Disposition Modal */}
@@ -806,6 +1045,184 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                 >
                   {reassigning ? <RefreshCw size={14} className="animate-spin" /> : <Check size={16} />}
                   Reassign Lead
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Custom Enterprise Consultation Outcome Modal */}
+      {meetingOutcomeModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'none',
+          zIndex: 1100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+          animation: 'fadeIn 0.15s ease'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '18px',
+            maxWidth: '520px',
+            width: '100%',
+            boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
+            border: '1px solid #e2e8f0',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #f1f5f9',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: '#f8fafc'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ background: '#dcfce7', color: '#16a34a', padding: '8px', borderRadius: '10px' }}>
+                  <CheckCircle2 size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f2b48' }}>
+                    Log Consultation Outcome
+                  </h3>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '1px' }}>
+                    {meetingOutcomeModal.clientName} • {meetingOutcomeModal.insuranceType}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setMeetingOutcomeModal(null)}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', borderRadius: '6px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setSubmitting(true);
+              try {
+                const combinedNotes = `[${outcomeForm.outcomeTag}] ${outcomeForm.notes.trim() || 'Consultation completed.'}`;
+                await crmService.updateMeetingOutcome(meetingOutcomeModal.originalId, {
+                  status: 'COMPLETED',
+                  outcomeNotes: combinedNotes
+                });
+                setMeetingOutcomeModal(null);
+                await loadAgenda();
+              } catch (err) {
+                alert('Failed to update meeting outcome: ' + (err.response?.data?.message || err.message));
+              } finally {
+                setSubmitting(false);
+              }
+            }} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              
+              {/* Outcome Category Select Pills */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
+                  Consultation Result / Customer Sentiment
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                  {[
+                    { id: 'INTERESTED', label: '⭐ Interested / Quote Req.', bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
+                    { id: 'WON', label: '🎉 Deal Closed / Purchased', bg: '#f0fdf4', border: '#bbf7d0', color: '#15803d' },
+                    { id: 'FOLLOWUP', label: '📅 Callback Needed', bg: '#fef3c7', border: '#fde68a', color: '#b45309' },
+                    { id: 'NOT_INTERESTED', label: '❌ Not Interested', bg: '#fef2f2', border: '#fecaca', color: '#b91c1c' }
+                  ].map(tag => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => setOutcomeForm(prev => ({ ...prev, outcomeTag: tag.id }))}
+                      style={{
+                        padding: '10px',
+                        borderRadius: '10px',
+                        border: `2px solid ${outcomeForm.outcomeTag === tag.id ? tag.color : '#e2e8f0'}`,
+                        background: outcomeForm.outcomeTag === tag.id ? tag.bg : '#ffffff',
+                        color: outcomeForm.outcomeTag === tag.id ? tag.color : '#475569',
+                        fontWeight: outcomeForm.outcomeTag === tag.id ? 800 : 600,
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {tag.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Outcome Notes Textarea */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Consultation Notes & Next Steps
+                </label>
+                <textarea
+                  rows="3"
+                  required
+                  placeholder="e.g. Presented Star Health Optima vs Care Supreme. Client requested formal quotation with 10L Sum Insured..."
+                  value={outcomeForm.notes}
+                  onChange={(e) => setOutcomeForm(prev => ({ ...prev, notes: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    lineHeight: '1.4',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '0.25rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setMeetingOutcomeModal(null)}
+                  disabled={submitting}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#475569',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  style={{
+                    flex: 2,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 12px -2px rgba(5, 150, 105, 0.3)'
+                  }}
+                >
+                  {submitting ? <RefreshCw size={15} className="animate-spin" /> : <Check size={16} />}
+                  Save & Complete Task
                 </button>
               </div>
             </form>

@@ -1,11 +1,11 @@
 package com.aadhiraksha.insurance.service;
 
 import com.aadhiraksha.insurance.dto.DocumentDto;
+import com.aadhiraksha.insurance.model.Client;
 import com.aadhiraksha.insurance.model.ClientDocument;
-import com.aadhiraksha.insurance.model.ClientLead;
 import com.aadhiraksha.insurance.model.User;
 import com.aadhiraksha.insurance.repository.ClientDocumentRepository;
-import com.aadhiraksha.insurance.repository.ClientLeadRepository;
+import com.aadhiraksha.insurance.repository.ClientRepository;
 import com.aadhiraksha.insurance.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,13 +24,13 @@ import java.util.stream.Collectors;
 public class DocumentService {
 
     private final ClientDocumentRepository clientDocumentRepository;
-    private final ClientLeadRepository clientLeadRepository;
+    private final ClientRepository clientRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
 
     @Transactional
     public DocumentDto.Response uploadDocument(DocumentDto.UploadRequest request, String userEmail) {
-        ClientLead client = clientLeadRepository.findById(request.getClientId())
+        Client client = clientRepository.findById(request.getClientId())
                 .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + request.getClientId()));
 
         User user = userRepository.findByEmail(userEmail)
@@ -52,17 +52,17 @@ public class DocumentService {
         // Advance client stage to DOCUMENTS if currently in NEW_LEAD / FOLLOWUP
         if ("NEW_LEAD".equals(client.getStage()) || "FOLLOWUP".equals(client.getStage()) || "QUOTATION".equals(client.getStage())) {
             client.setStage("DOCUMENTS");
-            clientLeadRepository.save(client);
+            clientRepository.save(client);
         }
 
         // Audit Logging
         auditService.logAction(
                 "Client",
                 client.getId(),
-                "CREATE",
-                "Document Uploaded",
+                "UPLOAD",
+                "Document Added",
                 null,
-                "Uploaded " + saved.getDocumentType() + " (" + saved.getFileName() + ")",
+                "Uploaded " + doc.getDocumentType() + " (" + doc.getFileName() + ")",
                 user,
                 null
         );
@@ -71,31 +71,31 @@ public class DocumentService {
     }
 
     @Transactional(readOnly = true)
-    public List<DocumentDto.Response> getDocumentsForClient(Long clientId) {
-        return clientDocumentRepository.findByClientIdOrderByCreatedAtDesc(clientId)
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public List<DocumentDto.Response> getDocumentsScoped(String userEmail) {
+    public List<DocumentDto.Response> getDocuments(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
 
         boolean isSuperAdmin = user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_SUPER_ADMIN") || r.getName().equals("ROLE_ADMIN"));
         boolean isManager = user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_MANAGER"));
 
-        List<ClientDocument> list;
+        List<ClientDocument> docs;
         if (isSuperAdmin) {
-            list = clientDocumentRepository.findAllByOrderByCreatedAtDesc();
+            docs = clientDocumentRepository.findAllByOrderByCreatedAtDesc();
         } else if (isManager) {
-            list = clientDocumentRepository.findByManagerId(user.getId());
+            docs = clientDocumentRepository.findByManagerIdOrderByCreatedAtDesc(user.getId());
         } else {
-            list = clientDocumentRepository.findByAdvisorId(user.getId());
+            docs = clientDocumentRepository.findByAdvisorIdOrderByCreatedAtDesc(user.getId());
         }
 
-        return list.stream().map(this::mapToResponse).collect(Collectors.toList());
+        return docs.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<DocumentDto.Response> getClientDocuments(Long clientId) {
+        return clientDocumentRepository.findByClientIdOrderByCreatedAtDesc(clientId)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -103,30 +103,30 @@ public class DocumentService {
         ClientDocument doc = clientDocumentRepository.findById(docId)
                 .orElseThrow(() -> new IllegalArgumentException("Document not found with ID: " + docId));
 
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User verifier = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
 
         String oldStatus = doc.getVerificationStatus();
-        doc.setVerificationStatus(request.getStatus());
-        doc.setVerifiedBy(user);
-        doc.setVerificationNotes(request.getNotes());
+        doc.setVerificationStatus(request.getVerificationStatus());
+        doc.setVerificationNotes(request.getVerificationNotes());
+        doc.setVerifiedBy(verifier);
         doc.setVerifiedAt(LocalDateTime.now());
 
-        ClientDocument saved = clientDocumentRepository.save(doc);
+        ClientDocument updated = clientDocumentRepository.save(doc);
 
         // Audit Trail
         auditService.logAction(
-                "ClientDocument",
-                saved.getId(),
+                "Client",
+                doc.getClient().getId(),
                 "UPDATE",
-                "verification_status",
+                "Verification Status",
                 oldStatus,
-                request.getStatus() + (request.getNotes() != null ? " - Note: " + request.getNotes() : ""),
-                user,
+                request.getVerificationStatus() + (request.getVerificationNotes() != null ? " - " + request.getVerificationNotes() : ""),
+                verifier,
                 null
         );
 
-        return mapToResponse(saved);
+        return mapToResponse(updated);
     }
 
     @Transactional
@@ -135,7 +135,7 @@ public class DocumentService {
                 .orElseThrow(() -> new IllegalArgumentException("Document not found with ID: " + docId));
 
         User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userEmail));
 
         // Audit Trail
         auditService.logAction(
@@ -154,7 +154,7 @@ public class DocumentService {
 
     @Transactional(readOnly = true)
     public DocumentDto.DocumentRequestLink generateWhatsAppDocumentRequest(Long clientId, List<String> requestedDocTypes, String userEmail) {
-        ClientLead client = clientLeadRepository.findById(clientId)
+        Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + clientId));
 
         User advisor = userRepository.findByEmail(userEmail)
@@ -172,7 +172,7 @@ public class DocumentService {
                 "👤 *Dedicated Specialist:* " + advisor.getFullName() + "\n" +
                 "📞 *Helpline:* " + (advisor.getPhoneNumber() != null ? advisor.getPhoneNumber() : "+91 98480 12345");
 
-        String cleanPhone = client.getPhoneNumber().replaceAll("[^0-9]", "");
+        String cleanPhone = QuotationService.formatWhatsAppNumber(client.getPhoneNumber());
         String waUrl = "https://wa.me/" + cleanPhone + "?text=" + URLEncoder.encode(message, StandardCharsets.UTF_8);
 
         // Audit Trail

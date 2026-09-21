@@ -18,6 +18,22 @@ export const normalizePhoneNumber = (phone) => {
 };
 
 /**
+ * Normalizes phone numbers to standard E.164 without leading zeros with country code 91
+ * e.g. "09966520001" -> "919966520001", "9966520001" -> "919966520001", "+91 9966520001" -> "919966520001"
+ * @param {string|number} phone
+ * @returns {string} E.164 formatted WhatsApp phone number
+ */
+export const formatWhatsAppNumber = (phone) => {
+  if (!phone) return '';
+  let digits = String(phone).replace(/[^0-9]/g, '');
+  digits = digits.replace(/^0+/, '');
+  if (digits.length === 10) {
+    return `91${digits}`;
+  }
+  return digits;
+};
+
+/**
  * Normalizes email address to lowercase trimmed string
  * @param {string} email 
  * @returns {string}

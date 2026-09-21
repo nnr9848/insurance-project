@@ -83,7 +83,7 @@ export default function ManagerApprovalsView({ onOpenClient360 }) {
   const fetchClientsAndAdvisors = async () => {
     try {
       const [leadsData, advisorsData] = await Promise.all([
-        crmService.getLeads(),
+        crmService.getClients(),
         crmService.getAdvisors()
       ]);
       setClients(leadsData || []);

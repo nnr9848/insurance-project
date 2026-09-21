@@ -29,11 +29,23 @@ import {
   Sparkles,
   Trash2,
   Layers,
-  Activity
+  Activity,
+  Copy,
+  Send,
+  Heart,
+  Car,
+  Shield,
+  Landmark,
+  Briefcase,
+  Plane,
+  Plus,
+  Edit3,
+  Eye
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { crmService } from '../../services/api';
-import { normalizePhoneNumber } from '../../utils/crmDeduplication';
+import { crmService, leadInquiryService } from '../../services/api';
+import { normalizePhoneNumber, formatWhatsAppNumber } from '../../utils/crmDeduplication';
+import WhatsAppIcon from '../common/WhatsAppIcon';
 
 export default function Client360Drawer({ client, onClose, onOpenCallModal, onOpenMeetingModal, onLeadUpdated }) {
   if (!client) return null;
@@ -41,10 +53,18 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   const { isSuperAdmin, isManager, user } = useAuth();
   const canReassign = isSuperAdmin || isManager;
 
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'timeline' | 'documents'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'calls' | 'quotes' | 'documents' | 'timeline'
   const [currentClient, setCurrentClient] = useState(client);
   const [advisors, setAdvisors] = useState([]);
   
+  // Pipeline Stage Transition State
+  const [isUpdatingStage, setIsUpdatingStage] = useState(false);
+
+  // Quick Note Composer State
+  const [quickNoteText, setQuickNoteText] = useState('');
+  const [isPostingNote, setIsPostingNote] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
+
   // Reassign Modal state
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [targetAdvisorId, setTargetAdvisorId] = useState(client.assignedAdvisorId ? String(client.assignedAdvisorId) : '');
@@ -58,6 +78,26 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   // Live Quotations State
   const [clientQuotes, setClientQuotes] = useState([]);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
+  const [showCreateQuoteModal, setShowCreateQuoteModal] = useState(false);
+  const [viewingQuoteDetails, setViewingQuoteDetails] = useState(null);
+  const [editingQuoteId, setEditingQuoteId] = useState(null);
+  const [creatingQuote, setCreatingQuote] = useState(false);
+  const [quoteFormData, setQuoteFormData] = useState({
+    insurerName: 'Star Health and Allied Insurance',
+    planName: '',
+    planVariant: 'Comprehensive',
+    sumInsured: '₹10,00,000',
+    policyTenureYears: 1,
+    basePremium: '',
+    ncbDiscountPercent: 0,
+    roomRentLimit: 'No Cap / Single Private Room',
+    copayPercentage: '0%',
+    restorationBenefit: '100% Unlimited Recharge',
+    prePostHospitalization: '60 Days Pre / 180 Days Post',
+    maternityCovered: false,
+    opdCovered: false,
+    notes: ''
+  });
 
   // Live Documents State
   const [clientDocs, setClientDocs] = useState([]);
@@ -71,7 +111,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
     setCurrentClient(client);
     setTargetAdvisorId(client.assignedAdvisorId ? String(client.assignedAdvisorId) : '');
     if (client?.id) {
-      loadFullLeadDetails(client.id);
+      loadFullClientDetails(client.id);
       loadClientAuditLogs(client.id);
       loadClientQuotes(client.id);
       loadClientDocs(client.id);
@@ -79,17 +119,17 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
     }
   }, [client]);
 
-  const loadFullLeadDetails = async (clientId) => {
+  const loadFullClientDetails = async (clientId) => {
     try {
-      const fullLead = await crmService.getLeadById(clientId);
-      if (fullLead && fullLead.id) {
-        setCurrentClient(prev => ({ ...prev, ...fullLead }));
-        if (fullLead.assignedAdvisorId) {
-          setTargetAdvisorId(String(fullLead.assignedAdvisorId));
+      const fullClient = await crmService.getClientById(clientId);
+      if (fullClient && fullClient.id) {
+        setCurrentClient(prev => ({ ...prev, ...fullClient }));
+        if (fullClient.assignedAdvisorId) {
+          setTargetAdvisorId(String(fullClient.assignedAdvisorId));
         }
       }
     } catch (err) {
-      console.warn('Could not fetch full lead details, using basic props:', err);
+      console.warn('Could not fetch full client details, using basic props:', err);
     }
   };
 
@@ -170,25 +210,10 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
         reassignReason || 'Reassigned from Client 360 Drawer'
       );
       
-      const targetAdv = advisors.find(a => String(a.id) === String(targetAdvisorId));
-      const targetAdvisorName = targetAdv ? targetAdv.fullName : 'New Advisor';
-
-      // Prepend reassignment audit item to timeline immediately
-      setReassignHistory(prev => [
-        {
-          date: 'Just now',
-          title: `Reassigned to ${targetAdvisorName}`,
-          desc: `Transferred ownership from ${currentClient.assignedAdvisorName || 'Unassigned'} to ${targetAdvisorName}.`,
-          reason: reassignReason || 'Direct management portfolio realignment',
-          performedBy: user?.name || user?.fullName || 'Manager',
-          icon: <UserCheck size={14} color="#4338ca" />
-        },
-        ...prev
-      ]);
-
       setCurrentClient(prev => ({ ...prev, ...updated }));
       setShowReassignModal(false);
       if (onLeadUpdated) onLeadUpdated(updated);
+      loadClientAuditLogs(currentClient.id);
     } catch (err) {
       alert('Failed to reassign client: ' + (err.response?.data?.message || err.message));
     } finally {
@@ -197,35 +222,248 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   };
 
   const openWhatsApp = () => {
-    const cleanPhone = normalizePhoneNumber(client.whatsappNumber || client.phoneNumber);
-    const text = encodeURIComponent(`Hello ${client.fullName}, this is your dedicated Insurance Specialist from Aadhiraksha InsurTech regarding your ${client.insuranceType} policy.`);
+    const phone = currentClient.whatsappNumber || currentClient.phoneNumber;
+    if (!phone) return;
+    const cleanPhone = formatWhatsAppNumber(phone);
+    const text = encodeURIComponent(`Hello ${currentClient.fullName || 'Client'}, regarding your ${currentClient.insuranceType || 'insurance'} inquiry at Aadhiraksha InsurTech...`);
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
   };
 
-  const [reassignHistory, setReassignHistory] = useState([
-    {
-      date: 'Today, 10:45 AM',
-      title: `Assigned to ${currentClient.assignedAdvisorName || 'Advisor'}`,
-      desc: currentClient.notes?.includes('reassigned') || currentClient.notes?.includes('Specialist')
-        ? currentClient.notes
-        : `Handed over by Branch Management for dedicated advisory and quotation support.`,
-      reason: 'Portfolio workload optimization & client specialist alignment',
-      performedBy: currentClient.managerName || 'Branch Management',
-      icon: <UserCheck size={14} color="#4338ca" />
+  const handleCopyText = (text, fieldKey) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldKey);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const handleStageTransition = async (newStage) => {
+    if (!currentClient?.id || currentClient.stage === newStage || isUpdatingStage) return;
+    setIsUpdatingStage(true);
+    try {
+      const updated = await crmService.updateLead(currentClient.id, {
+        ...currentClient,
+        stage: newStage
+      });
+      setCurrentClient(prev => ({ ...prev, ...updated, stage: newStage }));
+      if (onLeadUpdated) onLeadUpdated({ ...currentClient, ...updated, stage: newStage });
+      
+      // Refresh audit logs to show the new stage transition in the timeline
+      loadClientAuditLogs(currentClient.id);
+    } catch (err) {
+      console.error('Failed to transition stage:', err);
+      alert('Failed to update stage: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsUpdatingStage(false);
     }
-  ]);
+  };
 
-  const sampleTimeline = [
-    ...reassignHistory,
-    { date: 'Today, 2:30 PM', title: 'Call Logged by Advisor', desc: 'Discussed family floater plan options. Client requested quotation comparing Star Health Optima vs Care Supreme.', icon: <Phone size={14} color="#059669" /> },
-    { date: 'Yesterday, 11:00 AM', title: 'Stage Changed to FOLLOWUP', desc: 'Lead moved from NEW_LEAD to FOLLOWUP.', icon: <CheckCircle2 size={14} color="#0284c7" /> },
-    { date: '16 Sep 2026, 4:15 PM', title: 'Web Inquiry Received', desc: 'Inquiry submitted from Aadhiraksha homepage discovery engine.', icon: <Clock size={14} color="#f59e0b" /> }
+  const handlePostQuickNote = async (e) => {
+    e?.preventDefault();
+    if (!quickNoteText.trim() || !currentClient?.id || isPostingNote) return;
+    setIsPostingNote(true);
+    try {
+      const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const newNoteEntry = `[${dateStr}] 📝 ${user?.name || user?.fullName || 'Advisor'}: ${quickNoteText.trim()}`;
+      const currentNotes = currentClient.notes ? currentClient.notes.trim() : '';
+      const updatedNotes = currentNotes ? `${currentNotes}\n${newNoteEntry}` : newNoteEntry;
+
+      const updated = await crmService.updateLead(currentClient.id, {
+        ...currentClient,
+        notes: updatedNotes
+      });
+
+      setCurrentClient(prev => ({ ...prev, ...updated, notes: updatedNotes }));
+      setQuickNoteText('');
+      if (onLeadUpdated) onLeadUpdated({ ...currentClient, ...updated, notes: updatedNotes });
+      loadClientAuditLogs(currentClient.id);
+    } catch (err) {
+      console.error('Failed to post quick note:', err);
+      alert('Failed to post note: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsPostingNote(false);
+    }
+  };
+
+  const PIPELINE_STAGES = [
+    { key: 'NEW_LEAD', label: 'New Lead', icon: <Sparkles size={11} /> },
+    { key: 'CONTACTED', label: 'Contacted', icon: <Phone size={11} /> },
+    { key: 'QUOTATION_SHARED', label: 'Quote Shared', icon: <FileText size={11} /> },
+    { key: 'UNDERWRITING', label: 'Underwriting', icon: <ShieldCheck size={11} /> },
+    { key: 'POLICY_ISSUED', label: 'Policy Issued', icon: <CheckCircle2 size={11} /> }
   ];
 
-  const sampleDocs = [
-    { name: 'Aadhaar_Card_Verified.pdf', type: 'AADHAAR', date: '16 Sep 2026', size: '1.2 MB' },
-    { name: 'Previous_StarHealth_Policy.pdf', type: 'PREVIOUS_POLICY', date: '16 Sep 2026', size: '2.4 MB' }
-  ];
+  const parseOpportunityDetails = (line) => {
+    let category = 'GENERAL';
+    let coverage = null;
+    let specs = null;
+    let specsObj = null;
+    let date = null;
+    let inquiryId = null;
+
+    const dateMatch = line.match(/^\[(.*?)\]/);
+    if (dateMatch) date = dateMatch[1];
+
+    if (/health/i.test(line)) category = 'HEALTH';
+    else if (/life|term/i.test(line)) category = 'LIFE';
+    else if (/vehicle|motor|car|bike/i.test(line)) category = 'VEHICLE';
+    else if (/loan/i.test(line)) category = 'LOANS';
+    else if (/business|sme|group/i.test(line)) category = 'BUSINESS';
+    else if (/travel/i.test(line)) category = 'TRAVEL';
+
+    const inqMatch = line.match(/Inquiry\s*#(\d+)/i);
+    if (inqMatch) inquiryId = inqMatch[1];
+
+    // Extract embedded JSON specs if present
+    const jsonMatch = line.match(/\{.*?\}/);
+    if (jsonMatch) {
+      try {
+        specsObj = JSON.parse(jsonMatch[0]);
+        if (specsObj.coverageAmount) {
+          coverage = specsObj.coverageAmount;
+        } else if (specsObj.coverage) {
+          coverage = specsObj.coverage;
+        }
+      } catch (e) {
+        // Fallback to regex
+      }
+    }
+
+    if (!coverage) {
+      const covMatch = line.match(/coverage\s*:\s*([^\s|,]+)/i) || line.match(/coverageAmount\s*:\s*([^\s|,]+)/i);
+      if (covMatch) coverage = covMatch[1];
+    }
+
+    const specMatch = line.match(/specs\s*:\s*([^|\]\n]+)/i);
+    if (specMatch && !specsObj) specs = specMatch[1].trim();
+
+    return { category, coverage, specs, specsObj, date, inquiryId, raw: line };
+  };
+
+
+
+  const INSURER_PROVIDERS_BY_CATEGORY = {
+    HEALTH_INSURANCE: [
+      'Star Health and Allied Insurance',
+      'Care Health Insurance',
+      'HDFC ERGO General Insurance',
+      'Niva Bupa Health Insurance',
+      'ICICI Lombard General Insurance',
+      'Bajaj Allianz General Insurance',
+      'Aditya Birla Health Insurance',
+      'Tata AIG General Insurance',
+      'National Insurance Company'
+    ],
+    TERM_LIFE_INSURANCE: [
+      'HDFC Life Insurance',
+      'ICICI Prudential Life Insurance',
+      'Max Life Insurance',
+      'Tata AIA Life Insurance',
+      'SBI Life Insurance',
+      'Bajaj Allianz Life Insurance',
+      'Kotak Mahindra Life Insurance'
+    ],
+    MOTOR_VEHICLE_INSURANCE: [
+      'ICICI Lombard General Insurance',
+      'HDFC ERGO General Insurance',
+      'Tata AIG General Insurance',
+      'Bajaj Allianz General Insurance',
+      'Go Digit General Insurance',
+      'Acko General Insurance',
+      'Reliance General Insurance',
+      'National Insurance Company'
+    ],
+    GENERAL_INSURANCE: [
+      'HDFC ERGO General Insurance',
+      'ICICI Lombard General Insurance',
+      'Bajaj Allianz General Insurance',
+      'Tata AIG General Insurance',
+      'National Insurance Company',
+      'Reliance General Insurance'
+    ]
+  };
+
+  const getOpportunityOptions = () => {
+    let primaryCat = 'HEALTH';
+    if (/life|term/i.test(currentClient.insuranceType || '')) primaryCat = 'LIFE';
+    else if (/vehicle|motor|car|bike/i.test(currentClient.insuranceType || '')) primaryCat = 'VEHICLE';
+
+    let primaryInsType = currentClient.insuranceType ? currentClient.insuranceType.toUpperCase().replace(/\s+/g, '_') : 'HEALTH_INSURANCE';
+    if (!INSURER_PROVIDERS_BY_CATEGORY[primaryInsType]) {
+      primaryInsType = primaryCat === 'LIFE' ? 'TERM_LIFE_INSURANCE' : primaryCat === 'VEHICLE' ? 'MOTOR_VEHICLE_INSURANCE' : 'HEALTH_INSURANCE';
+    }
+
+    const options = [
+      {
+        id: 'PRIMARY',
+        label: `${currentClient.insuranceType || 'Health Insurance'} (Primary Policy • ${currentClient.sumInsured || '₹10L'})`,
+        category: primaryCat,
+        insuranceType: primaryInsType,
+        coverage: currentClient.sumInsured || '₹10,00,000',
+        inquiryId: null
+      }
+    ];
+
+    if (currentClient.notes) {
+      const noteLines = currentClient.notes.split('\n').filter(Boolean);
+      noteLines.forEach((line, i) => {
+        const opp = parseOpportunityDetails(line);
+        if (opp.category || opp.inquiryId) {
+          let insType = 'HEALTH_INSURANCE';
+          if (opp.category === 'LIFE') insType = 'TERM_LIFE_INSURANCE';
+          else if (opp.category === 'VEHICLE') insType = 'MOTOR_VEHICLE_INSURANCE';
+          else if (opp.category === 'BUSINESS' || opp.category === 'TRAVEL' || opp.category === 'LOANS' || opp.category === 'GENERAL') insType = 'GENERAL_INSURANCE';
+
+          options.push({
+            id: opp.inquiryId ? `INQ_${opp.inquiryId}` : `OPP_${i}`,
+            label: `${opp.category} Opportunity ${opp.inquiryId ? `(Inquiry #${opp.inquiryId})` : ''} • ${opp.coverage || 'Custom Coverage'}`,
+            category: opp.category,
+            insuranceType: insType,
+            coverage: opp.coverage || '₹10,00,000',
+            inquiryId: opp.inquiryId,
+            specs: opp.specsObj || opp.specs
+          });
+        }
+      });
+    }
+
+    return options;
+  };
+
+  const openQuoteModalForOpportunity = (opp) => {
+    let insType = 'HEALTH_INSURANCE';
+    let cat = opp?.category || 'HEALTH';
+    if (cat === 'LIFE') insType = 'TERM_LIFE_INSURANCE';
+    else if (cat === 'VEHICLE') insType = 'MOTOR_VEHICLE_INSURANCE';
+    else if (cat === 'BUSINESS' || cat === 'TRAVEL' || cat === 'LOANS' || cat === 'GENERAL') insType = 'GENERAL_INSURANCE';
+    else {
+      insType = currentClient.insuranceType ? currentClient.insuranceType.toUpperCase().replace(/\s+/g, '_') : 'HEALTH_INSURANCE';
+      if (!INSURER_PROVIDERS_BY_CATEGORY[insType]) insType = 'HEALTH_INSURANCE';
+    }
+
+    const providers = INSURER_PROVIDERS_BY_CATEGORY[insType] || INSURER_PROVIDERS_BY_CATEGORY.HEALTH_INSURANCE;
+    const coverage = opp?.coverage || currentClient.sumInsured || '₹10,00,000';
+    const oppId = opp?.inquiryId ? `INQ_${opp.inquiryId}` : (opp?.id || 'PRIMARY');
+
+    setQuoteFormData({
+      opportunityRef: oppId,
+      insuranceType: insType,
+      insurerName: providers[0],
+      planName: '',
+      planVariant: 'Comprehensive',
+      sumInsured: coverage,
+      policyTenureYears: 1,
+      basePremium: '',
+      ncbDiscountPercent: 0,
+      roomRentLimit: insType === 'HEALTH_INSURANCE' ? 'No Cap / Single Private Room' : 'N/A',
+      copayPercentage: '0%',
+      restorationBenefit: insType === 'HEALTH_INSURANCE' ? '100% Unlimited Recharge' : 'N/A',
+      prePostHospitalization: insType === 'HEALTH_INSURANCE' ? '60 Days Pre / 180 Days Post' : 'N/A',
+      maternityCovered: false,
+      opdCovered: false,
+      notes: opp?.inquiryId ? `Quotation for Linked Inquiry #${opp.inquiryId} (${opp.category})` : ''
+    });
+    setShowCreateQuoteModal(true);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -239,7 +477,16 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
 
   return (
     <div 
-      onClick={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          // guard against drag-dismiss
+        }
+      }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -253,6 +500,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
     >
       <div 
         onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
         style={{
           width: '100%',
           maxWidth: '580px',
@@ -277,7 +525,8 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
           borderBottom: '1px solid var(--border-subtle)',
           boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
         }}>
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Row 1: Client Code, Product Badge, Phone 1-Tap Copy */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
               {currentClient.clientCode ? (
                 <span style={{
@@ -308,63 +557,52 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                 </span>
               )}
 
-              {currentClient.stage ? (
-                <span style={{
-                  fontSize: '0.72rem',
-                  background: 'var(--accent-emerald-light)',
-                  color: 'var(--accent-emerald)',
-                  border: '1px solid #a7f3d0',
-                  padding: '2px 9px',
-                  borderRadius: '9999px',
-                  fontWeight: 800,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  {String(currentClient.stage).replace(/_/g, ' ')}
-                </span>
-              ) : (
-                <span style={{
-                  fontSize: '0.72rem',
-                  background: 'var(--accent-gold-light)',
-                  color: 'var(--accent-gold-hover)',
-                  border: '1px solid #fde68a',
-                  padding: '2px 9px',
-                  borderRadius: '9999px',
-                  fontWeight: 800,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  SCHEDULED MEETING
-                </span>
-              )}
-
               {currentClient.insuranceType && (
                 <span style={{
                   fontSize: '0.72rem',
-                  background: '#f8fafc',
-                  color: 'var(--crm-text-secondary)',
-                  border: '1px solid var(--border-subtle)',
+                  background: '#eff6ff',
+                  color: '#2563eb',
+                  border: '1px solid #bfdbfe',
                   padding: '2px 8px',
                   borderRadius: '6px',
-                  fontWeight: 600
+                  fontWeight: 700
                 }}>
                   {currentClient.insuranceType}
                 </span>
               )}
+
+              {currentClient.phoneNumber && (
+                <button
+                  type="button"
+                  onClick={() => handleCopyText(currentClient.phoneNumber, 'phone')}
+                  style={{
+                    background: copiedField === 'phone' ? '#ecfdf5' : '#f8fafc',
+                    color: copiedField === 'phone' ? '#059669' : '#64748b',
+                    border: `1px solid ${copiedField === 'phone' ? '#a7f3d0' : '#e2e8f0'}`,
+                    padding: '2px 7px',
+                    borderRadius: '6px',
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="Copy Phone Number"
+                >
+                  {copiedField === 'phone' ? <Check size={11} /> : <Copy size={11} />}
+                  <span>{copiedField === 'phone' ? 'Copied' : currentClient.phoneNumber}</span>
+                </button>
+              )}
             </div>
 
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 800, margin: '2px 0 2px 0', color: 'var(--primary-navy)', letterSpacing: '-0.3px' }}>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 800, margin: '2px 0 2px 0', color: 'var(--primary-navy)', letterSpacing: '-0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {currentClient.fullName || 'Client Profile'}
             </h2>
-            {currentClient.companyName ? (
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                {currentClient.companyName}
-              </div>
-            ) : (
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                {currentClient.city ? `${currentClient.city}, ${currentClient.state || 'India'}` : 'Direct Individual Client'}
-              </div>
-            )}
+            
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+              {currentClient.companyName ? currentClient.companyName : (currentClient.city ? `${currentClient.city}, ${currentClient.state || 'India'}` : 'Direct Retail Client')}
+            </div>
           </div>
 
           <button
@@ -381,7 +619,8 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
               justifyContent: 'center',
               color: 'var(--crm-text-secondary)',
               cursor: 'pointer',
-              transition: 'all 0.15s ease'
+              transition: 'all 0.15s ease',
+              flexShrink: 0
             }}
             onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = 'var(--primary-navy)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = 'var(--crm-text-secondary)'; }}
@@ -390,105 +629,121 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
           </button>
         </div>
 
-        {/* 1-Tap Quick Action Communication Bar */}
-        <div style={{
-          background: '#f8fafc',
-          padding: '12px 18px',
-          borderBottom: '1px solid #e2e8f0',
-          display: 'flex',
-          gap: '8px',
-          overflowX: 'auto'
-        }}>
-          <button
-            onClick={() => onOpenCallModal && onOpenCallModal({ clientId: client.id, clientName: client.fullName, clientPhone: client.phoneNumber, insuranceType: client.insuranceType })}
-            style={{
-              flex: 1,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              background: '#059669',
-              color: '#ffffff',
-              border: 'none',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              fontWeight: 700,
-              fontSize: '0.82rem',
-              cursor: 'pointer'
-            }}
-          >
-            <Phone size={14} /> Call & Log
-          </button>
-
-          <button
-            onClick={openWhatsApp}
-            style={{
-              flex: 1,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              background: '#15803d',
-              color: '#ffffff',
-              border: 'none',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              fontWeight: 700,
-              fontSize: '0.82rem',
-              cursor: 'pointer'
-            }}
-          >
-            <MessageSquare size={14} /> WhatsApp
-          </button>
-
-          <button
-            onClick={() => onOpenMeetingModal && onOpenMeetingModal(client)}
-            style={{
-              flex: 1,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              background: '#2563eb',
-              color: '#ffffff',
-              border: 'none',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              fontWeight: 700,
-              fontSize: '0.82rem',
-              cursor: 'pointer'
-            }}
-          >
-            <Calendar size={14} /> Google Meet
-          </button>
+        {/* 1. Interactive Chevron Pipeline Stage Bar */}
+        <div style={{ background: '#ffffff', padding: '8px 18px', borderBottom: '1px solid #e2e8f0' }}>
+          <div className="crm-pipeline-chevron-bar">
+            {PIPELINE_STAGES.map((stageItem) => {
+              const currentStage = currentClient.stage || 'NEW_LEAD';
+              const isActive = currentStage === stageItem.key;
+              
+              return (
+                <button
+                  key={stageItem.key}
+                  type="button"
+                  onClick={() => handleStageTransition(stageItem.key)}
+                  disabled={isUpdatingStage}
+                  className={`crm-pipeline-step-btn ${isActive ? 'active' : ''}`}
+                  title={`Click to transition stage to ${stageItem.label}`}
+                >
+                  {isActive ? <CheckCircle2 size={12} color="#059669" /> : stageItem.icon}
+                  <span>{stageItem.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Drawer Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#ffffff', padding: '0 18px', overflowX: 'auto' }}>
-          {[
-            { id: 'overview', label: 'Overview & Plan' },
-            { id: 'calls', label: `Calls (${clientCalls.length})` },
-            { id: 'quotes', label: `Quotations (${clientQuotes.length})` },
-            { id: 'documents', label: `Documents (${clientDocs.length})` },
-            { id: 'timeline', label: `Timeline & Audit (${auditLogs.length})` }
-          ].map(tab => (
+        {/* 2. Compact Quick-Dial Action Strip */}
+        <div className="crm-drawer-quick-reach-bar">
+          <button
+            type="button"
+            className="crm-drawer-reach-btn call"
+            onClick={() => onOpenCallModal && onOpenCallModal({ clientId: client.id, clientName: client.fullName, clientPhone: client.phoneNumber, insuranceType: client.insuranceType })}
+            title="Start outbound call and log disposition"
+          >
+            <Phone size={13} />
+            <span>Call & Log</span>
+          </button>
+
+          <button
+            type="button"
+            className="crm-drawer-reach-btn wa"
+            onClick={openWhatsApp}
+            title="Open WhatsApp Web Chat"
+          >
+            <WhatsAppIcon size={14} color="currentColor" />
+            <span>WhatsApp</span>
+          </button>
+
+          <button
+            type="button"
+            className="crm-drawer-reach-btn meet"
+            onClick={() => onOpenMeetingModal && onOpenMeetingModal(client)}
+            title="Schedule Consultation or Google Meet"
+          >
+            <Calendar size={13} />
+            <span>Google Meet</span>
+          </button>
+
+          {currentClient.email && (
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: '12px 14px',
-                border: 'none',
-                background: 'none',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                color: activeTab === tab.id ? '#059669' : '#64748b',
-                borderBottom: activeTab === tab.id ? '2px solid #059669' : 'none',
-                cursor: 'pointer'
-              }}
+              type="button"
+              className="crm-drawer-reach-btn copy"
+              onClick={() => handleCopyText(currentClient.email, 'email')}
+              title={`Copy email address: ${currentClient.email}`}
             >
-              {tab.label}
+              {copiedField === 'email' ? <Check size={12} color="#059669" /> : <Mail size={12} />}
+              <span>{copiedField === 'email' ? 'Copied' : 'Copy Email'}</span>
             </button>
-          ))}
+          )}
+        </div>
+
+        {/* 3. Drawer Tabs with Modern Count Badges */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#ffffff', padding: '0 14px', overflowX: 'auto' }}>
+          {[
+            { id: 'overview', label: 'Overview & Plan', count: null },
+            { id: 'calls', label: 'Calls', count: clientCalls.length },
+            { id: 'quotes', label: 'Quotations', count: clientQuotes.length },
+            { id: 'documents', label: 'Documents', count: clientDocs.length },
+            { id: 'timeline', label: 'Timeline & Audit', count: auditLogs.length }
+          ].map(tab => {
+            const isTabActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  padding: '11px 12px',
+                  border: 'none',
+                  background: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  color: isTabActive ? 'var(--primary-navy)' : '#64748b',
+                  borderBottom: isTabActive ? '2px solid var(--primary-navy)' : '2px solid transparent',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <span>{tab.label}</span>
+                {tab.count !== null && (
+                  <span style={{
+                    padding: '1px 6px',
+                    borderRadius: '999px',
+                    fontSize: '0.68rem',
+                    fontWeight: 800,
+                    background: isTabActive ? '#e0e7ff' : '#f1f5f9',
+                    color: isTabActive ? '#4338ca' : '#64748b'
+                  }}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Drawer Scrollable Body */}
@@ -498,249 +753,300 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
           {activeTab === 'overview' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
               
-              {/* 1. Client Identification & Demographics */}
-              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', marginBottom: '12px', letterSpacing: '0.04em' }}>
-                  <User size={15} color="#2563eb" /> Client Information & Profile
+              {/* 0. 1-Tap Quick Activity Note Composer */}
+              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1rem 1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', marginBottom: '8px' }}>
+                  <Sparkles size={14} color="#7c3aed" /> 1-Tap Telecaller Note Composer
                 </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '0.85rem' }}>
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Client ID</div>
-                    <div style={{ fontWeight: 800, color: '#0f2b48', fontFamily: 'monospace', fontSize: '0.92rem' }}>
-                      {currentClient.clientCode || `CL-${currentClient.id}`}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Name</div>
-                    <div style={{ fontWeight: 800, color: '#0f2b48' }}>{currentClient.fullName}</div>
-                  </div>
-
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Company / Account</div>
-                    <div style={{ fontWeight: 700, color: '#334155' }}>
-                      {currentClient.companyName || 'Individual / Retail Client'}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Date of Birth (DOB)</div>
-                    <div style={{ fontWeight: 700, color: '#334155' }}>
-                      {currentClient.dob ? new Date(currentClient.dob).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not Specified'}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Location</div>
-                    <div style={{ fontWeight: 700, color: '#334155' }}>
-                      {currentClient.city || 'Bengaluru'}{currentClient.state ? `, ${currentClient.state}` : ''} {currentClient.pincode ? `(${currentClient.pincode})` : ''}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Nationality</div>
-                    <div style={{ fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                      <Globe size={13} /> {currentClient.nationality || 'Indian (Resident)'}
-                    </div>
-                  </div>
-                </div>
+                <form onSubmit={handlePostQuickNote} style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Log latest interaction note, customer objection, or next step..."
+                    value={quickNoteText}
+                    onChange={(e) => setQuickNoteText(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.82rem',
+                      outline: 'none',
+                      background: '#f8fafc'
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!quickNoteText.trim() || isPostingNote}
+                    style={{
+                      background: 'var(--primary-navy)',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: !quickNoteText.trim() || isPostingNote ? 'not-allowed' : 'pointer',
+                      opacity: !quickNoteText.trim() || isPostingNote ? 0.6 : 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    {isPostingNote ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                    <span>Post</span>
+                  </button>
+                </form>
               </div>
 
-              {/* 2. Direct Communication Channels */}
-              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', marginBottom: '12px', letterSpacing: '0.04em' }}>
-                  <Phone size={15} color="#059669" /> Direct Contact Channels
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '0.85rem' }}>
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Mobile Phone</div>
-                    <div style={{ fontWeight: 700, color: '#091726', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                      <a href={`tel:${currentClient.phoneNumber}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
-                        {currentClient.phoneNumber}
-                      </a>
+              {/* 1. UNIFIED EXECUTIVE CLIENT PROFILE & FINANCIAL SNAPSHOT */}
+              <div style={{ background: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
+                
+                {/* Header Strip with Advisor Ownership & 1-Click Reassign */}
+                <div style={{
+                  background: '#f8fafc',
+                  borderBottom: '1px solid #e2e8f0',
+                  padding: '10px 16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '8px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: currentClient.assignedAdvisorId ? '#e0e7ff' : '#f1f5f9',
+                      color: currentClient.assignedAdvisorId ? '#4338ca' : '#64748b',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.72rem',
+                      fontWeight: 800
+                    }}>
+                      {currentClient.assignedAdvisorName ? currentClient.assignedAdvisorName.charAt(0) : 'A'}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#334155' }}>
+                      <span style={{ color: '#64748b', fontWeight: 500 }}>Advisor: </span>
+                      <strong style={{ color: '#0f2b48' }}>{currentClient.assignedAdvisorName || 'Unassigned'}</strong>
+                      {currentClient.managerName && (
+                        <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}> • {currentClient.managerName}</span>
+                      )}
                     </div>
                   </div>
 
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• WhatsApp</div>
-                    <div style={{ fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                      <MessageSquare size={13} /> {currentClient.whatsappNumber || currentClient.phoneNumber}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Email Address</div>
-                    <div style={{ fontWeight: 700, color: '#334155' }}>
-                      {currentClient.email ? (
-                        <a href={`mailto:${currentClient.email}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
-                          {currentClient.email}
-                        </a>
-                      ) : 'No email provided'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. Insurance Portfolio & Policy Details */}
-              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', marginBottom: '12px', letterSpacing: '0.04em' }}>
-                  <ShieldCheck size={15} color="#d97706" /> Insurance Type & Policy Coverage
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '0.85rem' }}>
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Insurance Type</div>
-                    <div style={{ fontWeight: 800, color: '#0f2b48' }}>{currentClient.insuranceType || 'General Insurance'}</div>
-                  </div>
-
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Existing Policy / Insurer</div>
-                    <div style={{ fontWeight: 700, color: '#d97706' }}>
-                      {currentClient.existingInsurer || 'None (New Policy Requirement)'}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Policy Expiry Date</div>
-                    <div style={{ fontWeight: 700, color: currentClient.policyExpiryDate ? '#b45309' : '#64748b' }}>
-                      {currentClient.policyExpiryDate ? new Date(currentClient.policyExpiryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Pending Issuance'}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Desired Sum Insured</div>
-                    <div style={{ fontWeight: 800, color: '#059669' }}>
-                      {currentClient.sumInsured || '₹10 Lakhs'}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Estimated Premium</div>
-                    <div style={{ fontWeight: 800, color: '#059669' }}>
-                      {currentClient.estimatedPremium ? `₹${Number(currentClient.estimatedPremium).toLocaleString('en-IN')}` : 'Pending Quote Proposal'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 4. Team Ownership, Management & Lead Source */}
-              <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', letterSpacing: '0.04em' }}>
-                    <HeartHandshake size={15} color="#7c3aed" /> Assigned Team & Lead Origin
-                  </div>
                   {canReassign && (
                     <button
+                      type="button"
                       onClick={() => setShowReassignModal(true)}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '4px',
-                        background: currentClient.assignedAdvisorId ? '#e0e7ff' : '#dcfce7',
-                        color: currentClient.assignedAdvisorId ? '#4338ca' : '#15803d',
-                        border: `1px solid ${currentClient.assignedAdvisorId ? '#c7d2fe' : '#bbf7d0'}`,
-                        padding: '4px 10px',
+                        background: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        color: '#4338ca',
+                        padding: '3px 9px',
                         borderRadius: '6px',
-                        fontSize: '0.75rem',
+                        fontSize: '0.74rem',
                         fontWeight: 700,
                         cursor: 'pointer'
                       }}
                     >
-                      {currentClient.assignedAdvisorId ? <UserCheck size={13} /> : <UserPlus size={13} />}
-                      {currentClient.assignedAdvisorId ? 'Reassign' : 'Assign Advisor'}
+                      <UserCheck size={12} />
+                      <span>{currentClient.assignedAdvisorId ? 'Reassign' : 'Assign'}</span>
                     </button>
                   )}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '0.85rem' }}>
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Assigned Employee</div>
-                    <div style={{ fontWeight: 800, color: '#0f2b48' }}>
-                      {currentClient.assignedAdvisorName || 'Unassigned'}
+                {/* Content Grid */}
+                <div style={{ padding: '1.25rem 1.25rem 1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  
+                  {/* Demographics & Location Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                    <div style={{ background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Account / Company</div>
+                      <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f2b48', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {currentClient.companyName || 'Retail Client'}
+                      </div>
+                    </div>
+
+                    <div style={{ background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>City & Region</div>
+                      <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f2b48', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {currentClient.city || 'Hyderabad'}{currentClient.state ? `, ${currentClient.state}` : ''}
+                      </div>
+                    </div>
+
+                    <div style={{ background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Lead Origin</div>
+                      <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#2563eb', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {currentClient.leadSource || 'Direct Entry'}
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Assigned Manager</div>
-                    <div style={{ fontWeight: 800, color: '#0f2b48' }}>
-                      {currentClient.managerName || 'Branch Management'}
+                  {/* Insurance Policy & Financial Snapshot Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '10px', paddingTop: '4px' }}>
+                    <div style={{ border: '1px solid #e0f2fe', background: '#f0f9ff', padding: '10px 12px', borderRadius: '10px' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#0284c7', fontWeight: 700, textTransform: 'uppercase' }}>Primary Product</div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#0f2b48', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <ShieldCheck size={14} color="#0284c7" />
+                        <span>{currentClient.insuranceType || 'General Insurance'}</span>
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                        {currentClient.existingInsurer ? `Existing: ${currentClient.existingInsurer}` : 'New Policyholder'}
+                      </div>
+                    </div>
+
+                    <div style={{ border: '1px solid #dcfce7', background: '#f0fdf4', padding: '10px 12px', borderRadius: '10px' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 700, textTransform: 'uppercase' }}>Sum Insured</div>
+                      <div style={{ fontSize: '0.96rem', fontWeight: 800, color: '#15803d', marginTop: '3px' }}>
+                        {currentClient.sumInsured || '₹10 Lakhs'}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                        Target Coverage
+                      </div>
+                    </div>
+
+                    <div style={{ border: '1px solid #fef3c7', background: '#fffbeb', padding: '10px 12px', borderRadius: '10px' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#d97706', fontWeight: 700, textTransform: 'uppercase' }}>Est. Premium</div>
+                      <div style={{ fontSize: '0.96rem', fontWeight: 800, color: '#b45309', marginTop: '3px' }}>
+                        {currentClient.estimatedPremium ? `₹${Number(currentClient.estimatedPremium).toLocaleString('en-IN')}` : 'To Be Quoted'}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                        {currentClient.policyExpiryDate ? `Exp: ${new Date(currentClient.policyExpiryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'Annual Quote'}
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 600 }}>• Lead Source</div>
-                    <div style={{ fontWeight: 700, color: '#2563eb' }}>
-                      {currentClient.leadSource || 'Web Portal Inquiry'}
-                    </div>
-                  </div>
                 </div>
               </div>
 
-              {/* 5. Ingested Opportunities & Multi-Product Portfolio */}
+              {/* 5. Polished Multi-Product Opportunity Cards */}
               {currentClient.notes && (() => {
                 const noteLines = currentClient.notes.split('\n').filter(Boolean);
                 
                 return (
                   <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', marginBottom: '12px', letterSpacing: '0.04em' }}>
-                      <Layers size={15} color="#0284c7" /> Linked Product Opportunities & Ingestion Specs ({noteLines.length})
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', letterSpacing: '0.04em' }}>
+                        <Layers size={15} color="#0284c7" /> Linked Product Opportunities & Ingestion Specs ({noteLines.length})
+                      </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       {noteLines.map((line, idx) => {
-                        // Check if line contains JSON specs
-                        const jsonMatch = line.match(/\{.*?\}/);
-                        let specsData = null;
-                        let textPortion = line;
+                        const opp = parseOpportunityDetails(line);
+                        
+                        let badgeBg = '#ecfdf5';
+                        let badgeColor = '#059669';
+                        let badgeBorder = '#a7f3d0';
+                        let icon = <Heart size={12} />;
 
-                        if (jsonMatch) {
-                          try {
-                            specsData = JSON.parse(jsonMatch[0]);
-                            textPortion = line.replace(jsonMatch[0], '').replace(/Specs:\s*$/, '').trim();
-                          } catch (e) {
-                            // Leave as text
-                          }
+                        if (opp.category === 'LIFE') {
+                          badgeBg = '#eff6ff'; badgeColor = '#2563eb'; badgeBorder = '#bfdbfe'; icon = <Shield size={12} />;
+                        } else if (opp.category === 'VEHICLE') {
+                          badgeBg = '#eff6ff'; badgeColor = '#3b82f6'; badgeBorder = '#bfdbfe'; icon = <Car size={12} />;
+                        } else if (opp.category === 'LOANS') {
+                          badgeBg = '#fffbeb'; badgeColor = '#d97706'; badgeBorder = '#fde68a'; icon = <Landmark size={12} />;
+                        } else if (opp.category === 'BUSINESS') {
+                          badgeBg = '#f8fafc'; badgeColor = '#475569'; badgeBorder = '#cbd5e1'; icon = <Briefcase size={12} />;
+                        } else if (opp.category === 'TRAVEL') {
+                          badgeBg = '#fdf4ff'; badgeColor = '#86198f'; badgeBorder = '#f5d0fe'; icon = <Plane size={12} />;
                         }
 
                         return (
                           <div 
                             key={idx}
-                            style={{
-                              background: '#f8fafc',
-                              border: '1px solid #e2e8f0',
-                              borderRadius: '10px',
-                              padding: '0.75rem 0.9rem',
-                              fontSize: '0.82rem'
-                            }}
+                            className="crm-opportunity-card"
                           >
-                            <div style={{ fontWeight: 700, color: '#0f2b48', marginBottom: specsData ? '0.4rem' : 0, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#0284c7' }} />
-                              <span>{textPortion}</span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span 
+                                  className="crm-opportunity-badge"
+                                  style={{ background: badgeBg, color: badgeColor, border: `1px solid ${badgeBorder}` }}
+                                >
+                                  {icon} {opp.category} OPPORTUNITY
+                                </span>
+                                {opp.inquiryId && (
+                                  <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>
+                                    Inquiry #{opp.inquiryId}
+                                  </span>
+                                )}
+                              </div>
+
+                              {opp.coverage && (
+                                <span style={{
+                                  background: '#ecfdf5',
+                                  color: '#059669',
+                                  border: '1px solid #a7f3d0',
+                                  padding: '2px 8px',
+                                  borderRadius: '6px',
+                                  fontSize: '0.74rem',
+                                  fontWeight: 800
+                                }}>
+                                  Coverage: {opp.coverage}
+                                </span>
+                              )}
                             </div>
 
-                            {specsData && (
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.35rem' }}>
-                                {Object.entries(specsData).map(([k, v]) => (
-                                  <span
-                                    key={k}
-                                    style={{
-                                      background: '#eff6ff',
-                                      color: '#1d4ed8',
-                                      border: '1px solid #bfdbfe',
-                                      padding: '0.15rem 0.45rem',
-                                      borderRadius: '6px',
-                                      fontSize: '0.74rem',
-                                      fontWeight: 600
-                                    }}
-                                  >
-                                    <strong style={{ color: '#1e3a8a' }}>{k.replace(/([A-Z])/g, ' $1').trim()}: </strong>
-                                    <span>{String(v)}</span>
-                                  </span>
-                                ))}
+                            <div style={{ fontSize: '0.8rem', color: '#334155', lineHeight: 1.45 }}>
+                              {opp.specsObj ? (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '2px' }}>
+                                  {Object.entries(opp.specsObj).map(([k, v]) => (
+                                    <span
+                                      key={k}
+                                      style={{
+                                        background: '#f1f5f9',
+                                        color: '#334155',
+                                        border: '1px solid #e2e8f0',
+                                        padding: '2px 8px',
+                                        borderRadius: '6px',
+                                        fontSize: '0.73rem',
+                                        fontWeight: 600
+                                      }}
+                                    >
+                                      <strong style={{ color: '#0f2b48' }}>{k.replace(/([A-Z])/g, ' $1').trim()}: </strong>
+                                      <span>{String(v)}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : opp.specs ? (
+                                <div><strong style={{ color: '#0f2b48' }}>Specs:</strong> {opp.specs}</div>
+                              ) : (
+                                <div>{opp.raw.replace(/^\[.*?\]\s*/, '')}</div>
+                              )}
+                            </div>
+
+                            {opp.date && (
+                              <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '4px', fontWeight: 600 }}>
+                                Ingested on {opp.date}
                               </div>
                             )}
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px', paddingTop: '6px', borderTop: '1px dashed #e2e8f0' }}>
+                              <button
+                                type="button"
+                                onClick={() => openQuoteModalForOpportunity(opp)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '5px',
+                                  background: 'var(--primary-navy)',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  padding: '4px 10px',
+                                  fontSize: '0.74rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <FileText size={12} /> + Generate {opp.category} Quote
+                              </button>
+                            </div>
                           </div>
                         );
                       })}
@@ -875,25 +1181,46 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                 <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f2b48', textTransform: 'uppercase' }}>
                   Client Quotations ({clientQuotes.length})
                 </div>
-                <button
-                  onClick={() => loadClientQuotes(currentClient.id)}
-                  disabled={loadingQuotes}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    background: '#f1f5f9',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    padding: '3px 8px',
-                    fontSize: '0.74rem',
-                    color: '#475569',
-                    cursor: 'pointer',
-                    fontWeight: 600
-                  }}
-                >
-                  <RefreshCw size={12} className={loadingQuotes ? 'animate-spin' : ''} /> Refresh
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => openQuoteModalForOpportunity(null)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      background: 'var(--primary-navy)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '0.74rem',
+                      cursor: 'pointer',
+                      fontWeight: 700
+                    }}
+                  >
+                    <Plus size={13} /> New Quote
+                  </button>
+                  <button
+                    onClick={() => loadClientQuotes(currentClient.id)}
+                    disabled={loadingQuotes}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: '#f1f5f9',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      padding: '3px 8px',
+                      fontSize: '0.74rem',
+                      color: '#475569',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    <RefreshCw size={12} className={loadingQuotes ? 'animate-spin' : ''} /> Refresh
+                  </button>
+                </div>
               </div>
 
               {loadingQuotes ? (
@@ -923,9 +1250,21 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#0284c7', background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px' }}>
-                          {q.quoteNumber}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#0284c7', background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px' }}>
+                            {q.quoteNumber}
+                          </span>
+                          {q.insuranceType && (
+                            <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#059669', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '1px 6px', borderRadius: '4px' }}>
+                              {q.insuranceType.replace(/_/g, ' ')}
+                            </span>
+                          )}
+                          {q.inquiryId && (
+                            <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#15803d', background: '#dcfce7', border: '1px solid #86efac', padding: '1px 6px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              <Tag size={10} /> Web Lead #{q.inquiryId}
+                            </span>
+                          )}
+                        </div>
                         <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.92rem', marginTop: '4px' }}>
                           {q.insurerName}
                         </div>
@@ -951,26 +1290,74 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
                       <button
-                        onClick={async () => {
-                          const res = await crmService.sendQuoteDispatch(q.id, { channel: 'WHATSAPP', recipientPhone: currentClient.phoneNumber });
-                          if (res.whatsAppUrl) window.open(res.whatsAppUrl, '_blank');
-                          loadClientQuotes(currentClient.id);
+                        onClick={() => setViewingQuoteDetails(q)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          background: '#f0fdf4',
+                          color: '#15803d',
+                          border: '1px solid #bbf7d0',
+                          padding: '5px 9px',
+                          borderRadius: '6px',
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Eye size={13} color="#15803d" /> View Quote
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setEditingQuoteId(q.id);
+                          setQuoteFormData({
+                            opportunityRef: 'PRIMARY',
+                            insuranceType: q.insuranceType || 'HEALTH_INSURANCE',
+                            insurerName: q.insurerName || 'Star Health and Allied Insurance',
+                            planName: q.planName || '',
+                            planVariant: q.planVariant || 'Comprehensive',
+                            sumInsured: q.sumInsured || currentClient.sumInsured || '₹10,00,000',
+                            policyTenureYears: q.policyTenureYears || 1,
+                            basePremium: q.basePremium || '',
+                            ncbDiscountPercent: q.ncbDiscountPercent || 0,
+                            roomRentLimit: q.roomRentLimit || 'No Cap / Single Private Room',
+                            copayPercentage: q.copayPercentage || '0%',
+                            restorationBenefit: q.restorationBenefit || '100% Unlimited Recharge',
+                            prePostHospitalization: q.prePostHospitalization || '60 Days Pre / 180 Days Post',
+                            maternityCovered: !!q.maternityCovered,
+                            opdCovered: !!q.opdCovered,
+                            notes: q.notes || ''
+                          });
+                          setShowCreateQuoteModal(true);
                         }}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '4px',
-                          background: '#dcfce7',
-                          color: '#15803d',
-                          border: '1px solid #bbf7d0',
-                          padding: '4px 8px',
+                          background: '#f8fafc',
+                          color: '#0284c7',
+                          border: '1px solid #cbd5e1',
+                          padding: '5px 9px',
                           borderRadius: '6px',
-                          fontSize: '0.75rem',
+                          fontSize: '0.74rem',
                           fontWeight: 700,
                           cursor: 'pointer'
                         }}
                       >
-                        <MessageSquare size={12} /> WhatsApp Quote
+                        <Edit3 size={13} color="#0284c7" /> Edit Quote
+                      </button>
+
+                      <button
+                        onClick={async () => {
+                          const res = await crmService.sendQuoteDispatch(q.id, { channel: 'WHATSAPP', recipientPhone: currentClient.phoneNumber });
+                          if (res.whatsAppUrl) window.open(res.whatsAppUrl, '_blank');
+                          loadClientQuotes(currentClient.id);
+                        }}
+                        className="crm-btn-whatsapp-outline"
+                      >
+                        <WhatsAppIcon size={14} color="currentColor" />
+                        <span>WhatsApp Quote</span>
                       </button>
                     </div>
                   </div>
@@ -1158,36 +1545,51 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                             {formattedDate}
                           </div>
 
-                          {/* Friendly Description / Note */}
-                          {log.description && (
-                            <div style={{
-                              fontSize: '0.8rem',
-                              color: '#334155',
-                              lineHeight: 1.45,
-                              background: isLinkOpp ? '#f0f9ff' : '#f8fafc',
-                              border: `1px solid ${isLinkOpp ? '#bae6fd' : '#f1f5f9'}`,
-                              padding: '0.45rem 0.65rem',
-                              borderRadius: '8px',
-                              marginTop: '4px'
-                            }}>
-                              {log.description}
-                            </div>
-                          )}
+                          {/* Friendly Description / Value Display */}
+                          {(() => {
+                            const rawText = log.description || log.newValue;
+                            if (!rawText) return null;
 
-                          {/* Value Diff (e.g. Stage Changes) */}
-                          {(log.oldValue || log.newValue) && (
+                            // Smart Sanitizer: convert any legacy ISO timestamps into human-readable 12-hr dates
+                            let cleanDesc = rawText.replace(
+                              /(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/g,
+                              (_, date, hr, min) => {
+                                try {
+                                  const d = new Date(`${date}T${hr}:${min}:00`);
+                                  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ' at ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                } catch {
+                                  return `${date} ${hr}:${min}`;
+                                }
+                              }
+                            );
+                            cleanDesc = cleanDesc.replace(/Scheduled meeting: [^at]+ at /i, 'Scheduled for ');
+
+                            return (
+                              <div style={{
+                                fontSize: '0.8rem',
+                                color: '#334155',
+                                lineHeight: 1.45,
+                                background: isLinkOpp ? '#f0f9ff' : (isMeeting ? '#fdf4ff' : '#f8fafc'),
+                                border: `1px solid ${isLinkOpp ? '#bae6fd' : (isMeeting ? '#f5d0fe' : '#f1f5f9')}`,
+                                padding: '0.45rem 0.65rem',
+                                borderRadius: '8px',
+                                marginTop: '4px'
+                              }}>
+                                {cleanDesc}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Value Diff (Only if both oldValue AND newValue exist) */}
+                          {log.oldValue && log.newValue && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', border: '1px solid #f1f5f9', flexWrap: 'wrap', marginTop: '6px' }}>
-                              {log.oldValue && (
-                                <span style={{ color: '#dc2626', textDecoration: 'line-through', background: '#fef2f2', padding: '1px 5px', borderRadius: '4px' }}>
-                                  {log.oldValue}
-                                </span>
-                              )}
-                              {log.oldValue && log.newValue && <span style={{ color: '#94a3b8' }}>→</span>}
-                              {log.newValue && (
-                                <span style={{ color: '#16a34a', fontWeight: 700, background: '#f0fdf4', padding: '1px 5px', borderRadius: '4px' }}>
-                                  {log.newValue}
-                                </span>
-                              )}
+                              <span style={{ color: '#dc2626', textDecoration: 'line-through', background: '#fef2f2', padding: '1px 5px', borderRadius: '4px' }}>
+                                {log.oldValue}
+                              </span>
+                              <span style={{ color: '#94a3b8' }}>→</span>
+                              <span style={{ color: '#16a34a', fontWeight: 700, background: '#f0fdf4', padding: '1px 5px', borderRadius: '4px' }}>
+                                {log.newValue}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -1224,21 +1626,10 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                     const res = await crmService.requestDocumentsChecklist(currentClient.id, ['AADHAAR', 'PAN', 'PREVIOUS_POLICY', 'MEDICAL_RECORD']);
                     if (res.whatsAppUrl) window.open(res.whatsAppUrl, '_blank');
                   }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    background: '#16a34a',
-                    color: '#ffffff',
-                    border: 'none',
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
+                  className="crm-btn-whatsapp-solid"
                 >
-                  <MessageSquare size={13} /> Send WhatsApp Request
+                  <WhatsAppIcon size={14} color="#ffffff" />
+                  <span>Send WhatsApp Request</span>
                 </button>
               </div>
 
@@ -1372,24 +1763,43 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
 
       {/* Modal: Reassign Advisor */}
       {showReassignModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
-          zIndex: 13000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '16px'
-        }}>
-          <div style={{
-            background: '#ffffff',
-            borderRadius: '20px',
-            width: '100%',
-            maxWidth: '500px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            overflow: 'hidden'
-          }}>
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+              setShowReassignModal(false);
+            }
+          }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+            }
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'none',
+            zIndex: 13000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            cursor: 'pointer'
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              borderRadius: '20px',
+              width: '100%',
+              maxWidth: '500px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              cursor: 'default'
+            }}
+          >
             <div style={{
               background: '#ffffff',
               padding: '1.25rem 1.5rem',
@@ -1421,6 +1831,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setShowReassignModal(false)}
                 style={{
                   background: '#f8fafc',
@@ -1526,6 +1937,619 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: In-Context Create Insurance Quotation */}
+      {showCreateQuoteModal && (
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+              setShowCreateQuoteModal(false);
+            }
+          }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+            }
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'none',
+            zIndex: 13000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            cursor: 'pointer'
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              borderRadius: '20px',
+              width: '100%',
+              maxWidth: '580px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              cursor: 'default'
+            }}
+          >
+            <div style={{
+              background: '#ffffff',
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid #e2e8f0'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: '#e0f2fe',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#0284c7'
+                }}>
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: '#0f2b48' }}>
+                    Generate Insurance Quotation
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                    For {currentClient.fullName} ({currentClient.clientCode || `CL-${currentClient.id}`})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateQuoteModal(false)}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!quoteFormData.planName || !quoteFormData.basePremium) {
+                  alert('Please provide Plan Name and Base Premium.');
+                  return;
+                }
+                setCreatingQuote(true);
+                try {
+                  if (editingQuoteId) {
+                    await crmService.updateQuotation(editingQuoteId, {
+                      ...quoteFormData,
+                      clientId: currentClient.id,
+                      insuranceType: quoteFormData.insuranceType || (currentClient.insuranceType ? currentClient.insuranceType.toUpperCase().replace(/\s+/g, '_') : 'HEALTH_INSURANCE'),
+                      basePremium: Number(quoteFormData.basePremium),
+                      ncbDiscountPercent: Number(quoteFormData.ncbDiscountPercent || 0)
+                    });
+                  } else {
+                    await crmService.createQuotation({
+                      ...quoteFormData,
+                      clientId: currentClient.id,
+                      insuranceType: quoteFormData.insuranceType || (currentClient.insuranceType ? currentClient.insuranceType.toUpperCase().replace(/\s+/g, '_') : 'HEALTH_INSURANCE'),
+                      basePremium: Number(quoteFormData.basePremium),
+                      ncbDiscountPercent: Number(quoteFormData.ncbDiscountPercent || 0)
+                    });
+                  }
+                  setShowCreateQuoteModal(false);
+                  setEditingQuoteId(null);
+                  loadClientQuotes(currentClient.id);
+                  loadClientAuditLogs(currentClient.id);
+                  setQuoteFormData({
+                    opportunityRef: 'PRIMARY',
+                    insuranceType: 'HEALTH_INSURANCE',
+                    insurerName: 'Star Health and Allied Insurance',
+                    planName: '',
+                    planVariant: 'Comprehensive',
+                    sumInsured: currentClient.sumInsured || '₹10,00,000',
+                    policyTenureYears: 1,
+                    basePremium: '',
+                    ncbDiscountPercent: 0,
+                    roomRentLimit: 'No Cap / Single Private Room',
+                    copayPercentage: '0%',
+                    restorationBenefit: '100% Unlimited Recharge',
+                    prePostHospitalization: '60 Days Pre / 180 Days Post',
+                    maternityCovered: false,
+                    opdCovered: false,
+                    notes: ''
+                  });
+                } catch (err) {
+                  alert('Failed to save quote: ' + (err.response?.data?.message || err.message));
+                } finally {
+                  setCreatingQuote(false);
+                }
+              }}
+              style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+            >
+              {/* Opportunity / Policy Line Selector */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Target Opportunity / Product Line *
+                </label>
+                <select
+                  value={quoteFormData.opportunityRef || 'PRIMARY'}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    const opts = getOpportunityOptions();
+                    const match = opts.find(o => o.id === selectedId) || opts[0];
+                    const providers = INSURER_PROVIDERS_BY_CATEGORY[match.insuranceType] || INSURER_PROVIDERS_BY_CATEGORY.HEALTH_INSURANCE;
+                    setQuoteFormData({
+                      ...quoteFormData,
+                      opportunityRef: match.id,
+                      insuranceType: match.insuranceType,
+                      sumInsured: match.coverage || '₹10,00,000',
+                      insurerName: providers[0],
+                      roomRentLimit: match.insuranceType === 'HEALTH_INSURANCE' ? 'No Cap / Single Private Room' : 'N/A',
+                      restorationBenefit: match.insuranceType === 'HEALTH_INSURANCE' ? '100% Unlimited Recharge' : 'N/A',
+                      prePostHospitalization: match.insuranceType === 'HEALTH_INSURANCE' ? '60 Days Pre / 180 Days Post' : 'N/A',
+                      notes: match.inquiryId ? `Quotation specifically tailored for Inquiry #${match.inquiryId} (${match.category})` : ''
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '9px 10px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #0284c7',
+                    background: '#f0f9ff',
+                    fontSize: '0.86rem',
+                    fontWeight: 700,
+                    color: '#0369a1'
+                  }}
+                >
+                  {getOpportunityOptions().map(opt => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '3px' }}>
+                  💡 Select which client opportunity or policy inquiry this quotation is tailored for.
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Insurance Provider *
+                  </label>
+                  <select
+                    value={quoteFormData.insurerName}
+                    onChange={(e) => setQuoteFormData({ ...quoteFormData, insurerName: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  >
+                    {(INSURER_PROVIDERS_BY_CATEGORY[quoteFormData.insuranceType] || INSURER_PROVIDERS_BY_CATEGORY.HEALTH_INSURANCE).map(ins => (
+                      <option key={ins} value={ins}>{ins}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Plan Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Optima Secure / Care Supreme"
+                    value={quoteFormData.planName}
+                    onChange={(e) => setQuoteFormData({ ...quoteFormData, planName: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Sum Insured (Coverage) *
+                  </label>
+                  <select
+                    value={quoteFormData.sumInsured}
+                    onChange={(e) => setQuoteFormData({ ...quoteFormData, sumInsured: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  >
+                    <option value="₹5,00,000">₹5,00,000 (5 Lakhs)</option>
+                    <option value="₹10,00,000">₹10,00,000 (10 Lakhs)</option>
+                    <option value="₹15,00,000">₹15,00,000 (15 Lakhs)</option>
+                    <option value="₹25,00,000">₹25,00,000 (25 Lakhs)</option>
+                    <option value="₹50,00,000">₹50,00,000 (50 Lakhs)</option>
+                    <option value="₹1,00,00,000">₹1,00,00,000 (1 Crore)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Base Annual Premium (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="e.g. 14500"
+                    value={quoteFormData.basePremium}
+                    onChange={(e) => setQuoteFormData({ ...quoteFormData, basePremium: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  />
+                  {quoteFormData.basePremium && (
+                    <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700, marginTop: '3px' }}>
+                      Total with 18% GST: ₹{Math.round(Number(quoteFormData.basePremium) * 1.18).toLocaleString('en-IN')}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    {quoteFormData.insuranceType === 'HEALTH_INSURANCE' ? 'Room Rent Limit' : 'Policy Tenure / Term'}
+                  </label>
+                  <input
+                    type="text"
+                    value={quoteFormData.roomRentLimit}
+                    onChange={(e) => setQuoteFormData({ ...quoteFormData, roomRentLimit: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    {quoteFormData.insuranceType === 'HEALTH_INSURANCE' ? 'Restoration Benefit' : 'Key Feature / Add-on'}
+                  </label>
+                  <input
+                    type="text"
+                    value={quoteFormData.restorationBenefit}
+                    onChange={(e) => setQuoteFormData({ ...quoteFormData, restorationBenefit: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Advisor Notes & Benefit Highlights
+                </label>
+                <textarea
+                  rows="2"
+                  placeholder="e.g. Best suited for high NCB bonus accumulation and maternity cover..."
+                  value={quoteFormData.notes}
+                  onChange={(e) => setQuoteFormData({ ...quoteFormData, notes: e.target.value })}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateQuoteModal(false)}
+                  disabled={creatingQuote}
+                  style={{
+                    flex: 1,
+                    padding: '9px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingQuote}
+                  style={{
+                    flex: 2,
+                    padding: '9px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'var(--primary-navy)',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    cursor: creatingQuote ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {creatingQuote ? <RefreshCw size={14} className="animate-spin" /> : <Check size={15} />}
+                  Save & Calculate Quote
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW QUOTATION DETAILS MODAL */}
+      {viewingQuoteDetails && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'none',
+          zIndex: 14000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            maxWidth: '650px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #091726 0%, #0f2b48 100%)',
+              color: '#ffffff',
+              borderRadius: '16px 16px 0 0'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.2)', padding: '2px 8px', borderRadius: '4px' }}>
+                    {viewingQuoteDetails.quoteNumber}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8' }}>
+                    Version v{viewingQuoteDetails.versionNumber || 1}
+                  </span>
+                </div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '4px 0 0 0', color: '#ffffff' }}>
+                  {viewingQuoteDetails.insurerName}
+                </h3>
+                <div style={{ fontSize: '0.84rem', color: '#cbd5e1' }}>
+                  {viewingQuoteDetails.planName} • {viewingQuoteDetails.planVariant || 'Comprehensive'}
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingQuoteDetails(null)}
+                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#ffffff', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              
+              {/* Client & Advisor Snapshot */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#f8fafc', padding: '12px 14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Client</div>
+                  <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.92rem', marginTop: '2px' }}>{currentClient.fullName}</div>
+                  <div style={{ fontSize: '0.78rem', color: '#475569' }}>{currentClient.phoneNumber}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Status & Version</div>
+                  <div style={{ fontWeight: 800, color: viewingQuoteDetails.status === 'ACCEPTED' ? '#16a34a' : '#0284c7', fontSize: '0.92rem', marginTop: '2px' }}>
+                    {viewingQuoteDetails.status}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#475569' }}>
+                    Type: {viewingQuoteDetails.insuranceType?.replace(/_/g, ' ') || 'HEALTH INSURANCE'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Breakdown */}
+              <div style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)', border: '1.5px solid #a7f3d0', borderRadius: '12px', padding: '14px 16px' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  Financial Premium Breakdown
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Sum Insured</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f2b48', marginTop: '2px' }}>{viewingQuoteDetails.sumInsured}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Base Premium</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 700, color: '#334155', marginTop: '2px' }}>₹{viewingQuoteDetails.basePremium}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>18% GST</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 700, color: '#334155', marginTop: '2px' }}>₹{viewingQuoteDetails.taxGst}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 800 }}>Total Annual</div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#16a34a', marginTop: '2px' }}>₹{viewingQuoteDetails.totalPremium}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Benefit Matrix */}
+              <div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155', marginBottom: '8px' }}>
+                  Policy Benefits & Coverage Terms
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.82rem' }}>
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>Room Rent:</span> <strong style={{ color: '#0f2b48' }}>{viewingQuoteDetails.roomRentLimit || 'No Cap'}</strong>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>Restoration:</span> <strong style={{ color: '#0f2b48' }}>{viewingQuoteDetails.restorationBenefit || 'Unlimited'}</strong>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>Co-Payment:</span> <strong style={{ color: '#0f2b48' }}>{viewingQuoteDetails.copayPercentage || '0%'}</strong>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>Pre/Post Hosp:</span> <strong style={{ color: '#0f2b48' }}>{viewingQuoteDetails.prePostHospitalization || '60/180 Days'}</strong>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>Maternity:</span> <strong style={{ color: viewingQuoteDetails.maternityCovered ? '#16a34a' : '#94a3b8' }}>{viewingQuoteDetails.maternityCovered ? '✓ Covered' : '✗ Excluded'}</strong>
+                  </div>
+                  <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>OPD / Diagnostics:</span> <strong style={{ color: viewingQuoteDetails.opdCovered ? '#16a34a' : '#94a3b8' }}>{viewingQuoteDetails.opdCovered ? '✓ Covered' : '✗ Excluded'}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dedicated Linked Web Inquiry Heritage Card */}
+              {viewingQuoteDetails.inquiryId && (
+                <div style={{
+                  background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                  border: '1.5px solid #86efac',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#166534', background: '#dcfce7', padding: '2px 7px', borderRadius: '4px' }}>
+                        LINKED WEB INQUIRY #{viewingQuoteDetails.inquiryId}
+                      </span>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#047857', textTransform: 'uppercase' }}>
+                        {viewingQuoteDetails.inquiryCategorySlug?.replace(/-/g, ' ') || viewingQuoteDetails.insuranceType?.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#15803d', marginTop: '3px' }}>
+                      Origin: Customer submitted quote form on web portal • Triage Status: <strong>{viewingQuoteDetails.inquiryStatus || 'QUALIFIED'}</strong>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const inq = await leadInquiryService.getInquiryById(viewingQuoteDetails.inquiryId);
+                        if (inq) {
+                          const logs = await crmService.getInquiryAuditLogs(inq.id);
+                          alert(`Inquiry #${inq.id} Heritage & Audit Trail:\n\n• Applicant: ${inq.fullName}\n• Phone: ${inq.phoneNumber}\n• Category: ${inq.categorySlug}\n• Status: ${inq.status}\n\nActivity Logs (${logs ? logs.length : 0}):\n${logs && logs.length > 0 ? logs.map(l => `[${new Date(l.timestamp).toLocaleDateString('en-IN')}] ${l.action}: ${l.oldValue || 'None'} -> ${l.newValue || ''} (by ${l.performedByName || 'System'})`).join('\n') : 'No audit entries logged'}`);
+                        }
+                      } catch (err) {
+                        alert(`Could not load Inquiry #${viewingQuoteDetails.inquiryId}: ${err.message}`);
+                      }
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      background: '#15803d',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      flexShrink: 0
+                    }}
+                  >
+                    <Eye size={12} color="#ffffff" /> View Inquiry & Logs
+                  </button>
+                </div>
+              )}
+
+              {/* Notes */}
+              {viewingQuoteDetails.notes && (
+                <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', padding: '10px 14px', borderRadius: '10px', fontSize: '0.82rem', color: '#92400e' }}>
+                  <strong>Advisor Notes:</strong> {viewingQuoteDetails.notes}
+                </div>
+              )}
+
+              {/* Modal Footer Actions */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const q = viewingQuoteDetails;
+                    setViewingQuoteDetails(null);
+                    setEditingQuoteId(q.id);
+                    setQuoteFormData({
+                      opportunityRef: 'PRIMARY',
+                      insuranceType: q.insuranceType || 'HEALTH_INSURANCE',
+                      insurerName: q.insurerName || 'Star Health and Allied Insurance',
+                      planName: q.planName || '',
+                      planVariant: q.planVariant || 'Comprehensive',
+                      sumInsured: q.sumInsured || currentClient.sumInsured || '₹10,00,000',
+                      policyTenureYears: q.policyTenureYears || 1,
+                      basePremium: q.basePremium || '',
+                      ncbDiscountPercent: q.ncbDiscountPercent || 0,
+                      roomRentLimit: q.roomRentLimit || 'No Cap / Single Private Room',
+                      copayPercentage: q.copayPercentage || '0%',
+                      restorationBenefit: q.restorationBenefit || '100% Unlimited Recharge',
+                      prePostHospitalization: q.prePostHospitalization || '60 Days Pre / 180 Days Post',
+                      maternityCovered: !!q.maternityCovered,
+                      opdCovered: !!q.opdCovered,
+                      notes: q.notes || ''
+                    });
+                    setShowCreateQuoteModal(true);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #0284c7',
+                    background: '#f0f9ff',
+                    color: '#0369a1',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Edit3 size={14} /> Edit Quote
+                </button>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const res = await crmService.sendQuoteDispatch(viewingQuoteDetails.id, { channel: 'WHATSAPP', recipientPhone: currentClient.phoneNumber });
+                      if (res.whatsAppUrl) window.open(res.whatsAppUrl, '_blank');
+                      loadClientQuotes(currentClient.id);
+                    }}
+                    className="crm-btn-whatsapp-solid"
+                  >
+                    <WhatsAppIcon size={14} color="#ffffff" />
+                    <span>WhatsApp Quote</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewingQuoteDetails(null)}
+                    style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
       )}

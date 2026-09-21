@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { formatWhatsAppNumber } from '../../utils/crmDeduplication';
+import WhatsAppIcon from '../common/WhatsAppIcon';
 
 export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingModal }) {
   const { isSuperAdmin, isManager } = useAuth();
@@ -99,7 +101,7 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
       });
 
       if (reminderChannel === 'WHATSAPP') {
-        const cleanPhone = (selectedItem.whatsappNumber || selectedItem.phoneNumber).replace(/[^0-9]/g, '');
+        const cleanPhone = formatWhatsAppNumber(selectedItem.whatsappNumber || selectedItem.phoneNumber);
         const encoded = encodeURIComponent(customText);
         window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, '_blank');
       }
@@ -459,22 +461,11 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
                           {/* 1-Tap WhatsApp Renewal Dispatch */}
                           <button
                             onClick={() => handleOpenReminderModal(r, 'WHATSAPP')}
-                            style={{
-                              background: '#dcfce7',
-                              color: '#15803d',
-                              border: '1px solid #86efac',
-                              padding: '5px 9px',
-                              borderRadius: '7px',
-                              fontWeight: 700,
-                              fontSize: '0.74rem',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.3rem'
-                            }}
+                            className="crm-btn-whatsapp-outline"
                             title="Open WhatsApp Renewal Prompt"
                           >
-                            <MessageSquare size={13} /> WhatsApp
+                            <WhatsAppIcon size={13} color="currentColor" />
+                            <span>WhatsApp</span>
                           </button>
 
                           {/* Email Reminder */}
@@ -625,22 +616,10 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.5rem', marginTop: '0.25rem' }}>
                     <button
                       onClick={() => handleOpenReminderModal(r, 'WHATSAPP')}
-                      style={{
-                        background: '#dcfce7',
-                        color: '#15803d',
-                        border: '1px solid #86efac',
-                        padding: '8px 10px',
-                        borderRadius: '8px',
-                        fontWeight: 700,
-                        fontSize: '0.78rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.35rem'
-                      }}
+                      className="crm-btn-whatsapp-outline"
                     >
-                      <MessageSquare size={14} /> WhatsApp
+                      <WhatsAppIcon size={14} color="currentColor" />
+                      <span>WhatsApp</span>
                     </button>
 
                     <a
@@ -692,29 +671,46 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
 
       {/* 4. SEND RENEWAL REMINDER MODAL */}
       {showReminderModal && selectedItem && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 12000,
-          padding: '1rem'
-        }}>
-          <div style={{
-            background: '#ffffff',
-            borderRadius: '16px',
-            width: '100%',
-            maxWidth: '560px',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-            padding: '1.75rem',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
-          }}>
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+              setShowReminderModal(false);
+            }
+          }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) e.stopPropagation();
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 12000,
+            padding: '1rem',
+            cursor: 'pointer'
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '560px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '1.75rem',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+              cursor: 'default'
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <MessageSquare size={22} color="#15803d" />
+                <WhatsAppIcon size={22} color="#15803d" />
                 <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#091726', margin: 0 }}>
                   Send Policy Renewal Reminder
                 </h3>
@@ -749,10 +745,15 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
                       color: reminderChannel === 'WHATSAPP' ? '#15803d' : '#475569',
                       fontWeight: 700,
                       fontSize: '0.8rem',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px'
                     }}
                   >
-                    💬 WhatsApp Direct
+                    <WhatsAppIcon size={14} color="currentColor" />
+                    <span>WhatsApp Direct</span>
                   </button>
                   <button
                     type="button"

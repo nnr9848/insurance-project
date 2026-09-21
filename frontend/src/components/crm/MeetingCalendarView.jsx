@@ -5,6 +5,7 @@ import {
   MapPin, 
   Clock, 
   Users, 
+  User,
   Plus, 
   Copy, 
   Check, 
@@ -88,7 +89,7 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal, o
       const [meetingsData, followupsData, leadsData] = await Promise.all([
         crmService.getUpcomingMeetings().catch(() => []),
         crmService.getDueTodayFollowUps().catch(() => []),
-        crmService.getLeads().catch(() => [])
+        crmService.getClients().catch(() => [])
       ]);
       setMeetings(meetingsData || []);
       setFollowups(followupsData || []);
@@ -163,17 +164,10 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal, o
     return evt.type === eventTypeFilter;
   });
 
-  // Calendar Navigation Helpers
-  const nextPeriod = () => {
-    if (calendarView === 'month') {
-      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-    } else if (calendarView === 'week') {
-      setCurrentDate(new Date(currentDate.getTime() + 7 * 86400000));
-    } else {
-      setCurrentDate(new Date(currentDate.getTime() + 86400000));
-    }
-  };
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedDayAgenda, setSelectedDayAgenda] = useState(null);
 
+  // Month navigation helpers
   const prevPeriod = () => {
     if (calendarView === 'month') {
       setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
@@ -184,9 +178,17 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal, o
     }
   };
 
-  const goToToday = () => {
-    setCurrentDate(new Date());
+  const nextPeriod = () => {
+    if (calendarView === 'month') {
+      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    } else if (calendarView === 'week') {
+      setCurrentDate(new Date(currentDate.getTime() + 7 * 86400000));
+    } else {
+      setCurrentDate(new Date(currentDate.getTime() + 86400000));
+    }
   };
+
+  const goToToday = () => setCurrentDate(new Date());
 
   const monthYearLabel = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
@@ -203,6 +205,15 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal, o
     try {
       const startDateTime = `${scheduleForm.meetingDate}T${scheduleForm.startTime}:00`;
       const endDateTime = `${scheduleForm.meetingDate}T${scheduleForm.endTime}:00`;
+
+      // Enterprise UX Guardrail: Prevent scheduling in the past (with 2 min buffer)
+      const selectedTime = new Date(startDateTime).getTime();
+      const nowBuffer = Date.now() - 2 * 60 * 1000;
+      if (selectedTime < nowBuffer) {
+        alert('⚠️ Meeting cannot be scheduled in the past. Please choose a future time slot.');
+        setSubmitting(false);
+        return;
+      }
 
       await crmService.scheduleMeeting({
         clientId: Number(scheduleForm.clientId) || (leads[0]?.id || 1),
@@ -599,7 +610,7 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal, o
                           key={evt.id}
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (onOpenClient360) onOpenClient360({ id: evt.clientId, fullName: evt.clientName, phoneNumber: evt.phone });
+                            setSelectedEvent(evt);
                           }}
                           title={`${evt.title} - ${evt.datetime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                           style={{
@@ -615,17 +626,39 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal, o
                             textOverflow: 'ellipsis',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.25rem'
+                            gap: '0.25rem',
+                            cursor: 'pointer',
+                            transition: 'transform 0.1s ease'
                           }}
+                          onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
                         >
                           <span style={{ fontSize: '0.65rem' }}>{evt.datetime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           <span>{evt.title}</span>
                         </div>
                       ))}
                       {dayEvents.length > 3 && (
-                        <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--primary-navy)', paddingLeft: '0.2rem' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedDayAgenda({ date: dayObj.date, events: dayEvents });
+                          }}
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 800,
+                            color: 'var(--primary-navy)',
+                            background: 'rgba(15, 43, 72, 0.06)',
+                            border: '1px solid rgba(15, 43, 72, 0.1)',
+                            borderRadius: '4px',
+                            padding: '2px 6px',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            marginTop: '2px'
+                          }}
+                        >
                           +{dayEvents.length - 3} more
-                        </span>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -937,6 +970,7 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal, o
                   <input
                     type="date"
                     required
+                    min={new Date().toISOString().slice(0, 10)}
                     className="form-input"
                     value={scheduleForm.meetingDate}
                     onChange={(e) => setScheduleForm({ ...scheduleForm, meetingDate: e.target.value })}
@@ -1009,6 +1043,319 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal, o
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: Event Quick Preview Popover (Industry Standard - Google Calendar / HubSpot) */}
+      {selectedEvent && (
+        <div
+          onClick={() => setSelectedEvent(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'none',
+            zIndex: 13000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              borderRadius: '20px',
+              width: '100%',
+              maxWidth: '520px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              background: selectedEvent.bgColor || '#eff6ff',
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              borderBottom: `1px solid ${selectedEvent.borderColor || '#bfdbfe'}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: '#ffffff',
+                  color: selectedEvent.badgeColor || '#2563eb',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                }}>
+                  {selectedEvent.type === 'MEETING' ? <Video size={22} /> : (selectedEvent.type === 'FOLLOWUP' ? <Phone size={22} /> : <Calendar size={22} />)}
+                </div>
+                <div>
+                  <span style={{
+                    fontSize: '0.72rem',
+                    background: '#ffffff',
+                    color: selectedEvent.badgeColor || '#2563eb',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em'
+                  }}>
+                    {selectedEvent.type === 'MEETING' ? 'Virtual Consultation' : (selectedEvent.type === 'FOLLOWUP' ? 'Scheduled Call' : 'Policy Renewal')}
+                  </span>
+                  <h3 style={{ margin: '4px 0 0 0', fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48' }}>
+                    {selectedEvent.clientName}
+                  </h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedEvent(null)}
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body Details */}
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>Topic / Title</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f2b48', marginTop: '2px' }}>
+                  {selectedEvent.title || 'Advisory Consultation'}
+                </div>
+              </div>
+
+              {(() => {
+                const startDate = selectedEvent.datetime ? new Date(selectedEvent.datetime) : new Date();
+                const endDate = selectedEvent.endDatetime ? new Date(selectedEvent.endDatetime) : new Date(startDate.getTime() + 1800000);
+                const dateStr = !isNaN(startDate.getTime()) ? startDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Today';
+                const startTimeStr = !isNaN(startDate.getTime()) ? startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '11:00 AM';
+                const endTimeStr = !isNaN(endDate.getTime()) ? endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '11:30 AM';
+
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f8fafc', padding: '12px 14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <div>
+                      <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>Date & Time</div>
+                      <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#0f2b48', marginTop: '2px' }}>
+                        {dateStr}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#2563eb', fontWeight: 700 }}>
+                        {startTimeStr} - {endTimeStr}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>Insurance Product</div>
+                      <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#0f2b48', marginTop: '2px' }}>
+                        {selectedEvent.product || 'General Advisory'}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                        Advisor: {selectedEvent.advisorName || 'Assigned Agent'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {selectedEvent.purpose && (
+                <div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Discussion Agenda</div>
+                  <div style={{ fontSize: '0.84rem', color: '#334155', background: '#ffffff', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '4px' }}>
+                    {selectedEvent.purpose}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                {selectedEvent.googleMeetUrl && (
+                  <a
+                    href={selectedEvent.googleMeetUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      flex: '1 1 auto',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      background: '#2563eb',
+                      color: '#ffffff',
+                      padding: '10px 16px',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      textDecoration: 'none'
+                    }}
+                  >
+                    <Video size={16} /> Join Google Meet
+                  </a>
+                )}
+
+                {selectedEvent.googleMeetUrl && (
+                  <button
+                    type="button"
+                    onClick={() => handleCopyLink(selectedEvent.googleMeetUrl, selectedEvent.id)}
+                    style={{
+                      background: copiedMeetId === selectedEvent.id ? '#ecfdf5' : '#f1f5f9',
+                      color: copiedMeetId === selectedEvent.id ? '#059669' : '#334155',
+                      border: '1px solid #cbd5e1',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    {copiedMeetId === selectedEvent.id ? <Check size={14} /> : <Copy size={14} />}
+                    {copiedMeetId === selectedEvent.id ? 'Copied!' : 'Copy Link'}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const evt = selectedEvent;
+                    setSelectedEvent(null);
+                    if (onOpenClient360) {
+                      onOpenClient360({ id: evt.clientId, fullName: evt.clientName, phoneNumber: evt.phone });
+                    }
+                  }}
+                  style={{
+                    background: '#0f2b48',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <User size={15} /> Open Client 360
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Day Agenda View (+N more events expander) */}
+      {selectedDayAgenda && (
+        <div
+          onClick={() => setSelectedDayAgenda(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'none',
+            zIndex: 13000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              borderRadius: '20px',
+              width: '100%',
+              maxWidth: '560px',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid #e2e8f0',
+              background: '#f8fafc'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f2b48' }}>
+                  {selectedDayAgenda.date.toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                </h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                  {selectedDayAgenda.events.length} Scheduled Activities
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedDayAgenda(null)}
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {selectedDayAgenda.events.map((evt) => (
+                <div
+                  key={evt.id}
+                  onClick={() => {
+                    setSelectedDayAgenda(null);
+                    setSelectedEvent(evt);
+                  }}
+                  style={{
+                    background: evt.bgColor,
+                    border: `1px solid ${evt.borderColor}`,
+                    borderRadius: '12px',
+                    padding: '12px 14px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '10px',
+                      background: '#ffffff',
+                      color: evt.badgeColor,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {evt.type === 'MEETING' ? <Video size={18} /> : (evt.type === 'FOLLOWUP' ? <Phone size={18} /> : <Calendar size={18} />)}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.9rem' }}>
+                        {evt.clientName}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                        {evt.title} • <strong style={{ color: evt.badgeColor }}>{evt.datetime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <span style={{ fontSize: '0.75rem', color: evt.badgeColor, fontWeight: 700 }}>
+                    View Details →
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

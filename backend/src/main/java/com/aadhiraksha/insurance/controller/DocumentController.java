@@ -39,7 +39,7 @@ public class DocumentController {
     public ResponseEntity<List<DocumentDto.Response>> getDocuments(
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        return ResponseEntity.ok(documentService.getDocumentsScoped(userDetails.getUsername()));
+        return ResponseEntity.ok(documentService.getDocuments(userDetails.getUsername()));
     }
 
     @GetMapping("/client/{clientId}")
@@ -48,7 +48,7 @@ public class DocumentController {
     public ResponseEntity<List<DocumentDto.Response>> getDocumentsForClient(
             @PathVariable Long clientId
     ) {
-        return ResponseEntity.ok(documentService.getDocumentsForClient(clientId));
+        return ResponseEntity.ok(documentService.getClientDocuments(clientId));
     }
 
     @PatchMapping("/{docId}/verify")

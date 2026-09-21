@@ -21,13 +21,17 @@ import {
   X, 
   Loader2,
   ArrowUpDown,
-  Filter
+  Filter,
+  Eye,
+  Clock,
+  User
 } from 'lucide-react';
 import { portalService, crmService } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import WhatsAppIcon from '../common/WhatsAppIcon';
 import { 
   normalizePhoneNumber, 
+  formatWhatsAppNumber,
   normalizeEmail, 
   findMatchingClient, 
   calculateCustomerTouchpoints 
@@ -62,6 +66,11 @@ export default function LeadInquiriesView({
   const [editingQuoteId, setEditingQuoteId] = useState(null);
   const [editQuoteFormData, setEditQuoteFormData] = useState({});
   const [isSavingQuote, setIsSavingQuote] = useState(false);
+
+  // Inquiry Inspection & Log History Drawer state
+  const [viewingInquiry, setViewingInquiry] = useState(null);
+  const [inquiryAuditLogs, setInquiryAuditLogs] = useState([]);
+  const [loadingInquiryAudit, setLoadingInquiryAudit] = useState(false);
 
   // Clean recursive "Specs: Specs: ..." prefix accumulation from legacy data
   const sanitizeSpecsString = (val) => {
@@ -146,6 +155,20 @@ export default function LeadInquiriesView({
   const cancelEditQuote = () => {
     setEditingQuoteId(null);
     setEditQuoteFormData({});
+  };
+
+  const handleOpenInquiryDetails = async (quote) => {
+    setViewingInquiry(quote);
+    setLoadingInquiryAudit(true);
+    try {
+      const logs = await crmService.getInquiryAuditLogs(quote.id);
+      setInquiryAuditLogs(logs || []);
+    } catch (err) {
+      console.warn('Could not load inquiry audit logs:', err);
+      setInquiryAuditLogs([]);
+    } finally {
+      setLoadingInquiryAudit(false);
+    }
   };
 
   const saveEditQuote = async (quoteId) => {
@@ -940,9 +963,9 @@ export default function LeadInquiriesView({
                           </a>
 
                           {/* WhatsApp */}
-                          {cleanPhone ? (
+                          {q.phoneNumber ? (
                             <a
-                              href={`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hello ${q.fullName || 'Sir/Madam'}, greeting from Aadhiraksha Insurance. Regarding your ${q.categorySlug ? q.categorySlug.replace('-', ' ') : 'insurance'} inquiry...`)}`}
+                              href={`https://wa.me/${formatWhatsAppNumber(q.phoneNumber)}?text=${encodeURIComponent(`Hello ${q.fullName || 'Sir/Madam'}, greeting from Aadhiraksha Insurance. Regarding your ${q.categorySlug ? q.categorySlug.replace('-', ' ') : 'insurance'} inquiry...`)}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={() => handleAutoContactOnReach(q, 'WhatsApp')}
@@ -1439,6 +1462,25 @@ export default function LeadInquiriesView({
                         </button>
                       )}
                       <button
+                        onClick={() => handleOpenInquiryDetails(q)}
+                        style={{
+                          background: '#f0fdf4',
+                          border: '1px solid #bbf7d0',
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#15803d',
+                          marginLeft: '2px',
+                          flexShrink: 0
+                        }}
+                        title="View Inquiry & Log History"
+                      >
+                        <Eye size={10} />
+                      </button>
+                      <button
                         onClick={() => startEditQuote(q)}
                         style={{
                           background: '#f8fafc',
@@ -1592,9 +1634,9 @@ export default function LeadInquiriesView({
                     </a>
 
                     {/* WhatsApp */}
-                    {cleanPhone ? (
+                    {q.phoneNumber ? (
                       <a
-                        href={`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(`Hello ${q.fullName || 'Sir/Madam'}, greeting from Aadhiraksha Insurance. Regarding your ${q.categorySlug ? q.categorySlug.replace('-', ' ') : 'insurance'} inquiry...`)}`}
+                        href={`https://wa.me/${formatWhatsAppNumber(q.phoneNumber)}?text=${encodeURIComponent(`Hello ${q.fullName || 'Sir/Madam'}, greeting from Aadhiraksha Insurance. Regarding your ${q.categorySlug ? q.categorySlug.replace('-', ' ') : 'insurance'} inquiry...`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => handleAutoContactOnReach(q, 'WhatsApp')}
@@ -2092,6 +2134,202 @@ export default function LeadInquiriesView({
               >
                 Apply & View ({sortedQuotes.length})
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* INQUIRY INSPECTION & LOG HISTORY MODAL */}
+      {viewingInquiry && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'none',
+          zIndex: 13000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            maxWidth: '650px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #091726 0%, #0f2b48 100%)',
+              color: '#ffffff',
+              borderRadius: '16px 16px 0 0'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.2)', padding: '2px 8px', borderRadius: '4px' }}>
+                    INQUIRY #{viewingInquiry.id}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#10b981', background: 'rgba(16, 185, 129, 0.2)', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
+                    {viewingInquiry.categorySlug?.replace(/-/g, ' ')}
+                  </span>
+                </div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '4px 0 0 0', color: '#ffffff' }}>
+                  {viewingInquiry.fullName}
+                </h3>
+              </div>
+              <button
+                onClick={() => setViewingInquiry(null)}
+                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#ffffff', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              
+              {/* Contact Snapshot */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#f8fafc', padding: '12px 14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Phone & Contact</div>
+                  <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.92rem', marginTop: '2px' }}>{viewingInquiry.phoneNumber}</div>
+                  <div style={{ fontSize: '0.78rem', color: '#475569' }}>{viewingInquiry.email || 'No email provided'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Location & Status</div>
+                  <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.92rem', marginTop: '2px' }}>{viewingInquiry.city || 'Location unspecified'}</div>
+                  <div style={{ fontSize: '0.78rem', color: '#475569' }}>
+                    Status: <strong style={{ color: viewingInquiry.status === 'NEW' ? '#059669' : viewingInquiry.status === 'CONTACTED' ? '#2563eb' : '#16a34a' }}>{viewingInquiry.status || 'NEW'}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Inquiry Specifications */}
+              <div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155', marginBottom: '8px' }}>
+                  Requested Plan Details & Requirements
+                </div>
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '12px 14px', borderRadius: '10px', fontSize: '0.84rem', color: '#166534' }}>
+                  {(() => {
+                    const unpacked = unpackPlanDetails(viewingInquiry.planDetails);
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {unpacked.coverageAmount && (
+                          <div><strong>Coverage / Sum Insured:</strong> {unpacked.coverageAmount}</div>
+                        )}
+                        {unpacked.planSpecs && (
+                          <div><strong>Specifications:</strong> {unpacked.planSpecs}</div>
+                        )}
+                        {unpacked.notes && (
+                          <div><strong>Notes:</strong> {unpacked.notes}</div>
+                        )}
+                        {!unpacked.coverageAmount && !unpacked.planSpecs && !unpacked.notes && (
+                          <div>Standard web portal quote request submitted.</div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Live Audit Log & History */}
+              <div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f2b48', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Clock size={14} color="#0284c7" />
+                  <span>Audit Trail & Activity History ({inquiryAuditLogs.length})</span>
+                </div>
+
+                {loadingInquiryAudit ? (
+                  <div style={{ padding: '1.5rem', textAlign: 'center', color: '#64748b', fontSize: '0.82rem' }}>
+                    <Loader2 size={16} className="animate-spin" style={{ margin: '0 auto 6px auto' }} />
+                    Loading activity history...
+                  </div>
+                ) : inquiryAuditLogs.length === 0 ? (
+                  <div style={{ padding: '1.25rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center', color: '#94a3b8', fontSize: '0.82rem' }}>
+                    No audit records logged for this inquiry yet.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {inquiryAuditLogs.map((log) => (
+                      <div key={log.id} style={{ background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.78rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 800, color: '#0f2b48' }}>
+                            {log.action?.replace(/_/g, ' ')}
+                          </span>
+                          <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                            {log.timestamp ? new Date(log.timestamp).toLocaleString('en-IN') : 'Recent'}
+                          </span>
+                        </div>
+                        <div style={{ color: '#475569', marginTop: '2px' }}>
+                          {log.oldValue && <span>From <strong>{log.oldValue}</strong> </span>}
+                          {log.newValue && <span>To <strong>{log.newValue}</strong></span>}
+                        </div>
+                        {log.performedByName && (
+                          <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <User size={10} /> {log.performedByName}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const inquiry = viewingInquiry;
+                    setViewingInquiry(null);
+                    startEditQuote(inquiry);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #0284c7',
+                    background: '#f0f9ff',
+                    color: '#0369a1',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Edit3 size={14} /> Quick Edit
+                </button>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cleanPhone = formatWhatsAppNumber(viewingInquiry.phoneNumber);
+                      window.open(`https://wa.me/${cleanPhone}?text=Hi%20${encodeURIComponent(viewingInquiry.fullName)},%20thank%20you%20for%20your%20inquiry%20regarding%20${encodeURIComponent(viewingInquiry.categorySlug)}%20with%20Aadhiraksha.%20How%20can%20we%20assist%20you%20today?`, '_blank');
+                    }}
+                    className="crm-btn-whatsapp-solid"
+                  >
+                    <WhatsAppIcon size={14} color="#ffffff" />
+                    <span>WhatsApp Pitch</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewingInquiry(null)}
+                    style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>

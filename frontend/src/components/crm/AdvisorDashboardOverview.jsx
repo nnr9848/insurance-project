@@ -25,6 +25,8 @@ import {
   ShieldCheck,
   Zap
 } from 'lucide-react';
+import { formatWhatsAppNumber } from '../../utils/crmDeduplication';
+import WhatsAppIcon from '../common/WhatsAppIcon';
 
 export default function AdvisorDashboardOverview({
   user,
@@ -584,24 +586,13 @@ export default function AdvisorDashboardOverview({
                         <PhoneCall size={13} /> Call
                       </a>
                       <a
-                        href={`https://wa.me/91${item.phoneNumber?.replace(/\D/g, '')}?text=Hello%20${encodeURIComponent(item.clientName || 'Sir/Madam')},%20this%20is%20${encodeURIComponent(data.advisorName)}%20from%20Aadhiraksha%20Insurance.`}
+                        href={`https://wa.me/${formatWhatsAppNumber(item.phoneNumber)}?text=${encodeURIComponent(`Hello ${item.clientName || 'Client'}, regarding your insurance policy at Aadhiraksha InsurTech...`)}`}
                         target="_blank"
                         rel="noreferrer"
-                        style={{
-                          background: '#ecfdf5',
-                          color: '#059669',
-                          border: '1px solid #a7f3d0',
-                          padding: '0.45rem 0.65rem',
-                          borderRadius: '8px',
-                          fontWeight: 700,
-                          fontSize: '0.75rem',
-                          textDecoration: 'none',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.3rem'
-                        }}
+                        className="crm-btn-whatsapp-outline"
                       >
-                        <Send size={13} /> WhatsApp
+                        <WhatsAppIcon size={13} color="currentColor" />
+                        <span>WhatsApp</span>
                       </a>
                     </div>
                   </div>

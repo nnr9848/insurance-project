@@ -20,6 +20,7 @@ public class QuotationDto {
     public static class Request {
         @NotNull(message = "Client ID is required")
         private Long clientId;
+        private Long inquiryId;
 
         @NotBlank(message = "Insurance type is required")
         private String insuranceType;
@@ -50,6 +51,7 @@ public class QuotationDto {
         private Boolean maternityCovered;
         private Boolean opdCovered;
         private String notes;
+        private String brochureUrl;
         private String status;
     }
 
@@ -64,6 +66,9 @@ public class QuotationDto {
         private String clientName;
         private String clientPhone;
         private String clientEmail;
+        private Long inquiryId;
+        private String inquiryCategorySlug;
+        private String inquiryStatus;
         private Long createdByAdvisorId;
         private String createdByAdvisorName;
         private String insuranceType;

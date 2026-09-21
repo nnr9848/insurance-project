@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
-    private final com.aadhiraksha.insurance.repository.ClientLeadRepository clientLeadRepository;
+    private final com.aadhiraksha.insurance.repository.ClientRepository clientRepository;
     private final com.aadhiraksha.insurance.repository.QuoteInquiryRepository quoteInquiryRepository;
 
     @Async
@@ -54,12 +54,14 @@ public class AuditService {
     @Transactional(readOnly = true)
     public List<AuditLogDto> getCompositeClientAuditTimeline(Long clientId) {
         List<AuditLog> allLogs = new java.util.ArrayList<>(
-                auditLogRepository.findByEntityNameAndEntityIdOrderByTimestampDesc("CLIENT_LEAD", clientId)
+                auditLogRepository.findByEntityNameAndEntityIdOrderByTimestampDesc("CLIENT", clientId)
         );
+        // Also include historical CLIENT_LEAD logs if present
+        allLogs.addAll(auditLogRepository.findByEntityNameAndEntityIdOrderByTimestampDesc("CLIENT_LEAD", clientId));
 
         // Fetch matched quote inquiries for this client to inherit top-of-funnel inquiry heritage audit logs
         try {
-            clientLeadRepository.findById(clientId).ifPresent(client -> {
+            clientRepository.findById(clientId).ifPresent(client -> {
                 String phone = client.getPhoneNumber();
                 if (phone != null && !phone.isBlank()) {
                     String digits = phone.replaceAll("[^0-9]", "");

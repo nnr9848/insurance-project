@@ -1,10 +1,10 @@
 package com.aadhiraksha.insurance.service;
 
 import com.aadhiraksha.insurance.dto.PolicyRenewalDto;
-import com.aadhiraksha.insurance.model.ClientLead;
+import com.aadhiraksha.insurance.model.Client;
 import com.aadhiraksha.insurance.model.FollowUpTask;
 import com.aadhiraksha.insurance.model.User;
-import com.aadhiraksha.insurance.repository.ClientLeadRepository;
+import com.aadhiraksha.insurance.repository.ClientRepository;
 import com.aadhiraksha.insurance.repository.FollowUpTaskRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class PolicyRenewalService {
 
-    private final ClientLeadRepository clientLeadRepository;
+    private final ClientRepository clientRepository;
     private final FollowUpTaskRepository followUpTaskRepository;
     private final AuditService auditService;
 
@@ -41,10 +41,10 @@ public class PolicyRenewalService {
         LocalDate today = LocalDate.now();
         LocalDate maxScanDate = today.plusDays(45);
 
-        List<ClientLead> expiringLeads = clientLeadRepository.findExpiringPolicies(today.minusDays(15), maxScanDate);
+        List<Client> expiringLeads = clientRepository.findExpiringPolicies(today.minusDays(15), maxScanDate);
         int tasksGenerated = 0;
 
-        for (ClientLead lead : expiringLeads) {
+        for (Client lead : expiringLeads) {
             if (lead.getPolicyExpiryDate() == null || lead.getAssignedAdvisor() == null) {
                 continue;
             }
@@ -91,7 +91,7 @@ public class PolicyRenewalService {
                     followUpTaskRepository.save(task);
                     tasksGenerated++;
 
-                    auditService.logAction("CLIENT_LEAD", lead.getId(), "AUTO_RENEWAL_TASK_CREATED", "RENEWAL",
+                    auditService.logAction("CLIENT", lead.getId(), "AUTO_RENEWAL_TASK_CREATED", "RENEWAL",
                             null, "Generated automated renewal milestone task: " + milestone, lead.getAssignedAdvisor(), null);
                 }
             }
@@ -106,7 +106,7 @@ public class PolicyRenewalService {
     @Transactional(readOnly = true)
     public PolicyRenewalDto.RenewalSummaryResponse getRenewalSummary(User user) {
         LocalDate today = LocalDate.now();
-        List<ClientLead> allLeads = getScopedLeadsForUser(user);
+        List<Client> allLeads = getScopedLeadsForUser(user);
 
         long due45 = 0;
         long due30 = 0;
@@ -116,7 +116,7 @@ public class PolicyRenewalService {
         BigDecimal totalPremium = BigDecimal.ZERO;
         long convertedRenewals = 0;
 
-        for (ClientLead lead : allLeads) {
+        for (Client lead : allLeads) {
             if (lead.getPolicyExpiryDate() != null) {
                 long days = ChronoUnit.DAYS.between(today, lead.getPolicyExpiryDate());
 
@@ -163,11 +163,11 @@ public class PolicyRenewalService {
     @Transactional(readOnly = true)
     public List<PolicyRenewalDto.RenewalItemResponse> getRenewalList(User user, String bucket) {
         LocalDate today = LocalDate.now();
-        List<ClientLead> leads = getScopedLeadsForUser(user);
+        List<Client> leads = getScopedLeadsForUser(user);
 
         List<PolicyRenewalDto.RenewalItemResponse> results = new ArrayList<>();
 
-        for (ClientLead lead : leads) {
+        for (Client lead : leads) {
             if (lead.getPolicyExpiryDate() == null) continue;
 
             long daysLeft = ChronoUnit.DAYS.between(today, lead.getPolicyExpiryDate());
@@ -231,7 +231,7 @@ public class PolicyRenewalService {
      */
     @Transactional
     public PolicyRenewalDto.SendReminderResponse sendRenewalReminder(PolicyRenewalDto.SendReminderRequest request, User sender) {
-        ClientLead lead = clientLeadRepository.findById(request.getClientId())
+        Client lead = clientRepository.findById(request.getClientId())
                 .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + request.getClientId()));
 
         long daysLeft = lead.getPolicyExpiryDate() != null 
@@ -243,7 +243,7 @@ public class PolicyRenewalService {
                 : generateWhatsAppRenewalTemplate(lead, daysLeft);
 
         // Record Audit log
-        auditService.logAction("CLIENT_LEAD", lead.getId(), "RENEWAL_REMINDER_SENT", request.getChannel(),
+        auditService.logAction("CLIENT", lead.getId(), "RENEWAL_REMINDER_SENT", request.getChannel(),
                 null, "Dispatched renewal notice via " + request.getChannel() + " to " + lead.getPhoneNumber(), sender, null);
 
         return PolicyRenewalDto.SendReminderResponse.builder()
@@ -256,7 +256,7 @@ public class PolicyRenewalService {
                 .build();
     }
 
-    private String generateWhatsAppRenewalTemplate(ClientLead lead, long daysLeft) {
+    private String generateWhatsAppRenewalTemplate(Client lead, long daysLeft) {
         String greeting = "Hello " + lead.getFullName() + ", ";
         String urgency;
         if (daysLeft < 0) {
@@ -275,16 +275,17 @@ public class PolicyRenewalService {
                 "— *Aadhiraksha InsurTech Advisory Team*";
     }
 
-    private List<ClientLead> getScopedLeadsForUser(User user) {
+    private List<Client> getScopedLeadsForUser(User user) {
         boolean isSuperAdmin = user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_SUPER_ADMIN") || r.getName().equals("ROLE_ADMIN"));
         boolean isManager = user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_MANAGER"));
 
         if (isSuperAdmin) {
-            return clientLeadRepository.findAll();
+            return clientRepository.findAll();
         } else if (isManager) {
-            return clientLeadRepository.findByManagerIdOrderByUpdatedAtDesc(user.getId());
+            return clientRepository.findByManagerIdOrderByUpdatedAtDesc(user.getId());
         } else {
-            return clientLeadRepository.findByAssignedAdvisorIdOrderByUpdatedAtDesc(user.getId());
+            return clientRepository.findByAssignedAdvisorIdOrderByUpdatedAtDesc(user.getId());
         }
     }
 }
+

@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 public class CrmAnalyticsService {
 
     private final UserRepository userRepository;
-    private final ClientLeadRepository clientLeadRepository;
+    private final ClientRepository clientRepository;
     private final CallLogRepository callLogRepository;
     private final FollowUpTaskRepository followUpTaskRepository;
     private final ClientMeetingRepository clientMeetingRepository;
@@ -39,21 +39,21 @@ public class CrmAnalyticsService {
         List<Long> teamMemberIds = teamMembers.stream().map(User::getId).collect(Collectors.toList());
 
         // 2. Lead population for the team
-        List<ClientLead> teamLeads;
+        List<Client> teamLeads;
         boolean isSuperAdmin = manager.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_SUPER_ADMIN") || r.getName().equals("ROLE_ADMIN"));
         
         if (isSuperAdmin) {
-            teamLeads = clientLeadRepository.findAll();
+            teamLeads = clientRepository.findAll();
             if (teamMembers.isEmpty()) {
                 teamMembers = userRepository.findByRoleName("ROLE_ADVISOR");
                 teamMemberIds = teamMembers.stream().map(User::getId).collect(Collectors.toList());
             }
         } else {
-            teamLeads = clientLeadRepository.findByManagerIdOrderByUpdatedAtDesc(manager.getId());
+            teamLeads = clientRepository.findByManagerIdOrderByUpdatedAtDesc(manager.getId());
             // If some leads are directly assigned to team members
             final List<Long> finalMemberIds = teamMemberIds;
             if (teamLeads.isEmpty() && !finalMemberIds.isEmpty()) {
-                teamLeads = clientLeadRepository.findAll().stream()
+                teamLeads = clientRepository.findAll().stream()
                         .filter(l -> l.getAssignedAdvisor() != null && finalMemberIds.contains(l.getAssignedAdvisor().getId()))
                         .collect(Collectors.toList());
             }
@@ -122,7 +122,7 @@ public class CrmAnalyticsService {
         // 8. Advisor Performance Matrix
         List<ManagerAnalyticsDto.AdvisorPerformanceDto> teamPerformance = new ArrayList<>();
         for (User advisor : teamMembers) {
-            List<ClientLead> advisorLeads = teamLeads.stream()
+            List<Client> advisorLeads = teamLeads.stream()
                     .filter(l -> l.getAssignedAdvisor() != null && l.getAssignedAdvisor().getId().equals(advisor.getId()))
                     .collect(Collectors.toList());
 
@@ -232,7 +232,7 @@ public class CrmAnalyticsService {
         // 1. All Users Population
         List<User> allManagers = userRepository.findByRoleName("ROLE_MANAGER");
         List<User> allAdvisors = userRepository.findByRoleName("ROLE_ADVISOR");
-        List<ClientLead> allLeads = clientLeadRepository.findAll();
+        List<Client> allLeads = clientRepository.findAll();
 
         long totalManagers = allManagers.size();
         long totalEmployees = allAdvisors.size();
@@ -277,7 +277,7 @@ public class CrmAnalyticsService {
             List<User> team = userRepository.findByManagerId(mgr.getId());
             List<Long> teamIds = team.stream().map(User::getId).collect(Collectors.toList());
 
-            List<ClientLead> mgrLeads = allLeads.stream()
+            List<Client> mgrLeads = allLeads.stream()
                     .filter(l -> (l.getManager() != null && l.getManager().getId().equals(mgr.getId())) ||
                                  (l.getAssignedAdvisor() != null && teamIds.contains(l.getAssignedAdvisor().getId())))
                     .collect(Collectors.toList());
@@ -325,7 +325,7 @@ public class CrmAnalyticsService {
         // 7. Top Advisor Performers (Company-wide)
         List<ManagerAnalyticsDto.AdvisorPerformanceDto> topAdvisors = new ArrayList<>();
         for (User adv : allAdvisors) {
-            List<ClientLead> advLeads = allLeads.stream()
+            List<Client> advLeads = allLeads.stream()
                     .filter(l -> l.getAssignedAdvisor() != null && l.getAssignedAdvisor().getId().equals(adv.getId()))
                     .collect(Collectors.toList());
 
@@ -383,7 +383,7 @@ public class CrmAnalyticsService {
 
         List<com.aadhiraksha.insurance.dto.AdminAnalyticsDto.LeadSourcePerformanceDto> sourceMetrics = new ArrayList<>();
         for (Map.Entry<String, String> entry : sourceNames.entrySet()) {
-            List<ClientLead> srcLeads = allLeads.stream()
+            List<Client> srcLeads = allLeads.stream()
                     .filter(l -> entry.getKey().equalsIgnoreCase(l.getLeadSource()) || 
                                  ("DIRECT_ENTRY".equals(entry.getKey()) && (l.getLeadSource() == null || "WEB_PORTAL".equalsIgnoreCase(l.getLeadSource()))))
                     .collect(Collectors.toList());
@@ -425,7 +425,7 @@ public class CrmAnalyticsService {
 
         List<com.aadhiraksha.insurance.dto.AdminAnalyticsDto.ProductPerformanceDto> productMetrics = new ArrayList<>();
         for (Map.Entry<String, String> entry : productCategories.entrySet()) {
-            List<ClientLead> prodLeads = allLeads.stream()
+            List<Client> prodLeads = allLeads.stream()
                     .filter(l -> l.getInsuranceType() != null && l.getInsuranceType().toLowerCase().contains(entry.getKey().toLowerCase().split(" ")[0]))
                     .collect(Collectors.toList());
 
@@ -508,7 +508,7 @@ public class CrmAnalyticsService {
         LocalDateTime now = LocalDateTime.now();
 
         // 1. Advisor Leads
-        List<ClientLead> advisorLeads = clientLeadRepository.findByAssignedAdvisorIdOrderByUpdatedAtDesc(advisorId);
+        List<Client> advisorLeads = clientRepository.findByAssignedAdvisorIdOrderByUpdatedAtDesc(advisorId);
         long totalLeads = advisorLeads.size();
 
         // 2. Primary 7 KPIs
@@ -571,7 +571,7 @@ public class CrmAnalyticsService {
         
         // Add overdue first
         for (FollowUpTask task : overdueTasksList) {
-            ClientLead client = task.getClient();
+            Client client = task.getClient();
             todayFollowUps.add(com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.TodayFollowUpDto.builder()
                     .followUpId(task.getId())
                     .clientId(client != null ? client.getId() : null)
@@ -588,7 +588,7 @@ public class CrmAnalyticsService {
         }
         // Add today's due
         for (FollowUpTask task : dueTodayTasks) {
-            ClientLead client = task.getClient();
+            Client client = task.getClient();
             todayFollowUps.add(com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.TodayFollowUpDto.builder()
                     .followUpId(task.getId())
                     .clientId(client != null ? client.getId() : null)
@@ -649,7 +649,7 @@ public class CrmAnalyticsService {
 
         List<com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.PipelineStageSummaryDto> pipelineBreakdown = new ArrayList<>();
         for (Map.Entry<String, String> entry : stages.entrySet()) {
-            List<ClientLead> stageLeads = advisorLeads.stream()
+            List<Client> stageLeads = advisorLeads.stream()
                     .filter(l -> entry.getKey().equalsIgnoreCase(l.getStage()))
                     .collect(Collectors.toList());
             
@@ -671,7 +671,7 @@ public class CrmAnalyticsService {
         List<com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.RecentActivityDto> recentActivities = new ArrayList<>();
 
         for (CallLog call : recentCalls.stream().limit(10).collect(Collectors.toList())) {
-            ClientLead client = call.getClient();
+            Client client = call.getClient();
             recentActivities.add(com.aadhiraksha.insurance.dto.AdvisorAnalyticsDto.RecentActivityDto.builder()
                     .activityType("CALL_LOG")
                     .clientId(client != null ? client.getId() : null)

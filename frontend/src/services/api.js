@@ -74,25 +74,29 @@ export const crmService = {
     return res.data;
   },
 
-  // Leads & Pipeline
-  getLeads: async () => {
-    const res = await api.get('/crm/leads');
+  // Clients Master (CRM)
+  getClients: async () => {
+    const res = await api.get('/crm/clients');
     return res.data;
   },
-  createLead: async (data) => {
-    const res = await api.post('/crm/leads', data);
+  getClientById: async (id) => {
+    const res = await api.get(`/crm/clients/${id}`);
     return res.data;
   },
-  bulkImportLeads: async (leadsArray) => {
-    const res = await api.post('/crm/leads/bulk-import', leadsArray);
+  createClient: async (data) => {
+    const res = await api.post('/crm/clients', data);
     return res.data;
   },
-  updateLead: async (id, data) => {
-    const res = await api.put(`/crm/leads/${id}`, data);
+  bulkImportClients: async (clientsArray) => {
+    const res = await api.post('/crm/clients/bulk-import', clientsArray);
     return res.data;
   },
-  reassignLead: async (id, targetAdvisorId, reassignmentReason) => {
-    const res = await api.post(`/crm/leads/${id}/reassign`, { targetAdvisorId, reassignmentReason });
+  updateClient: async (id, data) => {
+    const res = await api.put(`/crm/clients/${id}`, data);
+    return res.data;
+  },
+  reassignClient: async (id, targetAdvisorId, reassignmentReason) => {
+    const res = await api.post(`/crm/clients/${id}/reassign`, { targetAdvisorId, reassignmentReason });
     return res.data;
   },
 
@@ -123,8 +127,16 @@ export const crmService = {
     const res = await api.post('/crm/meetings', data);
     return res.data;
   },
+  createMeeting: async (data) => {
+    const res = await api.post('/crm/meetings', data);
+    return res.data;
+  },
   getUpcomingMeetings: async () => {
     const res = await api.get('/crm/meetings/upcoming');
+    return res.data;
+  },
+  updateMeetingOutcome: async (meetingId, outcomeData) => {
+    const res = await api.patch(`/crm/meetings/${meetingId}/outcome`, outcomeData);
     return res.data;
   },
 
@@ -166,6 +178,10 @@ export const crmService = {
   },
   createQuotation: async (quoteData) => {
     const res = await api.post('/crm/quotations', quoteData);
+    return res.data;
+  },
+  updateQuotation: async (quoteId, quoteData) => {
+    const res = await api.put(`/crm/quotations/${quoteId}`, quoteData);
     return res.data;
   },
   updateQuoteStatus: async (quoteId, status) => {
@@ -221,6 +237,10 @@ export const crmService = {
   // Enterprise Audit Trail & Compliance
   getClientAuditLogs: async (clientId) => {
     const res = await api.get(`/crm/audit/client/${clientId}`);
+    return res.data;
+  },
+  getInquiryAuditLogs: async (inquiryId) => {
+    const res = await api.get(`/crm/audit/inquiry/${inquiryId}`);
     return res.data;
   },
   getCompanyAuditFeed: async () => {
@@ -308,6 +328,26 @@ export const portalService = {
     const res = await api.delete(`/admin/hospitals/${id}`);
     return res.data;
   },
+};
+
+// Web Lead Inquiries & Portal Triage Service
+export const leadInquiryService = {
+  getInquiries: async () => {
+    const res = await api.get('/crm/lead-inquiries');
+    return res.data;
+  },
+  getInquiryById: async (id) => {
+    const res = await api.get(`/crm/lead-inquiries/${id}`);
+    return res.data;
+  },
+  updateInquiryStatus: async (id, status) => {
+    const res = await api.patch(`/crm/lead-inquiries/${id}/status`, { status });
+    return res.data;
+  },
+  updateInquiry: async (id, data) => {
+    const res = await api.put(`/crm/lead-inquiries/${id}`, data);
+    return res.data;
+  }
 };
 
 export default api;
