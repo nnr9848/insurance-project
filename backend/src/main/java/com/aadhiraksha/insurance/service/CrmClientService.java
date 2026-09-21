@@ -421,6 +421,40 @@ public class CrmClientService {
         return clients.stream().map(this::mapToClientResponse).collect(Collectors.toList());
     }
 
+    @Transactional
+    public FollowUpDto.FollowUpResponse createFollowUp(FollowUpDto.CreateFollowUpRequest request, User advisor) {
+        if (request.getClientId() == null) {
+            throw new IllegalArgumentException("Client ID is required to schedule a callback.");
+        }
+        if (request.getScheduledDatetime() == null) {
+            throw new IllegalArgumentException("Scheduled date and time are required.");
+        }
+        if (request.getScheduledDatetime().isBefore(LocalDateTime.now().minusMinutes(5))) {
+            throw new IllegalArgumentException("Follow-up cannot be scheduled in the past. Please select a future time slot.");
+        }
+
+        Client client = clientRepository.findById(request.getClientId())
+                .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + request.getClientId()));
+
+        FollowUpTask task = FollowUpTask.builder()
+                .client(client)
+                .advisor(advisor != null ? advisor : client.getAssignedAdvisor())
+                .scheduledDatetime(request.getScheduledDatetime())
+                .reminderMilestone(request.getReminderMilestone() != null ? request.getReminderMilestone() : "EXACT")
+                .channel(request.getChannel() != null ? request.getChannel() : "PHONE_CALL")
+                .status("PENDING")
+                .notes(request.getNotes() != null ? request.getNotes() : "Scheduled client follow-up callback")
+                .build();
+
+        FollowUpTask saved = followUpTaskRepository.save(task);
+
+        auditService.logAction("CLIENT", client.getId(), "FOLLOWUP_SCHEDULED", "Callback Scheduled", null,
+                "Follow-up scheduled for " + task.getScheduledDatetime().format(java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a")) + 
+                " via " + task.getChannel() + (task.getNotes() != null ? " • Note: " + task.getNotes() : ""), advisor, null);
+
+        return mapToFollowUpResponse(saved);
+    }
+
     @Transactional(readOnly = true)
     public List<FollowUpDto.FollowUpResponse> getDueTodayFollowUps(User user) {
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();

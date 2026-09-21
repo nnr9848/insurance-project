@@ -43,6 +43,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { formatWhatsAppNumber } from '../../utils/crmDeduplication';
 import WhatsAppIcon from '../common/WhatsAppIcon';
+import ScheduleActivityModal from './ScheduleActivityModal';
 
 export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, onOpenMeetingModal }) {
   const { isSuperAdmin, isManager, user } = useAuth();
@@ -58,6 +59,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
   const [insuranceTypeFilter, setInsuranceTypeFilter] = useState('ALL');
   const [sortField, setSortField] = useState('updatedAt'); // 'deadline', 'updatedAt', 'premium', 'name'
   const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+  const [scheduleActivityModalState, setScheduleActivityModalState] = useState({ isOpen: false, client: null, type: 'MEETING' });
   
   // Selection for bulk operations
   const [selectedLeadIds, setSelectedLeadIds] = useState([]);
@@ -3197,23 +3199,12 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                 </div>
               </button>
 
-              {/* 4. Schedule Meeting (In-Context Modal) */}
+              {/* 4. Schedule Meeting or Call */}
               <button
                 onClick={() => {
                   const target = activeReachLead;
                   setActiveReachLead(null);
-                  setMeetingForm({
-                    title: `Insurance Consultation with ${target.fullName}`,
-                    meetingDate: new Date().toISOString().slice(0, 10),
-                    startTime: '11:00',
-                    endTime: '11:30',
-                    product: target.insuranceType || 'Health Insurance',
-                    purpose: 'Detailed Plan Comparison & Policy Finalization',
-                    meetingType: 'GOOGLE_MEET',
-                    location: '',
-                    notes: ''
-                  });
-                  setInContextMeetingLead(target);
+                  setScheduleActivityModalState({ isOpen: true, client: target, type: 'MEETING' });
                 }}
                 style={{
                   display: 'flex',
@@ -3232,8 +3223,8 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                   <Calendar size={18} />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Schedule Advisor Meeting</div>
-                  <div style={{ fontSize: '0.72rem', color: '#2563eb' }}>Book in-context video or in-person consultation</div>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Schedule Activity</div>
+                  <div style={{ fontSize: '0.72rem', color: '#2563eb' }}>Book Google Meet video consultation or callback</div>
                 </div>
               </button>
             </div>
@@ -3746,6 +3737,20 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
             </div>
           </div>
         </div>
+      )}
+
+      {/* Consolidated Schedule Activity Modal */}
+      {scheduleActivityModalState.isOpen && (
+        <ScheduleActivityModal
+          isOpen={scheduleActivityModalState.isOpen}
+          onClose={() => setScheduleActivityModalState({ isOpen: false, client: null, type: 'MEETING' })}
+          initialClient={scheduleActivityModalState.client}
+          initialType={scheduleActivityModalState.type}
+          onSuccess={() => {
+            loadLeads();
+            toast.success('Activity scheduled successfully!');
+          }}
+        />
       )}
 
     </div>

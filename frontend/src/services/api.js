@@ -121,6 +121,10 @@ export const crmService = {
     const res = await api.get('/crm/followups/overdue');
     return res.data;
   },
+  scheduleFollowUp: async (followUpData) => {
+    const res = await api.post('/crm/followups', followUpData);
+    return res.data;
+  },
 
   // Meetings
   scheduleMeeting: async (data) => {

@@ -28,6 +28,7 @@ import {
   Share2
 } from 'lucide-react';
 import { crmService } from '../../services/api';
+import ScheduleActivityModal from './ScheduleActivityModal';
 
 export default function MeetingCalendarView({ preselectedClient, onCloseModal, onOpenClient360, onOpenCallModal }) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -911,140 +912,20 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal, o
 
       </div>
 
-      {/* 3. SCHEDULE CONSULTATION MODAL */}
+      {/* 3. CONSOLIDATED SCHEDULE ACTIVITY MODAL */}
       {showScheduleModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 12000, padding: '1rem' }}>
-          <div style={{ background: '#ffffff', borderRadius: '16px', width: '100%', maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto', padding: '2rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Video size={22} color="#2563eb" />
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#091726', margin: 0 }}>Schedule Advisory Consultation</h3>
-              </div>
-              <button onClick={() => setShowScheduleModal(false)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleScheduleSubmit}>
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label className="form-label">Client Name / Lead *</label>
-                <select
-                  required
-                  className="form-input"
-                  value={scheduleForm.clientId}
-                  onChange={(e) => {
-                    const selId = e.target.value;
-                    const selLead = leads.find(l => String(l.id) === String(selId));
-                    setScheduleForm(prev => ({
-                      ...prev,
-                      clientId: selId,
-                      title: selLead ? `Insurance Consultation with ${selLead.fullName}` : prev.title,
-                      product: selLead?.insuranceType || prev.product
-                    }));
-                  }}
-                >
-                  <option value="">-- Select Client from CRM --</option>
-                  {leads.map(l => (
-                    <option key={l.id} value={l.id}>
-                      {l.fullName} ({l.phoneNumber}) - {l.insuranceType}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label className="form-label">Meeting Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Health Insurance Policy Comparison & Quote Walkthrough"
-                  className="form-input"
-                  value={scheduleForm.title}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, title: e.target.value })}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Date *</label>
-                  <input
-                    type="date"
-                    required
-                    min={new Date().toISOString().slice(0, 10)}
-                    className="form-input"
-                    value={scheduleForm.meetingDate}
-                    onChange={(e) => setScheduleForm({ ...scheduleForm, meetingDate: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Insurance Vertical</label>
-                  <select
-                    className="form-input"
-                    value={scheduleForm.product}
-                    onChange={(e) => setScheduleForm({ ...scheduleForm, product: e.target.value })}
-                  >
-                    <option value="Health Insurance">Health Insurance</option>
-                    <option value="Vehicle / Motor Insurance">Motor / Vehicle Insurance</option>
-                    <option value="Term Life Insurance">Term Life Insurance</option>
-                    <option value="SME & Business Insurance">SME & Business Insurance</option>
-                    <option value="Travel Insurance">Travel Insurance</option>
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Start Time *</label>
-                  <input
-                    type="time"
-                    required
-                    className="form-input"
-                    value={scheduleForm.startTime}
-                    onChange={(e) => setScheduleForm({ ...scheduleForm, startTime: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">End Time *</label>
-                  <input
-                    type="time"
-                    required
-                    className="form-input"
-                    value={scheduleForm.endTime}
-                    onChange={(e) => setScheduleForm({ ...scheduleForm, endTime: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                <label className="form-label">Meeting Agenda & Notes</label>
-                <textarea
-                  rows={3}
-                  placeholder="e.g. Walkthrough room rent waiver, restoration benefit, and daycare procedures."
-                  className="form-input"
-                  value={scheduleForm.notes}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, notes: e.target.value })}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowScheduleModal(false)}
-                  style={{ padding: '0.6rem 1.25rem', background: '#f1f5f9', border: 'none', borderRadius: '8px', fontWeight: 600, color: '#64748b', cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  style={{ padding: '0.6rem 1.35rem', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', border: 'none', borderRadius: '8px', fontWeight: 700, color: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
-                >
-                  <Video size={15} /> {submitting ? 'Creating Meet Link...' : 'Schedule & Generate Link'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <ScheduleActivityModal
+          isOpen={showScheduleModal}
+          onClose={() => {
+            setShowScheduleModal(false);
+            if (onCloseModal) onCloseModal();
+          }}
+          initialClient={preselectedClient || (leads.find(l => String(l.id) === String(scheduleForm.clientId)) || null)}
+          initialType="MEETING"
+          onSuccess={() => {
+            loadAllCalendarData();
+          }}
+        />
       )}
 
       {/* MODAL 2: Event Quick Preview Popover (Industry Standard - Google Calendar / HubSpot) */}

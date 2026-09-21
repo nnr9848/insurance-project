@@ -133,7 +133,15 @@ public class CrmClientController {
         return ResponseEntity.ok(crmClientService.updateMeetingOutcome(meetingId, request, user));
     }
 
-    // 4. Follow-Up Reminders
+    // 4. Follow-Up Reminders & Callback Scheduling
+    @PostMapping("/followups")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @Operation(summary = "Schedule a client follow-up callback or task")
+    public ResponseEntity<FollowUpDto.FollowUpResponse> createFollowUp(@RequestBody FollowUpDto.CreateFollowUpRequest request, Authentication auth) {
+        User user = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(crmClientService.createFollowUp(request, user));
+    }
+
     @GetMapping("/followups/due-today")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
     @Operation(summary = "Get follow-ups scheduled for today")

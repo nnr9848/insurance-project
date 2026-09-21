@@ -16,12 +16,14 @@ import {
   Check,
   RefreshCw,
   Video,
-  ExternalLink
+  ExternalLink,
+  Plus
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { formatWhatsAppNumber } from '../../utils/crmDeduplication';
 import WhatsAppIcon from '../common/WhatsAppIcon';
+import ScheduleActivityModal from './ScheduleActivityModal';
 
 export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModal }) {
   const { isSuperAdmin, isManager, user } = useAuth();
@@ -33,6 +35,7 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
   const [advisors, setAdvisors] = useState([]);
   const [activeTab, setActiveTab] = useState('dueToday'); // 'dueToday' | 'overdue' | 'meetings'
   const [loading, setLoading] = useState(true);
+  const [showScheduleActivityModal, setShowScheduleActivityModal] = useState(false);
 
   // Quick Reassign Modal state for Overdue cards
   const [reassignTask, setReassignTask] = useState(null);
@@ -380,35 +383,58 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
             </div>
           </div>
 
-          {/* Quick Filter Pill Chips */}
-          <div style={{ display: 'flex', gap: '6px', background: '#f1f5f9', padding: '4px', borderRadius: '10px', flexWrap: 'wrap' }}>
-            {[
-              { id: 'ALL', label: `All Today (${totalTodayTasks})` },
-              { id: 'PENDING', label: `⏳ Pending (${pendingTasksCount})` },
-              { id: 'COMPLETED', label: `✓ Completed (${completedMeetingsCount})` },
-              { id: 'MEETING', label: `🎥 Meets (${todayMeetings.length})` },
-              { id: 'CALL', label: `📞 Calls (${dueToday.length})` },
-              { id: 'OVERDUE', label: `⚠️ Overdue (${overdue.length})` }
-            ].map(pill => (
-              <button
-                key={pill.id}
-                onClick={() => setFilterType(pill.id)}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '7px',
-                  border: 'none',
-                  background: filterType === pill.id ? '#ffffff' : 'transparent',
-                  color: filterType === pill.id ? '#0f2b48' : '#64748b',
-                  fontWeight: filterType === pill.id ? 800 : 600,
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  boxShadow: filterType === pill.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                {pill.label}
-              </button>
-            ))}
+          {/* Quick Filter Pill Chips & Action Button */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '6px', background: '#f1f5f9', padding: '4px', borderRadius: '10px', flexWrap: 'wrap' }}>
+              {[
+                { id: 'ALL', label: `All Today (${totalTodayTasks})` },
+                { id: 'PENDING', label: `⏳ Pending (${pendingTasksCount})` },
+                { id: 'COMPLETED', label: `✓ Completed (${completedMeetingsCount})` },
+                { id: 'MEETING', label: `🎥 Meets (${todayMeetings.length})` },
+                { id: 'CALL', label: `📞 Calls (${dueToday.length})` },
+                { id: 'OVERDUE', label: `⚠️ Overdue (${overdue.length})` }
+              ].map(pill => (
+                <button
+                  key={pill.id}
+                  onClick={() => setFilterType(pill.id)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '7px',
+                    border: 'none',
+                    background: filterType === pill.id ? '#ffffff' : 'transparent',
+                    color: filterType === pill.id ? '#0f2b48' : '#64748b',
+                    fontWeight: filterType === pill.id ? 800 : 600,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    boxShadow: filterType === pill.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {pill.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setShowScheduleActivityModal(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                color: '#ffffff',
+                border: 'none',
+                padding: '7px 14px',
+                borderRadius: '9px',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <Plus size={15} /> Schedule Activity
+            </button>
           </div>
         </div>
 
@@ -1228,6 +1254,15 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
             </form>
           </div>
         </div>
+      )}
+
+      {/* 6. Consolidated Schedule Activity Modal */}
+      {showScheduleActivityModal && (
+        <ScheduleActivityModal
+          isOpen={showScheduleActivityModal}
+          onClose={() => setShowScheduleActivityModal(false)}
+          onSuccess={() => loadAgenda()}
+        />
       )}
 
     </div>

@@ -46,6 +46,7 @@ import { useAuth } from '../../context/AuthContext';
 import { crmService, leadInquiryService } from '../../services/api';
 import { normalizePhoneNumber, formatWhatsAppNumber } from '../../utils/crmDeduplication';
 import WhatsAppIcon from '../common/WhatsAppIcon';
+import ScheduleActivityModal from './ScheduleActivityModal';
 
 export default function Client360Drawer({ client, onClose, onOpenCallModal, onOpenMeetingModal, onLeadUpdated }) {
   if (!client) return null;
@@ -56,6 +57,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'calls' | 'quotes' | 'documents' | 'timeline'
   const [currentClient, setCurrentClient] = useState(client);
   const [advisors, setAdvisors] = useState([]);
+  const [scheduleModalState, setScheduleModalState] = useState({ isOpen: false, initialType: 'MEETING' });
   
   // Pipeline Stage Transition State
   const [isUpdatingStage, setIsUpdatingStage] = useState(false);
@@ -658,7 +660,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
           <button
             type="button"
             className="crm-drawer-reach-btn call"
-            onClick={() => onOpenCallModal && onOpenCallModal({ clientId: client.id, clientName: client.fullName, clientPhone: client.phoneNumber, insuranceType: client.insuranceType })}
+            onClick={() => onOpenCallModal ? onOpenCallModal({ clientId: client.id, clientName: client.fullName, clientPhone: client.phoneNumber, insuranceType: client.insuranceType }) : setScheduleModalState({ isOpen: true, initialType: 'CALL' })}
             title="Start outbound call and log disposition"
           >
             <Phone size={13} />
@@ -678,11 +680,11 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
           <button
             type="button"
             className="crm-drawer-reach-btn meet"
-            onClick={() => onOpenMeetingModal && onOpenMeetingModal(client)}
+            onClick={() => setScheduleModalState({ isOpen: true, initialType: 'MEETING' })}
             title="Schedule Consultation or Google Meet"
           >
             <Calendar size={13} />
-            <span>Google Meet</span>
+            <span>Schedule Activity</span>
           </button>
 
           {currentClient.email && (
@@ -2552,6 +2554,20 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
             </div>
           </div>
         </div>
+      )}
+
+      {/* Consolidated Schedule Activity Modal */}
+      {scheduleModalState.isOpen && (
+        <ScheduleActivityModal
+          isOpen={scheduleModalState.isOpen}
+          onClose={() => setScheduleModalState({ isOpen: false, initialType: 'MEETING' })}
+          initialClient={currentClient}
+          initialType={scheduleModalState.initialType}
+          onSuccess={() => {
+            loadClientCalls(currentClient.id);
+            if (onLeadUpdated) onLeadUpdated();
+          }}
+        />
       )}
 
     </div>
