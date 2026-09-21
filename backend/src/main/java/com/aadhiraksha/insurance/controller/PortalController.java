@@ -48,6 +48,7 @@ public class PortalController {
                 .categorySlug(request.getCategorySlug())
                 .fullName(request.getFullName())
                 .phoneNumber(request.getPhoneNumber())
+                .secondaryPhone(request.getSecondaryPhone() != null ? request.getSecondaryPhone().trim() : null)
                 .email(request.getEmail())
                 .city(request.getCity())
                 .planDetails(request.getPlanDetails())
@@ -154,6 +155,40 @@ public class PortalController {
         String newStatus = body.get("status");
         if (newStatus != null && !newStatus.isBlank()) {
             inquiry.setStatus(newStatus.toUpperCase());
+        }
+        return ResponseEntity.ok(quoteInquiryRepository.save(inquiry));
+    }
+
+    @PutMapping("/admin/quotes/{id}")
+    @Operation(summary = "Update full Quote Inquiry details (Admin/Staff only)")
+    public ResponseEntity<QuoteInquiry> updateQuote(
+            @PathVariable Long id,
+            @RequestBody QuoteInquiry updated) {
+        QuoteInquiry inquiry = quoteInquiryRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Quote inquiry not found with ID: " + id));
+        if (updated.getFullName() != null && !updated.getFullName().isBlank()) {
+            inquiry.setFullName(updated.getFullName().trim());
+        }
+        if (updated.getPhoneNumber() != null && !updated.getPhoneNumber().isBlank()) {
+            inquiry.setPhoneNumber(updated.getPhoneNumber().trim());
+        }
+        if (updated.getSecondaryPhone() != null) {
+            inquiry.setSecondaryPhone(updated.getSecondaryPhone().trim());
+        }
+        if (updated.getEmail() != null) {
+            inquiry.setEmail(updated.getEmail().trim());
+        }
+        if (updated.getCity() != null) {
+            inquiry.setCity(updated.getCity().trim());
+        }
+        if (updated.getCategorySlug() != null && !updated.getCategorySlug().isBlank()) {
+            inquiry.setCategorySlug(updated.getCategorySlug().trim());
+        }
+        if (updated.getPlanDetails() != null) {
+            inquiry.setPlanDetails(updated.getPlanDetails());
+        }
+        if (updated.getStatus() != null && !updated.getStatus().isBlank()) {
+            inquiry.setStatus(updated.getStatus().toUpperCase().trim());
         }
         return ResponseEntity.ok(quoteInquiryRepository.save(inquiry));
     }

@@ -468,10 +468,19 @@ export default function QuotationManagementView({ onOpenClient360 }) {
         justifyContent: 'space-between'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 280px' }}>
-          <div style={{ position: 'relative', width: '100%' }}>
+          <form 
+            role="search"
+            onSubmit={(e) => e.preventDefault()}
+            style={{ position: 'relative', width: '100%', margin: 0 }}
+          >
             <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
-              type="text"
+              type="search"
+              name="quotations-search-filter"
+              id="quotations-search-filter"
+              autoComplete="search"
+              data-lpignore="true"
+              data-form-type="other"
               placeholder="Search by quote #, client, insurer, plan, or sum insured..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -484,7 +493,7 @@ export default function QuotationManagementView({ onOpenClient360 }) {
                 outline: 'none'
               }}
             />
-          </div>
+          </form>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>

@@ -28,6 +28,9 @@ public class QuoteInquiry {
     @Column(name = "phone_number", nullable = false, length = 20)
     private String phoneNumber;
 
+    @Column(name = "secondary_phone", length = 20)
+    private String secondaryPhone;
+
     @Column(length = 120)
     private String email;
 

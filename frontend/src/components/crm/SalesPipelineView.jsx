@@ -147,16 +147,25 @@ export default function SalesPipelineView({ onOpenClient360, onOpenCallModal, on
         border: '1px solid #e2e8f0',
         boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '280px' }}>
+        <form 
+          role="search"
+          onSubmit={(e) => e.preventDefault()}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '280px', margin: 0 }}
+        >
           <Search size={16} color="#94a3b8" />
           <input
-            type="text"
+            type="search"
+            name="pipeline-search-filter"
+            id="pipeline-search-filter"
+            autoComplete="search"
+            data-lpignore="true"
+            data-form-type="other"
             placeholder="Search pipeline by client name, code, phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ width: '100%', border: 'none', background: 'transparent', outline: 'none', fontSize: '0.88rem', color: '#0f2b48' }}
           />
-        </div>
+        </form>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>
           <span>Total Pipeline Value: <span style={{ color: '#059669' }}>₹{leads.reduce((acc, curr) => acc + (Number(curr.estimatedPremium) || 0), 0).toLocaleString()}</span></span>

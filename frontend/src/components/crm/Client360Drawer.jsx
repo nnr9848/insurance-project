@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { crmService } from '../../services/api';
+import { normalizePhoneNumber } from '../../utils/crmDeduplication';
 
 export default function Client360Drawer({ client, onClose, onOpenCallModal, onOpenMeetingModal, onLeadUpdated }) {
   if (!client) return null;
@@ -195,7 +196,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   };
 
   const openWhatsApp = () => {
-    const cleanPhone = (client.whatsappNumber || client.phoneNumber).replace(/[^0-9]/g, '');
+    const cleanPhone = normalizePhoneNumber(client.whatsappNumber || client.phoneNumber);
     const text = encodeURIComponent(`Hello ${client.fullName}, this is your dedicated Insurance Specialist from Aadhiraksha InsurTech regarding your ${client.insuranceType} policy.`);
     window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
   };

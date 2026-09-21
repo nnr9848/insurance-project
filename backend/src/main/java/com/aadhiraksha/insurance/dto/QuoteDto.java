@@ -16,6 +16,7 @@ public class QuoteDto {
         @NotBlank(message = "Phone number is required")
         private String phoneNumber;
 
+        private String secondaryPhone;
         private String email;
         private String city;
         private String planDetails; // JSON string or text summary

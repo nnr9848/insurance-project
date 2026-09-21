@@ -284,10 +284,19 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
 
         {/* Controls: Search, Vertical, Manual Scan */}
         <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative' }}>
+          <form 
+            role="search"
+            onSubmit={(e) => e.preventDefault()}
+            style={{ position: 'relative', margin: 0 }}
+          >
             <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
-              type="text"
+              type="search"
+              name="renewals-search-filter"
+              id="renewals-search-filter"
+              autoComplete="search"
+              data-lpignore="true"
+              data-form-type="other"
               placeholder="Search by client, insurer, phone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -299,7 +308,7 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
                 width: '210px'
               }}
             />
-          </div>
+          </form>
 
           <select
             value={selectedVertical}

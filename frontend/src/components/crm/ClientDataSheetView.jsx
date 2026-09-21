@@ -41,24 +41,7 @@ import * as XLSX from 'xlsx';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-
-// Official WhatsApp Brand SVG Component (Proportionate Vector Geometry)
-const WhatsAppIcon = ({ size = 18, color = 'currentColor', style = {} }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    style={{ display: 'inline-block', verticalAlign: 'middle', ...style }}
-  >
-    <path
-      fillRule="evenodd"
-      clipRule="evenodd"
-      d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.63C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 6.46 17.5 2 12.04 2ZM12.04 20.15C10.56 20.15 9.11 19.76 7.85 19.01L7.55 18.83L4.44 19.65L5.27 16.61L5.07 16.3C4.24 14.98 3.81 13.47 3.81 11.91C3.81 7.37 7.5 3.68 12.04 3.68C16.58 3.68 20.27 7.37 20.27 11.91C20.27 16.45 16.58 20.15 12.04 20.15ZM16.53 14.41C16.28 14.28 15.06 13.68 14.83 13.6C14.6 13.51 14.44 13.47 14.27 13.72C14.11 13.97 13.63 14.54 13.49 14.71C13.34 14.87 13.2 14.89 12.95 14.77C12.7 14.64 11.9 14.38 10.95 13.53C10.21 12.87 9.71 12.06 9.57 11.81C9.42 11.56 9.55 11.43 9.68 11.3C9.79 11.19 9.92 11.01 10.05 10.87C10.17 10.72 10.21 10.62 10.3 10.45C10.38 10.29 10.34 10.14 10.28 10.02C10.22 9.89 9.73 8.69 9.52 8.2C9.33 7.71 9.12 7.78 8.97 7.77C8.83 7.76 8.66 7.76 8.5 7.76C8.33 7.76 8.06 7.82 7.83 8.07C7.6 8.32 6.95 8.93 6.95 10.16C6.95 11.39 7.85 12.57 7.97 12.74C8.1 12.9 9.73 15.42 12.23 16.5C12.82 16.76 13.28 16.91 13.64 17.03C14.24 17.22 14.79 17.19 15.22 17.13C15.7 17.06 16.7 16.52 16.91 15.94C17.12 15.37 17.12 14.87 17.06 14.77C16.99 14.66 16.78 14.54 16.53 14.41Z"
-      fill={color}
-    />
-  </svg>
-);
+import WhatsAppIcon from '../common/WhatsAppIcon';
 
 export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, onOpenMeetingModal }) {
   const { isSuperAdmin, isManager, user } = useAuth();
@@ -601,193 +584,227 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
         className="crm-sheet-toolbar"
         style={{
           background: 'var(--bg-card)',
-          padding: '1rem 1.25rem',
+          padding: '0.85rem 1.25rem',
           borderRadius: '16px',
           border: '1px solid var(--border-subtle)',
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '12px',
-          flexWrap: 'wrap',
+          flexDirection: 'column',
+          gap: '0.65rem',
           boxShadow: 'var(--shadow-sm)'
         }}
       >
-        {/* Left: Search & Filter Dropdowns */}
-        <div className="crm-sheet-search-filters" style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '280px' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: 'var(--bg-main)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: '10px',
-            padding: '8px 12px',
-            flex: 1,
-            minWidth: '200px'
-          }}>
-            <Search size={16} color="var(--text-muted)" />
-            <input
-              type="text"
-              placeholder="Search Client Name, Code, Phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', width: '100%' }}>
+          {/* Left: Search & Desktop Filter Dropdowns */}
+          <div className="crm-sheet-search-filters" style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '240px' }}>
+            <form 
+              role="search"
+              onSubmit={(e) => e.preventDefault()}
               style={{
-                width: '100%',
-                border: 'none',
-                background: 'transparent',
-                outline: 'none',
-                fontSize: '0.88rem',
-                color: 'var(--text-main)'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'var(--bg-main)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '10px',
+                padding: '6px 12px',
+                flex: 1,
+                minWidth: '180px',
+                margin: 0
               }}
-            />
+            >
+              <Search size={15} color="var(--text-muted)" />
+              <input
+                type="search"
+                name="client-crm-search-filter"
+                id="client-crm-search-filter"
+                autoComplete="search"
+                data-lpignore="true"
+                data-form-type="other"
+                placeholder="Search name, code, phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  border: 'none',
+                  background: 'transparent',
+                  outline: 'none',
+                  fontSize: '0.85rem',
+                  color: 'var(--text-main)'
+                }}
+              />
+            </form>
+
+            <div className="crm-desktop-filter-dropdowns" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <select
+                value={stageFilter}
+                onChange={(e) => setStageFilter(e.target.value)}
+                style={{
+                  padding: '7px 12px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-subtle)',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-main)'
+                }}
+              >
+                <option value="ALL">All Stages ({leads.length})</option>
+                <option value="NEW_LEAD">New Lead</option>
+                <option value="FOLLOWUP">Follow-up Due</option>
+                <option value="QUOTATION">Quotation Shared</option>
+                <option value="MEETING">Meeting Scheduled</option>
+                <option value="DOCUMENTS">Documents Stage</option>
+                <option value="POLICY_ISSUED">Policy Issued</option>
+              </select>
+
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                style={{
+                  padding: '7px 12px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-subtle)',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-main)'
+                }}
+              >
+                <option value="ALL">All Priorities</option>
+                <option value="HIGH">🔥 High Priority</option>
+                <option value="MEDIUM">⚡ Medium</option>
+                <option value="LOW">Standard</option>
+              </select>
+            </div>
           </div>
 
-          <div className="crm-sheet-filter-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <select
-              value={stageFilter}
-              onChange={(e) => setStageFilter(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '10px',
-                border: '1px solid var(--border-subtle)',
-                fontSize: '0.84rem',
-                fontWeight: 600,
-                background: 'var(--bg-card)',
-                color: 'var(--text-main)'
-              }}
-            >
-              <option value="ALL">All Stages ({leads.length})</option>
-              <option value="NEW_LEAD">New Lead</option>
-              <option value="FOLLOWUP">Follow-up Due</option>
-              <option value="QUOTATION">Quotation Shared</option>
-              <option value="MEETING">Meeting Scheduled</option>
-              <option value="DOCUMENTS">Documents Stage</option>
-              <option value="POLICY_ISSUED">Policy Issued</option>
-            </select>
+          {/* Right: Upload Excel, Export Excel, Bulk Reassign, Add Row */}
+          <div className="crm-sheet-action-btns" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {canReassign && selectedLeadIds.length > 0 && (() => {
+              const hasAssigned = leads.some(l => selectedLeadIds.includes(l.id) && l.assignedAdvisorId);
+              const buttonLabel = hasAssigned ? `Assign (${selectedLeadIds.length})` : `Assign (${selectedLeadIds.length})`;
 
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
+              return (
+                <button
+                  onClick={() => {
+                    setBulkTargetAdvisorId('');
+                    setBulkReassignReason('');
+                    setShowBulkReassignModal(true);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#4338ca',
+                    border: 'none',
+                    padding: '7px 12px',
+                    borderRadius: '10px',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(67, 56, 202, 0.25)'
+                  }}
+                  title="Assign / Reassign selected clients to an advisor"
+                >
+                  {hasAssigned ? <UserCheck size={14} /> : <UserPlus size={14} />} {buttonLabel}
+                </button>
+              );
+            })()}
+
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileUpload} 
+              accept=".xlsx, .xls, .csv" 
+              style={{ display: 'none' }} 
+            />
+
+            <button
+              className="crm-secondary-action-btn-mobile-hide"
+              onClick={() => fileInputRef.current && fileInputRef.current.click()}
               style={{
-                padding: '8px 12px',
-                borderRadius: '10px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'var(--bg-main)',
                 border: '1px solid var(--border-subtle)',
-                fontSize: '0.84rem',
-                fontWeight: 600,
-                background: 'var(--bg-card)',
-                color: 'var(--text-main)'
+                padding: '7px 12px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                color: 'var(--text-main)',
+                cursor: 'pointer'
               }}
+              title="Import clients from .xlsx / .csv spreadsheet"
             >
-              <option value="ALL">All Priorities</option>
-              <option value="HIGH">🔥 High Priority</option>
-              <option value="MEDIUM">⚡ Medium</option>
-              <option value="LOW">Standard</option>
-            </select>
+              <Upload size={14} /> Upload Excel
+            </button>
+
+            <button
+              className="crm-secondary-action-btn-mobile-hide"
+              onClick={exportToExcel}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'var(--bg-main)',
+                border: '1px solid var(--border-subtle)',
+                padding: '7px 12px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                color: 'var(--text-main)',
+                cursor: 'pointer'
+              }}
+              title="Export sheet to Excel (.xlsx)"
+            >
+              <Download size={14} /> Export
+            </button>
+
+            <button
+              onClick={() => setShowAddLeadModal(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover))',
+                border: 'none',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 800,
+                color: '#ffffff',
+                cursor: 'pointer',
+                boxShadow: 'var(--shadow-gold)'
+              }}
+              title="Add a single new client or lead"
+            >
+              <Plus size={15} /> Add Client
+            </button>
           </div>
         </div>
 
-        {/* Right: Upload Excel, Export Excel, Bulk Reassign, Add Row */}
-        <div className="crm-sheet-action-btns" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {canReassign && selectedLeadIds.length > 0 && (() => {
-            const hasAssigned = leads.some(l => selectedLeadIds.includes(l.id) && l.assignedAdvisorId);
-            const buttonLabel = hasAssigned ? `Assign / Reassign (${selectedLeadIds.length})` : `Assign Advisor (${selectedLeadIds.length})`;
-
-            return (
-              <button
-                onClick={() => {
-                  setBulkTargetAdvisorId('');
-                  setBulkReassignReason('');
-                  setShowBulkReassignModal(true);
-                }}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: '#4338ca',
-                  border: 'none',
-                  padding: '8px 14px',
-                  borderRadius: '10px',
-                  fontSize: '0.84rem',
-                  fontWeight: 700,
-                  color: '#ffffff',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(67, 56, 202, 0.25)',
-                  animation: 'pulse 2s infinite'
-                }}
-                title="Assign / Reassign selected clients to an advisor"
-              >
-                {hasAssigned ? <UserCheck size={15} /> : <UserPlus size={15} />} {buttonLabel}
-              </button>
-            );
-          })()}
-
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileUpload} 
-            accept=".xlsx, .xls, .csv" 
-            style={{ display: 'none' }} 
-          />
-
-          <button
-            onClick={() => fileInputRef.current && fileInputRef.current.click()}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: 'var(--bg-main)',
-              border: '1px solid var(--border-subtle)',
-              padding: '8px 14px',
-              borderRadius: '10px',
-              fontSize: '0.84rem',
-              fontWeight: 700,
-              color: 'var(--text-main)',
-              cursor: 'pointer'
-            }}
-            title="Import clients from .xlsx / .csv spreadsheet"
-          >
-            <Upload size={15} /> Upload Excel
-          </button>
-
-          <button
-            onClick={exportToExcel}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: 'var(--bg-main)',
-              border: '1px solid var(--border-subtle)',
-              padding: '8px 14px',
-              borderRadius: '10px',
-              fontSize: '0.84rem',
-              fontWeight: 700,
-              color: 'var(--text-main)',
-              cursor: 'pointer'
-            }}
-            title="Export sheet to Excel (.xlsx)"
-          >
-            <Download size={15} /> Export
-          </button>
-
-          <button
-            onClick={() => setShowAddLeadModal(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover))',
-              border: 'none',
-              padding: '9px 16px',
-              borderRadius: '10px',
-              fontSize: '0.86rem',
-              fontWeight: 700,
-              color: '#ffffff',
-              cursor: 'pointer',
-              boxShadow: 'var(--shadow-gold)'
-            }}
-          >
-            <Plus size={16} /> Add Client
-          </button>
+        {/* Mobile Horizontal Quick-Filter Pill Rail */}
+        <div className="crm-mobile-pill-filter-rail">
+          {[
+            { label: 'All Stages', value: 'ALL' },
+            { label: 'New Lead', value: 'NEW_LEAD' },
+            { label: 'Follow-up', value: 'FOLLOWUP' },
+            { label: 'Quotation', value: 'QUOTATION' },
+            { label: 'Meeting', value: 'MEETING' },
+            { label: 'Documents', value: 'DOCUMENTS' },
+            { label: 'Issued', value: 'POLICY_ISSUED' }
+          ].map(chip => (
+            <button
+              key={chip.value}
+              type="button"
+              onClick={() => setStageFilter(chip.value)}
+              className={`crm-mobile-pill-btn ${stageFilter === chip.value ? 'active' : ''}`}
+            >
+              {chip.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -913,7 +930,16 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                                 <div 
                                   onClick={() => onOpenClient360 && onOpenClient360(lead)}
-                                  style={{ fontWeight: 800, color: '#0f2b48', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                                  style={{ 
+                                    fontWeight: 800, 
+                                    color: '#0f2b48', 
+                                    cursor: 'pointer', 
+                                    display: 'inline-flex', 
+                                    alignItems: 'center', 
+                                    gap: '3px',
+                                    wordBreak: 'break-word',
+                                    overflowWrap: 'anywhere'
+                                  }}
                                   title="Open Client 360 Profile"
                                 >
                                   <span>{lead.fullName}</span>
@@ -950,13 +976,32 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               <input
                                 type="text"
-                                placeholder="Phone Number"
+                                name={`client-edit-primary-phone-${lead.id}`}
+                                autoComplete="off"
+                                data-lpignore="true"
+                                data-form-type="other"
+                                placeholder="Primary Phone *"
                                 value={editFormData.phoneNumber || ''}
                                 onChange={(e) => setEditFormData({ ...editFormData, phoneNumber: e.target.value })}
                                 style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.8rem', width: '100%' }}
                               />
                               <input
+                                type="text"
+                                name={`client-edit-alt-phone-${lead.id}`}
+                                autoComplete="off"
+                                data-lpignore="true"
+                                data-form-type="other"
+                                placeholder="Alt / WhatsApp Phone"
+                                value={editFormData.whatsappNumber || ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, whatsappNumber: e.target.value })}
+                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.74rem', width: '100%' }}
+                              />
+                              <input
                                 type="email"
+                                name={`client-edit-email-${lead.id}`}
+                                autoComplete="off"
+                                data-lpignore="true"
+                                data-form-type="other"
                                 placeholder="Email Address"
                                 value={editFormData.email || ''}
                                 onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
@@ -964,6 +1009,10 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                               />
                               <input
                                 type="text"
+                                name={`client-edit-city-${lead.id}`}
+                                autoComplete="off"
+                                data-lpignore="true"
+                                data-form-type="other"
                                 placeholder="City / Location"
                                 value={editFormData.city || ''}
                                 onChange={(e) => setEditFormData({ ...editFormData, city: e.target.value })}
@@ -973,6 +1022,11 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           ) : (
                             <div>
                               <div style={{ fontWeight: 700, color: '#0f2b48', fontSize: '0.84rem' }}>{lead.phoneNumber}</div>
+                              {lead.whatsappNumber && lead.whatsappNumber !== lead.phoneNumber && (
+                                <div style={{ fontSize: '0.72rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                  <span>Alt:</span> {lead.whatsappNumber}
+                                </div>
+                              )}
                               {lead.email && <div style={{ fontSize: '0.72rem', color: '#0284c7' }}>{lead.email}</div>}
                               <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{lead.city || 'India'}</div>
                             </div>
@@ -1476,6 +1530,10 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Phone Number *</label>
                             <input
                               type="tel"
+                              name={`m-client-edit-primary-phone-${lead.id}`}
+                              autoComplete="off"
+                              data-lpignore="true"
+                              data-form-type="other"
                               value={editFormData.phoneNumber || ''}
                               placeholder="10-digit Phone"
                               onChange={(e) => setEditFormData({ ...editFormData, phoneNumber: e.target.value })}
@@ -1484,9 +1542,28 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           </div>
 
                           <div>
+                            <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Alt / WhatsApp</label>
+                            <input
+                              type="tel"
+                              name={`m-client-edit-alt-phone-${lead.id}`}
+                              autoComplete="off"
+                              data-lpignore="true"
+                              data-form-type="other"
+                              value={editFormData.whatsappNumber || ''}
+                              placeholder="Alt Phone Number"
+                              onChange={(e) => setEditFormData({ ...editFormData, whatsappNumber: e.target.value })}
+                              style={{ width: '100%', padding: '5px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
+                            />
+                          </div>
+
+                          <div style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>Email Address</label>
                             <input
                               type="email"
+                              name={`m-client-edit-email-${lead.id}`}
+                              autoComplete="off"
+                              data-lpignore="true"
+                              data-form-type="other"
                               value={editFormData.email || ''}
                               placeholder="client@mail.com"
                               onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
@@ -1498,6 +1575,10 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             <label style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '2px' }}>City / Location</label>
                             <input
                               type="text"
+                              name={`m-client-edit-city-${lead.id}`}
+                              autoComplete="off"
+                              data-lpignore="true"
+                              data-form-type="other"
                               value={editFormData.city || ''}
                               placeholder="City"
                               onChange={(e) => setEditFormData({ ...editFormData, city: e.target.value })}
@@ -1960,29 +2041,42 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Mobile Number *
+                    Primary Mobile *
                   </label>
                   <input
                     type="tel"
                     required
                     placeholder="e.g. +91 9848012345"
                     value={newLeadForm.phoneNumber}
-                    onChange={(e) => setNewLeadForm({ ...newLeadForm, phoneNumber: e.target.value, whatsappNumber: e.target.value })}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, phoneNumber: e.target.value })}
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
                   />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Email Address
+                    Alt / WhatsApp Mobile
                   </label>
                   <input
-                    type="email"
-                    placeholder="e.g. ramesh@example.com"
-                    value={newLeadForm.email}
-                    onChange={(e) => setNewLeadForm({ ...newLeadForm, email: e.target.value })}
+                    type="tel"
+                    placeholder="e.g. +91 9848099999"
+                    value={newLeadForm.whatsappNumber}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, whatsappNumber: e.target.value })}
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  placeholder="e.g. ramesh@example.com"
+                  value={newLeadForm.email}
+                  onChange={(e) => setNewLeadForm({ ...newLeadForm, email: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -2636,9 +2730,15 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
             {/* Contact Information Pill */}
             <div style={{ background: '#f8fafc', padding: '0.6rem 0.85rem', borderRadius: '10px', fontSize: '0.78rem', display: 'flex', flexDirection: 'column', gap: '3px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>Phone:</span>
+                <span style={{ color: '#64748b' }}>Primary Phone:</span>
                 <span style={{ fontWeight: 700, color: '#0f2b48' }}>{activeReachLead.phoneNumber || 'Not provided'}</span>
               </div>
+              {activeReachLead.whatsappNumber && activeReachLead.whatsappNumber !== activeReachLead.phoneNumber && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748b' }}>Alternate Phone:</span>
+                  <span style={{ fontWeight: 700, color: '#16a34a' }}>{activeReachLead.whatsappNumber}</span>
+                </div>
+              )}
               {activeReachLead.email && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: '#64748b' }}>Email:</span>
@@ -2649,7 +2749,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
 
             {/* 4 Omni-Channel Action Tiles */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {/* 1. Phone Call */}
+              {/* 1. Phone Call (Primary) */}
               <button
                 onClick={() => {
                   const target = activeReachLead;
@@ -2658,7 +2758,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                   if (cleanPhone) {
                     window.location.href = `tel:${cleanPhone}`;
                   } else {
-                    toast.error('No phone number recorded for this client.');
+                    toast.error('No primary phone recorded for this client.');
                   }
                 }}
                 style={{
@@ -2677,13 +2777,49 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                 <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#10b981', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Phone size={18} />
                 </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Direct Phone Call</div>
-                  <div style={{ fontSize: '0.72rem', color: '#047857' }}>Trigger native dialer ({activeReachLead.phoneNumber || 'No phone'})</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Call Primary Phone</div>
+                  <div style={{ fontSize: '0.72rem', color: '#047857' }}>{activeReachLead.phoneNumber || 'No phone'}</div>
                 </div>
               </button>
 
-              {/* 2. WhatsApp Message */}
+              {/* 1.1 Phone Call (Alternate if present) */}
+              {activeReachLead.whatsappNumber && activeReachLead.whatsappNumber !== activeReachLead.phoneNumber && (
+                <button
+                  onClick={() => {
+                    const target = activeReachLead;
+                    setActiveReachLead(null);
+                    const cleanPhone = (target.whatsappNumber || '').replace(/[^0-9+]/g, '');
+                    if (cleanPhone) {
+                      window.location.href = `tel:${cleanPhone}`;
+                    } else {
+                      toast.error('No alternate phone recorded.');
+                    }
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem',
+                    borderRadius: '10px',
+                    border: '1px solid #bbf7d0',
+                    background: '#f0fdf4',
+                    color: '#15803d',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                >
+                  <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#059669', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Phone size={18} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>Call Alternate Phone</div>
+                    <div style={{ fontSize: '0.72rem', color: '#15803d' }}>{activeReachLead.whatsappNumber}</div>
+                  </div>
+                </button>
+              )}
+
+              {/* 2. WhatsApp Message (Primary) */}
               <button
                 onClick={() => {
                   const target = activeReachLead;
@@ -2706,11 +2842,42 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                 <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#25D366', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <WhatsAppIcon size={20} color="#ffffff" />
                 </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>WhatsApp Chat</div>
-                  <div style={{ fontSize: '0.72rem', color: '#15803d' }}>Open 1-tap prefilled WhatsApp message</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>WhatsApp Primary Phone</div>
+                  <div style={{ fontSize: '0.72rem', color: '#15803d' }}>{activeReachLead.phoneNumber}</div>
                 </div>
               </button>
+
+              {/* 2.1 WhatsApp Message (Alternate if present) */}
+              {activeReachLead.whatsappNumber && activeReachLead.whatsappNumber !== activeReachLead.phoneNumber && (
+                <button
+                  onClick={() => {
+                    const target = activeReachLead;
+                    setActiveReachLead(null);
+                    openWhatsApp(target.whatsappNumber, target.fullName, target.insuranceType);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem',
+                    borderRadius: '10px',
+                    border: '1px solid #86efac',
+                    background: '#f0fdf4',
+                    color: '#14532d',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                >
+                  <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#16a34a', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <WhatsAppIcon size={20} color="#ffffff" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>WhatsApp Alternate Phone</div>
+                    <div style={{ fontSize: '0.72rem', color: '#15803d' }}>{activeReachLead.whatsappNumber}</div>
+                  </div>
+                </button>
+              )}
 
               {/* 3. Send Email */}
               <button

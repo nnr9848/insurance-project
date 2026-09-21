@@ -272,6 +272,10 @@ export const portalService = {
     const res = await api.patch(`/admin/quotes/${id}/status`, { status });
     return res.data;
   },
+  updateQuote: async (id, data) => {
+    const res = await api.put(`/admin/quotes/${id}`, data);
+    return res.data;
+  },
   getAdminPOSP: async () => {
     const res = await api.get('/admin/posp-applications');
     return res.data;

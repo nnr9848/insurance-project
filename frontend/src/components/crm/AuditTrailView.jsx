@@ -220,13 +220,23 @@ export default function AuditTrailView({ onOpenClient360 }) {
         justifyContent: 'space-between'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 280px' }}>
-          <div style={{
-            position: 'relative',
-            width: '100%'
-          }}>
+          <form 
+            role="search"
+            onSubmit={(e) => e.preventDefault()}
+            style={{
+              position: 'relative',
+              width: '100%',
+              margin: 0
+            }}
+          >
             <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
-              type="text"
+              type="search"
+              name="audit-trail-search-filter"
+              id="audit-trail-search-filter"
+              autoComplete="search"
+              data-lpignore="true"
+              data-form-type="other"
               placeholder="Search by field, user, old/new value, or Client ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -239,7 +249,7 @@ export default function AuditTrailView({ onOpenClient360 }) {
                 outline: 'none'
               }}
             />
-          </div>
+          </form>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>

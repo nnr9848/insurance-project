@@ -404,10 +404,19 @@ export default function UserManagementView() {
         gap: '1rem',
         boxShadow: 'var(--shadow-xs)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '260px' }}>
+        <form 
+          role="search"
+          onSubmit={(e) => e.preventDefault()}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '260px', margin: 0 }}
+        >
           <Search size={18} color="#94a3b8" />
           <input
-            type="text"
+            type="search"
+            name="user-management-search-filter"
+            id="user-management-search-filter"
+            autoComplete="search"
+            data-lpignore="true"
+            data-form-type="other"
             placeholder="Search by Employee Code, Name, Email, or Designation..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -419,7 +428,7 @@ export default function UserManagementView() {
               color: '#0f2b48'
             }}
           />
-        </div>
+        </form>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Filter size={16} color="#64748b" />
