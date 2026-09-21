@@ -101,6 +101,11 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
   const [bulkImporting, setBulkImporting] = useState(false);
   const fileInputRef = useRef(null);
 
+  // Mobile-First Action & Filter Sheet States
+  const [showMobileFilterModal, setShowMobileFilterModal] = useState(false);
+  const [showMobileActionsMenu, setShowMobileActionsMenu] = useState(false);
+  const [advisorFilter, setAdvisorFilter] = useState('ALL');
+
   const [newLeadForm, setNewLeadForm] = useState({
     fullName: '',
     companyName: '',
@@ -542,9 +547,17 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
     const matchesStage = stageFilter === 'ALL' || l.stage === stageFilter;
     const matchesPriority = priorityFilter === 'ALL' || l.priority === priorityFilter;
     const matchesType = insuranceTypeFilter === 'ALL' || l.insuranceType === insuranceTypeFilter;
+    const matchesAdvisor = advisorFilter === 'ALL' || String(l.assignedAdvisorId) === String(advisorFilter);
 
-    return matchesSearch && matchesStage && matchesPriority && matchesType;
+    return matchesSearch && matchesStage && matchesPriority && matchesType && matchesAdvisor;
   });
+
+  // Calculate active filter count (excluding default search & stage)
+  const activeSecondaryFiltersCount = [
+    priorityFilter !== 'ALL',
+    insuranceTypeFilter !== 'ALL',
+    advisorFilter !== 'ALL'
+  ].filter(Boolean).length;
 
   const sortedLeads = [...filteredLeads].sort((a, b) => {
     if (sortField === 'deadline') {
@@ -594,8 +607,8 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', width: '100%' }}>
-          {/* Left: Search & Desktop Filter Dropdowns */}
-          <div className="crm-sheet-search-filters" style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '240px' }}>
+          {/* Left: Search, Filter Trigger & Desktop Dropdowns */}
+          <div className="crm-sheet-search-filters" style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '240px' }}>
             <form 
               role="search"
               onSubmit={(e) => e.preventDefault()}
@@ -634,6 +647,44 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
               />
             </form>
 
+            {/* Mobile Filter Sheet Trigger Button with Active Count Badge */}
+            <button
+              type="button"
+              className="crm-mobile-filter-trigger-btn"
+              onClick={() => setShowMobileFilterModal(true)}
+              style={{
+                display: 'none', // Shown on mobile via CSS
+                alignItems: 'center',
+                gap: '5px',
+                background: activeSecondaryFiltersCount > 0 ? 'var(--primary-navy)' : 'var(--bg-card)',
+                color: activeSecondaryFiltersCount > 0 ? '#ffffff' : 'var(--text-main)',
+                border: `1px solid ${activeSecondaryFiltersCount > 0 ? 'var(--primary-navy)' : 'var(--border-subtle)'}`,
+                padding: '7px 12px',
+                borderRadius: '10px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                flexShrink: 0
+              }}
+              title="Open Advanced Filters"
+            >
+              <Filter size={14} />
+              <span>Filter</span>
+              {activeSecondaryFiltersCount > 0 && (
+                <span style={{
+                  background: 'var(--accent-gold)',
+                  color: '#ffffff',
+                  borderRadius: '999px',
+                  padding: '1px 6px',
+                  fontSize: '0.68rem',
+                  fontWeight: 800
+                }}>
+                  {activeSecondaryFiltersCount}
+                </span>
+              )}
+            </button>
+
+            {/* Desktop Filter Dropdowns */}
             <div className="crm-desktop-filter-dropdowns" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <select
                 value={stageFilter}
@@ -675,11 +726,32 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                 <option value="MEDIUM">⚡ Medium</option>
                 <option value="LOW">Standard</option>
               </select>
+
+              <select
+                value={insuranceTypeFilter}
+                onChange={(e) => setInsuranceTypeFilter(e.target.value)}
+                style={{
+                  padding: '7px 12px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-subtle)',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-main)'
+                }}
+              >
+                <option value="ALL">All Products</option>
+                <option value="Health Insurance">Health Insurance</option>
+                <option value="Term Life Insurance">Term Life</option>
+                <option value="Vehicle / Motor Insurance">Vehicle</option>
+                <option value="Commercial / SME Insurance">Business & SME</option>
+                <option value="Travel Insurance">Travel</option>
+              </select>
             </div>
           </div>
 
           {/* Right: Upload Excel, Export Excel, Bulk Reassign, Add Row */}
-          <div className="crm-sheet-action-btns" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="crm-sheet-action-btns" style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
             {canReassign && selectedLeadIds.length > 0 && (() => {
               const hasAssigned = leads.some(l => selectedLeadIds.includes(l.id) && l.assignedAdvisorId);
               const buttonLabel = hasAssigned ? `Assign (${selectedLeadIds.length})` : `Assign (${selectedLeadIds.length})`;
@@ -720,6 +792,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
               style={{ display: 'none' }} 
             />
 
+            {/* Desktop Quick Actions */}
             <button
               className="crm-secondary-action-btn-mobile-hide"
               onClick={() => fileInputRef.current && fileInputRef.current.click()}
@@ -762,6 +835,91 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
               <Download size={14} /> Export
             </button>
 
+            {/* Mobile Actions Overflow Trigger */}
+            <div className="crm-mobile-actions-overflow-wrapper" style={{ display: 'none', position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setShowMobileActionsMenu(prev => !prev)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: 'var(--bg-main)',
+                  border: '1px solid var(--border-subtle)',
+                  padding: '7px 10px',
+                  borderRadius: '10px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: 'var(--text-main)',
+                  cursor: 'pointer'
+                }}
+                title="More Spreadsheet Actions"
+              >
+                <span>Actions</span>
+                <ChevronDown size={14} />
+              </button>
+
+              {showMobileActionsMenu && (
+                <>
+                  <div 
+                    onClick={() => setShowMobileActionsMenu(false)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 10001 }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 6px)',
+                      right: 0,
+                      width: '210px',
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: '12px',
+                      boxShadow: 'var(--shadow-xl)',
+                      padding: '0.4rem',
+                      zIndex: 10002,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.2rem'
+                    }}
+                  >
+                    <button
+                      onClick={() => {
+                        setShowMobileActionsMenu(false);
+                        fileInputRef.current && fileInputRef.current.click();
+                      }}
+                      className="crm-popover-btn"
+                    >
+                      <Upload size={14} color="#0284c7" />
+                      <span>Upload Excel Sheet</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMobileActionsMenu(false);
+                        exportToExcel();
+                      }}
+                      className="crm-popover-btn"
+                    >
+                      <Download size={14} color="#059669" />
+                      <span>Export Data (.xlsx)</span>
+                    </button>
+                    {canReassign && (
+                      <button
+                        onClick={() => {
+                          setShowMobileActionsMenu(false);
+                          setShowBulkUploadModal(true);
+                        }}
+                        className="crm-popover-btn"
+                      >
+                        <FileSpreadsheet size={14} color="#7c3aed" />
+                        <span>Bulk Import Wizard</span>
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Primary Add Client CTA */}
             <button
               onClick={() => setShowAddLeadModal(true)}
               style={{
@@ -784,6 +942,91 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
             </button>
           </div>
         </div>
+
+        {/* Active Secondary Filter Badges (Removable 1-tap chips) */}
+        {activeSecondaryFiltersCount > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', paddingTop: '0.2rem' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Active Filters:</span>
+            {priorityFilter !== 'ALL' && (
+              <span
+                onClick={() => setPriorityFilter('ALL')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: '#fffbeb',
+                  color: '#b45309',
+                  border: '1px solid #fde68a',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Priority: {priorityFilter} <X size={11} />
+              </span>
+            )}
+            {insuranceTypeFilter !== 'ALL' && (
+              <span
+                onClick={() => setInsuranceTypeFilter('ALL')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  border: '1px solid #bfdbfe',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Product: {insuranceTypeFilter} <X size={11} />
+              </span>
+            )}
+            {advisorFilter !== 'ALL' && (
+              <span
+                onClick={() => setAdvisorFilter('ALL')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: '#f3e8ff',
+                  color: '#7e22ce',
+                  border: '1px solid #e9d5ff',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Advisor Filter <X size={11} />
+              </span>
+            )}
+            <button
+              onClick={() => {
+                setPriorityFilter('ALL');
+                setInsuranceTypeFilter('ALL');
+                setAdvisorFilter('ALL');
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '2px 6px',
+                color: 'var(--crm-danger)',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Reset All
+            </button>
+          </div>
+        )}
 
         {/* Mobile Horizontal Quick-Filter Pill Rail */}
         <div className="crm-mobile-pill-filter-rail">
@@ -3226,6 +3469,200 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile-First Advanced Filter Bottom Sheet Modal */}
+      {showMobileFilterModal && (
+        <div
+          onClick={() => setShowMobileFilterModal(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'none',
+            zIndex: 10010,
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            padding: 0
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg-card)',
+              borderTopLeftRadius: '20px',
+              borderTopRightRadius: '20px',
+              width: '100%',
+              maxWidth: '540px',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              padding: '1.25rem 1.25rem 1.75rem',
+              boxShadow: '0 -10px 25px -5px rgba(0, 0, 0, 0.2)',
+              border: '1px solid var(--border-subtle)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+              animation: 'slideUpToast 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+          >
+            {/* Grab Bar & Header */}
+            <div>
+              <div style={{ width: '40px', height: '4px', background: 'var(--border-subtle)', borderRadius: '999px', margin: '0 auto 10px' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Filter size={18} color="var(--primary-navy)" />
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+                    Filter Client Data Sheet
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowMobileFilterModal(false)}
+                  style={{ background: 'var(--bg-main)', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', cursor: 'pointer' }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Controls Grid */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {/* 1. Stage Selector */}
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                  Pipeline Stage
+                </label>
+                <select
+                  value={stageFilter}
+                  onChange={(e) => setStageFilter(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--border-subtle)', fontSize: '0.84rem', fontWeight: 600, background: 'var(--bg-card)', color: 'var(--text-main)' }}
+                >
+                  <option value="ALL">All Stages ({leads.length})</option>
+                  <option value="NEW_LEAD">New Lead</option>
+                  <option value="FOLLOWUP">Follow-up Due</option>
+                  <option value="QUOTATION">Quotation Shared</option>
+                  <option value="MEETING">Meeting Scheduled</option>
+                  <option value="DOCUMENTS">Documents Stage</option>
+                  <option value="POLICY_ISSUED">Policy Issued</option>
+                </select>
+              </div>
+
+              {/* 2. Priority Selector */}
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                  Priority Level
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                  {[
+                    { label: 'All', value: 'ALL' },
+                    { label: '🔥 High', value: 'HIGH' },
+                    { label: '⚡ Med', value: 'MEDIUM' },
+                    { label: 'Standard', value: 'LOW' }
+                  ].map(p => (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => setPriorityFilter(p.value)}
+                      style={{
+                        padding: '8px 4px',
+                        borderRadius: '8px',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        border: `1px solid ${priorityFilter === p.value ? 'var(--primary-navy)' : 'var(--border-subtle)'}`,
+                        background: priorityFilter === p.value ? 'var(--primary-navy)' : 'var(--bg-main)',
+                        color: priorityFilter === p.value ? '#ffffff' : 'var(--text-main)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3. Product / Insurance Type */}
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                  Product Category
+                </label>
+                <select
+                  value={insuranceTypeFilter}
+                  onChange={(e) => setInsuranceTypeFilter(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--border-subtle)', fontSize: '0.84rem', fontWeight: 600, background: 'var(--bg-card)', color: 'var(--text-main)' }}
+                >
+                  <option value="ALL">All Products</option>
+                  <option value="Health Insurance">Health Insurance</option>
+                  <option value="Term Life Insurance">Term Life</option>
+                  <option value="Vehicle / Motor Insurance">Vehicle</option>
+                  <option value="Commercial / SME Insurance">Business & SME</option>
+                  <option value="Travel Insurance">Travel</option>
+                </select>
+              </div>
+
+              {/* 4. Advisor Assignment Filter */}
+              {canReassign && advisors.length > 0 && (
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                    Assigned Advisor
+                  </label>
+                  <select
+                    value={advisorFilter}
+                    onChange={(e) => setAdvisorFilter(e.target.value)}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--border-subtle)', fontSize: '0.84rem', fontWeight: 600, background: 'var(--bg-card)', color: 'var(--text-main)' }}
+                  >
+                    <option value="ALL">All Advisors</option>
+                    {advisors.map(adv => (
+                      <option key={adv.id} value={adv.id}>{adv.fullName || adv.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Actions */}
+            <div style={{ display: 'flex', gap: '0.65rem', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setStageFilter('ALL');
+                  setPriorityFilter('ALL');
+                  setInsuranceTypeFilter('ALL');
+                  setAdvisorFilter('ALL');
+                }}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--bg-main)',
+                  color: 'var(--text-muted)',
+                  fontWeight: 700,
+                  fontSize: '0.84rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Reset Filters
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMobileFilterModal(false)}
+                style={{
+                  flex: 2,
+                  padding: '0.75rem',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: 'var(--primary-navy)',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.84rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Show Results ({sortedLeads.length})
+              </button>
+            </div>
           </div>
         </div>
       )}
