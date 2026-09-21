@@ -55,13 +55,19 @@ export default function ScheduleActivityModal({
       setSelectedClient(initialClient);
       setError(null);
 
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate()); // default to today
-      const dateStr = tomorrow.toISOString().slice(0, 10);
+      const now = new Date();
+      const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
+      const hours = String(nextHour.getHours()).padStart(2, '0');
+      const timeStr = `${hours}:00`;
+
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
 
       setForm({
         date: dateStr,
-        startTime: '11:00',
+        startTime: timeStr,
         durationMinutes: 30,
         title: initialClient
           ? `${initialType === 'CALL' ? 'Follow-up Callback' : 'Advisory Consultation'} with ${initialClient.fullName}`

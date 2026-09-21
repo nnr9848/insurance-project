@@ -362,9 +362,9 @@ public class CrmClientService {
             throw new IllegalArgumentException("Meeting date and time are required.");
         }
 
-        // Defensive check: Do not allow scheduling meetings in the past (with 5 min grace for clock drift)
-        if (request.getMeetingDatetime().isBefore(LocalDateTime.now().minusMinutes(5))) {
-            throw new IllegalArgumentException("Meeting cannot be scheduled in the past. Please select a future time slot.");
+        // Allow same-day past-hour scheduling for manual retroactive meeting logging or timezone variance
+        if (request.getMeetingDatetime().toLocalDate().isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Meeting cannot be scheduled on a past date. Please select today or a future date.");
         }
 
         Client client = clientRepository.findById(request.getClientId())
@@ -429,8 +429,9 @@ public class CrmClientService {
         if (request.getScheduledDatetime() == null) {
             throw new IllegalArgumentException("Scheduled date and time are required.");
         }
-        if (request.getScheduledDatetime().isBefore(LocalDateTime.now().minusMinutes(5))) {
-            throw new IllegalArgumentException("Follow-up cannot be scheduled in the past. Please select a future time slot.");
+        // Allow same-day past-hour scheduling for manual retroactive task recording or clock discrepancies
+        if (request.getScheduledDatetime().toLocalDate().isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Follow-up cannot be scheduled on a past date. Please select today or a future date.");
         }
 
         Client client = clientRepository.findById(request.getClientId())

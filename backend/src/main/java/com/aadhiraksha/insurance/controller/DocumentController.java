@@ -24,7 +24,7 @@ public class DocumentController {
     private final DocumentService documentService;
 
     @PostMapping("/upload")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'ADVISOR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
     @Operation(summary = "Upload and attach a KYC / Policy document to a client")
     public ResponseEntity<DocumentDto.Response> uploadDocument(
             @Valid @RequestBody DocumentDto.UploadRequest request,
@@ -34,7 +34,7 @@ public class DocumentController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'ADVISOR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
     @Operation(summary = "Get all documents scoped to user role & hierarchy")
     public ResponseEntity<List<DocumentDto.Response>> getDocuments(
             @AuthenticationPrincipal UserDetails userDetails
@@ -43,7 +43,7 @@ public class DocumentController {
     }
 
     @GetMapping("/client/{clientId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'ADVISOR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
     @Operation(summary = "Get all documents for a specific client")
     public ResponseEntity<List<DocumentDto.Response>> getDocumentsForClient(
             @PathVariable Long clientId
@@ -52,7 +52,7 @@ public class DocumentController {
     }
 
     @PatchMapping("/{docId}/verify")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'ADVISOR')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
     @Operation(summary = "Verify or reject a client KYC document")
     public ResponseEntity<DocumentDto.Response> verifyDocument(
             @PathVariable Long docId,
@@ -63,7 +63,7 @@ public class DocumentController {
     }
 
     @DeleteMapping("/{docId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_STAFF')")
     @Operation(summary = "Delete an attached client document")
     public ResponseEntity<Map<String, Object>> deleteDocument(
             @PathVariable Long docId,
