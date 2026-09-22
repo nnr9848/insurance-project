@@ -35,22 +35,25 @@ import {
   Plane,
   Building2,
   Mail,
-  Zap
+  Zap,
+  Layers
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { crmService } from '../../services/api';
+import { crmService, portalService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { formatWhatsAppNumber } from '../../utils/crmDeduplication';
+import { formatWhatsAppNumber, calculateCustomerTouchpoints } from '../../utils/crmDeduplication';
 import WhatsAppIcon from '../common/WhatsAppIcon';
 import ScheduleActivityModal from './ScheduleActivityModal';
 
-export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, onOpenMeetingModal }) {
+export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: propSetQuotes, onOpenClient360, onOpenCallModal, onOpenMeetingModal }) {
   const { isSuperAdmin, isManager, user } = useAuth();
   const toast = useToast();
   const canReassign = isSuperAdmin || isManager;
 
   const [leads, setLeads] = useState([]);
+  const [internalQuotes, setInternalQuotes] = useState([]);
+  const quotes = propQuotes !== undefined ? propQuotes : internalQuotes;
   const [advisors, setAdvisors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -201,8 +204,15 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
   const loadLeads = async () => {
     setLoading(true);
     try {
-      const data = await crmService.getClients();
+      const promises = [crmService.getClients()];
+      if (propQuotes === undefined) {
+        promises.push(portalService.getAdminQuotes().catch(() => []));
+      }
+      const [data, quotesData] = await Promise.all(promises);
       setLeads(data);
+      if (quotesData) {
+        setInternalQuotes(quotesData);
+      }
     } catch (err) {
       console.error('Failed to load CRM leads:', err);
       // Fallback demo dataset if backend leads are empty
@@ -1193,9 +1203,18 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                                 style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.74rem', width: '100%' }}
                               />
                             </div>
-                          ) : (
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          ) : (() => {
+                            const touchpoints = calculateCustomerTouchpoints(lead, quotes, leads);
+                            const totalInq = touchpoints?.totalInquiries || 1;
+                            
+                            // In InsurTech pipeline, active top-of-funnel opportunities include raw NEW, QUALIFIED, or stage NEW_LEAD
+                            const newInqCount = Array.isArray(touchpoints?.matchedQuotes) 
+                              ? touchpoints.matchedQuotes.filter(q => !q.status || q.status === 'NEW' || q.status === 'QUALIFIED' || q.stage === 'NEW_LEAD').length 
+                              : 0;
+
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                {/* Row 1: Full Client Name with Client 360 icon */}
                                 <div 
                                   onClick={() => onOpenClient360 && onOpenClient360(lead)}
                                   style={{ 
@@ -1206,36 +1225,44 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                                     alignItems: 'center', 
                                     gap: '3px',
                                     wordBreak: 'break-word',
-                                    overflowWrap: 'anywhere'
+                                    overflowWrap: 'anywhere',
+                                    fontSize: '0.88rem'
                                   }}
                                   title="Open Client 360 Profile"
                                 >
                                   <span>{lead.fullName}</span>
                                   <ExternalLink size={11} color="var(--accent-gold)" />
                                 </div>
-                                <span 
-                                  onClick={() => onOpenClient360 && onOpenClient360(lead)}
-                                  style={{
-                                    fontFamily: 'monospace',
-                                    fontWeight: 700,
-                                    color: '#059669',
-                                    background: '#ecfdf5',
-                                    border: '1px solid #a7f3d0',
-                                    padding: '1px 5px',
-                                    borderRadius: '4px',
-                                    fontSize: '0.68rem',
-                                    cursor: 'pointer'
-                                  }}
-                                  title="Client Identifier Code"
-                                >
-                                  {lead.clientCode}
-                                </span>
+
+                                {/* Row 2: Standardized Code Pill + Organization / Retail Label */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                  {lead.clientCode && (
+                                    <span 
+                                      onClick={() => onOpenClient360 && onOpenClient360(lead)}
+                                      style={{
+                                        fontFamily: 'monospace',
+                                        fontWeight: 700,
+                                        color: '#059669',
+                                        background: '#ecfdf5',
+                                        border: '1px solid #a7f3d0',
+                                        padding: '1px 5px',
+                                        borderRadius: '4px',
+                                        fontSize: '0.68rem',
+                                        cursor: 'pointer',
+                                        lineHeight: 1.2
+                                      }}
+                                      title="Client Identifier Code"
+                                    >
+                                      {lead.clientCode}
+                                    </span>
+                                  )}
+                                  <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                                    {lead.companyName || 'Retail Client'}
+                                  </span>
+                                </div>
                               </div>
-                              <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>
-                                {lead.companyName || 'Retail Client'}
-                              </div>
-                            </div>
-                          )}
+                            );
+                          })()}
                         </td>
 
                         {/* Contact & Location */}
@@ -1323,9 +1350,15 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                             const remainingCount = linkedOpportunities.length - maxVisibleOpps;
                             const remainingOpps = linkedOpportunities.slice(maxVisibleOpps);
 
+                            const touchpoints = calculateCustomerTouchpoints(lead, quotes, leads);
+                            const totalInq = touchpoints?.totalInquiries || 1;
+                            const newInqCount = Array.isArray(touchpoints?.matchedQuotes) 
+                              ? touchpoints.matchedQuotes.filter(q => !q.status || q.status === 'NEW' || q.status === 'QUALIFIED' || q.stage === 'NEW_LEAD').length 
+                              : 0;
+
                             return (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                {/* Primary Product Tag */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                {/* Row 1: Primary Product Tag */}
                                 <div style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
@@ -1343,9 +1376,46 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                                   <span>{primaryBadge.label}</span>
                                 </div>
 
-                                {/* Additional Ingested Opportunities with Max-2 + Overflow Capsule */}
-                                {linkedOpportunities.length > 0 && (
+                                {/* Row 2: Multi-Policy Ingestion / Enquiries Status Badge */}
+                                {(totalInq > 1 || newInqCount > 0 || linkedOpportunities.length > 0) && (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                    {/* Unified Touchpoints Badge (Clickable -> Opens Client 360) */}
+                                    <span 
+                                      onClick={() => onOpenClient360 && onOpenClient360(lead)}
+                                      style={{
+                                        fontSize: '0.67rem',
+                                        background: newInqCount > 0 ? '#fff1f2' : '#eff6ff',
+                                        color: newInqCount > 0 ? '#be123c' : '#1d4ed8',
+                                        border: newInqCount > 0 ? '1px solid #fecdd3' : '1px solid #bfdbfe',
+                                        padding: '1px 6px',
+                                        borderRadius: '5px',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        transition: 'all 0.15s ease'
+                                      }}
+                                      title={`${totalInq} Total Enquiries / Opportunities for this client ${newInqCount > 0 ? `(${newInqCount} New / Unattended)` : ''} (Click to view 360 profile)`}
+                                    >
+                                      <Layers size={10} color={newInqCount > 0 ? '#e11d48' : '#2563eb'} />
+                                      <span>{totalInq} {totalInq === 1 ? 'Enquiry' : 'Enquiries'}</span>
+                                      {newInqCount > 0 && (
+                                        <span style={{ 
+                                          background: '#e11d48', 
+                                          color: '#ffffff', 
+                                          fontSize: '0.58rem', 
+                                          fontWeight: 800, 
+                                          padding: '0 3px', 
+                                          borderRadius: '3px',
+                                          marginLeft: '1px'
+                                        }}>
+                                          {newInqCount} New
+                                        </span>
+                                      )}
+                                    </span>
+
+                                    {/* Additional Ingested Opportunities with Max-2 */}
                                     {visibleOpps.map((oppName, oppIdx) => {
                                       const oppBadge = getProductBadge(oppName);
                                       return (
@@ -1360,7 +1430,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                                             border: `1px solid ${oppBadge.border}`,
                                             padding: '0.1rem 0.4rem',
                                             borderRadius: '5px',
-                                            fontSize: '0.68rem',
+                                            fontSize: '0.66rem',
                                             fontWeight: 700
                                           }}
                                           title={`Opportunity: ${oppBadge.label}`}
@@ -1384,7 +1454,7 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                                           border: '1px solid #cbd5e1',
                                           padding: '0.1rem 0.4rem',
                                           borderRadius: '5px',
-                                          fontSize: '0.68rem',
+                                          fontSize: '0.66rem',
                                           fontWeight: 800,
                                           cursor: 'pointer'
                                         }}
@@ -2088,29 +2158,71 @@ export default function ClientDataSheetView({ onOpenClient360, onOpenCallModal, 
                           </span>
                         </div>
 
-                        {/* Row 1.2: Code • Company • Location (Fluid Truncated) */}
-                        <div style={{
-                          fontSize: '0.7rem',
-                          color: '#64748b',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-emerald)', flexShrink: 0 }}>{lead.clientCode}</span>
-                          <span style={{ flexShrink: 0 }}>•</span>
-                          <span style={{ fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {lead.companyName || 'Retail Client'}
-                          </span>
-                          {lead.city && (
-                            <>
+                        {/* Row 1.2: Code • Inquiries • Company • Location (Fluid Truncated) */}
+                        {(() => {
+                          const touchpoints = calculateCustomerTouchpoints(lead, quotes, leads);
+                          const totalInq = touchpoints?.totalInquiries || 1;
+                          const newInqCount = Array.isArray(touchpoints?.matchedQuotes) 
+                            ? touchpoints.matchedQuotes.filter(q => !q.status || q.status === 'NEW' || q.status === 'QUALIFIED' || q.stage === 'NEW_LEAD').length 
+                            : 0;
+
+                          return (
+                            <div style={{
+                              fontSize: '0.7rem',
+                              color: '#64748b',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-emerald)', flexShrink: 0 }}>{lead.clientCode}</span>
                               <span style={{ flexShrink: 0 }}>•</span>
-                              <span style={{ flexShrink: 0 }}>{lead.city}</span>
-                            </>
-                          )}
-                        </div>
+                              <span 
+                                onClick={(e) => { e.stopPropagation(); onOpenClient360 && onOpenClient360(lead); }}
+                                style={{ 
+                                  fontWeight: 700, 
+                                  color: newInqCount > 0 ? '#be123c' : '#1d4ed8', 
+                                  background: newInqCount > 0 ? '#fff1f2' : '#eff6ff', 
+                                  border: newInqCount > 0 ? '1px solid #fecdd3' : '1px solid #bfdbfe', 
+                                  borderRadius: '4px', 
+                                  padding: '0 5px', 
+                                  fontSize: '0.64rem',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  flexShrink: 0,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <span>📦 {totalInq} Enq</span>
+                                {newInqCount > 0 && (
+                                  <span style={{ 
+                                    background: '#e11d48', 
+                                    color: '#ffffff', 
+                                    fontSize: '0.58rem', 
+                                    fontWeight: 800, 
+                                    padding: '0 3px', 
+                                    borderRadius: '3px' 
+                                  }}>
+                                    {newInqCount} New
+                                  </span>
+                                )}
+                              </span>
+                              <span style={{ flexShrink: 0 }}>•</span>
+                              <span style={{ fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {lead.companyName || 'Retail Client'}
+                              </span>
+                              {lead.city && (
+                                <>
+                                  <span style={{ flexShrink: 0 }}>•</span>
+                                  <span style={{ flexShrink: 0 }}>{lead.city}</span>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* 1-Tap Action Pills: Omni-Contact Reach ▾ + Edit */}

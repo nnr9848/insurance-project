@@ -239,7 +239,12 @@ export const calculateCustomerTouchpoints = (prospect, quotesList = [], leadsLis
   // 5. Resolve all master client records matching the unified customer identity
   const matchedClients = Array.isArray(leadsList) ? leadsList.filter(matchesUnifiedIdentity) : [];
 
-  const totalInquiries = Math.max(matchedQuotes.length, 1);
+  // If calculating for a master client (or prospect with a master client), total touchpoints = 1 (primary record) + matched quotes/opportunities
+  // If calculating for an unlinked web prospect, total touchpoints = matched quotes count (minimum 1)
+  const isMasterClientRecord = !!(prospect.clientCode || prospect.companyName !== undefined || matchingClient);
+  const totalInquiries = isMasterClientRecord 
+    ? (1 + matchedQuotes.length)
+    : Math.max(matchedQuotes.length, 1);
   const otherInquiriesCount = Math.max(0, totalInquiries - 1);
 
   return {

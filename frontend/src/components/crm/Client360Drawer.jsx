@@ -116,6 +116,62 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   const [clientOpportunities, setClientOpportunities] = useState([]);
   const [linkedInquiries, setLinkedInquiries] = useState([]);
   const [loadingOpportunities, setLoadingOpportunities] = useState(false);
+  const [updatingOppId, setUpdatingOppId] = useState(null);
+
+  // Quick Add Product Opportunity Modal State
+  const [showAddOpportunityModal, setShowAddOpportunityModal] = useState(false);
+  const [isCreatingOpportunity, setIsCreatingOpportunity] = useState(false);
+  const [portfolioCategoryFilter, setPortfolioCategoryFilter] = useState('ALL');
+  const [newOpportunityData, setNewOpportunityData] = useState({
+    categorySlug: 'HEALTH',
+    productName: 'Health Insurance',
+    coverageAmount: '₹10,00,000',
+    estimatedPremium: '',
+    stage: 'NEW_LEAD',
+    priority: 'MEDIUM',
+    notes: ''
+  });
+
+  const handleCreateOpportunity = async (e) => {
+    e.preventDefault();
+    if (!currentClient?.id) return;
+    setIsCreatingOpportunity(true);
+    try {
+      const payload = {
+        categorySlug: newOpportunityData.categorySlug,
+        productName: newOpportunityData.productName || `${newOpportunityData.categorySlug} Insurance`,
+        coverageAmount: newOpportunityData.coverageAmount || 'As Requested',
+        estimatedPremium: newOpportunityData.estimatedPremium ? Number(newOpportunityData.estimatedPremium) : null,
+        stage: newOpportunityData.stage || 'NEW_LEAD',
+        priority: newOpportunityData.priority || 'MEDIUM',
+        notes: newOpportunityData.notes || '',
+        assignedAdvisorId: currentClient.assignedAdvisorId || null
+      };
+
+      await crmService.createOpportunity(currentClient.id, payload);
+      toast.success(`New ${newOpportunityData.categorySlug} opportunity linked to client!`);
+      setShowAddOpportunityModal(false);
+      setNewOpportunityData({
+        categorySlug: 'HEALTH',
+        productName: 'Health Insurance',
+        coverageAmount: '₹10,00,000',
+        estimatedPremium: '',
+        stage: 'NEW_LEAD',
+        priority: 'MEDIUM',
+        notes: ''
+      });
+
+      // Reload opportunities, audit logs, and trigger parent refresh
+      await loadClientOpportunitiesAndInquiries(currentClient);
+      loadClientAuditLogs(currentClient.id);
+      if (onLeadUpdated) onLeadUpdated();
+    } catch (err) {
+      console.error('Failed to create opportunity:', err);
+      toast.error(err.response?.data?.message || 'Failed to add opportunity');
+    } finally {
+      setIsCreatingOpportunity(false);
+    }
+  };
 
   useEffect(() => {
     setCurrentClient(client);
@@ -586,7 +642,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                 gap: '4px'
               }}>
                 <Layers size={11} />
-                <span>{1 + (Array.isArray(clientOpportunities) ? clientOpportunities.filter(o => !o?.isPrimary).length : 0) + (Array.isArray(linkedInquiries) ? linkedInquiries.length : 0)} Inquiries</span>
+                <span>{1 + (Array.isArray(clientOpportunities) ? clientOpportunities.filter(o => !o?.isPrimary).length : 0) + (Array.isArray(linkedInquiries) ? linkedInquiries.length : 0)} Enquiries</span>
               </span>
 
               {currentClient.phoneNumber && (
@@ -674,8 +730,24 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
           </button>
         </div>
 
-        {/* 1. Compact Quick-Dial Action Strip */}
-        <div className="crm-drawer-quick-reach-bar">
+        {/* 1. Compact Quick-Dial Action Strip + Quick Add Product */}
+        <div className="crm-drawer-quick-reach-bar" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="crm-drawer-reach-btn"
+            onClick={() => setShowAddOpportunityModal(true)}
+            style={{
+              background: '#ecfdf5',
+              color: '#059669',
+              border: '1.5px solid #a7f3d0',
+              fontWeight: 800
+            }}
+            title="Add new product opportunity / policy deal to this client"
+          >
+            <Plus size={14} />
+            <span>+ Add Product</span>
+          </button>
+
           <button
             type="button"
             className="crm-drawer-reach-btn call"
@@ -904,16 +976,156 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
 
                 const allPortfolioItems = [primaryPolicy, ...dbOpps, ...uniqueWebInquiries];
 
+                // Compute dynamic category counts
+                const catCounts = { ALL: allPortfolioItems.length };
+                allPortfolioItems.forEach(item => {
+                  const cat = item.category || 'HEALTH';
+                  catCounts[cat] = (catCounts[cat] || 0) + 1;
+                });
+
+                // Filter items based on active category sub-pill
+                const filteredPortfolioItems = portfolioCategoryFilter === 'ALL'
+                  ? allPortfolioItems
+                  : allPortfolioItems.filter(item => (item.category || 'HEALTH') === portfolioCategoryFilter);
+
+                const categoryLabels = {
+                  HEALTH: { label: 'Health', icon: '❤️' },
+                  LIFE: { label: 'Life', icon: '🛡️' },
+                  VEHICLE: { label: 'Vehicle', icon: '🚗' },
+                  LOANS: { label: 'Loans', icon: '🏛️' },
+                  BUSINESS: { label: 'Business', icon: '💼' },
+                  TRAVEL: { label: 'Travel', icon: '✈️' }
+                };
+
                 return (
                   <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', letterSpacing: '0.04em' }}>
-                        <Layers size={15} color="#0284c7" /> Client Product Portfolio & Active Inquiries ({allPortfolioItems.length})
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                        <Layers size={16} color="#0284c7" /> Product Portfolio ({allPortfolioItems.length})
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddOpportunityModal(true)}
+                        style={{
+                          background: '#f0f9ff',
+                          color: '#0284c7',
+                          border: '1px solid #bae6fd',
+                          padding: '5px 11px',
+                          borderRadius: '8px',
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.15s ease',
+                          boxShadow: '0 1px 2px rgba(2, 132, 199, 0.06)'
+                        }}
+                        onMouseEnter={(e) => { 
+                          e.currentTarget.style.background = '#e0f2fe'; 
+                          e.currentTarget.style.borderColor = '#7dd3fc';
+                        }}
+                        onMouseLeave={(e) => { 
+                          e.currentTarget.style.background = '#f0f9ff'; 
+                          e.currentTarget.style.borderColor = '#bae6fd';
+                        }}
+                      >
+                        <Plus size={13} strokeWidth={2.5} />
+                        <span>Add Product</span>
+                      </button>
                     </div>
 
+                    {/* Sub-Pills Category Filter Strip */}
+                    {allPortfolioItems.length > 1 && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        overflowX: 'auto',
+                        paddingBottom: '8px',
+                        marginBottom: '10px',
+                        borderBottom: '1px solid #f1f5f9'
+                      }}>
+                        <button
+                          type="button"
+                          onClick={() => setPortfolioCategoryFilter('ALL')}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '20px',
+                            fontSize: '0.74rem',
+                            fontWeight: 700,
+                            border: portfolioCategoryFilter === 'ALL' ? '1.5px solid var(--primary-navy)' : '1px solid #e2e8f0',
+                            background: portfolioCategoryFilter === 'ALL' ? 'var(--primary-navy)' : '#f8fafc',
+                            color: portfolioCategoryFilter === 'ALL' ? '#ffffff' : '#64748b',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            whiteSpace: 'nowrap',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <span>All</span>
+                          <span style={{
+                            background: portfolioCategoryFilter === 'ALL' ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                            color: portfolioCategoryFilter === 'ALL' ? '#ffffff' : '#475569',
+                            fontSize: '0.68rem',
+                            padding: '1px 5px',
+                            borderRadius: '10px'
+                          }}>
+                            {catCounts.ALL}
+                          </span>
+                        </button>
+
+                        {Object.keys(catCounts).filter(c => c !== 'ALL').map(cat => {
+                          const isSelected = portfolioCategoryFilter === cat;
+                          const meta = categoryLabels[cat] || { label: cat, icon: '📦' };
+                          return (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => setPortfolioCategoryFilter(cat)}
+                              style={{
+                                padding: '4px 10px',
+                                borderRadius: '20px',
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                border: isSelected ? '1.5px solid #0284c7' : '1px solid #e2e8f0',
+                                background: isSelected ? '#eff6ff' : '#f8fafc',
+                                color: isSelected ? '#0369a1' : '#64748b',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                whiteSpace: 'nowrap',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <span>{meta.icon} {meta.label}</span>
+                              <span style={{
+                                background: isSelected ? '#bfdbfe' : '#e2e8f0',
+                                color: isSelected ? '#1e40af' : '#475569',
+                                fontSize: '0.68rem',
+                                padding: '1px 5px',
+                                borderRadius: '10px'
+                              }}>
+                                {catCounts[cat]}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {allPortfolioItems.map((item, idx) => {
+                      {filteredPortfolioItems.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8', fontSize: '0.82rem' }}>
+                          No products found in this category.
+                        </div>
+                      ) : (
+                        filteredPortfolioItems.map((item, idx) => {
                         let badgeBg = '#ecfdf5';
                         let badgeColor = '#059669';
                         let badgeBorder = '#a7f3d0';
@@ -1066,7 +1278,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                                 compact={true}
                                 client={currentClient}
                                 stage={item.isPrimary ? (currentClient.stage || 'NEW_LEAD') : (item.stage || 'NEW_LEAD')}
-                                titleLabel={item.isPrimary ? `Primary ${item.productName}` : `Inquiry #${item.inquiryId || idx} ${item.productName}`}
+                                titleLabel={item.isPrimary ? `Primary ${item.productName}` : `Enquiry #${item.inquiryId || idx} ${item.productName}`}
                                 onStageChange={(targetStageKey, noteEntry, shortReason) => {
                                   return handleInquiryStageTransition(item, targetStageKey, noteEntry, shortReason);
                                 }}
@@ -1074,7 +1286,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                             </div>
                           </div>
                         );
-                      })}
+                      }))}
                     </div>
                   </div>
                 );
@@ -2495,7 +2707,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                       flexShrink: 0
                     }}
                   >
-                    <Eye size={12} color="#ffffff" /> View Inquiry & Logs
+                    <Eye size={12} color="#ffffff" /> View Enquiry & Logs
                   </button>
                 </div>
               )}
@@ -2591,6 +2803,248 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
             if (onLeadUpdated) onLeadUpdated();
           }}
         />
+      )}
+
+      {/* Add Product Opportunity Modal */}
+      {showAddOpportunityModal && (
+        <div
+          className="crm-modal-backdrop"
+          onClick={() => !isCreatingOpportunity && setShowAddOpportunityModal(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'none',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+        >
+          <div
+            className="crm-modal-card"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '540px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '90vh',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Plus size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f2b48' }}>
+                    Add Product Opportunity
+                  </h3>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '1px' }}>
+                    Link new policy or financial deal to <strong>{currentClient?.fullName}</strong> ({currentClient?.clientCode})
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !isCreatingOpportunity && setShowAddOpportunityModal(false)}
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Form Body */}
+            <form onSubmit={handleCreateOpportunity} style={{ padding: '1.25rem 1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                {/* Category */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Product Category *
+                  </label>
+                  <select
+                    value={newOpportunityData.categorySlug}
+                    onChange={(e) => {
+                      const cat = e.target.value;
+                      let defaultName = `${cat} Insurance`;
+                      if (cat === 'LOANS') defaultName = 'Personal / Business Loan';
+                      setNewOpportunityData({
+                        ...newOpportunityData,
+                        categorySlug: cat,
+                        productName: defaultName
+                      });
+                    }}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', background: '#ffffff', fontWeight: 600 }}
+                  >
+                    <option value="HEALTH">❤️ Health Insurance</option>
+                    <option value="LIFE">🛡️ Term Life Insurance</option>
+                    <option value="VEHICLE">🚗 Vehicle / Motor Insurance</option>
+                    <option value="BUSINESS">💼 Corporate / SME Insurance</option>
+                    <option value="TRAVEL">✈️ Travel Insurance</option>
+                    <option value="LOANS">🏛️ Loans & Financing</option>
+                  </select>
+                </div>
+
+                {/* Plan / Deal Name */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Product / Plan Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Star Smart Health Pro"
+                    value={newOpportunityData.productName}
+                    onChange={(e) => setNewOpportunityData({ ...newOpportunityData, productName: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                {/* Coverage Amount */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Coverage / Sum Insured
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. ₹15 Lakhs or ₹1 Crore"
+                    value={newOpportunityData.coverageAmount}
+                    onChange={(e) => setNewOpportunityData({ ...newOpportunityData, coverageAmount: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  />
+                </div>
+
+                {/* Estimated Premium */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Est. Premium (₹)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 25000"
+                    value={newOpportunityData.estimatedPremium}
+                    onChange={(e) => setNewOpportunityData({ ...newOpportunityData, estimatedPremium: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                {/* Initial Stage */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Pipeline Stage
+                  </label>
+                  <select
+                    value={newOpportunityData.stage}
+                    onChange={(e) => setNewOpportunityData({ ...newOpportunityData, stage: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', background: '#ffffff' }}
+                  >
+                    <option value="NEW_LEAD">✨ New Lead</option>
+                    <option value="CONTACTED">📞 Contacted</option>
+                    <option value="FOLLOWUP">⏳ Follow-up Due</option>
+                    <option value="QUOTATION">📋 Quotation Sent</option>
+                    <option value="DOCUMENTS">📑 Documents Review</option>
+                    <option value="PAYMENT">💳 Payment Pending</option>
+                    <option value="POLICY_ISSUED">🎉 Policy Issued</option>
+                  </select>
+                </div>
+
+                {/* Priority */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Priority
+                  </label>
+                  <select
+                    value={newOpportunityData.priority}
+                    onChange={(e) => setNewOpportunityData({ ...newOpportunityData, priority: e.target.value })}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', background: '#ffffff' }}
+                  >
+                    <option value="HIGH">🔥 High Priority</option>
+                    <option value="MEDIUM">⚡ Medium Priority</option>
+                    <option value="LOW">Low Priority</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Remarks / Context */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Deal Context & Requirements
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Client preferences, policy add-ons, or cross-sell background..."
+                  value={newOpportunityData.notes}
+                  onChange={(e) => setNewOpportunityData({ ...newOpportunityData, notes: e.target.value })}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', resize: 'vertical' }}
+                />
+              </div>
+
+              {/* Modal Actions */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid #e2e8f0' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddOpportunityModal(false)}
+                  disabled={isCreatingOpportunity}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#475569',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: isCreatingOpportunity ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingOpportunity}
+                  style={{
+                    padding: '8px 18px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'var(--accent-emerald)',
+                    color: '#ffffff',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: isCreatingOpportunity ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {isCreatingOpportunity ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Saving Deal...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={14} />
+                      <span>Create Opportunity</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* WhatsApp Message Compose & Template Modal */}

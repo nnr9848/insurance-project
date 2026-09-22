@@ -570,7 +570,7 @@ export default function LeadInquiriesView({
                 onClick={() => toggleSort('createdAt')}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span>Inquiry Date</span>
+                  <span>Enquiry Date</span>
                   <ArrowUpDown size={12} color={sortField === 'createdAt' ? 'var(--accent-emerald)' : '#94a3b8'} />
                 </div>
               </th>
@@ -591,7 +591,7 @@ export default function LeadInquiriesView({
                 onClick={() => toggleSort('status')}
               >
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                  <span>Inquiry Status</span>
+                  <span>Enquiry Status</span>
                   <ArrowUpDown size={12} color={sortField === 'status' ? 'var(--accent-emerald)' : '#94a3b8'} />
                 </div>
               </th>
@@ -910,9 +910,9 @@ export default function LeadInquiriesView({
                               fontWeight: 800,
                               whiteSpace: 'nowrap'
                             }}
-                            title={`This client has submitted ${totalProspectInquiries} inquiries across different categories`}
+                            title={`This client has submitted ${totalProspectInquiries} enquiries across different categories`}
                           >
-                            🔥 +{totalProspectInquiries - 1} Other Inquiries
+                            🔥 +{totalProspectInquiries - 1} Other Enquiries
                           </span>
                         )}
                       </div>
@@ -1906,7 +1906,7 @@ export default function LeadInquiriesView({
             {/* Header */}
             <div className="crm-modal-header" style={{ padding: '1rem 1.25rem' }}>
               <div>
-                <h3 className="crm-modal-title" style={{ fontSize: '1rem' }}>Inquiry Filters & Sorting</h3>
+                <h3 className="crm-modal-title" style={{ fontSize: '1rem' }}>Enquiry Filters & Sorting</h3>
                 <div className="crm-modal-subtitle">Configure sort sequence & product scope</div>
               </div>
               <button 
@@ -2110,7 +2110,7 @@ export default function LeadInquiriesView({
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.2)', padding: '2px 8px', borderRadius: '4px' }}>
-                    INQUIRY #{viewingInquiry.id}
+                    ENQUIRY #{viewingInquiry.id}
                   </span>
                   <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#10b981', background: 'rgba(16, 185, 129, 0.2)', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
                     {viewingInquiry.categorySlug?.replace(/-/g, ' ')}

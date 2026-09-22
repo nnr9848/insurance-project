@@ -1294,6 +1294,8 @@ export default function AdminDashboard() {
           {/* VIEW: CLIENT DATA SHEET (EXCEL GRID) */}
           {activeView === 'clients' && (
             <ClientDataSheetView 
+              quotes={quotes}
+              setQuotes={setQuotes}
               onOpenClient360={(lead) => setSelectedClient360(lead)}
               onOpenCallModal={() => handleNavigateView('agenda')}
               onOpenMeetingModal={(lead) => {

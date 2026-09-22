@@ -28,6 +28,7 @@ public class SystemDataService {
     private final CallLogRepository callLogRepository;
     private final FollowUpTaskRepository followUpRepository;
     private final ClientMeetingRepository meetingRepository;
+    private final ClientOpportunityRepository clientOpportunityRepository;
     private final QuoteInquiryRepository quoteInquiryRepository;
     private final PasswordEncoder passwordEncoder;
     private final EntityManager entityManager;
@@ -37,6 +38,7 @@ public class SystemDataService {
         log.info("Initiating on-demand purge of all demo data...");
 
         // Safe cascading delete in strict FK order using batch deletes + flush
+        clientOpportunityRepository.deleteAllInBatch();
         approvalRepository.deleteAllInBatch();
         documentRepository.deleteAllInBatch();
         quotationRepository.deleteAllInBatch();
@@ -51,7 +53,7 @@ public class SystemDataService {
         log.info("Demo CRM transactional data and web inquiries purged cleanly.");
         return Map.of(
                 "status", "SUCCESS",
-                "message", "All sample CRM leads, quotations, approvals, call logs, and documents have been purged cleanly.",
+                "message", "All sample CRM leads, quotations, approvals, call logs, opportunities, and documents have been purged cleanly.",
                 "purgedAt", LocalDateTime.now().toString()
         );
     }
@@ -426,20 +428,115 @@ public class SystemDataService {
                 .status("SCHEDULED")
                 .build());
 
-        // 9. Seed Realistic Inbound Web Quote Inquiries
+        // 9. Seed Realistic Multi-Product Cross-Sell Opportunities (FSC Graph)
+        // Multi-Product Deal for Lead 1 (Ahmed Ali - Health + Vehicle + Term Life + SME)
+        clientOpportunityRepository.save(ClientOpportunity.builder()
+                .client(lead1)
+                .categorySlug("HEALTH")
+                .productName("Star Comprehensive Family Floater")
+                .coverageAmount("₹10,00,000")
+                .estimatedPremium(new BigDecimal("18500.00"))
+                .stage("FOLLOWUP")
+                .priority("HIGH")
+                .isPrimary(true)
+                .notes("Primary policyholder inquiry with 20% NCB transfer.")
+                .assignedAdvisor(advisor1)
+                .build());
+
+        clientOpportunityRepository.save(ClientOpportunity.builder()
+                .client(lead1)
+                .categorySlug("VEHICLE")
+                .productName("Kia Seltos Comprehensive Zero-Dep")
+                .coverageAmount("₹14.2 Lakhs IDV")
+                .estimatedPremium(new BigDecimal("16400.00"))
+                .stage("QUOTATION")
+                .priority("HIGH")
+                .isPrimary(false)
+                .notes("New car renewal due in 2 weeks. Zero Dep + Return to Invoice.")
+                .assignedAdvisor(advisor1)
+                .build());
+
+        clientOpportunityRepository.save(ClientOpportunity.builder()
+                .client(lead1)
+                .categorySlug("LIFE")
+                .productName("HDFC Click 2 Protect 3D Plus")
+                .coverageAmount("₹1.5 Crore")
+                .estimatedPremium(new BigDecimal("19800.00"))
+                .stage("NEW_LEAD")
+                .priority("MEDIUM")
+                .isPrimary(false)
+                .notes("Term life plan with critical illness rider up to age 75.")
+                .assignedAdvisor(advisor1)
+                .build());
+
+        clientOpportunityRepository.save(ClientOpportunity.builder()
+                .client(lead1)
+                .categorySlug("BUSINESS")
+                .productName("Shopkeeper & Warehouse Fire Shield")
+                .coverageAmount("₹50 Lakhs")
+                .estimatedPremium(new BigDecimal("8500.00"))
+                .stage("NEW_LEAD")
+                .priority("LOW")
+                .isPrimary(false)
+                .notes("SME logistics office & inventory asset protection.")
+                .assignedAdvisor(advisor1)
+                .build());
+
+        // Multi-Product Deal for Lead 2 (Venkatesh Rao - Term Life + Health)
+        clientOpportunityRepository.save(ClientOpportunity.builder()
+                .client(lead2)
+                .categorySlug("LIFE")
+                .productName("ICICI Pru iProtect Smart (High Sum Insured)")
+                .coverageAmount("₹2 Crore")
+                .estimatedPremium(new BigDecimal("22400.00"))
+                .stage("QUOTATION")
+                .priority("HIGH")
+                .isPrimary(true)
+                .notes("Director keyman & family term shield.")
+                .assignedAdvisor(advisor2)
+                .build());
+
+        clientOpportunityRepository.save(ClientOpportunity.builder()
+                .client(lead2)
+                .categorySlug("HEALTH")
+                .productName("Niva Bupa ReAssure 2.0 Titanium")
+                .coverageAmount("₹25,00,000")
+                .estimatedPremium(new BigDecimal("24800.00"))
+                .stage("NEW_LEAD")
+                .priority("MEDIUM")
+                .isPrimary(false)
+                .notes("Super top-up porting with Lock the Clock age benefit.")
+                .assignedAdvisor(advisor2)
+                .build());
+
+        // Multi-Product Deal for Lead 4 (Rohan Malhotra - Corporate Group GMC + Business Fire)
+        clientOpportunityRepository.save(ClientOpportunity.builder()
+                .client(lead4)
+                .categorySlug("BUSINESS")
+                .productName("Corporate Group Mediclaim (GMC - 45 Lives)")
+                .coverageAmount("₹5,00,000 / Employee")
+                .estimatedPremium(new BigDecimal("285000.00"))
+                .stage("DOCUMENT_COLLECTION")
+                .priority("URGENT")
+                .isPrimary(true)
+                .notes("Employee census and GST documents in collection.")
+                .assignedAdvisor(advisor2)
+                .build());
+
+        // 10. Seed Realistic Inbound Web Quote Inquiries
         quoteInquiryRepository.save(QuoteInquiry.builder()
                 .categorySlug("health-insurance")
-                .fullName("Rajesh Sharma")
-                .phoneNumber("9876543210")
-                .email("rajesh.sharma@example.com")
+                .fullName("Ahmed Ali")
+                .phoneNumber("9849012345")
+                .email("ahmed.ali@example.com")
                 .city("Hyderabad")
-                .planDetails("{\"coverageAmount\":\"₹10 Lakhs\",\"familyMembers\":\"Self + Spouse + 2 Children\",\"pincode\":\"500081\"}")
+                .planDetails("{\"coverageAmount\":\"₹10 Lakhs\",\"familyMembers\":\"Self + Spouse + 1 Child\",\"pincode\":\"500034\"}")
                 .status("NEW")
                 .build());
 
         quoteInquiryRepository.save(QuoteInquiry.builder()
                 .categorySlug("vehicle-insurance")
-                .fullName("Sunita Deshmukh")
+                .fullName("Dr. Sunita Deshmukh")
                 .phoneNumber("9849556677")
                 .email("dr.sunita@apolloclinic.com")
                 .city("Hyderabad")
@@ -457,12 +554,13 @@ public class SystemDataService {
                 .status("NEW")
                 .build());
 
-        log.info("Realistic demo dataset seeded successfully with 5 leads, 3 web quotes, 3 quotations, 4 KYC docs, 2 approvals, 2 call logs, and scheduled meetings.");
+        log.info("Realistic demo dataset seeded successfully with 5 leads, 7 multi-product opportunities, 3 web quotes, 3 quotations, 4 KYC docs, 2 approvals, 2 call logs, and scheduled Google Meet agenda sessions.");
 
         return Map.of(
                 "status", "SUCCESS",
-                "message", "Realistic demo dataset seeded successfully across all CRM modules.",
+                "message", "Realistic demo dataset seeded successfully across all CRM modules (Portfolio, Pipeline, Quotations, KYC, Calendar).",
                 "leadsSeeded", 5,
+                "opportunitiesSeeded", 7,
                 "quotationsSeeded", 3,
                 "documentsSeeded", 4,
                 "approvalsSeeded", 2,
