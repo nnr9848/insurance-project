@@ -87,6 +87,10 @@ export const crmService = {
     const res = await api.post('/crm/clients', data);
     return res.data;
   },
+  createLead: async (data) => {
+    const res = await api.post('/crm/clients', data);
+    return res.data;
+  },
   bulkImportClients: async (clientsArray) => {
     const res = await api.post('/crm/clients/bulk-import', clientsArray);
     return res.data;
@@ -95,8 +99,30 @@ export const crmService = {
     const res = await api.put(`/crm/clients/${id}`, data);
     return res.data;
   },
+  updateLead: async (id, data) => {
+    const res = await api.put(`/crm/clients/${id}`, data);
+    return res.data;
+  },
   reassignClient: async (id, targetAdvisorId, reassignmentReason) => {
     const res = await api.post(`/crm/clients/${id}/reassign`, { targetAdvisorId, reassignmentReason });
+    return res.data;
+  },
+  reassignLead: async (id, targetAdvisorId, reassignmentReason) => {
+    const res = await api.post(`/crm/clients/${id}/reassign`, { targetAdvisorId, reassignmentReason });
+    return res.data;
+  },
+
+  // Multi-Product Opportunities Portfolio (Salesforce FSC Architecture)
+  getClientOpportunities: async (clientId) => {
+    const res = await api.get(`/crm/clients/${clientId}/opportunities`);
+    return res.data;
+  },
+  createOpportunity: async (clientId, data) => {
+    const res = await api.post(`/crm/clients/${clientId}/opportunities`, data);
+    return res.data;
+  },
+  updateOpportunityStage: async (opportunityId, stage, reason) => {
+    const res = await api.patch(`/crm/opportunities/${opportunityId}/stage`, { stage, reason });
     return res.data;
   },
 
@@ -310,6 +336,14 @@ export const portalService = {
   },
   getAdminClaims: async () => {
     const res = await api.get('/admin/claims');
+    return res.data;
+  },
+  updateClaimStatus: async (id, statusData) => {
+    const res = await api.patch(`/admin/claims/${id}/status`, typeof statusData === 'string' ? { status: statusData } : statusData);
+    return res.data;
+  },
+  createAdminClaim: async (claimData) => {
+    const res = await api.post('/admin/claims', claimData);
     return res.data;
   },
   getAdminHospitals: async (city, query) => {

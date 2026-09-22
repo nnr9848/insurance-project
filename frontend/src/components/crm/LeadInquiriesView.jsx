@@ -24,7 +24,8 @@ import {
   Filter,
   Eye,
   Clock,
-  User
+  User,
+  UserPlus
 } from 'lucide-react';
 import { portalService, crmService } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -408,9 +409,9 @@ export default function LeadInquiriesView({
                 setTriageTab('ALL');
                 setQuoteCurrentPage(1);
               }}
-              title="All raw inquiries regardless of lifecycle state"
+              title="All raw enquiries regardless of lifecycle state"
             >
-              <span>📁 All Inquiries</span>
+              <span>📁 All Enquiries</span>
               <span className="crm-triage-badge">{allCount}</span>
             </button>
           </div>
@@ -516,7 +517,7 @@ export default function LeadInquiriesView({
                 setQuoteCurrentPage(1);
               }}
               style={{ height: '36px', fontSize: '0.82rem', minWidth: '195px', width: 'auto', borderRadius: '10px' }}
-              title="Sort Inquiries"
+              title="Sort Enquiries"
             >
               <option value="createdAt_desc">⚡ Newest First (LIFO)</option>
               <option value="createdAt_asc">⏳ Oldest First (FIFO)</option>
@@ -528,7 +529,7 @@ export default function LeadInquiriesView({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-main)', background: '#ffffff', border: '1px solid var(--border-subtle)', padding: '4px 10px', borderRadius: '20px' }}>
-              {sortedQuotes.length} Inquiries
+              {sortedQuotes.length} Enquiries
             </span>
           </div>
         </div>
@@ -594,7 +595,7 @@ export default function LeadInquiriesView({
                   <ArrowUpDown size={12} color={sortField === 'status' ? 'var(--accent-emerald)' : '#94a3b8'} />
                 </div>
               </th>
-              <th style={{ padding: '0.85rem 1.15rem', fontWeight: 700, whiteSpace: 'nowrap', textAlign: 'center', minWidth: '130px' }}>CRM Pipeline</th>
+              <th style={{ padding: '0.85rem 1rem', fontWeight: 700, whiteSpace: 'nowrap', textAlign: 'center', minWidth: '150px' }}>CRM Pipeline</th>
             </tr>
           </thead>
           <tbody>
@@ -1051,8 +1052,8 @@ export default function LeadInquiriesView({
                     </td>
 
                     {/* 7. Action: CRM Link / Ingest + Quick Edit */}
-                    <td style={{ padding: '0.85rem 1.25rem', textAlign: 'center' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <td style={{ padding: '0.85rem 1rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap' }}>
                         {(q.status === 'QUALIFIED' || q.status === 'CONVERTED') && matchingClient ? (
                           <button
                             onClick={() => onOpenClient360(matchingClient)}
@@ -1060,19 +1061,27 @@ export default function LeadInquiriesView({
                               background: '#f8fafc',
                               color: '#0284c7',
                               border: '1px solid #cbd5e1',
-                              padding: '0.35rem 0.65rem',
+                              padding: '0.25rem 0.6rem',
                               borderRadius: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: 800,
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '4px'
+                              gap: '6px',
+                              whiteSpace: 'nowrap',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                              transition: 'all 0.15s ease'
                             }}
-                            title="View Master Client 360"
+                            title={`View Master Client 360 for ${matchingClient.clientCode}`}
                           >
-                            <ExternalLink size={12} color="#0284c7" />
-                            <span>In CRM ({matchingClient.clientCode})</span>
+                            <ExternalLink size={13} color="#0284c7" />
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.15, textAlign: 'left' }}>
+                              <span style={{ fontSize: '0.62rem', fontWeight: 600, color: '#64748b' }}>
+                                Existing Client
+                              </span>
+                              <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#0284c7' }}>
+                                In CRM ({matchingClient.clientCode})
+                              </span>
+                            </div>
                           </button>
                         ) : (
                           <button
@@ -1129,19 +1138,30 @@ export default function LeadInquiriesView({
                               background: matchingClient ? '#0284c7' : 'var(--accent-emerald)',
                               color: '#ffffff',
                               border: 'none',
-                              padding: '0.35rem 0.65rem',
+                              padding: '0.25rem 0.65rem',
                               borderRadius: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: 800,
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '4px',
-                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                              gap: '6px',
+                              whiteSpace: 'nowrap',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                              transition: 'all 0.15s ease'
                             }}
                           >
-                            {matchingClient ? <Link2 size={12} /> : <Plus size={12} />}
-                            <span>{matchingClient ? `Link to ${matchingClient.clientCode}` : '+ Push to CRM'}</span>
+                            {matchingClient ? <Link2 size={13} /> : <Plus size={13} />}
+                            {matchingClient ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.15, textAlign: 'left' }}>
+                                <span style={{ fontSize: '0.62rem', fontWeight: 600, color: '#e0f2fe' }}>
+                                  Existing Client
+                                </span>
+                                <span style={{ fontSize: '0.74rem', fontWeight: 800 }}>
+                                  Link ({matchingClient.clientCode})
+                                </span>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '0.74rem', fontWeight: 800 }}>+ Push to CRM</span>
+                            )}
                           </button>
                         )}
 
@@ -1428,114 +1448,96 @@ export default function LeadInquiriesView({
                   padding: '0.75rem 0.85rem',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '0.5rem',
-                  borderRadius: '10px',
+                  gap: '0.45rem',
+                  borderRadius: '12px',
                   border: '1px solid #e2e8f0',
                   background: '#ffffff',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.03)'
                 }}
               >
-                {/* Row 1: Identity & Action Bar */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Row 1.1: Name & Edit Button */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <span style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.88rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {q.fullName || 'Web Prospect'}
+                {/* Top Row: Identity + Status Badges + 1-Tap Reach & Action Buttons */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem' }}>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {/* Row 1.1: Name (Fluid Truncated) + Category + Status */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap', minWidth: 0 }}>
+                      <span 
+                        onClick={() => matchingClient ? onOpenClient360(matchingClient) : handleOpenInquiryDetails(q)}
+                        style={{
+                          fontWeight: 800,
+                          fontSize: '0.9rem',
+                          color: '#0f2b48',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '2px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 1,
+                          minWidth: '50px'
+                        }}
+                        title={q.fullName || 'Web Prospect'}
+                      >
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {q.fullName || 'Web Prospect'}
+                        </span>
+                        {matchingClient && <ExternalLink size={10} color="var(--accent-gold)" style={{ flexShrink: 0 }} />}
                       </span>
-                      {matchingClient && (
-                        <button
-                          onClick={() => onOpenClient360(matchingClient)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: 0,
-                            cursor: 'pointer',
-                            color: '#0284c7',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            flexShrink: 0
-                          }}
-                          title={`Open Client 360 for ${matchingClient.fullName}`}
-                        >
-                          <ExternalLink size={11} />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleOpenInquiryDetails(q)}
-                        style={{
-                          background: '#f0fdf4',
-                          border: '1px solid #bbf7d0',
-                          padding: '1px 5px',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#15803d',
-                          marginLeft: '2px',
-                          flexShrink: 0
-                        }}
-                        title="View Inquiry & Log History"
-                      >
-                        <Eye size={10} />
-                      </button>
-                      <button
-                        onClick={() => startEditQuote(q)}
-                        style={{
-                          background: '#f8fafc',
-                          border: '1px solid #cbd5e1',
-                          padding: '1px 4px',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#64748b',
-                          marginLeft: '2px',
-                          flexShrink: 0
-                        }}
-                        title="Quick Edit"
-                      >
-                        <Edit3 size={10} />
-                      </button>
 
-                      <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
-                        <select
-                          value={q.status || 'NEW'}
-                          onChange={async (e) => {
-                            const nextStatus = e.target.value;
-                            try {
-                              await portalService.updateQuoteStatus(q.id, nextStatus);
-                              setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: nextStatus } : item));
-                              toast.success(`Inquiry #${q.id} status updated to ${nextStatus}`);
-                            } catch (err) {
-                              console.error('Error updating status', err);
-                              toast.error('Failed to update status');
-                            }
-                          }}
-                          style={{
-                            background: q.status === 'NEW' ? '#ecfdf5' : q.status === 'CONTACTED' ? '#eff6ff' : (q.status === 'QUALIFIED' || q.status === 'CONVERTED') ? '#f0fdf4' : '#f8fafc',
-                            color: q.status === 'NEW' ? '#059669' : q.status === 'CONTACTED' ? '#2563eb' : (q.status === 'QUALIFIED' || q.status === 'CONVERTED') ? '#16a34a' : '#64748b',
-                            border: `1px solid ${q.status === 'NEW' ? '#a7f3d0' : q.status === 'CONTACTED' ? '#bfdbfe' : (q.status === 'QUALIFIED' || q.status === 'CONVERTED') ? '#bbf7d0' : '#e2e8f0'}`,
-                            padding: '1px 5px',
-                            borderRadius: '6px',
-                            fontSize: '0.66rem',
-                            fontWeight: 800,
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                            outline: 'none'
-                          }}
-                        >
-                          <option value="NEW">🟢 NEW</option>
-                          <option value="CONTACTED">⚡ CONTACTED</option>
-                          <option value="QUALIFIED">✨ QUALIFIED</option>
-                          <option value="ARCHIVED">❌ ARCHIVED</option>
-                        </select>
-                      </div>
+                      {/* Category Pill */}
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '2px',
+                        background: catBadge.bg,
+                        color: catBadge.color,
+                        border: `1px solid ${catBadge.border}`,
+                        padding: '1px 5px',
+                        borderRadius: '999px',
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
+                      }}>
+                        {catBadge.icon}
+                        <span>{catBadge.label}</span>
+                      </span>
+
+                      {/* Status Selector Pill */}
+                      <select
+                        value={q.status || 'NEW'}
+                        onChange={async (e) => {
+                          const nextStatus = e.target.value;
+                          try {
+                            await portalService.updateQuoteStatus(q.id, nextStatus);
+                            setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: nextStatus } : item));
+                            toast.success(`Inquiry #${q.id} status updated to ${nextStatus}`);
+                          } catch (err) {
+                            console.error('Error updating status', err);
+                            toast.error('Failed to update status');
+                          }
+                        }}
+                        style={{
+                          background: q.status === 'NEW' ? '#ecfdf5' : q.status === 'CONTACTED' ? '#eff6ff' : (q.status === 'QUALIFIED' || q.status === 'CONVERTED') ? '#f0fdf4' : '#f8fafc',
+                          color: q.status === 'NEW' ? '#059669' : q.status === 'CONTACTED' ? '#2563eb' : (q.status === 'QUALIFIED' || q.status === 'CONVERTED') ? '#16a34a' : '#64748b',
+                          border: `1px solid ${q.status === 'NEW' ? '#a7f3d0' : q.status === 'CONTACTED' ? '#bfdbfe' : (q.status === 'QUALIFIED' || q.status === 'CONVERTED') ? '#bbf7d0' : '#e2e8f0'}`,
+                          padding: '1px 4px',
+                          borderRadius: '6px',
+                          fontSize: '0.62rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                          outline: 'none'
+                        }}
+                      >
+                        <option value="NEW">🟢 NEW</option>
+                        <option value="CONTACTED">⚡ CONTACTED</option>
+                        <option value="QUALIFIED">✨ QUALIFIED</option>
+                        <option value="ARCHIVED">❌ ARCHIVED</option>
+                      </select>
                     </div>
 
-                    {/* Row 1.2: Code / Web Prospect • Date • City */}
+                    {/* Row 1.2: Code • Phone • City • Date (Fluid Truncated) */}
                     <div style={{
                       fontSize: '0.7rem',
                       color: '#64748b',
@@ -1547,70 +1549,30 @@ export default function LeadInquiriesView({
                       whiteSpace: 'nowrap'
                     }}>
                       {matchingClient ? (
-                        <span
-                          onClick={() => onOpenClient360(matchingClient)}
-                          style={{
-                            fontFamily: 'monospace',
-                            fontWeight: 700,
-                            color: '#059669',
-                            background: '#ecfdf5',
-                            border: '1px solid #a7f3d0',
-                            padding: '0px 4px',
-                            borderRadius: '4px',
-                            fontSize: '0.65rem',
-                            cursor: 'pointer',
-                            flexShrink: 0
-                          }}
-                          title="Client Identifier Code"
-                        >
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-emerald)', flexShrink: 0 }}>
                           {matchingClient.clientCode}
                         </span>
                       ) : (
-                        <span style={{ fontWeight: 600, color: '#94a3b8', flexShrink: 0 }}>
-                          New Web Prospect
+                        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#94a3b8', flexShrink: 0 }}>
+                          #{q.id}
                         </span>
+                      )}
+                      <span style={{ flexShrink: 0 }}>•</span>
+                      <strong style={{ color: '#334155', flexShrink: 0 }}>{q.phoneNumber || 'No phone'}</strong>
+                      {q.city && (
+                        <>
+                          <span style={{ flexShrink: 0 }}>•</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.city}</span>
+                        </>
                       )}
                       <span style={{ flexShrink: 0 }}>•</span>
                       <span style={{ flexShrink: 0 }}>
                         {new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                       </span>
-                      {q.city && (
-                        <>
-                          <span style={{ flexShrink: 0 }}>•</span>
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {q.city}
-                          </span>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Row 1.3: Visible Phone, Alt Phone & Email */}
-                    <div style={{
-                      fontSize: '0.72rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      flexWrap: 'wrap',
-                      marginTop: '1px'
-                    }}>
-                      <span style={{ fontWeight: 700, color: '#0f2b48' }}>
-                        {q.phoneNumber || 'No phone'}
-                      </span>
-                      {q.secondaryPhone && q.secondaryPhone !== q.phoneNumber && (
-                        <span style={{ color: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: '2px', fontWeight: 600 }}>
-                          <span>Alt:</span> {q.secondaryPhone}
-                        </span>
-                      )}
-                      {q.email && (
-                        <span style={{ color: '#0284c7', display: 'inline-flex', alignItems: 'center', gap: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }} title={q.email}>
-                          <Mail size={10} color="#0284c7" />
-                          {q.email}
-                        </span>
-                      )}
                     </div>
                   </div>
 
-                  {/* 1-Tap Action Strip (Call, WhatsApp, Email) */}
+                  {/* 1-Tap Action Strip: Call + WA + Edit */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                     {/* Call */}
                     <a
@@ -1618,9 +1580,9 @@ export default function LeadInquiriesView({
                       onClick={() => handleAutoContactOnReach(q, 'Call')}
                       title={`Call ${q.fullName || q.phoneNumber}`}
                       style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '6px',
+                        width: '30px',
+                        height: '30px',
+                        borderRadius: '8px',
                         background: '#ecfdf5',
                         color: '#059669',
                         border: '1px solid #a7f3d0',
@@ -1634,7 +1596,7 @@ export default function LeadInquiriesView({
                     </a>
 
                     {/* WhatsApp */}
-                    {q.phoneNumber ? (
+                    {q.phoneNumber && (
                       <a
                         href={`https://wa.me/${formatWhatsAppNumber(q.phoneNumber)}?text=${encodeURIComponent(`Hello ${q.fullName || 'Sir/Madam'}, greeting from Aadhiraksha Insurance. Regarding your ${q.categorySlug ? q.categorySlug.replace('-', ' ') : 'insurance'} inquiry...`)}`}
                         target="_blank"
@@ -1642,9 +1604,9 @@ export default function LeadInquiriesView({
                         onClick={() => handleAutoContactOnReach(q, 'WhatsApp')}
                         title="Open WhatsApp Chat"
                         style={{
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '6px',
+                          width: '30px',
+                          height: '30px',
+                          borderRadius: '8px',
                           background: '#f0fdf4',
                           color: '#16a34a',
                           border: '1px solid #bbf7d0',
@@ -1656,60 +1618,51 @@ export default function LeadInquiriesView({
                       >
                         <WhatsAppIcon size={14} color="#16a34a" />
                       </a>
-                    ) : null}
+                    )}
 
-                    {/* Email */}
-                    <a
-                      href={`mailto:${q.email || ''}?subject=Insurance%20Proposal%20-%20Aadhiraksha&body=Dear%20${encodeURIComponent(q.fullName || 'Client')},%0D%0A%0D%0AThank%20you%20for%20your%20inquiry%20regarding%20${encodeURIComponent(q.categorySlug || 'insurance')}.`}
-                      onClick={() => handleAutoContactOnReach(q, 'Email')}
-                      title={q.email ? `Email ${q.email}` : 'Compose Email'}
+                    {/* Quick Edit */}
+                    <button
+                      onClick={() => startEditQuote(q)}
                       style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '6px',
-                        background: '#f0f9ff',
-                        color: '#0284c7',
-                        border: '1px solid #bae6fd',
+                        width: '30px',
+                        height: '30px',
+                        borderRadius: '8px',
+                        background: '#f8fafc',
+                        color: '#0f2b48',
+                        border: '1px solid #cbd5e1',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        textDecoration: 'none'
+                        cursor: 'pointer'
                       }}
+                      title="Quick Edit"
                     >
-                      <Mail size={13} />
-                    </a>
+                      <Edit3 size={13} />
+                    </button>
                   </div>
                 </div>
 
-                {/* Row 2: Category & Specs + CRM Ingestion */}
+                {/* Bottom Consolidated Row: Specs / Notes / CRM Touchpoints */}
                 <div style={{
-                  borderTop: '1px dashed #e2e8f0',
-                  paddingTop: '0.45rem',
                   display: 'flex',
-                  justifyContent: 'space-between',
                   alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: '0.4rem'
+                  justifyContent: 'space-between',
+                  background: '#f8fafc',
+                  padding: '0.35rem 0.6rem',
+                  borderRadius: '8px',
+                  fontSize: '0.72rem',
+                  gap: '0.4rem',
+                  flexWrap: 'wrap'
                 }}>
-                  {/* Left: Category Badge + Extra inquiries chip */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
-                        background: catBadge.bg,
-                        color: catBadge.color,
-                        border: `1px solid ${catBadge.border}`,
-                        padding: '2px 6px',
-                        borderRadius: '10px',
-                        fontSize: '0.68rem',
-                        fontWeight: 700
-                      }}
-                    >
-                      {catBadge.icon}
-                      {catBadge.label}
-                    </span>
+                  {/* Left: Plan Specs / Remarks */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap', minWidth: 0, flex: 1 }}>
+                    {q.planDetails ? (
+                      <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        {renderPlanDetails(q.planDetails)}
+                      </div>
+                    ) : (
+                      <span style={{ color: '#94a3b8', fontSize: '0.68rem', fontStyle: 'italic' }}>Standard Proposal</span>
+                    )}
 
                     {totalProspectInquiries > 1 && (
                       <span
@@ -1717,9 +1670,9 @@ export default function LeadInquiriesView({
                           background: '#fffbeb',
                           color: '#b45309',
                           border: '1px solid #fde68a',
-                          padding: '1px 5px',
+                          padding: '0.05rem 0.35rem',
                           borderRadius: '4px',
-                          fontSize: '0.66rem',
+                          fontSize: '0.65rem',
                           fontWeight: 800,
                           whiteSpace: 'nowrap'
                         }}
@@ -1729,105 +1682,87 @@ export default function LeadInquiriesView({
                     )}
                   </div>
 
-                  {/* Right: Plan Specs Preview + CRM Action Button */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    {q.planDetails && (
-                      <div style={{ display: 'inline-flex', alignItems: 'center' }}>
-                        {renderPlanDetails(q.planDetails)}
-                      </div>
-                    )}
+                  {/* Right: CRM Ingestion Button or In CRM Link */}
+                  {(q.status === 'QUALIFIED' || q.status === 'CONVERTED') && matchingClient ? (
+                    <button
+                      onClick={() => onOpenClient360(matchingClient)}
+                      style={{
+                        background: '#ffffff',
+                        color: '#0284c7',
+                        border: '1px solid #cbd5e1',
+                        padding: '0.15rem 0.45rem',
+                        borderRadius: '5px',
+                        fontSize: '0.68rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        flexShrink: 0
+                      }}
+                      title="View Master Client 360"
+                    >
+                      <ExternalLink size={10} color="#0284c7" />
+                      <span>In CRM</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const { coverageAmount, planSpecs, notes: inquiryNote } = unpackPlanDetails(q.planDetails);
+                          let formattedNotes = `Inquiry #${q.id} (${q.categorySlug || 'Insurance'})`;
+                          if (coverageAmount) formattedNotes += ` | Coverage: ${coverageAmount}`;
+                          if (planSpecs) formattedNotes += ` | Specs: ${planSpecs}`;
+                          if (inquiryNote) formattedNotes += ` | 📝 Note: ${inquiryNote}`;
 
-                    {(q.status === 'QUALIFIED' || q.status === 'CONVERTED') && matchingClient ? (
-                      <button
-                        onClick={() => onOpenClient360(matchingClient)}
-                        style={{
-                          background: '#ffffff',
-                          color: '#0284c7',
-                          border: '1px solid #cbd5e1',
-                          padding: '0.2rem 0.5rem',
-                          borderRadius: '6px',
-                          fontSize: '0.68rem',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px'
-                        }}
-                        title="View Master Client 360"
-                      >
-                        <ExternalLink size={10} color="#0284c7" />
-                        <span>In CRM ({matchingClient.clientCode})</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={async () => {
-                          try {
-                            const { coverageAmount, planSpecs, notes: inquiryNote } = unpackPlanDetails(q.planDetails);
-                            let formattedNotes = `Inquiry #${q.id} (${q.categorySlug || 'Insurance'})`;
-                            if (coverageAmount) formattedNotes += ` | Coverage: ${coverageAmount}`;
-                            if (planSpecs) formattedNotes += ` | Specs: ${planSpecs}`;
-                            if (inquiryNote) formattedNotes += ` | 📝 Note: ${inquiryNote}`;
+                          const createdOrUpdated = await crmService.createLead({
+                            fullName: q.fullName || 'Web Prospect',
+                            phoneNumber: q.phoneNumber,
+                            whatsappNumber: q.secondaryPhone || '',
+                            email: q.email || '',
+                            city: q.city || '',
+                            categorySlug: q.categorySlug || 'general',
+                            insuranceType: q.categorySlug ? q.categorySlug.replace('-', ' ').toUpperCase() : 'GENERAL',
+                            notes: formattedNotes
+                          });
+                          await portalService.updateQuoteStatus(q.id, 'QUALIFIED');
+                          setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: 'QUALIFIED' } : item));
+                          
+                          setLeads(prev => {
+                            const exists = prev.some(l => l.id === createdOrUpdated.id);
+                            return exists ? prev.map(l => l.id === createdOrUpdated.id ? createdOrUpdated : l) : [createdOrUpdated, ...prev];
+                          });
 
-                            const createdOrUpdated = await crmService.createLead({
-                              fullName: q.fullName || 'Web Prospect',
-                              phoneNumber: q.phoneNumber,
-                              whatsappNumber: q.secondaryPhone || '',
-                              email: q.email || '',
-                              city: q.city || '',
-                              categorySlug: q.categorySlug || 'general',
-                              insuranceType: q.categorySlug ? q.categorySlug.replace('-', ' ').toUpperCase() : 'GENERAL',
-                              notes: formattedNotes
-                            });
-                            await portalService.updateQuoteStatus(q.id, 'QUALIFIED');
-                            setQuotes(prev => prev.map(item => item.id === q.id ? { ...item, status: 'QUALIFIED' } : item));
-                            
-                            setLeads(prev => {
-                              const exists = prev.some(l => l.id === createdOrUpdated.id);
-                              return exists ? prev.map(l => l.id === createdOrUpdated.id ? createdOrUpdated : l) : [createdOrUpdated, ...prev];
-                            });
-
-                            if (matchingClient) {
-                              toast.success(
-                                `Inquiry linked as a new opportunity to "${matchingClient.fullName}" (${matchingClient.clientCode})!`,
-                                {
-                                  label: 'View Client 360',
-                                  onClick: () => onOpenClient360(createdOrUpdated)
-                                }
-                              );
-                            } else {
-                              toast.success(
-                                `New master client created for "${q.fullName || q.phoneNumber}" (${createdOrUpdated.clientCode})!`,
-                                {
-                                  label: 'View Client 360',
-                                  onClick: () => onOpenClient360(createdOrUpdated)
-                                }
-                              );
-                            }
-                          } catch (err) {
-                            console.error('Error converting lead', err);
-                            toast.error('Failed to convert inquiry: ' + (err.response?.data?.message || err.message));
+                          if (matchingClient) {
+                            toast.success(`Inquiry attached to existing client profile (${matchingClient.fullName})!`);
+                          } else {
+                            toast.success(`Lead converted to Master Client #${createdOrUpdated.clientCode || createdOrUpdated.id}!`);
                           }
-                        }}
-                        style={{
-                          background: matchingClient ? '#0284c7' : 'var(--accent-emerald)',
-                          color: '#ffffff',
-                          border: 'none',
-                          padding: '0.22rem 0.55rem',
-                          borderRadius: '6px',
-                          fontSize: '0.7rem',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                        }}
-                      >
-                        {matchingClient ? <Link2 size={10} /> : <Plus size={10} />}
-                        <span>{matchingClient ? `Link to ${matchingClient.clientCode}` : '+ Push to CRM'}</span>
-                      </button>
-                    )}
-                  </div>
+                        } catch (err) {
+                          console.error('Failed to convert quote to lead', err);
+                          toast.error('Failed to save to CRM');
+                        }
+                      }}
+                      style={{
+                        background: 'var(--accent-emerald)',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '5px',
+                        fontSize: '0.68rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        flexShrink: 0
+                      }}
+                      title="Save this prospect inquiry into Master CRM"
+                    >
+                      <UserPlus size={10} />
+                      <span>Convert to Lead</span>
+                    </button>
+                  )}
                 </div>
               </div>
             );

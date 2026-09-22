@@ -157,4 +157,34 @@ public class CrmClientController {
         User user = getAuthenticatedUser(auth);
         return ResponseEntity.ok(crmClientService.getOverdueFollowUps(user));
     }
+
+    // 5. Multi-Product Opportunities Portfolio (Salesforce FSC Standard)
+    @GetMapping("/clients/{clientId}/opportunities")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @Operation(summary = "Get all product opportunities and pipeline deals for a client")
+    public ResponseEntity<List<OpportunityDto.OpportunityResponse>> getClientOpportunities(@PathVariable Long clientId) {
+        return ResponseEntity.ok(crmClientService.getClientOpportunities(clientId));
+    }
+
+    @PostMapping("/clients/{clientId}/opportunities")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @Operation(summary = "Create or cross-sell a new product opportunity for a client")
+    public ResponseEntity<OpportunityDto.OpportunityResponse> createOpportunity(
+            @PathVariable Long clientId,
+            @RequestBody OpportunityDto.CreateOpportunityRequest request,
+            Authentication auth) {
+        User user = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(crmClientService.createOpportunity(clientId, request, user));
+    }
+
+    @PatchMapping("/opportunities/{opportunityId}/stage")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @Operation(summary = "Transition an opportunity stage with reason and audit log")
+    public ResponseEntity<OpportunityDto.OpportunityResponse> updateOpportunityStage(
+            @PathVariable Long opportunityId,
+            @RequestBody OpportunityDto.UpdateStageRequest request,
+            Authentication auth) {
+        User user = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(crmClientService.updateOpportunityStage(opportunityId, request, user));
+    }
 }

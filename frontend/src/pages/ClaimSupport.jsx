@@ -442,22 +442,26 @@ export default function ClaimSupport() {
                             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>
                               Contact Phone *
                             </label>
-                            <input
-                              type="tel"
-                              required
-                              pattern="[0-9]{10}"
-                              placeholder="10-digit mobile"
-                              value={formData.contactPhone}
-                              onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
-                              style={{
-                                width: '100%',
-                                padding: '9px 10px',
-                                borderRadius: '8px',
-                                border: '1.5px solid #cbd5e1',
-                                fontSize: '0.85rem',
-                                boxSizing: 'border-box'
-                              }}
-                            />
+                            <div className="funnel-phone-input-group">
+                              <div className="funnel-phone-prefix">
+                                <span>🇮🇳</span>
+                                <span>+91</span>
+                              </div>
+                              <input
+                                type="tel"
+                                required
+                                placeholder="10-digit mobile"
+                                value={formData.contactPhone}
+                                onChange={(e) => {
+                                  let digits = e.target.value.replace(/[^0-9]/g, '');
+                                  if (digits.startsWith('91') && digits.length > 10) digits = digits.slice(2);
+                                  if (digits.startsWith('0')) digits = digits.slice(1);
+                                  digits = digits.slice(0, 10);
+                                  setFormData({ ...formData, contactPhone: digits });
+                                }}
+                                className="funnel-phone-input"
+                              />
+                            </div>
                           </div>
                         </div>
 

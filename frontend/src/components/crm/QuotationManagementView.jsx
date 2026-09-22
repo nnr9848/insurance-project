@@ -607,203 +607,155 @@ export default function QuotationManagementView({ onOpenClient360 }) {
         </div>
       </div>
 
-      {/* Main Quotations Table */}
-      <div style={{
-        background: '#ffffff',
-        borderRadius: '16px',
-        border: '1px solid #e2e8f0',
-        overflow: 'hidden',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
-      }}>
-        {loading ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-            <div style={{ width: '32px', height: '32px', border: '3px solid #cbd5e1', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px auto' }} />
-            <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>Loading insurance quotations...</div>
-          </div>
-        ) : filteredQuotes.length === 0 ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
-            <FileSpreadsheet size={40} color="#cbd5e1" style={{ margin: '0 auto 10px auto' }} />
-            <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#475569' }}>No quotations found</div>
-            <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>Click "New Quotation" above to prepare a multi-insurer proposal.</div>
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-              <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                <tr>
-                  <th style={{ padding: '12px 14px', width: '40px' }}>Compare</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Quote # / Date</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Client</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Insurer & Plan</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Sum Insured</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Total Premium</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Status</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredQuotes.map((q) => {
-                  const badge = getStatusBadge(q.status);
-                  const isCompared = selectedQuoteForCompare.some(item => item.id === q.id);
+      {/* Main Quotations Display Container (Responsive Desktop Table vs Mobile Native Card Deck) */}
+      {loading ? (
+        <div style={{ background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+          <div style={{ width: '32px', height: '32px', border: '3px solid #cbd5e1', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px auto' }} />
+          <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>Loading insurance quotations...</div>
+        </div>
+      ) : filteredQuotes.length === 0 ? (
+        <div style={{ background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
+          <FileSpreadsheet size={40} color="#cbd5e1" style={{ margin: '0 auto 10px auto' }} />
+          <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#475569' }}>No quotations found</div>
+          <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>Click "New Quotation" above to prepare a multi-insurer proposal.</div>
+        </div>
+      ) : (
+        <>
+          {/* 1. DESKTOP TABLE VIEW (≥ 768px) - Exact Unchanged UX */}
+          <div className="crm-desktop-table-container" style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            overflow: 'hidden',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
+          }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  <tr>
+                    <th style={{ padding: '12px 14px', width: '40px' }}>Compare</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Quote # / Date</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Client</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Insurer & Plan</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Sum Insured</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Total Premium</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Status</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredQuotes.map((q) => {
+                    const badge = getStatusBadge(q.status);
+                    const isCompared = selectedQuoteForCompare.some(item => item.id === q.id);
 
-                  return (
-                    <tr key={q.id} style={{ borderBottom: '1px solid #f1f5f9', background: isCompared ? '#eff6ff' : '#ffffff', transition: 'background 0.15s ease' }}>
-                      
-                      {/* Checkbox for compare */}
-                      <td style={{ padding: '12px 14px' }}>
-                        <input
-                          type="checkbox"
-                          checked={isCompared}
-                          onChange={() => toggleCompare(q)}
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </td>
+                    return (
+                      <tr key={q.id} style={{ borderBottom: '1px solid #f1f5f9', background: isCompared ? '#eff6ff' : '#ffffff', transition: 'background 0.15s ease' }}>
+                        
+                        {/* Checkbox for compare */}
+                        <td style={{ padding: '12px 14px' }}>
+                          <input
+                            type="checkbox"
+                            checked={isCompared}
+                            onChange={() => toggleCompare(q)}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </td>
 
-                      {/* Quote Number & Date */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.82rem' }}>{q.quoteNumber}</div>
-                        <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
-                          {q.createdAt ? new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
-                        </div>
-                        {q.inquiryId && (
-                          <div style={{ marginTop: '4px' }}>
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '3px',
-                              fontSize: '0.66rem',
-                              fontWeight: 800,
-                              color: '#15803d',
-                              background: '#ecfdf5',
-                              border: '1px solid #bbf7d0',
-                              padding: '1px 5px',
-                              borderRadius: '4px'
-                            }}>
-                              <Tag size={9} /> Web Lead #{q.inquiryId}
-                            </span>
+                        {/* Quote Number & Date */}
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.82rem' }}>{q.quoteNumber}</div>
+                          <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                            {q.createdAt ? new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
                           </div>
-                        )}
-                      </td>
-
-                      {/* Client */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <div style={{ fontWeight: 700, color: '#0f2b48' }}>{q.clientName}</div>
-                          {onOpenClient360 && (
-                            <button
-                              onClick={() => {
-                                const matchedClient = clients.find(c => String(c.id) === String(q.clientId));
-                                onOpenClient360(matchedClient || { id: q.clientId, fullName: q.clientName, phoneNumber: q.clientPhone });
-                              }}
-                              style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', padding: 0 }}
-                              title="Open Client 360"
-                            >
-                              <ExternalLink size={12} />
-                            </button>
+                          {q.inquiryId && (
+                            <div style={{ marginTop: '4px' }}>
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                fontSize: '0.66rem',
+                                fontWeight: 800,
+                                color: '#15803d',
+                                background: '#ecfdf5',
+                                border: '1px solid #bbf7d0',
+                                padding: '1px 5px',
+                                borderRadius: '4px'
+                              }}>
+                                <Tag size={9} /> Web Lead #{q.inquiryId}
+                              </span>
+                            </div>
                           )}
-                        </div>
-                        <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{q.clientPhone}</div>
-                      </td>
+                        </td>
 
-                      {/* Insurer & Plan */}
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ fontWeight: 700, color: '#0f2b48' }}>{q.insurerName}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{q.planName} • {q.planVariant || 'Standard'}</div>
-                      </td>
+                        {/* Client */}
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ fontWeight: 700, color: '#0f2b48' }}>{q.clientName}</div>
+                            {onOpenClient360 && (
+                              <button
+                                onClick={() => {
+                                  const matchedClient = clients.find(c => String(c.id) === String(q.clientId));
+                                  onOpenClient360(matchedClient || { id: q.clientId, fullName: q.clientName, phoneNumber: q.clientPhone });
+                                }}
+                                style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', padding: 0 }}
+                                title="Open Client 360"
+                              >
+                                <ExternalLink size={12} />
+                              </button>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{q.clientPhone}</div>
+                        </td>
 
-                      {/* Sum Insured */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <span style={{ fontWeight: 800, color: '#0f2b48', background: '#f8fafc', padding: '3px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                          {q.sumInsured}
-                        </span>
-                      </td>
+                        {/* Insurer & Plan */}
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ fontWeight: 700, color: '#0f2b48' }}>{q.insurerName}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{q.planName} • {q.planVariant || 'Standard'}</div>
+                        </td>
 
-                      {/* Total Premium */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <div style={{ fontWeight: 800, color: '#16a34a', fontSize: '0.92rem' }}>₹{q.totalPremium}</div>
-                        <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Base ₹{q.basePremium} + GST ₹{q.taxGst}</div>
-                      </td>
+                        {/* Sum Insured */}
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontWeight: 800, color: '#0f2b48', background: '#f8fafc', padding: '3px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                            {q.sumInsured}
+                          </span>
+                        </td>
 
-                      {/* Status */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          background: badge.bg,
-                          color: badge.text,
-                          padding: '3px 8px',
-                          borderRadius: '6px',
-                          fontSize: '0.72rem',
-                          fontWeight: 700
-                        }}>
-                          {badge.icon} {badge.label}
-                        </span>
-                      </td>
+                        {/* Total Premium */}
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 800, color: '#16a34a', fontSize: '0.92rem' }}>₹{q.totalPremium}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Base ₹{q.basePremium} + GST ₹{q.taxGst}</div>
+                        </td>
 
-                      {/* Actions */}
-                      <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <button
-                            onClick={() => setViewingQuote(q)}
-                            title="View Quotation Summary Sheet"
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              background: '#f0fdf4',
-                              color: '#15803d',
-                              border: '1px solid #bbf7d0',
-                              padding: '5px 8px',
-                              borderRadius: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <Eye size={13} color="#15803d" /> View
-                          </button>
+                        {/* Status */}
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: badge.bg,
+                            color: badge.text,
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700
+                          }}>
+                            {badge.icon} {badge.label}
+                          </span>
+                        </td>
 
-                          <button
-                            onClick={() => handleOpenEdit(q)}
-                            title="Edit / Revise Quotation"
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              background: '#f8fafc',
-                              color: '#0284c7',
-                              border: '1px solid #cbd5e1',
-                              padding: '5px 8px',
-                              borderRadius: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <Edit3 size={13} color="#0284c7" /> Edit
-                          </button>
-
-                          <button
-                            onClick={() => handleSendQuote(q)}
-                            title="Dispatch via WhatsApp"
-                            className="crm-btn-whatsapp-outline"
-                          >
-                            <WhatsAppIcon size={13} color="currentColor" />
-                            <span>Dispatch</span>
-                          </button>
-
-                          {q.status !== 'ACCEPTED' && (
+                        {/* Actions */}
+                        <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                             <button
-                              onClick={() => handleStatusChange(q.id, 'ACCEPTED')}
-                              title="Mark Accepted"
+                              onClick={() => setViewingQuote(q)}
+                              title="View Quotation Summary Sheet"
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '4px',
-                                background: '#f8fafc',
-                                color: '#0f2b48',
-                                border: '1px solid #e2e8f0',
+                                background: '#f0fdf4',
+                                color: '#15803d',
+                                border: '1px solid #bbf7d0',
                                 padding: '5px 8px',
                                 borderRadius: '6px',
                                 fontSize: '0.75rem',
@@ -811,20 +763,307 @@ export default function QuotationManagementView({ onOpenClient360 }) {
                                 cursor: 'pointer'
                               }}
                             >
-                              <Check size={12} color="#16a34a" /> Accept
+                              <Eye size={13} color="#15803d" /> View
                             </button>
-                          )}
-                        </div>
-                      </td>
 
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                            <button
+                              onClick={() => handleOpenEdit(q)}
+                              title="Edit / Revise Quotation"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                background: '#f8fafc',
+                                color: '#0284c7',
+                                border: '1px solid #cbd5e1',
+                                padding: '5px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Edit3 size={13} color="#0284c7" /> Edit
+                            </button>
+
+                            <button
+                              onClick={() => handleSendQuote(q)}
+                              title="Dispatch via WhatsApp"
+                              className="crm-btn-whatsapp-outline"
+                            >
+                              <WhatsAppIcon size={13} color="currentColor" />
+                              <span>Dispatch</span>
+                            </button>
+
+                            {q.status !== 'ACCEPTED' && (
+                              <button
+                                onClick={() => handleStatusChange(q.id, 'ACCEPTED')}
+                                title="Mark Accepted"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: '#f8fafc',
+                                  color: '#0f2b48',
+                                  border: '1px solid #e2e8f0',
+                                  padding: '5px 8px',
+                                  borderRadius: '6px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <Check size={12} color="#16a34a" /> Accept
+                              </button>
+                            )}
+                          </div>
+                        </td>
+
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* 2. MOBILE NATIVE CARD DECK VIEW (< 768px) - Matches Clients Page Standard */}
+          <div className="crm-mobile-cards-container">
+            {filteredQuotes.map((q) => {
+              const badge = getStatusBadge(q.status);
+              const isCompared = selectedQuoteForCompare.some(item => item.id === q.id);
+              const matchedClient = clients.find(c => String(c.id) === String(q.clientId));
+
+              return (
+                <div
+                  key={q.id}
+                  className="crm-card"
+                  style={{
+                    padding: '0.75rem 0.85rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.45rem',
+                    borderRadius: '12px',
+                    border: isCompared ? '1.5px solid #3b82f6' : '1px solid #e2e8f0',
+                    background: isCompared ? '#f8faff' : '#ffffff',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.03)'
+                  }}
+                >
+                  {/* Top Row: Identity + Status Badges + Quick Actions */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem' }}>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      {/* Row 1.1: Client Name + Compare Checkbox + Status */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap', minWidth: 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={isCompared}
+                          onChange={() => toggleCompare(q)}
+                          style={{ cursor: 'pointer', flexShrink: 0 }}
+                          title="Select to compare"
+                        />
+
+                        <span 
+                          onClick={() => {
+                            if (onOpenClient360) {
+                              onOpenClient360(matchedClient || { id: q.clientId, fullName: q.clientName, phoneNumber: q.clientPhone });
+                            }
+                          }}
+                          style={{
+                            fontWeight: 800,
+                            fontSize: '0.9rem',
+                            color: '#0f2b48',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '2px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 1,
+                            minWidth: '50px'
+                          }}
+                          title={q.clientName}
+                        >
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {q.clientName}
+                          </span>
+                          <ExternalLink size={10} color="var(--accent-gold)" style={{ flexShrink: 0 }} />
+                        </span>
+
+                        {/* Status Badge */}
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          background: badge.bg,
+                          color: badge.text,
+                          padding: '1px 5px',
+                          borderRadius: '999px',
+                          fontSize: '0.62rem',
+                          fontWeight: 700,
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
+                        }}>
+                          {badge.icon} {badge.label}
+                        </span>
+                      </div>
+
+                      {/* Row 1.2: Quote # • Date • Insurer • Plan */}
+                      <div style={{
+                        fontSize: '0.7rem',
+                        color: '#64748b',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-emerald)', flexShrink: 0 }}>
+                          {q.quoteNumber}
+                        </span>
+                        <span style={{ flexShrink: 0 }}>•</span>
+                        <strong style={{ color: '#0f2b48', flexShrink: 0 }}>{q.insurerName}</strong>
+                        <span style={{ flexShrink: 0 }}>•</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {q.planName}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 1-Tap Action Strip: View + WhatsApp + Edit */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                      {/* View */}
+                      <button
+                        onClick={() => setViewingQuote(q)}
+                        title="View Quotation"
+                        style={{
+                          width: '30px',
+                          height: '30px',
+                          borderRadius: '8px',
+                          background: '#f0fdf4',
+                          color: '#15803d',
+                          border: '1px solid #bbf7d0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Eye size={13} />
+                      </button>
+
+                      {/* WhatsApp Dispatch */}
+                      <button
+                        onClick={() => handleSendQuote(q)}
+                        title="Dispatch via WhatsApp"
+                        style={{
+                          width: '30px',
+                          height: '30px',
+                          borderRadius: '8px',
+                          background: '#ecfdf5',
+                          color: '#16a34a',
+                          border: '1px solid #a7f3d0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <WhatsAppIcon size={14} color="#16a34a" />
+                      </button>
+
+                      {/* Edit */}
+                      <button
+                        onClick={() => handleOpenEdit(q)}
+                        title="Edit Quotation"
+                        style={{
+                          width: '30px',
+                          height: '30px',
+                          borderRadius: '8px',
+                          background: '#f8fafc',
+                          color: '#0f2b48',
+                          border: '1px solid #cbd5e1',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Edit3 size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Bottom Consolidated Row: Sum Insured • Total Premium (incl. GST) • Quick Accept */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: '#f8fafc',
+                    padding: '0.35rem 0.6rem',
+                    borderRadius: '8px',
+                    fontSize: '0.72rem',
+                    gap: '0.4rem',
+                    flexWrap: 'wrap'
+                  }}>
+                    {/* Left: Sum Insured & Premium */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        color: '#0f2b48',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        fontWeight: 800,
+                        fontSize: '0.68rem'
+                      }}>
+                        Cover: {q.sumInsured}
+                      </span>
+
+                      <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: '2px' }}>
+                        <span style={{ color: '#64748b', fontSize: '0.66rem' }}>Premium:</span>
+                        <strong style={{ color: '#16a34a', fontSize: '0.82rem', fontWeight: 800 }}>
+                          ₹{q.totalPremium}
+                        </strong>
+                        <span style={{ color: '#94a3b8', fontSize: '0.62rem' }}>(incl. GST)</span>
+                      </div>
+                    </div>
+
+                    {/* Right: Accept Button or Accepted state */}
+                    {q.status !== 'ACCEPTED' ? (
+                      <button
+                        onClick={() => handleStatusChange(q.id, 'ACCEPTED')}
+                        style={{
+                          background: '#ecfdf5',
+                          color: '#059669',
+                          border: '1px solid #a7f3d0',
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '5px',
+                          fontSize: '0.68rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}
+                        title="Mark Quotation as Accepted"
+                      >
+                        <Check size={10} color="#059669" />
+                        <span>Accept</span>
+                      </button>
+                    ) : (
+                      <span style={{ color: '#059669', fontWeight: 800, fontSize: '0.68rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                        <Check size={11} /> Accepted
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* CREATE QUOTATION MODAL */}
       {showCreateModal && (

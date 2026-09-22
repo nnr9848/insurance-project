@@ -29,6 +29,14 @@ import {
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import ScheduleActivityModal from './ScheduleActivityModal';
+import { openWhatsAppWithInvite, generateGoogleCalendarUrl } from '../../utils/calendarUtils';
+
+const WhatsAppIcon = ({ size = 16, color = '#25D366' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17.472 14.382C17.114 14.203 15.356 13.339 15.028 13.22C14.7 13.1 14.462 13.041 14.223 13.399C13.985 13.757 13.3 14.563 13.091 14.802C12.883 15.041 12.674 15.07 12.316 14.891C11.958 14.712 10.806 14.335 9.444 13.121C8.384 12.176 7.669 11.009 7.46 10.651C7.252 10.293 7.438 10.099 7.618 9.921C7.779 9.761 7.977 9.502 8.156 9.293C8.335 9.084 8.395 8.935 8.514 8.696C8.633 8.457 8.574 8.249 8.484 8.07C8.395 7.891 7.679 6.13 7.381 5.414C7.09 4.717 6.796 4.812 6.578 4.803C6.369 4.793 6.131 4.793 5.892 4.793C5.653 4.793 5.266 4.883 4.938 5.241C4.61 5.599 3.686 6.464 3.686 8.225C3.686 9.986 4.968 11.687 5.147 11.926C5.326 12.165 7.669 15.776 11.248 17.323C12.1 17.691 12.766 17.912 13.284 18.076C14.14 18.348 14.919 18.309 15.536 18.217C16.224 18.114 17.653 17.352 17.951 16.516C18.25 15.68 18.25 14.964 18.16 14.815C18.071 14.666 17.832 14.561 17.472 14.382Z" fill={color}/>
+    <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12C2 13.89 2.525 15.657 3.438 17.17L2.052 22.234L7.247 20.871C8.706 21.603 10.312 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2ZM4 12C4 7.582 7.582 4 12 4C16.418 4 20 7.582 20 12C20 16.418 16.418 20 12 20C10.487 20 9.068 19.578 7.854 18.847L7.545 18.661L4.47 19.468L5.291 16.467L5.086 16.141C4.389 15.029 4 13.565 4 12Z" fill={color}/>
+  </svg>
+);
 
 export default function MeetingCalendarView({ preselectedClient, onCloseModal, onOpenClient360, onOpenCallModal }) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -1079,6 +1087,69 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal, o
                     <Video size={16} /> Join Google Meet
                   </a>
                 )}
+
+                {/* 1-Click WhatsApp Invite Dispatch */}
+                {selectedEvent.phone && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      openWhatsAppWithInvite({
+                        phoneNumber: selectedEvent.phone,
+                        clientName: selectedEvent.clientName,
+                        title: selectedEvent.title,
+                        topic: selectedEvent.purpose || selectedEvent.product,
+                        datetime: selectedEvent.datetime,
+                        durationMinutes: selectedEvent.durationMinutes || 30,
+                        googleMeetUrl: selectedEvent.googleMeetUrl,
+                        advisorName: selectedEvent.advisorName
+                      });
+                    }}
+                    style={{
+                      background: '#f0fdf4',
+                      color: '#16a34a',
+                      border: '1px solid #bbf7d0',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <WhatsAppIcon size={15} color="#16a34a" /> Share on WhatsApp
+                  </button>
+                )}
+
+                {/* 1-Click Add to Google Calendar */}
+                <a
+                  href={generateGoogleCalendarUrl({
+                    title: selectedEvent.title,
+                    description: `Aadhiraksha Insurance Consultation with ${selectedEvent.clientName}.\nMeet Link: ${selectedEvent.googleMeetUrl || 'N/A'}\nTopic: ${selectedEvent.purpose || selectedEvent.product || ''}`,
+                    location: selectedEvent.googleMeetUrl || 'Online / Google Meet',
+                    startTime: selectedEvent.datetime,
+                    endTime: new Date(selectedEvent.datetime.getTime() + (selectedEvent.durationMinutes || 30) * 60000)
+                  })}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    background: '#eff6ff',
+                    color: '#2563eb',
+                    border: '1px solid #bfdbfe',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    textDecoration: 'none'
+                  }}
+                >
+                  <CalendarIcon size={14} /> Add to G-Cal
+                </a>
 
                 {selectedEvent.googleMeetUrl && (
                   <button

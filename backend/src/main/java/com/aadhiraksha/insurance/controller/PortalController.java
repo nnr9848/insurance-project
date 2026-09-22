@@ -268,6 +268,63 @@ public class PortalController {
         return ResponseEntity.ok(claimRepository.findAllByOrderByCreatedAtDesc());
     }
 
+    @PatchMapping("/admin/claims/{id}/status")
+    @Operation(summary = "Update insurance claim status and remarks (Admin/Staff only)")
+    public ResponseEntity<Claim> updateClaimStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            org.springframework.security.core.Authentication auth) {
+        Claim claim = claimRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Claim not found with ID: " + id));
+        String oldStatus = claim.getStatus();
+        String newStatus = body.get("status");
+        if (newStatus != null && !newStatus.isBlank()) {
+            claim.setStatus(newStatus.toUpperCase());
+        }
+        if (body.containsKey("description") && body.get("description") != null) {
+            claim.setDescription(body.get("description"));
+        }
+        if (body.containsKey("hospitalOrGarage") && body.get("hospitalOrGarage") != null) {
+            claim.setHospitalOrGarage(body.get("hospitalOrGarage"));
+        }
+        Claim saved = claimRepository.save(claim);
+
+        User user = (auth != null && auth.getName() != null) ? userRepository.findByEmail(auth.getName()).orElse(null) : null;
+        auditService.logAction("CLAIM", saved.getId(), "UPDATE", "STATUS", oldStatus, "Updated claim #" + saved.getId() + " (" + saved.getPolicyNumber() + ") status to " + saved.getStatus(), user, null);
+
+        return ResponseEntity.ok(saved);
+    }
+
+    @PostMapping("/admin/claims")
+    @Operation(summary = "Lodge/Intimate an insurance claim on behalf of customer (Admin/Staff only)")
+    public ResponseEntity<Claim> createClaimByAdmin(
+            @Valid @RequestBody QuoteDto.ClaimRequest request,
+            org.springframework.security.core.Authentication auth) {
+        LocalDate incDate = null;
+        if (request.getIncidentDate() != null && !request.getIncidentDate().isBlank()) {
+            try {
+                incDate = LocalDate.parse(request.getIncidentDate());
+            } catch (Exception ignored) {}
+        }
+
+        Claim claim = Claim.builder()
+                .policyNumber(request.getPolicyNumber())
+                .claimantName(request.getClaimantName())
+                .contactPhone(request.getContactPhone())
+                .claimType(request.getClaimType())
+                .hospitalOrGarage(request.getHospitalOrGarage())
+                .incidentDate(incDate)
+                .description(request.getDescription())
+                .status("SUBMITTED")
+                .build();
+        Claim saved = claimRepository.save(claim);
+
+        User user = (auth != null && auth.getName() != null) ? userRepository.findByEmail(auth.getName()).orElse(null) : null;
+        auditService.logAction("CLAIM", saved.getId(), "CREATE", "ALL", null, "Lodged new claim for Policy: " + saved.getPolicyNumber() + " (Claimant: " + saved.getClaimantName() + ")", user, null);
+
+        return ResponseEntity.ok(saved);
+    }
+
     @GetMapping("/admin/hospitals")
     @Operation(summary = "Get all network hospitals including inactive ones (Admin/Staff only)")
     public ResponseEntity<List<NetworkHospital>> getAllHospitalsForAdmin(

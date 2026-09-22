@@ -22,6 +22,8 @@ import java.util.stream.Collectors;
 public class CrmClientService {
 
     private final ClientRepository clientRepository;
+    private final ClientOpportunityRepository clientOpportunityRepository;
+    private final QuoteInquiryRepository quoteInquiryRepository;
     private final CallLogRepository callLogRepository;
     private final FollowUpTaskRepository followUpTaskRepository;
     private final ClientMeetingRepository clientMeetingRepository;
@@ -620,6 +622,131 @@ public class CrmClientService {
                 .status(meeting.getStatus())
                 .outcomeNotes(meeting.getOutcomeNotes())
                 .createdAt(meeting.getCreatedAt())
+                .build();
+    }
+
+    // ==========================================
+    // MULTI-PRODUCT OPPORTUNITIES PIPELINE (INDUSTRY STANDARD)
+    // ==========================================
+
+    @Transactional(readOnly = true)
+    public List<OpportunityDto.OpportunityResponse> getClientOpportunities(Long clientId) {
+        // Ensure client exists
+        clientRepository.findById(clientId)
+                .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + clientId));
+
+        List<ClientOpportunity> opps = clientOpportunityRepository.findByClientIdOrderByIsPrimaryDescCreatedAtDesc(clientId);
+        return opps.stream().map(this::mapToOpportunityResponse).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public OpportunityDto.OpportunityResponse createOpportunity(Long clientId, OpportunityDto.CreateOpportunityRequest request, User performedBy) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + clientId));
+
+        QuoteInquiry inquiry = null;
+        if (request.getInquiryId() != null) {
+            inquiry = quoteInquiryRepository.findById(request.getInquiryId()).orElse(null);
+        }
+
+        User advisor = client.getAssignedAdvisor();
+        if (request.getAssignedAdvisorId() != null) {
+            advisor = userRepository.findById(request.getAssignedAdvisorId()).orElse(advisor);
+        }
+
+        ClientOpportunity opportunity = ClientOpportunity.builder()
+                .client(client)
+                .inquiry(inquiry)
+                .categorySlug(request.getCategorySlug() != null ? request.getCategorySlug().toUpperCase() : "HEALTH")
+                .productName(request.getProductName() != null ? request.getProductName() : "Insurance Policy")
+                .coverageAmount(request.getCoverageAmount())
+                .estimatedPremium(request.getEstimatedPremium())
+                .stage(request.getStage() != null ? request.getStage().toUpperCase() : "NEW_LEAD")
+                .priority(request.getPriority() != null ? request.getPriority().toUpperCase() : "MEDIUM")
+                .isPrimary(Boolean.TRUE.equals(request.getIsPrimary()))
+                .assignedAdvisor(advisor)
+                .specs(request.getSpecs())
+                .notes(request.getNotes())
+                .build();
+
+        ClientOpportunity saved = clientOpportunityRepository.save(opportunity);
+
+        auditService.logAction(
+                "CLIENT_OPPORTUNITY",
+                saved.getId(),
+                "CREATE",
+                "Product",
+                null,
+                saved.getProductName() + " (" + saved.getCategorySlug() + ")",
+                performedBy,
+                "Added new opportunity for client " + client.getFullName()
+        );
+
+        return mapToOpportunityResponse(saved);
+    }
+
+    @Transactional
+    public OpportunityDto.OpportunityResponse updateOpportunityStage(Long opportunityId, OpportunityDto.UpdateStageRequest request, User performedBy) {
+        ClientOpportunity opp = clientOpportunityRepository.findById(opportunityId)
+                .orElseThrow(() -> new IllegalArgumentException("Opportunity not found with ID: " + opportunityId));
+
+        String oldStage = opp.getStage();
+        String newStage = request.getStage() != null ? request.getStage().toUpperCase() : oldStage;
+
+        opp.setStage(newStage);
+        if (request.getReason() != null && !request.getReason().isBlank()) {
+            String currentNotes = opp.getNotes() != null ? opp.getNotes() : "";
+            opp.setNotes((currentNotes + "\n[" + LocalDate.now() + "] Stage updated: " + request.getReason()).trim());
+        }
+
+        ClientOpportunity saved = clientOpportunityRepository.save(opp);
+
+        // If this opportunity was generated from a quote inquiry, sync the inquiry status
+        if (opp.getInquiry() != null) {
+            opp.getInquiry().setStatus(newStage);
+            quoteInquiryRepository.save(opp.getInquiry());
+        }
+
+        // If this is the primary opportunity, keep master client stage synchronized
+        if (Boolean.TRUE.equals(opp.getIsPrimary())) {
+            opp.getClient().setStage(newStage);
+            clientRepository.save(opp.getClient());
+        }
+
+        auditService.logAction(
+                "CLIENT_OPPORTUNITY",
+                saved.getId(),
+                "STAGE_CHANGE",
+                "stage",
+                oldStage,
+                newStage,
+                performedBy,
+                request.getReason() != null ? request.getReason() : "Transitioned stage for " + saved.getProductName()
+        );
+
+        return mapToOpportunityResponse(saved);
+    }
+
+    public OpportunityDto.OpportunityResponse mapToOpportunityResponse(ClientOpportunity opp) {
+        return OpportunityDto.OpportunityResponse.builder()
+                .id(opp.getId())
+                .clientId(opp.getClient().getId())
+                .clientCode(opp.getClient().getClientCode())
+                .clientName(opp.getClient().getFullName())
+                .inquiryId(opp.getInquiry() != null ? opp.getInquiry().getId() : null)
+                .categorySlug(opp.getCategorySlug())
+                .productName(opp.getProductName())
+                .coverageAmount(opp.getCoverageAmount())
+                .estimatedPremium(opp.getEstimatedPremium())
+                .stage(opp.getStage())
+                .priority(opp.getPriority())
+                .isPrimary(opp.getIsPrimary())
+                .assignedAdvisorId(opp.getAssignedAdvisor() != null ? opp.getAssignedAdvisor().getId() : null)
+                .assignedAdvisorName(opp.getAssignedAdvisor() != null ? opp.getAssignedAdvisor().getFullName() : "Unassigned")
+                .specs(opp.getSpecs())
+                .notes(opp.getNotes())
+                .createdAt(opp.getCreatedAt())
+                .updatedAt(opp.getUpdatedAt())
                 .build();
     }
 }

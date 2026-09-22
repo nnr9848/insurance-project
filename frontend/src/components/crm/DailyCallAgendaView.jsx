@@ -24,8 +24,9 @@ import { useAuth } from '../../context/AuthContext';
 import { formatWhatsAppNumber } from '../../utils/crmDeduplication';
 import WhatsAppIcon from '../common/WhatsAppIcon';
 import ScheduleActivityModal from './ScheduleActivityModal';
+import { openWhatsAppWithInvite, generateGoogleCalendarUrl } from '../../utils/calendarUtils';
 
-export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModal }) {
+export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModal, onNavigateView }) {
   const { isSuperAdmin, isManager, user } = useAuth();
   const canReassign = isSuperAdmin || isManager;
 
@@ -58,10 +59,8 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
 
   useEffect(() => {
     loadAgenda();
-    if (canReassign) {
-      loadAdvisors();
-    }
-  }, [canReassign]);
+    loadAdvisors();
+  }, []);
 
   const loadAdvisors = async () => {
     try {
@@ -171,9 +170,56 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
     notes: ''
   });
 
-  // Unify today's items into a single chronological agenda
+  // Helper to format contextual datetime ('Yesterday • 11:00 AM', 'Today • 2:30 PM', '19 Sep • 10:00 AM')
+  const formatAgendaDateTime = (dt) => {
+    if (!dt || isNaN(dt.getTime())) return { label: '--:--', isPast: false, isToday: true, datePrefix: '' };
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const targetDate = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    const diffDays = Math.round((targetDate - today) / (1000 * 60 * 60 * 24));
+
+    const timeStr = dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+    if (diffDays === 0) {
+      return { label: timeStr, isPast: dt < now, isToday: true, datePrefix: 'Today' };
+    } else if (diffDays === -1) {
+      return { label: `Yesterday • ${timeStr}`, isPast: true, isToday: false, datePrefix: 'Yesterday' };
+    } else if (diffDays === 1) {
+      return { label: `Tomorrow • ${timeStr}`, isPast: false, isToday: false, datePrefix: 'Tomorrow' };
+    } else if (diffDays < -1) {
+      const dateShort = dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      return { label: `${dateShort} • ${timeStr}`, isPast: true, isToday: false, datePrefix: dateShort };
+    } else {
+      const dateShort = dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      return { label: `${dateShort} • ${timeStr}`, isPast: false, isToday: false, datePrefix: dateShort };
+    }
+  };
+
+  // 1. Separate all meetings into today's and past-due/missed meetings
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrowStart = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+
+  // Meetings scheduled strictly for today
+  const strictlyTodayMeetings = todayMeetings.filter(m => {
+    if (!m.meetingDatetime) return false;
+    const dt = new Date(m.meetingDatetime);
+    return dt >= todayStart && dt < tomorrowStart;
+  });
+
+  // Past meetings that were never marked completed/cancelled (Outcome Pending / Overdue)
+  const overdueMeetings = todayMeetings.filter(m => {
+    if (!m.meetingDatetime) return false;
+    const dt = new Date(m.meetingDatetime);
+    return dt < now && m.status !== 'COMPLETED' && m.status !== 'CANCELLED';
+  });
+
+  // All completed meetings across the active window (recent days + today)
+  const allCompletedMeetings = todayMeetings.filter(m => m.status === 'COMPLETED');
+
+  // 2. Unify today's items into a single chronological agenda
   const unifiedTodayItems = [
-    ...todayMeetings.map(m => {
+    ...strictlyTodayMeetings.map(m => {
       const dt = m.meetingDatetime ? new Date(m.meetingDatetime) : new Date();
       return {
         id: `meet-${m.id}`,
@@ -220,39 +266,91 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
     })
   ].sort((a, b) => a.datetime - b.datetime);
 
-  const completedMeetingsCount = todayMeetings.filter(m => m.status === 'COMPLETED').length;
+  // 3. Unified Overdue Action Items (Both Overdue Callbacks + Past-Due / Missed Meetings)
+  const unifiedOverdueItems = [
+    ...overdue.map(o => {
+      const dt = o.scheduledDatetime ? new Date(o.scheduledDatetime) : new Date();
+      return {
+        id: `overdue-call-${o.id}`,
+        originalId: o.id,
+        kind: 'OVERDUE_CALL',
+        datetime: dt,
+        title: o.title || `Missed Follow-up Callback`,
+        clientName: o.clientName,
+        clientId: o.clientId,
+        clientPhone: o.clientPhone,
+        clientCode: o.clientCode || `CL-${o.clientId}`,
+        insuranceType: o.insuranceType || 'Insurance Lead',
+        status: 'OVERDUE',
+        notes: o.notes,
+        advisorName: o.advisorName,
+        advisorId: o.advisorId,
+        badgeColor: '#dc2626',
+        bgColor: '#fef2f2',
+        borderColor: '#fecaca'
+      };
+    }),
+    ...overdueMeetings.map(m => {
+      const dt = m.meetingDatetime ? new Date(m.meetingDatetime) : new Date();
+      return {
+        id: `overdue-meet-${m.id}`,
+        originalId: m.id,
+        kind: 'MEETING',
+        datetime: dt,
+        title: m.title || `Advisory Consultation`,
+        clientName: m.clientName,
+        clientId: m.clientId,
+        clientPhone: m.clientPhone,
+        clientCode: m.clientCode,
+        insuranceType: m.product || 'General Advisory',
+        status: m.status || 'SCHEDULED',
+        googleMeetUrl: m.googleMeetUrl,
+        purpose: m.purpose,
+        advisorName: m.advisorName,
+        outcomeNotes: m.outcomeNotes,
+        isOverdueMeet: true,
+        badgeColor: '#dc2626',
+        bgColor: '#fef2f2',
+        borderColor: '#fecaca'
+      };
+    })
+  ].sort((a, b) => a.datetime - b.datetime);
+
+  // 4. Unified Completed Items (Includes all marked completed meetings from past & today)
+  const unifiedCompletedItems = allCompletedMeetings.map(m => {
+    const dt = m.meetingDatetime ? new Date(m.meetingDatetime) : new Date();
+    return {
+      id: `completed-meet-${m.id}`,
+      originalId: m.id,
+      kind: 'MEETING',
+      datetime: dt,
+      title: m.title || `Advisory Consultation`,
+      clientName: m.clientName,
+      clientId: m.clientId,
+      clientPhone: m.clientPhone,
+      clientCode: m.clientCode,
+      insuranceType: m.product || 'General Advisory',
+      status: 'COMPLETED',
+      googleMeetUrl: m.googleMeetUrl,
+      purpose: m.purpose,
+      advisorName: m.advisorName,
+      outcomeNotes: m.outcomeNotes,
+      badgeColor: '#059669',
+      bgColor: '#f0fdf4',
+      borderColor: '#bbf7d0'
+    };
+  }).sort((a, b) => b.datetime - a.datetime);
+
+  const completedMeetingsCount = unifiedCompletedItems.length;
   const pendingTasksCount = unifiedTodayItems.filter(i => i.status !== 'COMPLETED').length;
   const totalTodayTasks = unifiedTodayItems.length;
-  const overdueTasksCount = overdue.length;
+  const overdueTasksCount = unifiedOverdueItems.length;
 
   // Filtered dataset
   const displayedItems = (() => {
-    if (filterType === 'OVERDUE') {
-      return overdue.map(o => {
-        const dt = o.scheduledDatetime ? new Date(o.scheduledDatetime) : new Date();
-        return {
-          id: `overdue-${o.id}`,
-          originalId: o.id,
-          kind: 'OVERDUE_CALL',
-          datetime: dt,
-          title: o.title || `Missed Follow-up Callback`,
-          clientName: o.clientName,
-          clientId: o.clientId,
-          clientPhone: o.clientPhone,
-          clientCode: o.clientCode || `CL-${o.clientId}`,
-          insuranceType: o.insuranceType || 'Insurance Lead',
-          status: 'OVERDUE',
-          notes: o.notes,
-          advisorName: o.advisorName,
-          advisorId: o.advisorId,
-          badgeColor: '#dc2626',
-          bgColor: '#fef2f2',
-          borderColor: '#fecaca'
-        };
-      });
-    }
+    if (filterType === 'OVERDUE') return unifiedOverdueItems;
     if (filterType === 'PENDING') return unifiedTodayItems.filter(i => i.status !== 'COMPLETED');
-    if (filterType === 'COMPLETED') return unifiedTodayItems.filter(i => i.status === 'COMPLETED');
+    if (filterType === 'COMPLETED') return unifiedCompletedItems;
     if (filterType === 'MEETING') return unifiedTodayItems.filter(i => i.kind === 'MEETING');
     if (filterType === 'CALL') return unifiedTodayItems.filter(i => i.kind === 'CALL');
     return unifiedTodayItems;
@@ -262,37 +360,31 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       
       {/* 1. Unified Cockpit KPI Ribbon */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+      <div className="crm-agenda-kpi-grid">
         
         {/* Card 1: Today's Total Work Schedule */}
         <div 
           onClick={() => setFilterType('ALL')}
+          className="crm-agenda-kpi-card"
           style={{
-            background: filterType !== 'OVERDUE' ? 'linear-gradient(135deg, #0f2b48 0%, #1e40af 100%)' : '#ffffff',
-            color: filterType !== 'OVERDUE' ? '#ffffff' : '#0f2b48',
-            border: filterType !== 'OVERDUE' ? 'none' : '1px solid #e2e8f0',
-            borderRadius: '16px',
-            padding: '1.25rem 1.5rem',
-            boxShadow: filterType !== 'OVERDUE' ? '0 8px 20px -4px rgba(15, 43, 72, 0.3)' : '0 2px 6px rgba(0,0,0,0.02)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
+            background: filterType === 'ALL' ? 'linear-gradient(135deg, #0f2b48 0%, #1e40af 100%)' : '#ffffff',
+            color: filterType === 'ALL' ? '#ffffff' : '#0f2b48',
+            border: filterType === 'ALL' ? 'none' : '1px solid #e2e8f0',
+            boxShadow: filterType === 'ALL' ? '0 8px 20px -4px rgba(15, 43, 72, 0.3)' : '0 2px 6px rgba(0,0,0,0.02)'
           }}
         >
-          <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: filterType !== 'OVERDUE' ? '#93c5fd' : '#64748b' }}>
+          <div style={{ minWidth: 0, width: '100%' }}>
+            <div className="crm-agenda-kpi-title" style={{ color: filterType === 'ALL' ? '#93c5fd' : '#64748b' }}>
               Today's Schedule
             </div>
-            <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '2px', lineHeight: 1 }}>
+            <div className="crm-agenda-kpi-value">
               {totalTodayTasks}
             </div>
-            <div style={{ fontSize: '0.76rem', color: filterType !== 'OVERDUE' ? '#dbeafe' : '#64748b', marginTop: '6px' }}>
-              {todayMeetings.length} Meets • {dueToday.length} Callbacks
+            <div className="crm-agenda-kpi-sub" style={{ color: filterType === 'ALL' ? '#dbeafe' : '#64748b' }}>
+              {strictlyTodayMeetings.length} Meets • {dueToday.length} Calls
             </div>
           </div>
-          <div style={{ background: filterType !== 'OVERDUE' ? 'rgba(255,255,255,0.15)' : '#eff6ff', color: filterType !== 'OVERDUE' ? '#ffffff' : '#2563eb', padding: '12px', borderRadius: '14px' }}>
+          <div className="crm-agenda-kpi-iconbox" style={{ background: filterType === 'ALL' ? 'rgba(255,255,255,0.15)' : '#eff6ff', color: filterType === 'ALL' ? '#ffffff' : '#2563eb' }}>
             <Calendar size={28} />
           </div>
         </div>
@@ -300,61 +392,57 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
         {/* Card 2: Overdue Action Required */}
         <div 
           onClick={() => setFilterType('OVERDUE')}
+          className="crm-agenda-kpi-card"
           style={{
             background: filterType === 'OVERDUE' 
               ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' 
-              : (overdue.length > 0 ? '#fff1f2' : '#ffffff'),
-            color: filterType === 'OVERDUE' ? '#ffffff' : (overdue.length > 0 ? '#991b1b' : '#0f2b48'),
-            border: filterType === 'OVERDUE' ? 'none' : (overdue.length > 0 ? '1px solid #fecdd3' : '1px solid #e2e8f0'),
-            borderRadius: '16px',
-            padding: '1.25rem 1.5rem',
-            boxShadow: filterType === 'OVERDUE' ? '0 8px 20px -4px rgba(220, 38, 38, 0.3)' : '0 2px 6px rgba(0,0,0,0.02)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
+              : (overdueTasksCount > 0 ? '#fff1f2' : '#ffffff'),
+            color: filterType === 'OVERDUE' ? '#ffffff' : (overdueTasksCount > 0 ? '#991b1b' : '#0f2b48'),
+            border: filterType === 'OVERDUE' ? 'none' : (overdueTasksCount > 0 ? '1px solid #fecdd3' : '1px solid #e2e8f0'),
+            boxShadow: filterType === 'OVERDUE' ? '0 8px 20px -4px rgba(220, 38, 38, 0.3)' : '0 2px 6px rgba(0,0,0,0.02)'
           }}
         >
-          <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: filterType === 'OVERDUE' ? '#fecaca' : '#dc2626' }}>
+          <div style={{ minWidth: 0, width: '100%' }}>
+            <div className="crm-agenda-kpi-title" style={{ color: filterType === 'OVERDUE' ? '#fecaca' : '#dc2626' }}>
               Overdue Tasks
             </div>
-            <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '2px', lineHeight: 1 }}>
+            <div className="crm-agenda-kpi-value">
               {overdueTasksCount}
             </div>
-            <div style={{ fontSize: '0.76rem', color: filterType === 'OVERDUE' ? '#fee2e2' : (overdue.length > 0 ? '#b91c1c' : '#64748b'), marginTop: '6px' }}>
-              {overdue.length > 0 ? '⚠️ Immediate action needed' : '✓ Zero overdue tasks'}
+            <div className="crm-agenda-kpi-sub" style={{ color: filterType === 'OVERDUE' ? '#fee2e2' : (overdueTasksCount > 0 ? '#b91c1c' : '#64748b') }}>
+              {overdueTasksCount > 0 ? '⚠️ Immediate action' : '✓ Zero overdue'}
             </div>
           </div>
-          <div style={{ background: filterType === 'OVERDUE' ? 'rgba(255,255,255,0.15)' : (overdue.length > 0 ? '#fee2e2' : '#f8fafc'), color: filterType === 'OVERDUE' ? '#ffffff' : '#dc2626', padding: '12px', borderRadius: '14px' }}>
+          <div className="crm-agenda-kpi-iconbox" style={{ background: filterType === 'OVERDUE' ? 'rgba(255,255,255,0.15)' : (overdueTasksCount > 0 ? '#fee2e2' : '#f8fafc'), color: filterType === 'OVERDUE' ? '#ffffff' : '#dc2626' }}>
             <AlertCircle size={28} />
           </div>
         </div>
 
-        {/* Card 3: Completion Progress */}
-        <div style={{
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          borderRadius: '16px',
-          padding: '1.25rem 1.5rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-        }}>
-          <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#64748b' }}>
-              Completed Today
+        {/* Card 3: Completion Progress (Clickable) */}
+        <div 
+          onClick={() => setFilterType('COMPLETED')}
+          className="crm-agenda-kpi-card"
+          style={{
+            background: filterType === 'COMPLETED'
+              ? 'linear-gradient(135deg, #15803d 0%, #166534 100%)'
+              : '#ffffff',
+            color: filterType === 'COMPLETED' ? '#ffffff' : '#0f2b48',
+            border: filterType === 'COMPLETED' ? 'none' : '1px solid #e2e8f0',
+            boxShadow: filterType === 'COMPLETED' ? '0 8px 20px -4px rgba(21, 128, 61, 0.3)' : '0 2px 6px rgba(0,0,0,0.02)'
+          }}
+        >
+          <div style={{ minWidth: 0, width: '100%' }}>
+            <div className="crm-agenda-kpi-title" style={{ color: filterType === 'COMPLETED' ? '#bbf7d0' : '#64748b' }}>
+              Completed Today & Past
             </div>
-            <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#0f2b48', marginTop: '2px', lineHeight: 1 }}>
+            <div className="crm-agenda-kpi-value" style={{ color: filterType === 'COMPLETED' ? '#ffffff' : '#0f2b48' }}>
               {completedMeetingsCount}
             </div>
-            <div style={{ fontSize: '0.76rem', color: '#059669', fontWeight: 700, marginTop: '6px' }}>
-              {totalTodayTasks > 0 ? `${Math.round((completedMeetingsCount / totalTodayTasks) * 100)}% of today's workload completed` : 'All tasks up to date'}
+            <div className="crm-agenda-kpi-sub" style={{ color: filterType === 'COMPLETED' ? '#dcfce7' : '#059669', fontWeight: 700 }}>
+              {completedMeetingsCount > 0 ? `✓ ${completedMeetingsCount} tasks completed` : 'Click to view'}
             </div>
           </div>
-          <div style={{ background: '#f0fdf4', color: '#059669', padding: '12px', borderRadius: '14px' }}>
+          <div className="crm-agenda-kpi-iconbox" style={{ background: filterType === 'COMPLETED' ? 'rgba(255,255,255,0.15)' : '#f0fdf4', color: filterType === 'COMPLETED' ? '#ffffff' : '#059669' }}>
             <CheckCircle2 size={28} />
           </div>
         </div>
@@ -373,13 +461,64 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
         {/* Header & Filter Pills Bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
           <div>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f2b48', margin: 0 }}>
-              {filterType === 'OVERDUE' ? '⚠️ Overdue Action Queue' : 'Today\'s Chronological Work Schedule'}
-            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f2b48', margin: 0 }}>
+                {filterType === 'OVERDUE' ? '⚠️ Overdue Action Queue' : (filterType === 'COMPLETED' ? '✓ Completed Consultations & Logs' : 'Today\'s Chronological Work Schedule')}
+              </h2>
+
+              {/* History Quick Links (Industry Standard Shortcuts) */}
+              {onNavigateView && (
+                <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateView('meetings')}
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      color: '#475569',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    title="Open Full Meeting Calendar"
+                  >
+                    <Calendar size={11} color="#7c3aed" /> Full Calendar →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateView('calls')}
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      color: '#475569',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    title="Open Full Call History Archive"
+                  >
+                    <PhoneCall size={11} color="#2563eb" /> Full Call Logs →
+                  </button>
+                </div>
+              )}
+            </div>
+            
             <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
               {filterType === 'OVERDUE' 
-                ? 'Tasks requiring immediate catch-up or advisor reallocation' 
-                : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                ? 'Tasks & meetings requiring immediate catch-up or advisor reallocation' 
+                : (filterType === 'COMPLETED' 
+                    ? 'Historical log of conducted consultations and recorded dispositions'
+                    : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }))}
             </div>
           </div>
 
@@ -388,11 +527,11 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
             <div style={{ display: 'flex', gap: '6px', background: '#f1f5f9', padding: '4px', borderRadius: '10px', flexWrap: 'wrap' }}>
               {[
                 { id: 'ALL', label: `All Today (${totalTodayTasks})` },
-                { id: 'PENDING', label: `⏳ Pending (${pendingTasksCount})` },
+                { id: 'PENDING', label: `📋 To-Do (${pendingTasksCount})` },
                 { id: 'COMPLETED', label: `✓ Completed (${completedMeetingsCount})` },
-                { id: 'MEETING', label: `🎥 Meets (${todayMeetings.length})` },
+                { id: 'MEETING', label: `🎥 Meets (${strictlyTodayMeetings.length})` },
                 { id: 'CALL', label: `📞 Calls (${dueToday.length})` },
-                { id: 'OVERDUE', label: `⚠️ Overdue (${overdue.length})` }
+                { id: 'OVERDUE', label: `⚠️ Overdue (${overdueTasksCount})` }
               ].map(pill => (
                 <button
                   key={pill.id}
@@ -450,8 +589,10 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
             <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f2b48' }}>All Caught Up!</div>
             <p style={{ fontSize: '0.84rem', color: '#64748b', maxWidth: '420px', margin: '4px auto 0 auto' }}>
               {filterType === 'OVERDUE' 
-                ? 'No overdue follow-ups in the queue. Great job maintaining customer SLAs!' 
-                : 'No pending meetings or callbacks scheduled for this view.'}
+                ? 'No overdue follow-ups or past-due meetings in the queue. Great job maintaining customer SLAs!' 
+                : (filterType === 'COMPLETED'
+                    ? 'No completed tasks recorded yet. Completed meetings and calls with logged outcomes will appear here.'
+                    : 'No pending meetings or callbacks scheduled for this view.')}
             </p>
           </div>
         ) : (
@@ -459,246 +600,212 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
             {displayedItems.map((item) => {
               const isMeet = item.kind === 'MEETING';
               const isCompleted = item.status === 'COMPLETED';
-              // An item is overdue only if it has an explicit OVERDUE status or came from the overdue past queue
-              const isOverdue = !isCompleted && (item.kind === 'OVERDUE_CALL' || item.status === 'OVERDUE');
-              const timeParts = item.datetime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).split(' ');
-              const timeDigits = timeParts[0];
-              const timePeriod = timeParts[1] || '';
+              const isOverdue = !isCompleted && (item.kind === 'OVERDUE_CALL' || item.status === 'OVERDUE' || item.isOverdueMeet || (filterType === 'OVERDUE'));
+              const dtFormatted = formatAgendaDateTime(item.datetime);
 
               return (
                 <div
                   key={item.id}
-                  className="crm-agenda-compact-card"
+                  className="crm-agenda-feed-row"
                   style={{
-                    background: isCompleted ? '#f0fdf4' : (isOverdue ? '#fff1f2' : '#ffffff'),
-                    border: isCompleted ? '1px solid #bbf7d0' : (isOverdue ? '1px solid #fecdd3' : '1px solid #e2e8f0'),
-                    borderRadius: '10px',
-                    padding: '0.75rem 0.85rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.45rem',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                    background: isCompleted ? '#f0fdf4' : (isOverdue ? '#fff1f2' : (isMeet ? '#f8faff' : '#ffffff')),
+                    border: isCompleted ? '1px solid #bbf7d0' : (isOverdue ? '1px solid #fecdd3' : (isMeet ? '1px solid #dbeafe' : '1px solid #e2e8f0'))
                   }}
                 >
-                  {/* Row 1: Left (Time Badge + Prospect Name + Code + Category + Status) | Right (1-Tap Circular Channels & Status) */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
-                    
-                    {/* Identity & Badges */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
-                      {/* Compact Time Pill */}
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '3px',
+                  {/* ======================================================== */}
+                  {/* TIER 1: Client Identity, Badges & Quick Reach Touch Bar */}
+                  {/* ======================================================== */}
+                  <div className="crm-agenda-tier1">
+                    {/* Left: Time Slot Pill + Client Identity + Product + Status */}
+                    <div className="crm-agenda-identity-group">
+                      {/* Time Slot AM/PM Badge with Day / Date Context */}
+                      <div className="crm-agenda-time-pill" style={{
                         background: isCompleted ? '#dcfce7' : (isOverdue ? '#fee2e2' : (isMeet ? '#eff6ff' : '#ecfdf5')),
                         color: isCompleted ? '#15803d' : (isOverdue ? '#dc2626' : (isMeet ? '#2563eb' : '#059669')),
-                        border: `1px solid ${isCompleted ? '#bbf7d0' : (isOverdue ? '#fecaca' : (isMeet ? '#bfdbfe' : '#a7f3d0'))}`,
-                        padding: '1px 6px',
-                        borderRadius: '6px',
-                        fontSize: '0.7rem',
-                        fontWeight: 800,
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0
+                        border: `1px solid ${isCompleted ? '#bbf7d0' : (isOverdue ? '#fecaca' : (isMeet ? '#bfdbfe' : '#a7f3d0'))}`
                       }}>
-                        {isMeet ? <Video size={11} /> : <PhoneCall size={11} />}
-                        <span>{timeDigits} {timePeriod}</span>
-                      </span>
+                        {isMeet ? <Video size={12} /> : <PhoneCall size={12} />}
+                        <span className="crm-agenda-time-text">{dtFormatted.label}</span>
+                      </div>
 
-                      {/* Prospect Name */}
+                      {/* Client Name (Clickable) */}
                       <span 
                         onClick={() => onOpenClient360 && onOpenClient360({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone })}
-                        style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.88rem', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        className="crm-agenda-client-name"
+                        title={`Open 360 View for ${item.clientName}`}
                       >
                         {item.clientName}
                       </span>
 
-                      {/* Client Code */}
+                      {/* Client Code Pill */}
                       {item.clientCode && (
                         <span 
                           onClick={() => onOpenClient360 && onOpenClient360({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone })}
-                          style={{ fontFamily: 'monospace', fontWeight: 700, color: '#059669', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '0px 4px', borderRadius: '4px', fontSize: '0.65rem', cursor: 'pointer', flexShrink: 0 }}
+                          className="crm-agenda-code-pill"
+                          title="Client Identifier Code"
                         >
                           {item.clientCode}
                         </span>
                       )}
 
-                      {/* Vertical Badge */}
-                      <span style={{ fontSize: '0.68rem', background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', padding: '1px 5px', borderRadius: '4px', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {/* Insurance Category */}
+                      <span className="crm-agenda-prod-pill">
                         {item.insuranceType}
                       </span>
 
-                      {/* Status Pill */}
+                      {/* Status Badges */}
                       {isCompleted ? (
-                        <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#15803d', fontWeight: 800, padding: '1px 5px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                        <span className="crm-agenda-status-pill status-completed">
                           ✓ COMPLETED
                         </span>
                       ) : isOverdue ? (
-                        <span style={{ fontSize: '0.65rem', background: '#fee2e2', color: '#dc2626', fontWeight: 800, padding: '1px 5px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                        <span className="crm-agenda-status-pill status-overdue">
                           ⚠️ OVERDUE
                         </span>
                       ) : item.datetime < new Date() ? (
-                        <span style={{ fontSize: '0.65rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                        <span className="crm-agenda-status-pill status-pending">
                           ⏱️ Outcome Pending
                         </span>
                       ) : null}
                     </div>
 
-                    {/* Right: Quick Reach Touch Icons (Call, WhatsApp, Meet Link) */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                      {/* 1-Tap Telephony Phone Call */}
+                    {/* Right: Quick Reach 1-Tap Action Bar (Call, Meet, WhatsApp, G-Cal) */}
+                    <div className="crm-agenda-quick-reach">
+                      {/* Phone Call Button */}
                       {item.clientPhone && (
                         <button
                           type="button"
                           onClick={() => handleOpenCallModal(item)}
-                          title={`Call ${item.clientName} (${item.clientPhone})`}
-                          style={{
-                            width: '26px',
-                            height: '26px',
-                            borderRadius: '6px',
-                            background: '#ecfdf5',
-                            color: '#059669',
-                            border: '1px solid #a7f3d0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            padding: 0
-                          }}
+                          className="crm-agenda-circle-btn btn-phone"
+                          title={`Log Call with ${item.clientName} (${item.clientPhone})`}
                         >
-                          <Phone size={12} />
+                          <Phone size={13} />
+                          <span className="crm-btn-label-desktop">Call</span>
                         </button>
                       )}
 
-                      {/* 1-Tap WhatsApp */}
+                      {/* WhatsApp 1-Tap Consultation / Meet Invite */}
                       {item.clientPhone && (
                         <button
                           type="button"
-                          onClick={() => openWhatsApp(item.clientPhone, item.clientName)}
-                          title="Open WhatsApp"
-                          style={{
-                            width: '26px',
-                            height: '26px',
-                            borderRadius: '6px',
-                            background: '#f0fdf4',
-                            color: '#16a34a',
-                            border: '1px solid #bbf7d0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            padding: 0
+                          onClick={() => {
+                            if (isMeet) {
+                              openWhatsAppWithInvite({
+                                phoneNumber: item.clientPhone,
+                                clientName: item.clientName,
+                                title: item.title,
+                                topic: item.purpose || item.insuranceType,
+                                datetime: item.datetime,
+                                durationMinutes: 30,
+                                googleMeetUrl: item.googleMeetUrl,
+                                advisorName: item.advisorName
+                              });
+                            } else {
+                              openWhatsApp(item.clientPhone, item.clientName);
+                            }
                           }}
+                          className="crm-agenda-circle-btn btn-whatsapp"
+                          title={isMeet ? "Send WhatsApp Consultation Invite" : "Chat on WhatsApp"}
                         >
-                          <WhatsAppIcon size={12} color="#16a34a" />
+                          <WhatsAppIcon size={13} color="#16a34a" />
+                          <span className="crm-btn-label-desktop">WhatsApp</span>
                         </button>
                       )}
 
-                      {/* 1-Tap Google Meet Video Link */}
+                      {/* Google Meet Direct Join */}
                       {isMeet && item.googleMeetUrl && (
                         <a
                           href={item.googleMeetUrl}
                           target="_blank"
                           rel="noreferrer"
-                          title="Open Google Meet"
-                          style={{
-                            width: '26px',
-                            height: '26px',
-                            borderRadius: '6px',
-                            background: '#eff6ff',
-                            color: '#2563eb',
-                            border: '1px solid #bfdbfe',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            textDecoration: 'none'
-                          }}
+                          className="crm-agenda-circle-btn btn-meet"
+                          title="Join Google Meet Room"
                         >
-                          <Video size={12} />
+                          <Video size={13} />
+                          <span className="crm-btn-label-desktop">Join Meet</span>
+                        </a>
+                      )}
+
+                      {/* Google Calendar 1-Tap Sync */}
+                      {isMeet && (
+                        <a
+                          href={generateGoogleCalendarUrl({
+                            title: item.title || `Consultation with ${item.clientName}`,
+                            description: `Aadhiraksha Insurance Consultation with ${item.clientName}.\nMeet Link: ${item.googleMeetUrl || 'Online'}\nTopic: ${item.purpose || item.insuranceType || ''}`,
+                            location: item.googleMeetUrl || 'Online / Google Meet',
+                            startTime: item.datetime,
+                            endTime: new Date(item.datetime.getTime() + 30 * 60000)
+                          })}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="crm-agenda-circle-btn btn-gcal"
+                          title="Add to Google Calendar"
+                        >
+                          <Calendar size={13} />
+                          <span className="crm-btn-label-desktop">G-Cal</span>
                         </a>
                       )}
                     </div>
                   </div>
 
-                  {/* Row 2: Topic / Notes & Action Buttons */}
-                  <div style={{
-                    borderTop: '1px dashed #e2e8f0',
-                    paddingTop: '0.4rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '0.4rem'
-                  }}>
-                    {/* Left: Title & Purpose */}
-                    <div style={{ fontSize: '0.74rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', minWidth: 0, flex: 1 }}>
-                      <span style={{ fontWeight: 600, color: '#334155' }}>{item.title}</span>
+                  {/* ======================================================== */}
+                  {/* TIER 2: Title / Purpose / Advisor & Workflow CTAs       */}
+                  {/* ======================================================== */}
+                  <div className="crm-agenda-tier2">
+                    {/* Left: Consultation Title & Purpose Note */}
+                    <div className="crm-agenda-notes-group">
+                      <span className="crm-agenda-item-title">{item.title}</span>
+                      
                       {item.advisorName && (
-                        <span style={{ fontSize: '0.68rem', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '0px 4px', borderRadius: '3px', color: '#64748b' }}>
+                        <span className="crm-agenda-advisor-badge">
                           Advisor: {item.advisorName}
                         </span>
                       )}
+
                       {(item.purpose || item.notes || item.outcomeNotes) && (
-                        <span style={{ color: item.outcomeNotes ? '#059669' : '#64748b', fontStyle: item.notes ? 'italic' : 'normal', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '320px' }}>
-                          • {item.outcomeNotes ? `✓ ${item.outcomeNotes}` : (item.purpose || `"${item.notes}"`)}
+                        <span className={`crm-agenda-purpose-text ${item.outcomeNotes ? 'is-outcome' : ''}`}>
+                          • {item.outcomeNotes ? `Outcome: ${item.outcomeNotes}` : (item.purpose || item.notes)}
                         </span>
                       )}
                     </div>
 
-                    {/* Right: Compact Action Buttons */}
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 0, marginLeft: 'auto' }}>
+                    {/* Right: Primary Workflow Actions (Mark Completed, Reassign, Client 360) */}
+                    <div className="crm-agenda-workflow-actions">
                       {/* Mark Completed (for Meetings) */}
-                      {isMeet && !isCompleted && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMeetingOutcomeModal(item);
-                            setOutcomeForm({
-                              outcomeTag: 'INTERESTED',
-                              notes: ''
-                            });
-                          }}
-                          style={{
-                            background: '#059669',
-                            color: '#ffffff',
-                            border: 'none',
-                            padding: '3px 7px',
-                            borderRadius: '5px',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px'
-                          }}
-                        >
-                          <CheckCircle2 size={11} /> Mark Done
-                        </button>
+                      {isMeet && (
+                        isCompleted ? (
+                          <span className="crm-agenda-done-tag">
+                            <CheckCircle2 size={12} /> Done
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMeetingOutcomeModal(item);
+                              setOutcomeForm({
+                                outcomeTag: 'INTERESTED',
+                                notes: ''
+                              });
+                            }}
+                            className="crm-agenda-cta-btn cta-complete"
+                          >
+                            <CheckCircle2 size={13} /> Mark Completed
+                          </button>
+                        )
                       )}
 
-                      {/* Log Call (for Phone tasks) */}
+                      {/* Log Call & Outcome (for Calls) */}
                       {!isMeet && !isCompleted && (
                         <button
                           type="button"
                           onClick={() => handleOpenCallModal(item)}
-                          style={{
-                            background: '#059669',
-                            color: '#ffffff',
-                            border: 'none',
-                            padding: '3px 7px',
-                            borderRadius: '5px',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px'
-                          }}
+                          className="crm-agenda-cta-btn cta-complete"
                         >
-                          <PhoneCall size={11} /> Log Call
+                          <PhoneCall size={13} /> Call & Log
                         </button>
                       )}
 
-                      {/* Reassign (if manager & overdue) */}
+                      {/* Reassign (for Managers on Overdue) */}
                       {canReassign && isOverdue && (
                         <button
                           type="button"
@@ -707,63 +814,35 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                             setTargetAdvisorId(item.advisorId ? String(item.advisorId) : '');
                             setReassignReason('');
                           }}
-                          style={{
-                            background: '#e0e7ff',
-                            color: '#4338ca',
-                            border: '1px solid #c7d2fe',
-                            padding: '3px 6px',
-                            borderRadius: '5px',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
+                          className="crm-agenda-cta-btn cta-reassign"
+                          title="Reassign to another Advisor"
                         >
-                          Reassign
+                          <UserCheck size={13} /> Reassign
                         </button>
                       )}
 
-                      {/* Schedule Followup Meeting Link */}
+                      {/* Schedule Consultation (for Calls) */}
                       {!isMeet && (
                         <button
                           type="button"
                           onClick={() => onOpenMeetingModal && onOpenMeetingModal({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone, insuranceType: item.insuranceType })}
-                          style={{
-                            background: '#eff6ff',
-                            color: '#2563eb',
-                            border: '1px solid #bfdbfe',
-                            padding: '3px 7px',
-                            borderRadius: '5px',
-                            fontSize: '0.72rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px'
-                          }}
+                          className="crm-agenda-cta-btn cta-meet"
+                          title="Schedule Google Meet Advisory"
                         >
-                          <Calendar size={11} /> Meet
+                          <Calendar size={13} /> Meet
                         </button>
                       )}
 
-                      {/* Client 360 */}
+                      {/* Client 360 Deep-Dive */}
                       <button
                         type="button"
                         onClick={() => onOpenClient360 && onOpenClient360({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone })}
-                        style={{
-                          background: '#f8fafc',
-                          border: '1px solid #cbd5e1',
-                          color: '#475569',
-                          padding: '3px 7px',
-                          borderRadius: '5px',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          cursor: 'pointer'
-                        }}
+                        className="crm-agenda-cta-btn cta-client360"
+                        title="View Full Client 360 Dossier"
                       >
                         Client 360 &rarr;
                       </button>
                     </div>
-
                   </div>
                 </div>
               );

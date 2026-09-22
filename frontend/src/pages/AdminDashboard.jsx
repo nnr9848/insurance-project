@@ -97,15 +97,13 @@ export default function AdminDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Active Workspace Navigation View (URL Query Param Synchronized)
-  // 'dashboard' | 'leads' | 'clients' | 'pipeline' | 'agenda' | 'calls' | 'meetings' | 'calendar' | 'proposals' | 'renewals' | 'documents' | 'users' | 'approvals' | 'audit' | 'posp' | 'hospitals' | 'claims'
-  const rawTab = searchParams.get('tab') || 'dashboard';
-  const currentTabFromUrl = rawTab === 'calendar' ? 'meetings' : rawTab;
+  // 'dashboard' | 'enquiries' | 'clients' | 'pipeline' | 'agenda' | 'calls' | 'meetings' | 'proposals' | 'renewals' | 'documents' | 'users' | 'approvals' | 'audit' | 'posp' | 'hospitals' | 'claims'
+  const currentTabFromUrl = searchParams.get('tab') || 'dashboard';
   const [activeView, setActiveView] = useState(currentTabFromUrl);
 
   // Sync state when URL query param changes (e.g. Browser Back / Forward buttons)
   useEffect(() => {
-    const raw = searchParams.get('tab') || 'dashboard';
-    const tab = raw === 'calendar' ? 'meetings' : raw;
+    const tab = searchParams.get('tab') || 'dashboard';
     if (tab !== activeView) {
       setActiveView(tab);
     }
@@ -154,7 +152,8 @@ export default function AdminDashboard() {
   }, []);
 
   // Resolve user role display label
-  const userRoleKey = user?.role || (Array.isArray(user?.roles) ? user.roles[0] : 'ROLE_SUPER_ADMIN') || 'ROLE_SUPER_ADMIN';
+  const rawRole = user?.role || (Array.isArray(user?.roles) ? user.roles[0] : null) || 'ROLE_SUPER_ADMIN';
+  const userRoleKey = typeof rawRole === 'object' && rawRole !== null ? (rawRole.name || rawRole.authority || 'ROLE_SUPER_ADMIN') : String(rawRole || 'ROLE_SUPER_ADMIN');
   const formatRoleName = (role) => {
     switch (role) {
       case 'ROLE_SUPER_ADMIN': return '👑 Super Admin';
@@ -247,11 +246,11 @@ export default function AdminDashboard() {
           subtitle: 'Manage branch managers, insurance advisors, staff permissions, and hierarchy teams.',
           icon: <Users size={18} color="#059669" />
         };
-      case 'leads':
+      case 'enquiries':
         return {
-          title: 'Leads & Inquiries',
+          title: 'Enquiries Desk',
           category: 'CRM Workspace',
-          subtitle: 'Real-time prospective customer insurance and loan inquiries from the web portal.',
+          subtitle: 'Real-time prospective customer insurance and loan enquiries from the web portal.',
           icon: <Briefcase size={18} color="#16a34a" />
         };
       case 'posp':
@@ -264,7 +263,7 @@ export default function AdminDashboard() {
       case 'claims':
         return {
           title: 'Claims Assistance Desk',
-          category: 'Operations & Management',
+          category: 'CRM Workspace',
           subtitle: 'End-to-end claim settlement tracking, hospital paperwork, and customer support.',
           icon: <ShieldAlert size={18} color="#dc2626" />
         };
@@ -413,7 +412,7 @@ export default function AdminDashboard() {
   // Navigation Items
   const navItemsCRM = [
     { id: 'dashboard', label: 'CRM Dashboard', icon: <LayoutDashboard size={19} />, count: null },
-    { id: 'leads', label: 'Leads', icon: <Briefcase size={19} />, count: quotes.length, badgeColor: '#16a34a' },
+    { id: 'enquiries', label: 'Enquiries', icon: <Briefcase size={19} />, count: quotes.length, badgeColor: '#16a34a' },
     { id: 'clients', label: 'Client Data Sheet', icon: <FileText size={19} />, count: leads.length, badgeColor: '#0284c7' },
     { id: 'pipeline', label: 'Sales Pipeline', icon: <TrendingUp size={19} />, count: null },
     { id: 'agenda', label: 'Daily Work Agenda', icon: <PhoneCall size={19} />, count: dueFollowUps.length, badgeColor: '#ea580c' },
@@ -421,6 +420,13 @@ export default function AdminDashboard() {
     { id: 'meetings', label: 'Meeting Calendar', icon: <Calendar size={19} />, count: null },
     { id: 'proposals', label: 'Quotes & Proposals', icon: <FileSpreadsheet size={19} />, count: null },
     { id: 'renewals', label: 'Policy Renewal Desk', icon: <ShieldCheck size={19} />, count: null },
+    { 
+      id: 'claims', 
+      label: 'Claims Desk', 
+      icon: <ShieldAlert size={19} />, 
+      count: claims.filter(c => c.status !== 'SETTLED' && c.status !== 'REJECTED').length || null, 
+      badgeColor: '#dc2626' 
+    },
     { id: 'documents', label: 'Document Locker', icon: <FolderCheck size={19} />, count: null },
   ];
 
@@ -432,7 +438,6 @@ export default function AdminDashboard() {
     ] : []),
     { id: 'posp', label: 'POSP Agent Network', icon: <UserCheck size={19} />, count: pospList.filter(p => p.status === 'PENDING').length, badgeColor: '#d97706' },
     { id: 'hospitals', label: 'Cashless Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' },
-    { id: 'claims', label: 'Claims Desk', icon: <Crosshair size={19} />, count: claims.length, badgeColor: '#2563eb' },
   ];
 
   const showMiniRail = !isMobile && isCollapsed;
@@ -902,7 +907,7 @@ export default function AdminDashboard() {
       </aside>
 
       {/* 2. MAIN APP SHELL WORKSPACE (Natural Document Window Scrolling) */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh' }}>
         
         {/* TOP CRM APP BAR (Sticky to Viewport Top) */}
         <header 
@@ -1306,6 +1311,7 @@ export default function AdminDashboard() {
                 setPreselectedMeetingClient(lead);
                 handleNavigateView('meetings');
               }}
+              onNavigateView={handleNavigateView}
             />
           )}
 
@@ -1382,8 +1388,8 @@ export default function AdminDashboard() {
             />
           )}
 
-          {/* VIEW: LEADS & INQUIRIES */}
-          {activeView === 'leads' && (
+          {/* VIEW: ENQUIRIES */}
+          {activeView === 'enquiries' && (
             <LeadInquiriesView
               quotes={quotes}
               leads={leads}
@@ -1405,6 +1411,9 @@ export default function AdminDashboard() {
           {activeView === 'claims' && (
             <ClaimsIntimationView 
               claims={claims} 
+              setClaims={setClaims}
+              leads={leads}
+              onOpenClient360={(client) => setSelectedClient360(client)}
             />
           )}
 
@@ -1419,14 +1428,14 @@ export default function AdminDashboard() {
           {/* 3. MINIMALIST ENTERPRISE CRM FOOTER (Scrolls naturally at bottom, non-sticky) */}
           <footer className="crm-minimal-footer">
             <div className="crm-footer-left">
-              <span>&copy; {new Date().getFullYear()} Aadhiraksha Insurance & Financial Services</span>
+              <span>&copy; {new Date().getFullYear()} <span className="crm-footer-desktop-text">Aadhiraksha Insurance & Financial Services</span><span className="crm-footer-mobile-text">Aadhiraksha</span></span>
               <span className="crm-footer-divider">•</span>
               <span className="crm-footer-version">CRM Engine v2.4</span>
             </div>
 
             <div className="crm-footer-center">
               <span className="crm-footer-status-dot"></span>
-              <span>All Systems Operational (IRDAI ISO/IEC 27001)</span>
+              <span>All Systems Operational <span className="crm-footer-desktop-text">(IRDAI ISO/IEC 27001)</span></span>
             </div>
 
             <div className="crm-footer-right">
@@ -1449,6 +1458,11 @@ export default function AdminDashboard() {
         <Client360Drawer 
           client={selectedClient360}
           onClose={() => setSelectedClient360(null)}
+          onLeadUpdated={(updatedLead) => {
+            if (updatedLead && updatedLead.id) {
+              setLeads(prev => prev.map(l => l.id === updatedLead.id ? { ...l, ...updatedLead } : l));
+            }
+          }}
           onOpenCallModal={() => {
             setSelectedClient360(null);
             setActiveView('agenda');
