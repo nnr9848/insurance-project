@@ -366,6 +366,39 @@ export const portalService = {
     const res = await api.delete(`/admin/hospitals/${id}`);
     return res.data;
   },
+  // Insurance Partners Management
+  getPartners: async () => {
+    const res = await api.get('/partners');
+    return res.data;
+  },
+  getAdminPartners: async () => {
+    const res = await api.get('/admin/partners');
+    return res.data;
+  },
+  createPartner: async (data) => {
+    const res = await api.post('/admin/partners', data);
+    return res.data;
+  },
+  updatePartner: async (id, data) => {
+    const res = await api.put(`/admin/partners/${id}`, data);
+    return res.data;
+  },
+  togglePartnerStatus: async (id) => {
+    const res = await api.patch(`/admin/partners/${id}/toggle-status`);
+    return res.data;
+  },
+  reorderPartners: async (orderedIds) => {
+    const res = await api.put('/admin/partners/reorder', orderedIds);
+    return res.data;
+  },
+  resetPartnersToDefault: async () => {
+    const res = await api.post('/admin/partners/reset-defaults');
+    return res.data;
+  },
+  deletePartner: async (id) => {
+    const res = await api.delete(`/admin/partners/${id}`);
+    return res.data;
+  },
 };
 
 // Web Lead Inquiries & Portal Triage Service

@@ -30,32 +30,15 @@ import {
   Filter
 } from 'lucide-react';
 
-// Partner Logos
-import adityaBirlaLogo from '../assets/partners/ADITYA BIRLA CAPITAL.jpg';
-import axisMaxLogo from '../assets/partners/AXIS MAX Life Insurance logo.png';
-import bajajAllianzLogo from '../assets/partners/Bajaj Alilanz logo.png';
-import hdfcErgoLogo from '../assets/partners/HDFC-Ergo-logo.png';
-import iciciLombardLogo from '../assets/partners/ICICI Lombard logo.webp';
-import licLogo from '../assets/partners/LIC LOGO.jpg';
-import nationalInsuranceLogo from '../assets/partners/NATIONAL INSURANCE LOGO.jpg';
-import orientalInsuranceLogo from '../assets/partners/ORIENTAL INSURANCE LOGO.jpg';
-import relianceGeneralLogo from '../assets/partners/Reliance General Insurance Logo.jpg';
-import sbiGeneralLogo from '../assets/partners/SBI general Insurance logo.jpg';
-import tataAigLogo from '../assets/partners/TATA AIG Insurance logo.png';
-import careHealthLogo from '../assets/partners/care health insurance logo.png';
-import cholaMsLogo from '../assets/partners/chola ms generali insurance.png';
-import digitLogo from '../assets/partners/digit logo.png';
-import futureGeneraliLogo from '../assets/partners/future generali insurance logo.jpg';
-import kotakGeneralLogo from '../assets/partners/kotak general insurance logo.jpg';
-import magmaHdiLogo from '../assets/partners/magma hdi general insurnce logo.png';
-import manipalCignaLogo from '../assets/partners/manipal cigna health insurance logo.jpg';
-import nivaBupaLogo from '../assets/partners/niva health insurance logo.png';
-import starHealthLogo from '../assets/partners/star health insurance logo.png';
+import PartnerLeadModal from '../components/common/PartnerLeadModal';
+import { PARTNER_LOGO_MAP, DEFAULT_PARTNERS_FALLBACK } from '../utils/partnerAssetCatalog';
 
 export default function Home() {
   const [activePartnerTab, setActivePartnerTab] = useState('all');
   const [activeComparisonTab, setActiveComparisonTab] = useState('aadhiraksha'); // 'aadhiraksha' | 'traditional'
   const [showAllPartnersMobile, setShowAllPartnersMobile] = useState(false);
+  const [selectedPartnerModal, setSelectedPartnerModal] = useState(null);
+  const [dbPartners, setDbPartners] = useState([]);
 
   // PolicyBazaar Style Product Categories Grid
   const productTiles = [
@@ -165,32 +148,32 @@ export default function Home() {
     }
   ];
 
-  const partners = [
-    { name: 'Star Health Insurance', category: 'health', logo: starHealthLogo },
-    { name: 'HDFC ERGO', category: 'general', logo: hdfcErgoLogo },
-    { name: 'ICICI Lombard', category: 'general', logo: iciciLombardLogo },
-    { name: 'Care Health Insurance', category: 'health', logo: careHealthLogo },
-    { name: 'TATA AIG Insurance', category: 'general', logo: tataAigLogo },
-    { name: 'Bajaj Allianz', category: 'general', logo: bajajAllianzLogo },
-    { name: 'Niva Bupa Health', category: 'health', logo: nivaBupaLogo },
-    { name: 'SBI General Insurance', category: 'general', logo: sbiGeneralLogo },
-    { name: 'Life Insurance Corporation (LIC)', category: 'life', logo: licLogo },
-    { name: 'Max Life Insurance', category: 'life', logo: axisMaxLogo },
-    { name: 'Aditya Birla Capital', category: 'life', logo: adityaBirlaLogo },
-    { name: 'Reliance General Insurance', category: 'general', logo: relianceGeneralLogo },
-    { name: 'Digit Insurance', category: 'general', logo: digitLogo },
-    { name: 'Kotak General Insurance', category: 'general', logo: kotakGeneralLogo },
-    { name: 'ManipalCigna Health', category: 'health', logo: manipalCignaLogo },
-    { name: 'Chola MS General Insurance', category: 'general', logo: cholaMsLogo },
-    { name: 'Future Generali', category: 'general', logo: futureGeneraliLogo },
-    { name: 'Magma HDI General', category: 'general', logo: magmaHdiLogo },
-    { name: 'National Insurance', category: 'general', logo: nationalInsuranceLogo },
-    { name: 'Oriental Insurance', category: 'general', logo: orientalInsuranceLogo }
-  ];
+  // Load partners dynamically from database (with fallback to default seed)
+  useEffect(() => {
+    let isMounted = true;
+    portalService.getPartners()
+      .then(data => {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setDbPartners(data);
+        }
+      })
+      .catch(err => {
+        console.warn('Could not fetch backend partners, using initial catalog:', err);
+      });
+    return () => { isMounted = false; };
+  }, []);
+
+  const activePartnerList = dbPartners.length > 0 ? dbPartners : DEFAULT_PARTNERS_FALLBACK;
 
   const filteredPartners = activePartnerTab === 'all' 
-    ? partners 
-    : partners.filter(p => p.category === activePartnerTab);
+    ? activePartnerList 
+    : activePartnerList.filter(p => p.category === activePartnerTab);
+
+  const getPartnerLogo = (partner) => {
+    if (partner.logoUrl) return partner.logoUrl;
+    if (partner.logoKey && PARTNER_LOGO_MAP[partner.logoKey]) return PARTNER_LOGO_MAP[partner.logoKey];
+    return PARTNER_LOGO_MAP.starHealthLogo;
+  };
 
   return (
     <div style={{ background: '#f8fafc', minHeight: '100vh', color: '#0f172a' }}>
@@ -458,20 +441,24 @@ export default function Home() {
 
           {/* Partners Grid */}
           <div className={`pb-partners-grid ${showAllPartnersMobile ? 'mobile-expanded' : 'mobile-clamped'}`}>
-            {filteredPartners.map((partner, idx) => (
-              <div
-                key={idx}
-                className="partner-card-modern"
-                title={partner.name}
-              >
-                <img
-                  src={partner.logo}
-                  alt={partner.name}
-                  className="partner-logo-img"
-                  loading="lazy"
-                />
-              </div>
-            ))}
+            {filteredPartners.map((partner, idx) => {
+              const logo = getPartnerLogo(partner);
+              return (
+                <div
+                  key={partner.id || idx}
+                  className="partner-card-modern"
+                  title={`Check instant quotes with ${partner.name}`}
+                  onClick={() => setSelectedPartnerModal({ partner, logo })}
+                >
+                  <img
+                    src={logo}
+                    alt={partner.name}
+                    className="partner-logo-img"
+                    loading="lazy"
+                  />
+                </div>
+              );
+            })}
           </div>
 
           {/* Mobile "View All Partners" Toggle Button (< 640px) */}
@@ -492,6 +479,15 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {/* Partner Lead Capture & Direct Portal Redirection Modal */}
+      {selectedPartnerModal && (
+        <PartnerLeadModal
+          partner={selectedPartnerModal.partner}
+          logoSrc={selectedPartnerModal.logo}
+          onClose={() => setSelectedPartnerModal(null)}
+        />
+      )}
 
     </div>
   );

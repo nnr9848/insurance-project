@@ -751,24 +751,37 @@ export default function ClaimsIntimationView({
             animation: 'fadeIn 0.2s ease-out'
           }}>
             {/* Modal Header */}
-            <div style={{
+            <div className="crm-modal-header" style={{
               padding: '1.2rem 1.5rem',
-              borderBottom: '1px solid var(--border-subtle)',
+              borderBottom: '1px solid var(--crm-border-subtle, #e2e8f0)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              background: 'linear-gradient(135deg, var(--primary-navy) 0%, #1e3a5f 100%)',
-              color: '#ffffff'
+              background: '#ffffff'
             }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>Lodge New Claim Intimation</h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.76rem', color: '#94a3b8' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy, #0f2b48)', letterSpacing: '-0.2px' }}>
+                  Lodge New Claim Intimation
+                </h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.76rem', color: 'var(--crm-text-muted, #64748b)' }}>
                   Record emergency hospitalization or accidental damage claim
                 </p>
               </div>
               <button
                 onClick={() => setShowNewModal(false)}
-                style={{ background: 'none', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '4px' }}
+                aria-label="Close Modal"
+                className="crm-modal-close-btn"
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  color: '#64748b',
+                  padding: '0.45rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
               >
                 <X size={18} />
               </button>

@@ -79,6 +79,7 @@ import LeadInquiriesView from '../components/crm/LeadInquiriesView';
 import PospApplicationsView from '../components/crm/PospApplicationsView';
 import ClaimsIntimationView from '../components/crm/ClaimsIntimationView';
 import NetworkHospitalsView from '../components/crm/NetworkHospitalsView';
+import InsurancePartnersManagementView from '../components/crm/InsurancePartnersManagementView';
 
 export default function AdminDashboard() {
   const { 
@@ -274,6 +275,13 @@ export default function AdminDashboard() {
           subtitle: 'Comprehensive directory of verified cashless hospital admission desks and contacts.',
           icon: <Building2 size={18} color="#0891b2" />
         };
+      case 'partners':
+        return {
+          title: 'Insurance Partners & Portal Redirections',
+          category: 'Operations & Management',
+          subtitle: 'Configure partner insurer logos, official quote URLs, display priority, and homepage active toggles.',
+          icon: <Globe size={18} color="#0284c7" />
+        };
       default:
         return {
           title: 'Dashboard Overview',
@@ -438,6 +446,7 @@ export default function AdminDashboard() {
     ] : []),
     { id: 'posp', label: 'POSP Agent Network', icon: <UserCheck size={19} />, count: pospList.filter(p => p.status === 'PENDING').length, badgeColor: '#d97706' },
     { id: 'hospitals', label: 'Cashless Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' },
+    { id: 'partners', label: 'Insurance Partners', icon: <Globe size={19} />, count: null },
   ];
 
   const showMiniRail = !isMobile && isCollapsed;
@@ -1425,6 +1434,11 @@ export default function AdminDashboard() {
               hospitals={hospitals} 
               setHospitals={setHospitals} 
             />
+          )}
+
+          {/* VIEW: INSURANCE PARTNERS & REDIRECTIONS */}
+          {activeView === 'partners' && (
+            <InsurancePartnersManagementView />
           )}
 
           {/* 3. MINIMALIST ENTERPRISE CRM FOOTER (Scrolls naturally at bottom, non-sticky) */}

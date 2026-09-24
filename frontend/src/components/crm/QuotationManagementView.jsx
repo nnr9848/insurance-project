@@ -1406,37 +1406,48 @@ export default function QuotationManagementView({ onOpenClient360 }) {
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
           }}>
             {/* Header */}
-            <div style={{
+            <div className="crm-modal-header" style={{
               padding: '1.25rem 1.5rem',
               borderBottom: '1px solid #e2e8f0',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              background: 'linear-gradient(135deg, #091726 0%, #0f2b48 100%)',
-              color: '#ffffff',
+              background: '#ffffff',
               borderRadius: '16px 16px 0 0'
             }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.2)', padding: '2px 8px', borderRadius: '4px' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: '4px' }}>
                     {viewingQuote.quoteNumber}
                   </span>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b' }}>
                     Version v{viewingQuote.versionNumber || 1}
                   </span>
                 </div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '4px 0 0 0', color: '#ffffff' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '4px 0 0 0', color: 'var(--primary-navy, #0f2b48)' }}>
                   {viewingQuote.insurerName}
                 </h3>
-                <div style={{ fontSize: '0.84rem', color: '#cbd5e1' }}>
+                <div style={{ fontSize: '0.84rem', color: '#64748b', marginTop: '2px' }}>
                   {viewingQuote.planName} • {viewingQuote.planVariant || 'Comprehensive'}
                 </div>
               </div>
               <button
                 onClick={() => setViewingQuote(null)}
-                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#ffffff', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                aria-label="Close Modal"
+                className="crm-modal-close-btn"
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  color: '#64748b',
+                  padding: '0.45rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
@@ -1647,27 +1658,40 @@ export default function QuotationManagementView({ onOpenClient360 }) {
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
           }}>
             {/* Header */}
-            <div style={{
+            <div className="crm-modal-header" style={{
               padding: '1.25rem 1.5rem',
               borderBottom: '1px solid #e2e8f0',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              background: '#0f2b48',
-              color: '#ffffff',
+              background: '#ffffff',
               borderRadius: '16px 16px 0 0'
             }}>
               <div>
-                <div style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 800 }}>
-                  EDIT / REVISE QUOTE • {editingQuote.quoteNumber} (v{editingQuote.versionNumber || 1})
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
+                    REVISE QUOTE • {editingQuote.quoteNumber} (v{editingQuote.versionNumber || 1})
+                  </span>
                 </div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '2px 0 0 0', color: '#ffffff' }}>
+                <h3 style={{ fontSize: '1.18rem', fontWeight: 800, margin: '4px 0 0 0', color: 'var(--primary-navy, #0f2b48)' }}>
                   {editingQuote.clientName}
                 </h3>
               </div>
               <button
                 onClick={() => setEditingQuote(null)}
-                style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer' }}
+                aria-label="Close Modal"
+                className="crm-modal-close-btn"
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  color: '#64748b',
+                  padding: '0.45rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
               >
                 <X size={18} />
               </button>

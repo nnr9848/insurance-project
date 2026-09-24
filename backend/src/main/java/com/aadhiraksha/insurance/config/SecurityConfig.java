@@ -59,6 +59,8 @@ public class SecurityConfig {
                                 AntPathRequestMatcher.antMatcher("/api/hospitals/**"),
                                 AntPathRequestMatcher.antMatcher("/api/posp/apply"),
                                 AntPathRequestMatcher.antMatcher("/api/claims/submit"),
+                                AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/partners"),
+                                AntPathRequestMatcher.antMatcher("/api/partners"),
                                 AntPathRequestMatcher.antMatcher("/v3/api-docs/**"),
                                 AntPathRequestMatcher.antMatcher("/swagger-ui/**"),
                                 AntPathRequestMatcher.antMatcher("/swagger-ui.html")
