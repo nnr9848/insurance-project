@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   ExternalLink, 
@@ -11,7 +11,8 @@ import {
   Mail, 
   Briefcase, 
   ArrowRight,
-  Lock
+  Lock,
+  ChevronRight
 } from 'lucide-react';
 import { portalService } from '../../services/api';
 import { getStoredAttribution } from '../../utils/trafficAttribution';
@@ -31,6 +32,43 @@ export default function PartnerLeadModal({ partner, onClose, logoSrc }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [countdown, setCountdown] = useState(3);
+  const timerRef = useRef(null);
+
+  // Clean up any running countdown on modal unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  const triggerRedirectNow = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    const targetUrl = partner?.redirectUrl || 'https://www.google.com';
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    onClose();
+  };
+
+  // Start smooth 3-second countdown once lead submission succeeds
+  useEffect(() => {
+    if (!isSuccess) return;
+
+    setCountdown(3);
+    timerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current);
+          triggerRedirectNow();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isSuccess]);
 
   if (!partner) return null;
 
@@ -90,23 +128,15 @@ export default function PartnerLeadModal({ partner, onClose, logoSrc }) {
       });
 
       setIsSuccess(true);
-
-      // 3. Seamlessly redirect to partner's configured official website
-      setTimeout(() => {
-        const targetUrl = partner.redirectUrl || 'https://www.google.com';
-        window.open(targetUrl, '_blank', 'noopener,noreferrer');
-        onClose();
-      }, 900);
+      // Countdown effect automatically triggers redirect in 3s or user can click immediately
 
     } catch (err) {
       console.error('Failed to submit partner quote lead:', err);
       // Even if network fails, ensure user is not stranded; still permit opening the site
-      setErrorMsg('Redirecting you directly to the official portal...');
+      setErrorMsg('Directing you to the official portal...');
       setTimeout(() => {
-        const targetUrl = partner.redirectUrl || 'https://www.google.com';
-        window.open(targetUrl, '_blank', 'noopener,noreferrer');
-        onClose();
-      }, 1000);
+        triggerRedirectNow();
+      }, 1500);
     } finally {
       setLoading(false);
     }
@@ -225,35 +255,118 @@ export default function PartnerLeadModal({ partner, onClose, logoSrc }) {
         {/* Modal Form Content */}
         <div style={{ padding: '1.5rem' }}>
           {isSuccess ? (
-            <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+            <div style={{ textAlign: 'center', padding: '1.25rem 0.5rem' }}>
               <div style={{
-                width: '56px',
-                height: '56px',
+                width: '60px',
+                height: '60px',
                 borderRadius: '50%',
                 background: '#ecfdf5',
                 color: '#059669',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: '1rem'
+                marginBottom: '1rem',
+                border: '2px solid #a7f3d0'
               }}>
-                <CheckCircle2 size={32} />
+                <CheckCircle2 size={36} />
               </div>
-              <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary-navy, #0f2b48)', margin: '0 0 0.5rem' }}>
+
+              <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy, #0f2b48)', margin: '0 0 0.4rem' }}>
                 Details Saved Successfully!
               </h4>
-              <p style={{ color: 'var(--text-muted, #64748b)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
-                Redirecting you to <strong>{partner.name}</strong> official website...
+
+              <p style={{ color: 'var(--text-muted, #64748b)', fontSize: '0.92rem', marginBottom: '1.25rem', lineHeight: '1.45' }}>
+                Thank you! We have registered your request. Redirecting you to <strong>{partner.name}</strong> official portal in:
               </p>
+
+              {/* 3-Second Visual Countdown Badge & Animated Progress */}
               <div style={{
-                display: 'inline-flex',
+                maxWidth: '280px',
+                margin: '0 auto 1.5rem',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                padding: '0.85rem 1rem',
+                display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '0.82rem',
-                color: 'var(--accent-gold-hover, #d97706)',
-                fontWeight: 700
+                gap: '8px'
               }}>
-                Opening in a secure window <ExternalLink size={14} />
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '50%',
+                  background: 'var(--primary-navy, #0f2b48)',
+                  color: '#ffffff',
+                  fontSize: '1.25rem',
+                  fontWeight: 800,
+                  boxShadow: '0 4px 10px rgba(15, 43, 72, 0.25)',
+                  animation: 'pulse 1s infinite'
+                }}>
+                  {countdown}s
+                </div>
+                <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
+                  Automatic Redirection Active
+                </span>
+                {/* Visual Progress Bar */}
+                <div style={{ width: '100%', height: '4px', background: '#e2e8f0', borderRadius: '999px', overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${((4 - countdown) / 3) * 100}%`,
+                    height: '100%',
+                    background: 'linear-gradient(90deg, #10b981, #059669)',
+                    transition: 'width 1s linear'
+                  }} />
+                </div>
+              </div>
+
+              {/* Immediate Manual Override ("Proceed Now" Escape Hatch) */}
+              <button
+                type="button"
+                onClick={triggerRedirectNow}
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(135deg, var(--accent-gold, #f59e0b) 0%, var(--accent-gold-hover, #d97706) 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '0.85rem 1.25rem',
+                  fontSize: '0.95rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  boxShadow: '0 4px 12px rgba(245, 158, 11, 0.35)',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(245, 158, 11, 0.45)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'none';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.35)';
+                }}
+              >
+                <span>Proceed to {partner.name} Now</span>
+                <ExternalLink size={16} />
+              </button>
+
+              <div style={{
+                marginTop: '1rem',
+                fontSize: '0.74rem',
+                color: '#94a3b8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px'
+              }}>
+                <Lock size={12} color="#10b981" />
+                <span>Secure referral transfer powered by Aadhiraksha Insurance</span>
               </div>
             </div>
           ) : (
