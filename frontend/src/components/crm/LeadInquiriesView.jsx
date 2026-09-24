@@ -290,10 +290,66 @@ export default function LeadInquiriesView({
         return <span style={{ whiteSpace: 'nowrap' }}>{sanitizeSpecsString(planDetailsStr)}</span>;
       }
 
+      // Special badge treatment for Partner Direct Clicks & Marketing Campaigns
+      if (data.clickedCompany || data.partnerName) {
+        const company = data.clickedCompany || data.partnerName;
+        const campaign = data.campaign || 'Direct / Organic';
+        const redirected = data.redirected === 'Yes' || data.action === 'PROCEEDED_TO_INSURER_SITE';
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+            <span style={{
+              background: '#eff6ff',
+              color: '#1d4ed8',
+              border: '1px solid #bfdbfe',
+              borderRadius: '6px',
+              padding: '2px 7px',
+              fontSize: '0.73rem',
+              fontWeight: 800,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              🏛️ {company}
+            </span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
+              <span style={{
+                background: '#fef3c7',
+                color: '#b45309',
+                border: '1px solid #fde68a',
+                borderRadius: '4px',
+                padding: '1px 5px',
+                fontSize: '0.67rem',
+                fontWeight: 700
+              }}>
+                🎯 {campaign}
+              </span>
+              {redirected && (
+                <span style={{
+                  background: '#ecfdf5',
+                  color: '#059669',
+                  border: '1px solid #a7f3d0',
+                  borderRadius: '4px',
+                  padding: '1px 5px',
+                  fontSize: '0.67rem',
+                  fontWeight: 800
+                }}>
+                  ✓ Redirected
+                </span>
+              )}
+            </div>
+            {data.product && (
+              <span style={{ fontSize: '0.71rem', color: '#64748b', fontWeight: 600 }}>
+                {data.product}
+              </span>
+            )}
+          </div>
+        );
+      }
+
       return (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
           {Object.entries(data).map(([key, val]) => {
-            if (!val) return null;
+            if (!val || ['targetUrl', 'gclid', 'action'].includes(key)) return null;
             const cleanedVal = sanitizeSpecsString(val);
             if (!cleanedVal) return null;
 
@@ -2165,6 +2221,42 @@ export default function LeadInquiriesView({
                 </div>
                 <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '12px 14px', borderRadius: '10px', fontSize: '0.84rem', color: '#166534' }}>
                   {(() => {
+                    let parsedData = null;
+                    try {
+                      parsedData = typeof viewingInquiry.planDetails === 'string' ? JSON.parse(viewingInquiry.planDetails) : viewingInquiry.planDetails;
+                    } catch {}
+
+                    if (parsedData && (parsedData.clickedCompany || parsedData.partnerName)) {
+                      return (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                          <div>
+                            <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#15803d', fontWeight: 700, display: 'block' }}>Clicked Partner</span>
+                            <strong style={{ color: '#0f2b48', fontSize: '0.9rem' }}>{parsedData.clickedCompany || parsedData.partnerName}</strong>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#15803d', fontWeight: 700, display: 'block' }}>Product Requested</span>
+                            <strong style={{ color: '#0f2b48', fontSize: '0.9rem' }}>{parsedData.product || 'Insurance Inquiry'}</strong>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#15803d', fontWeight: 700, display: 'block' }}>Traffic Source / Campaign</span>
+                            <span style={{ color: '#0f2b48', fontWeight: 700 }}>{parsedData.source || 'Website'} — {parsedData.campaign || 'Direct / Organic'}</span>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#15803d', fontWeight: 700, display: 'block' }}>Redirected to Portal</span>
+                            <strong style={{ color: parsedData.redirected === 'Yes' ? '#059669' : '#0f2b48' }}>
+                              {parsedData.redirected === 'Yes' ? 'Yes (Opened in new tab)' : 'Pending'}
+                            </strong>
+                          </div>
+                          {parsedData.companyName && (
+                            <div style={{ gridColumn: '1 / -1' }}>
+                              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#15803d', fontWeight: 700, display: 'block' }}>Corporate / Firm Name</span>
+                              <strong style={{ color: '#0f2b48' }}>{parsedData.companyName}</strong>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
                     const unpacked = unpackPlanDetails(viewingInquiry.planDetails);
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

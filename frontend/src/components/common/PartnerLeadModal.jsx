@@ -14,6 +14,7 @@ import {
   Lock
 } from 'lucide-react';
 import { portalService } from '../../services/api';
+import { getStoredAttribution } from '../../utils/trafficAttribution';
 
 export default function PartnerLeadModal({ partner, onClose, logoSrc }) {
   const [formData, setFormData] = useState({
@@ -58,15 +59,22 @@ export default function PartnerLeadModal({ partner, onClose, logoSrc }) {
     setErrorMsg('');
 
     try {
-      // 1. Prepare structured lead details
+      // 1. Retrieve marketing attribution (Google Ads, UTM Campaign, Referrer)
+      const attribution = getStoredAttribution();
+
+      // 2. Prepare structured lead tracking details (exact industry-standard tracking specification)
       const planDetailsPayload = JSON.stringify({
-        source: 'homepage_partner_card',
-        partnerName: partner.name,
+        source: attribution?.source || 'Website',
+        campaign: attribution?.campaign || 'Direct / Organic',
+        utmMedium: attribution?.medium || '',
+        gclid: attribution?.gclid || '',
+        clickedCompany: partner.name,
+        product: formData.requirement || 'Insurance Inquiry',
         partnerId: partner.id || null,
-        targetUrl: partner.redirectUrl,
-        category: partner.category,
-        requirement: formData.requirement,
+        targetUrl: partner.redirectUrl || '',
+        category: partner.category || '',
         companyName: formData.companyName?.trim() || null,
+        redirected: 'Yes',
         redirectedAt: new Date().toISOString(),
         action: 'PROCEEDED_TO_INSURER_SITE'
       });

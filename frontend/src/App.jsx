@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import { captureUtmParameters } from './utils/trafficAttribution';
 
 import Home from './pages/Home';
 import HealthInsurance from './pages/HealthInsurance';
@@ -74,6 +75,11 @@ class ErrorBoundary extends React.Component {
 export default function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
+
+  // Automatically track marketing attribution (UTM tags, Google Ads gclid, referrer)
+  useEffect(() => {
+    captureUtmParameters();
+  }, [location.search]);
 
   return (
     <ErrorBoundary>
