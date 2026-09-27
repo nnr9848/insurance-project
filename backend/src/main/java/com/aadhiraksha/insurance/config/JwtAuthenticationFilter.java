@@ -14,10 +14,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private final JwtUtils jwtUtils;
     private final CustomUserDetailsService userDetailsService;
@@ -52,8 +56,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            log.debug("JWT token has expired for request [{}]: {}", request.getRequestURI(), e.getMessage());
+        } catch (io.jsonwebtoken.security.SignatureException | io.jsonwebtoken.MalformedJwtException e) {
+            log.warn("Invalid JWT token received for request [{}]: {}", request.getRequestURI(), e.getMessage());
         } catch (Exception e) {
-            logger.error("Cannot set user authentication: {}", e);
+            log.warn("Could not authenticate user token for request [{}]: {}", request.getRequestURI(), e.getMessage());
         }
 
         filterChain.doFilter(request, response);
