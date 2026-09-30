@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   Phone, 
@@ -25,9 +25,11 @@ import {
   ArrowRight
 } from 'lucide-react';
 import logoImg from '../assets/logo.png';
+import { useBusinessProfile } from '../context/BusinessProfileContext';
 
 export default function Header() {
   const { user, logout, isAuthenticated } = useAuth();
+  const { businessProfile } = useBusinessProfile();
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [mobileAccordion, setMobileAccordion] = useState('products');
@@ -35,6 +37,30 @@ export default function Header() {
   const userMenuRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Track window scroll position to dynamically show mini logo & sticky helpline
+  useEffect(() => {
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 60);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    // Check initial scroll on mount
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -104,25 +130,12 @@ export default function Header() {
         />
       )}
 
-      <header style={{
-        background: '#ffffff',
-        borderBottom: '1px solid #e2e8f0',
-        position: 'sticky',
-        top: 0,
-        zIndex: 1000,
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.04)',
-        fontFamily: 'Inter, system-ui, sans-serif'
-      }}>
-        <div className="container" style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          height: '68px',
-          gap: '1rem'
-        }}>
+      {/* Tier 1: Top Brand Header (Clean White Bar with Logo, Trust Slogan & Dynamic Quick Contact) */}
+      <header className="top-header">
+        <div className="top-header-container">
           
-          {/* Left: Brand Logo & Mobile Trigger */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* Left: Brand Logo & Company Subtitle */}
+          <div className="header-brand-row">
             <button
               onClick={() => setIsMobileOpen(true)}
               style={{
@@ -131,7 +144,7 @@ export default function Header() {
                 border: 'none',
                 padding: '6px',
                 cursor: 'pointer',
-                color: '#0f2b48'
+                color: 'var(--primary-navy)'
               }}
               className="pb-mobile-toggle"
               aria-label="Open Navigation Menu"
@@ -142,338 +155,52 @@ export default function Header() {
             <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
               <img 
                 src={logoImg} 
-                alt="Aadhiraksha Insurance" 
-                style={{ height: '44px', width: 'auto', objectFit: 'contain' }}
+                alt="Aadhiraksha Insurance Marketing & Financial Services" 
+                style={{ height: '46px', width: 'auto', objectFit: 'contain' }}
               />
             </Link>
           </div>
 
-          {/* Center: Clean Dropdown Navigation (Desktop) */}
-          <nav 
-            ref={dropdownRef}
-            className="pb-desktop-nav"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-              height: '100%'
-            }}
-          >
-            {/* 1. Insurance Products Dropdown */}
-            <div 
-              style={{ position: 'relative' }}
-              onMouseEnter={() => handleMouseEnter('products')}
-              onMouseLeave={handleMouseLeave}
-            >
-              <button
-                onClick={() => toggleDropdown('products')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  background: 'none',
-                  border: 'none',
-                  padding: '8px 12px',
-                  fontSize: '0.88rem',
-                  fontWeight: 600,
-                  color: activeDropdown === 'products' ? '#059669' : '#1e293b',
-                  cursor: 'pointer',
-                  borderRadius: '8px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                Insurance Products <ChevronDown size={14} style={{ transform: activeDropdown === 'products' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-              </button>
+          {/* Center: Brand Trust Mission Slogan (from client screenshot) */}
+          <div className="slogan-box">
+            <span className="slogan-main">Insurance is the first line of defense for everyone's life.</span>
+            <span className="slogan-sub">INDIA'S NO. 1 MOST TRUSTED INSURANCE PLATFORM FOR ALL</span>
+          </div>
 
-              {activeDropdown === 'products' && (
-                <div style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 8px)',
-                  left: '0',
-                  width: '320px',
-                  background: '#ffffff',
-                  borderRadius: '16px',
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 20px 35px -10px rgba(0, 0, 0, 0.15)',
-                  padding: '10px',
-                  zIndex: 1100,
-                  animation: 'dropdownFadeIn 0.15s ease-out'
-                }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: '#94a3b8', padding: '6px 10px' }}>
-                    Popular Categories
-                  </div>
-
-                  {[
-                    { title: 'Health Insurance', desc: 'Cashless hospital network', icon: <HeartPulse size={18} color="#059669" />, link: '/insurance/health' },
-                    { title: 'Term Life Insurance', desc: '₹1 Cr cover from ₹410/mo', icon: <ShieldCheck size={18} color="#0284c7" />, link: '/insurance/term-life' },
-                    { title: 'Car & 2-Wheeler Insurance', desc: 'Instant policy in 2 mins', icon: <Car size={18} color="#d97706" />, link: '/insurance/motor' },
-                    { title: 'Family Health Floater', desc: 'Cover spouse & kids in 1 plan', icon: <Users size={18} color="#db2777" />, link: '/insurance/health' },
-                    { title: 'Corporate / SME Insurance', desc: 'Group health & fire liability', icon: <Briefcase size={18} color="#2563eb" />, link: '/insurance/business' },
-                    { title: 'Travel Insurance', desc: 'Schengen & US approved', icon: <Plane size={18} color="#0891b2" />, link: '/insurance/travel' }
-                  ].map((item, idx) => (
-                    <Link
-                      key={idx}
-                      to={item.link}
-                      onClick={() => setActiveDropdown(null)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '8px 10px',
-                        borderRadius: '10px',
-                        textDecoration: 'none',
-                        transition: 'background 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <div style={{ background: '#f1f5f9', padding: '6px', borderRadius: '8px' }}>
-                        {item.icon}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f2b48' }}>{item.title}</div>
-                        <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{item.desc}</div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 2. Renew Your Policy Dropdown */}
-            <div 
-              style={{ position: 'relative' }}
-              onMouseEnter={() => handleMouseEnter('renewal')}
-              onMouseLeave={handleMouseLeave}
-            >
-              <button
-                onClick={() => toggleDropdown('renewal')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  background: 'none',
-                  border: 'none',
-                  padding: '8px 12px',
-                  fontSize: '0.88rem',
-                  fontWeight: 600,
-                  color: activeDropdown === 'renewal' ? '#059669' : '#1e293b',
-                  cursor: 'pointer',
-                  borderRadius: '8px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                Renew Your Policy <ChevronDown size={14} style={{ transform: activeDropdown === 'renewal' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-              </button>
-
-              {activeDropdown === 'renewal' && (
-                <div style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 8px)',
-                  left: '0',
-                  width: '260px',
-                  background: '#ffffff',
-                  borderRadius: '16px',
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 20px 35px -10px rgba(0, 0, 0, 0.15)',
-                  padding: '8px',
-                  zIndex: 1100,
-                  animation: 'dropdownFadeIn 0.15s ease-out'
-                }}>
-                  {[
-                    { title: 'Health Insurance Renewal', link: '/renewal-port?action=renew&type=health' },
-                    { title: 'Motor / Car Renewal', link: '/renewal-port?action=renew&type=motor' },
-                    { title: 'Two Wheeler Renewal', link: '/renewal-port?action=renew&type=two_wheeler' },
-                    { title: 'Port Existing Policy', link: '/renewal-port?action=port&type=health' }
-                  ].map((item, idx) => (
-                    <Link
-                      key={idx}
-                      to={item.link}
-                      onClick={() => setActiveDropdown(null)}
-                      style={{
-                        display: 'block',
-                        padding: '9px 12px',
-                        borderRadius: '8px',
-                        fontSize: '0.85rem',
-                        fontWeight: 600,
-                        color: '#0f2b48',
-                        textDecoration: 'none',
-                        transition: 'background 0.15s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      {item.title}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 3. Claim Support Dropdown */}
-            <div 
-              style={{ position: 'relative' }}
-              onMouseEnter={() => handleMouseEnter('claims')}
-              onMouseLeave={handleMouseLeave}
-            >
-              <button
-                onClick={() => toggleDropdown('claims')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  background: 'none',
-                  border: 'none',
-                  padding: '8px 12px',
-                  fontSize: '0.88rem',
-                  fontWeight: 600,
-                  color: activeDropdown === 'claims' ? '#059669' : '#1e293b',
-                  cursor: 'pointer',
-                  borderRadius: '8px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                Claim Support <ChevronDown size={14} style={{ transform: activeDropdown === 'claims' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-              </button>
-
-              {activeDropdown === 'claims' && (
-                <div style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 8px)',
-                  left: '0',
-                  width: '260px',
-                  background: '#ffffff',
-                  borderRadius: '16px',
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 20px 35px -10px rgba(0, 0, 0, 0.15)',
-                  padding: '8px',
-                  zIndex: 1100,
-                  animation: 'dropdownFadeIn 0.15s ease-out'
-                }}>
-                  {[
-                    { title: 'File / Intimate a Claim', link: '/claim-support?tab=file' },
-                    { title: 'Track Claim Status', link: '/claim-support?tab=track' },
-                    { title: 'Network Hospitals (Cashless)', link: '/network-hospitals' },
-                    { title: 'Become POSP Agent', link: '/become-posp' }
-                  ].map((item, idx) => (
-                    <Link
-                      key={idx}
-                      to={item.link}
-                      onClick={() => setActiveDropdown(null)}
-                      style={{
-                        display: 'block',
-                        padding: '9px 12px',
-                        borderRadius: '8px',
-                        fontSize: '0.85rem',
-                        fontWeight: 600,
-                        color: '#0f2b48',
-                        textDecoration: 'none',
-                        transition: 'background 0.15s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      {item.title}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 4. Loans Direct Link */}
-            <NavLink
-              to="/loans"
-              style={({ isActive }) => ({
-                padding: '8px 12px',
-                fontSize: '0.88rem',
-                fontWeight: 700,
-                color: isActive ? '#059669' : '#0f2b48',
-                textDecoration: 'none',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              })}
-            >
-              <Building2 size={16} color="#d97706" /> Loans
-            </NavLink>
-          </nav>
-
-          {/* Right: Talk to Expert Pill & Sign In Button */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Right: Quick Contact Helpline Card & User Profile / Login */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             
-            {/* Talk to Expert CTA (PolicyBazaar Style) */}
-            <a
-              href="tel:+918367415156"
-              className="header-expert-btn"
-              title="Talk to Insurance Expert (+91 8367415156)"
-              aria-label="Call Expert"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: '#f0fdf4',
-                color: '#15803d',
-                border: '1.5px solid #86efac',
-                padding: '8px 14px',
-                borderRadius: '9999px',
-                fontWeight: 700,
-                fontSize: '0.84rem',
-                textDecoration: 'none',
-                transition: 'all 0.2s ease',
-                whiteSpace: 'nowrap'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#dcfce7';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#f0fdf4';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
+            {/* Quick Contact Helpline Card (connected dynamically to Admin Business Profile) */}
+            <a 
+              href={`tel:${businessProfile?.primaryPhone?.replace(/\s+/g, '') || '+918367415156'}`}
+              className="quick-contact"
+              title={`Call Quick Helpline (${businessProfile?.primaryPhone || '+91 8367415156'})`}
             >
-              <Phone size={14} />
-              <span className="header-expert-btn-text">Talk to Expert</span>
+              <div className="contact-icon-wrapper">
+                <Phone size={18} />
+              </div>
+              <div className="contact-details">
+                <span className="contact-label">QUICK CONTACT</span>
+                <span className="contact-phone">{businessProfile?.primaryPhone || '+91 8367415156'}</span>
+              </div>
             </a>
 
-            {/* Sign In / User Profile */}
+            {/* Sign In / User Profile Dropdown */}
             {isAuthenticated ? (
               <div 
                 ref={userMenuRef}
                 className="user-profile-menu-wrapper" 
-                style={{ position: 'relative' }}
                 onMouseEnter={() => handleMouseEnter('userProfile')}
                 onMouseLeave={handleMouseLeave}
               >
                 <button
                   onClick={() => toggleDropdown('userProfile')}
                   className="user-profile-trigger"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: '#f1f5f9',
-                    border: '1px solid #cbd5e1',
-                    padding: '4px 10px 4px 4px',
-                    borderRadius: '9999px',
-                    cursor: 'pointer'
-                  }}
                 >
-                  <div style={{
-                    width: '30px',
-                    height: '30px',
-                    borderRadius: '50%',
-                    background: '#0f2b48',
-                    color: '#f59e0b',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 800,
-                    fontSize: '0.75rem'
-                  }}>
+                  <div className="user-avatar-circle">
                     {userInitials}
                   </div>
-                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f2b48' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--primary-navy)' }}>
                     {user.fullName?.split(' ')[0]}
                   </span>
                   <ChevronDown size={14} color="#64748b" />
@@ -487,8 +214,8 @@ export default function Header() {
                     width: '240px',
                     background: '#ffffff',
                     borderRadius: '14px',
-                    border: '1px solid #e2e8f0',
-                    boxShadow: '0 20px 35px -10px rgba(0, 0, 0, 0.15)',
+                    border: '1px solid var(--border-subtle)',
+                    boxShadow: 'var(--shadow-xl)',
                     padding: '8px',
                     zIndex: 1100
                   }}>
@@ -504,7 +231,7 @@ export default function Header() {
                           borderRadius: '8px',
                           fontSize: '0.85rem',
                           fontWeight: 700,
-                          color: '#059669',
+                          color: 'var(--accent-emerald)',
                           textDecoration: 'none'
                         }}
                       >
@@ -543,7 +270,7 @@ export default function Header() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: '#0f2b48',
+                  background: 'var(--primary-navy)',
                   color: '#ffffff',
                   padding: '8px 16px',
                   borderRadius: '10px',
@@ -555,11 +282,11 @@ export default function Header() {
                   whiteSpace: 'nowrap'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#0a1e33';
+                  e.currentTarget.style.background = 'var(--primary-navy-dark)';
                   e.currentTarget.style.transform = 'translateY(-1px)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#0f2b48';
+                  e.currentTarget.style.background = 'var(--primary-navy)';
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
@@ -572,6 +299,265 @@ export default function Header() {
 
         </div>
       </header>
+
+      {/* Tier 2: Dark Forest Navigation Bar (with Mini-badge & active tab highlighted gold) */}
+      <nav className="nav-bar">
+        <div className="nav-container">
+          
+          {/* Mini Logo Badge on Left (shows only when header has scrolled past) */}
+          <Link 
+            to="/" 
+            className={`nav-brand-logo-btn ${isScrolled ? 'is-scrolled' : ''}`} 
+            title="Aadhiraksha Home"
+            tabIndex={isScrolled ? 0 : -1}
+            aria-hidden={!isScrolled}
+          >
+            <div className="nav-logo-badge">
+              <img src={logoImg} alt="Aadhiraksha" className="nav-logo-img" />
+            </div>
+          </Link>
+
+          {/* Desktop Nav Items */}
+          <div ref={dropdownRef} className="nav-links">
+            
+            {/* 1. NEW POLICY SUPPORT Dropdown */}
+            <div 
+              style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center' }}
+              onMouseEnter={() => handleMouseEnter('products')}
+              onMouseLeave={handleMouseLeave}
+            >
+              <button
+                onClick={() => toggleDropdown('products')}
+                className={`nav-item ${location.pathname.startsWith('/insurance') ? 'active' : ''}`}
+                style={{ height: '38px' }}
+              >
+                NEW POLICY SUPPORT <ChevronDown size={14} style={{ transform: activeDropdown === 'products' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </button>
+
+              {activeDropdown === 'products' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: '0',
+                  width: '320px',
+                  background: '#ffffff',
+                  borderRadius: '16px',
+                  border: '1px solid var(--border-subtle)',
+                  boxShadow: 'var(--shadow-xl)',
+                  padding: '10px',
+                  zIndex: 1100,
+                  animation: 'dropdownFadeIn 0.15s ease-out'
+                }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-light)', padding: '6px 10px' }}>
+                    Popular Categories
+                  </div>
+
+                  {[
+                    { title: 'Health Insurance', desc: 'Cashless hospital network', icon: <HeartPulse size={18} color="var(--accent-emerald)" />, link: '/insurance/health' },
+                    { title: 'Term Life Insurance', desc: '₹1 Cr cover from ₹410/mo', icon: <ShieldCheck size={18} color="#0284c7" />, link: '/insurance/term-life' },
+                    { title: 'Car & 2-Wheeler Insurance', desc: 'Instant policy in 2 mins', icon: <Car size={18} color="var(--accent-gold-hover)" />, link: '/insurance/motor' },
+                    { title: 'Family Health Floater', desc: 'Cover spouse & kids in 1 plan', icon: <Users size={18} color="#db2777" />, link: '/insurance/health' },
+                    { title: 'Corporate / SME Insurance', desc: 'Group health & fire liability', icon: <Briefcase size={18} color="var(--accent-blue)" />, link: '/insurance/business' },
+                    { title: 'Travel Insurance', desc: 'Schengen & US approved', icon: <Plane size={18} color="#0891b2" />, link: '/insurance/travel' }
+                  ].map((item, idx) => (
+                    <Link
+                      key={idx}
+                      to={item.link}
+                      onClick={() => setActiveDropdown(null)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '8px 10px',
+                        borderRadius: '10px',
+                        textDecoration: 'none',
+                        transition: 'background 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <div style={{ background: '#f1f5f9', padding: '6px', borderRadius: '8px' }}>
+                        {item.icon}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-navy)' }}>{item.title}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{item.desc}</div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 2. RENEWAL / PORT POLICY Dropdown */}
+            <div 
+              style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center' }}
+              onMouseEnter={() => handleMouseEnter('renewal')}
+              onMouseLeave={handleMouseLeave}
+            >
+              <button
+                onClick={() => toggleDropdown('renewal')}
+                className={`nav-item ${location.pathname.startsWith('/renewal-port') ? 'active' : ''}`}
+                style={{ height: '38px' }}
+              >
+                RENEWAL / PORT POLICY <ChevronDown size={14} style={{ transform: activeDropdown === 'renewal' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </button>
+
+              {activeDropdown === 'renewal' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: '0',
+                  width: '260px',
+                  background: '#ffffff',
+                  borderRadius: '16px',
+                  border: '1px solid var(--border-subtle)',
+                  boxShadow: 'var(--shadow-xl)',
+                  padding: '8px',
+                  zIndex: 1100,
+                  animation: 'dropdownFadeIn 0.15s ease-out'
+                }}>
+                  {[
+                    { title: 'Health Insurance Renewal', link: '/renewal-port?action=renew&type=health' },
+                    { title: 'Motor / Car Renewal', link: '/renewal-port?action=renew&type=motor' },
+                    { title: 'Two Wheeler Renewal', link: '/renewal-port?action=renew&type=two_wheeler' },
+                    { title: 'Port Existing Policy', link: '/renewal-port?action=port&type=health' }
+                  ].map((item, idx) => (
+                    <Link
+                      key={idx}
+                      to={item.link}
+                      onClick={() => setActiveDropdown(null)}
+                      style={{
+                        display: 'block',
+                        padding: '9px 12px',
+                        borderRadius: '8px',
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        color: 'var(--primary-navy)',
+                        textDecoration: 'none',
+                        transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {item.title}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 3. CLAIM SUPPORT Dropdown */}
+            <div 
+              style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center' }}
+              onMouseEnter={() => handleMouseEnter('claims')}
+              onMouseLeave={handleMouseLeave}
+            >
+              <button
+                onClick={() => toggleDropdown('claims')}
+                className={`nav-item ${location.pathname.startsWith('/claim-support') ? 'active' : ''}`}
+                style={{ height: '38px' }}
+              >
+                CLAIM SUPPORT <ChevronDown size={14} style={{ transform: activeDropdown === 'claims' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </button>
+
+              {activeDropdown === 'claims' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: '0',
+                  width: '260px',
+                  background: '#ffffff',
+                  borderRadius: '16px',
+                  border: '1px solid var(--border-subtle)',
+                  boxShadow: 'var(--shadow-xl)',
+                  padding: '8px',
+                  zIndex: 1100,
+                  animation: 'dropdownFadeIn 0.15s ease-out'
+                }}>
+                  {[
+                    { title: 'File / Intimate a Claim', link: '/claim-support?tab=file' },
+                    { title: 'Track Claim Status', link: '/claim-support?tab=track' },
+                    { title: 'Network Hospitals (Cashless)', link: '/network-hospitals' },
+                    { title: 'Become POSP Agent', link: '/become-posp' }
+                  ].map((item, idx) => (
+                    <Link
+                      key={idx}
+                      to={item.link}
+                      onClick={() => setActiveDropdown(null)}
+                      style={{
+                        display: 'block',
+                        padding: '9px 12px',
+                        borderRadius: '8px',
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        color: 'var(--primary-navy)',
+                        textDecoration: 'none',
+                        transition: 'background 0.15s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {item.title}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 4. NETWORK HOSPITALS Direct Link (only highlighted gold if active) */}
+            <NavLink
+              to="/network-hospitals"
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+              style={{ height: '38px' }}
+            >
+              NETWORK HOSPITALS
+            </NavLink>
+
+            {/* 5. BECOME POSP AGENT Direct Link (only highlighted gold if active) */}
+            <NavLink
+              to="/become-posp"
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+              style={{ height: '38px' }}
+            >
+              BECOME POSP AGENT
+            </NavLink>
+
+            {/* 6. LOANS Direct Link (only highlighted gold if active) */}
+            <NavLink
+              to="/loans"
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+              style={{ height: '38px' }}
+            >
+              LOANS
+            </NavLink>
+
+          </div>
+
+          {/* Right Mobile Toggle for Dark Bar */}
+          <div style={{ display: 'none' }} className="pb-mobile-toggle">
+            <button
+              onClick={() => setIsMobileOpen(true)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: 'none',
+                padding: '6px 10px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                color: '#ffffff',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <Menu size={16} /> MENU
+            </button>
+          </div>
+
+        </div>
+      </nav>
 
       {/* Mobile Drawer Overlay */}
       {isMobileOpen && (
@@ -900,6 +886,44 @@ export default function Header() {
             )}
           </div>
 
+          {/* Direct Network Hospitals Cashless Tile (Mobile Quick Access) */}
+          <Link
+            to="/network-hospitals"
+            onClick={() => setIsMobileOpen(false)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 14px',
+              borderRadius: '14px',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              textDecoration: 'none',
+              flexShrink: 0,
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: '#ecfdf5',
+                border: '1px solid #a7f3d0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Hospital size={18} color="#059669" />
+              </div>
+              <div>
+                <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f2b48', display: 'block' }}>Network Hospitals</span>
+                <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>Cashless Healthcare Search</span>
+              </div>
+            </div>
+            <ChevronRight size={16} color="#94a3b8" />
+          </Link>
+
           {/* Direct Loans & Financing Tile (Clean Brand Card) */}
           <Link
             to="/loans"
@@ -1025,7 +1049,7 @@ export default function Header() {
           gap: '8px'
         }}>
           <a
-            href="tel:+918367415156"
+            href={`tel:${businessProfile?.primaryPhone?.replace(/\s+/g, '') || '+918367415156'}`}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1042,7 +1066,7 @@ export default function Header() {
               transition: 'transform 0.15s'
             }}
           >
-            <Phone size={17} /> Talk to Expert (+91 8367415156)
+            <Phone size={17} /> Talk to Expert ({businessProfile?.primaryPhone || '+91 8367415156'})
           </a>
 
           {!isAuthenticated && (

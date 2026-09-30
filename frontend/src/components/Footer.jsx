@@ -2,8 +2,18 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Phone, Mail, Globe, ShieldCheck, Headphones } from 'lucide-react';
 import logoImg from '../assets/logo.png';
+import { useBusinessProfile } from '../context/BusinessProfileContext';
 
 export default function Footer() {
+  const { businessProfile } = useBusinessProfile();
+
+  const phone = businessProfile?.primaryPhone || '+91 8367415156';
+  const cleanPhone = phone.replace(/\s+/g, '');
+  const email = businessProfile?.supportEmail || 'info@aadhirakshainsurance.com';
+  const website = businessProfile?.websiteUrl || 'https://www.aadhirakshainsurance.com';
+  const addressLine1 = businessProfile?.officeAddressLine1 || '4th Floor, Mytri Constructions,';
+  const addressLine2 = businessProfile?.officeAddressLine2 || 'Opp: ECIL Busstop, ECIL, Hyderabad.';
+
   return (
     <footer className="main-footer-modern">
       <div className="container" style={{ maxWidth: '1240px' }}>
@@ -24,8 +34,8 @@ export default function Footer() {
               <div>
                 <div className="footer-address-title">Communication Address:</div>
                 <div className="footer-address-text">
-                  4th Floor, Mytri Constructions,<br />
-                  Opp: ECIL Busstop, ECIL, Hyderabad.
+                  {addressLine1}<br />
+                  {addressLine2}
                 </div>
               </div>
             </div>
@@ -40,30 +50,30 @@ export default function Footer() {
 
             <div className="footer-contact-actions">
               {/* Call Action Button */}
-              <a href="tel:+918367415156" className="footer-touch-pill">
+              <a href={`tel:${cleanPhone}`} className="footer-touch-pill">
                 <div className="touch-pill-icon-box phone-box">
                   <Phone size={16} />
                 </div>
                 <div className="touch-pill-content">
                   <span className="pill-sub">Talk to Expert</span>
-                  <span className="pill-main">+91 8367415156</span>
+                  <span className="pill-main">{phone}</span>
                 </div>
               </a>
 
               {/* Email Action Button */}
-              <a href="mailto:info@aadhirakshainsurance.com" className="footer-touch-pill">
+              <a href={`mailto:${email}`} className="footer-touch-pill">
                 <div className="touch-pill-icon-box mail-box">
                   <Mail size={16} />
                 </div>
                 <div className="touch-pill-content">
                   <span className="pill-sub">Email Support</span>
-                  <span className="pill-main">info@aadhirakshainsurance.com</span>
+                  <span className="pill-main">{email}</span>
                 </div>
               </a>
 
               {/* Website */}
               <a 
-                href="https://www.aadhirakshainsurance.com" 
+                href={website} 
                 target="_blank" 
                 rel="noreferrer" 
                 className="footer-touch-pill"
@@ -73,7 +83,7 @@ export default function Footer() {
                 </div>
                 <div className="touch-pill-content">
                   <span className="pill-sub">Official Website</span>
-                  <span className="pill-main">www.aadhirakshainsurance.com</span>
+                  <span className="pill-main">{website.replace(/^https?:\/\//, '')}</span>
                 </div>
               </a>
             </div>

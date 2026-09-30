@@ -399,6 +399,16 @@ export const portalService = {
     const res = await api.delete(`/admin/partners/${id}`);
     return res.data;
   },
+
+  // Corporate Profile & Contact Settings
+  getBusinessProfile: async () => {
+    const res = await api.get('/settings/business-profile');
+    return res.data;
+  },
+  updateBusinessProfile: async (data) => {
+    const res = await api.put('/admin/settings/business-profile', data);
+    return res.data;
+  },
 };
 
 // Web Lead Inquiries & Portal Triage Service

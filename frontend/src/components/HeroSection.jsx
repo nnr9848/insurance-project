@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ArrowRight, ShieldCheck, HeartPulse, Car, Briefcase, Plane, Banknote, CheckCircle, Send, ChevronDown, ChevronUp, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight, ShieldCheck, HeartPulse, Car, Briefcase, Plane, Banknote, CheckCircle, Send, PhoneCall, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { portalService } from '../services/api';
 
 import familyHero from '../assets/slides/family_hero.png';
@@ -312,9 +312,9 @@ export default function HeroSection() {
                   </div>
 
                   <button type="submit" disabled={loading} className="btn-submit-quote">
-                    {loading ? 'Processing...' : (
+                    {loading ? 'Submitting Details...' : (
                       <>
-                        <Send size={16} /> Get Free Best Quotes
+                        <PhoneCall size={16} /> Our Expert Will Contact You
                       </>
                     )}
                   </button>

@@ -17,8 +17,10 @@ import {
   Award
 } from 'lucide-react';
 import { portalService } from '../services/api';
+import { useBusinessProfile } from '../context/BusinessProfileContext';
 
 export default function ClaimSupport() {
+  const { businessProfile } = useBusinessProfile();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('file'); // 'file' | 'track'
   const [submitted, setSubmitted] = useState(false);
@@ -142,7 +144,7 @@ export default function ClaimSupport() {
               <div className="funnel-hero-trust-col">
                 <div style={{ marginBottom: '1.5rem' }}>
                   <a
-                    href="tel:+918367415156"
+                    href={`tel:${businessProfile?.primaryPhone?.replace(/\s+/g, '') || '+918367415156'}`}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -159,7 +161,7 @@ export default function ClaimSupport() {
                     }}
                   >
                     <PhoneCall size={20} />
-                    Emergency Hotline: +91 8367415156
+                    Emergency Hotline: {businessProfile?.primaryPhone || '+91 8367415156'}
                   </a>
                 </div>
 

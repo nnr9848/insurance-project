@@ -73,6 +73,7 @@ import PolicyRenewalDeskView from '../components/crm/PolicyRenewalDeskView';
 import AuditTrailView from '../components/crm/AuditTrailView';
 import QuotationManagementView from '../components/crm/QuotationManagementView';
 import DocumentLockerView from '../components/crm/DocumentLockerView';
+import BusinessProfileSettingsView from '../components/crm/BusinessProfileSettingsView';
 import CallHistoryView from '../components/crm/CallHistoryView';
 import ManagerApprovalsView from '../components/crm/ManagerApprovalsView';
 import LeadInquiriesView from '../components/crm/LeadInquiriesView';
@@ -282,6 +283,13 @@ export default function AdminDashboard() {
           subtitle: 'Configure partner insurer logos, official quote URLs, display priority, and homepage active toggles.',
           icon: <Globe size={18} color="#0284c7" />
         };
+      case 'profile':
+        return {
+          title: 'Company Profile & Contact Settings',
+          category: 'Operations & Management',
+          subtitle: 'Centrally configure helpline telephone numbers, support emails, operational hours, and registered communication address.',
+          icon: <Building size={18} color="#059669" />
+        };
       default:
         return {
           title: 'Dashboard Overview',
@@ -447,6 +455,9 @@ export default function AdminDashboard() {
     { id: 'posp', label: 'POSP Agent Network', icon: <UserCheck size={19} />, count: pospList.filter(p => p.status === 'PENDING').length, badgeColor: '#d97706' },
     { id: 'hospitals', label: 'Cashless Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' },
     { id: 'partners', label: 'Insurance Partners', icon: <Globe size={19} />, count: null },
+    ...((isSuperAdmin || isManager) ? [
+      { id: 'profile', label: 'Company Profile & Helpline', icon: <Building size={19} />, count: null }
+    ] : []),
   ];
 
   const showMiniRail = !isMobile && isCollapsed;
@@ -1439,6 +1450,11 @@ export default function AdminDashboard() {
           {/* VIEW: INSURANCE PARTNERS & REDIRECTIONS */}
           {activeView === 'partners' && (
             <InsurancePartnersManagementView />
+          )}
+
+          {/* VIEW: COMPANY PROFILE & CONTACT SETTINGS */}
+          {activeView === 'profile' && (
+            <BusinessProfileSettingsView />
           )}
 
           {/* 3. MINIMALIST ENTERPRISE CRM FOOTER (Scrolls naturally at bottom, non-sticky) */}
