@@ -134,43 +134,164 @@ export default function Header() {
       <header className="top-header">
         <div className="top-header-container">
           
-          {/* Left: Brand Logo & Company Subtitle */}
+          {/* Top Row: Brand Logo, Hamburger Menu & User Profile / Login */}
           <div className="header-brand-row">
-            <button
-              onClick={() => setIsMobileOpen(true)}
-              style={{
-                display: 'none',
-                background: 'none',
-                border: 'none',
-                padding: '6px',
-                cursor: 'pointer',
-                color: 'var(--primary-navy)'
-              }}
-              className="pb-mobile-toggle"
-              aria-label="Open Navigation Menu"
-            >
-              <Menu size={24} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <button
+                onClick={() => setIsMobileOpen(true)}
+                style={{
+                  display: 'none',
+                  background: 'none',
+                  border: 'none',
+                  padding: '6px',
+                  cursor: 'pointer',
+                  color: 'var(--primary-navy)'
+                }}
+                className="pb-mobile-toggle"
+                aria-label="Open Navigation Menu"
+              >
+                <Menu size={24} />
+              </button>
 
-            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
-              <img 
-                src={logoImg} 
-                alt="Aadhiraksha Insurance Marketing & Financial Services" 
-                style={{ height: '46px', width: 'auto', objectFit: 'contain' }}
-              />
-            </Link>
+              <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+                <img 
+                  src={logoImg} 
+                  alt="Aadhiraksha Insurance Marketing & Financial Services" 
+                  style={{ height: '46px', width: 'auto', objectFit: 'contain' }}
+                />
+              </Link>
+            </div>
+
+            {/* Desktop Center: Brand Trust Mission Slogan */}
+            <div className="slogan-box desktop-slogan">
+              <span className="slogan-main">Insurance is the first line of defense for everyone's life.</span>
+              <span className="slogan-sub">INDIA'S NO. 1 MOST TRUSTED INSURANCE PLATFORM FOR ALL</span>
+            </div>
+
+            {/* Top Right: User Profile / Login button (beside logo on mobile, right on desktop) */}
+            <div className="header-user-action">
+              {isAuthenticated ? (
+                <div 
+                  ref={userMenuRef}
+                  className="user-profile-menu-wrapper" 
+                  onMouseEnter={() => handleMouseEnter('userProfile')}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <button
+                    onClick={() => toggleDropdown('userProfile')}
+                    className="user-profile-trigger"
+                  >
+                    <div className="user-avatar-circle">
+                      {userInitials}
+                    </div>
+                    <span className="user-profile-name" style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--primary-navy)' }}>
+                      {user.fullName?.split(' ')[0]}
+                    </span>
+                    <ChevronDown size={14} color="#64748b" />
+                  </button>
+
+                  {activeDropdown === 'userProfile' && (
+                    <div style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      right: 0,
+                      width: '240px',
+                      background: '#ffffff',
+                      borderRadius: '14px',
+                      border: '1px solid var(--border-subtle)',
+                      boxShadow: 'var(--shadow-xl)',
+                      padding: '8px',
+                      zIndex: 1100
+                    }}>
+                      {isAdmin && (
+                        <Link
+                          to="/admin"
+                          onClick={() => setActiveDropdown(null)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                            color: 'var(--accent-emerald)',
+                            textDecoration: 'none'
+                          }}
+                        >
+                          <LayoutDashboard size={16} /> Operations Console
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => { setActiveDropdown(null); handleLogout(); }}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          color: '#ef4444',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <LogOut size={16} /> Sign Out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  className="header-signin-btn"
+                  title="Sign In / Register"
+                  aria-label="Sign In"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'var(--primary-navy)',
+                    color: '#ffffff',
+                    padding: '8px 16px',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    textDecoration: 'none',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 4px 12px rgba(15, 43, 72, 0.15)',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--primary-navy-dark)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--primary-navy)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <LogIn size={15} />
+                  <span className="header-signin-btn-text">Sign In</span>
+                </Link>
+              )}
+            </div>
           </div>
 
-          {/* Center: Brand Trust Mission Slogan (from client screenshot) */}
-          <div className="slogan-box">
-            <span className="slogan-main">Insurance is the first line of defense for everyone's life.</span>
-            <span className="slogan-sub">INDIA'S NO. 1 MOST TRUSTED INSURANCE PLATFORM FOR ALL</span>
+          {/* Mobile Trust Mission Slogan Banner (shown between Logo and Quick Contact) */}
+          <div className="mobile-slogan-box">
+            <span className="mobile-slogan-main">Insurance is the first line of defense for everyone's life.</span>
+            <div className="mobile-slogan-badge">
+              <ShieldCheck size={13} />
+              <span>INDIA'S NO. 1 MOST TRUSTED INSURANCE PLATFORM FOR ALL</span>
+            </div>
           </div>
 
-          {/* Right: Quick Contact Helpline Card & User Profile / Login */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            
-            {/* Quick Contact Helpline Card (connected dynamically to Admin Business Profile) */}
+          {/* Quick Contact Helpline Card (stacked full-width on mobile, beside slogan on desktop) */}
+          <div className="header-helpline-row">
             <a 
               href={`tel:${businessProfile?.primaryPhone?.replace(/\s+/g, '') || '+918367415156'}`}
               className="quick-contact"
@@ -184,117 +305,6 @@ export default function Header() {
                 <span className="contact-phone">{businessProfile?.primaryPhone || '+91 8367415156'}</span>
               </div>
             </a>
-
-            {/* Sign In / User Profile Dropdown */}
-            {isAuthenticated ? (
-              <div 
-                ref={userMenuRef}
-                className="user-profile-menu-wrapper" 
-                onMouseEnter={() => handleMouseEnter('userProfile')}
-                onMouseLeave={handleMouseLeave}
-              >
-                <button
-                  onClick={() => toggleDropdown('userProfile')}
-                  className="user-profile-trigger"
-                >
-                  <div className="user-avatar-circle">
-                    {userInitials}
-                  </div>
-                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--primary-navy)' }}>
-                    {user.fullName?.split(' ')[0]}
-                  </span>
-                  <ChevronDown size={14} color="#64748b" />
-                </button>
-
-                {activeDropdown === 'userProfile' && (
-                  <div style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 8px)',
-                    right: 0,
-                    width: '240px',
-                    background: '#ffffff',
-                    borderRadius: '14px',
-                    border: '1px solid var(--border-subtle)',
-                    boxShadow: 'var(--shadow-xl)',
-                    padding: '8px',
-                    zIndex: 1100
-                  }}>
-                    {isAdmin && (
-                      <Link
-                        to="/admin"
-                        onClick={() => setActiveDropdown(null)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          fontSize: '0.85rem',
-                          fontWeight: 700,
-                          color: 'var(--accent-emerald)',
-                          textDecoration: 'none'
-                        }}
-                      >
-                        <LayoutDashboard size={16} /> Operations Console
-                      </Link>
-                    )}
-                    <button
-                      onClick={() => { setActiveDropdown(null); handleLogout(); }}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 12px',
-                        borderRadius: '8px',
-                        fontSize: '0.85rem',
-                        fontWeight: 600,
-                        color: '#ef4444',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <LogOut size={16} /> Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Link
-                to="/login"
-                className="header-signin-btn"
-                title="Sign In / Register"
-                aria-label="Sign In"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: 'var(--primary-navy)',
-                  color: '#ffffff',
-                  padding: '8px 16px',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  textDecoration: 'none',
-                  transition: 'all 0.2s ease',
-                  boxShadow: '0 4px 12px rgba(15, 43, 72, 0.15)',
-                  whiteSpace: 'nowrap'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'var(--primary-navy-dark)';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'var(--primary-navy)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                <LogIn size={15} />
-                <span className="header-signin-btn-text">Sign In</span>
-              </Link>
-            )}
-
           </div>
 
         </div>
