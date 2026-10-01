@@ -203,6 +203,24 @@ export default function Header() {
                       padding: '8px',
                       zIndex: 1100
                     }}>
+                      <Link
+                        to="/my-account"
+                        onClick={() => setActiveDropdown(null)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          fontSize: '0.85rem',
+                          fontWeight: 700,
+                          color: 'var(--primary-navy)',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        <ShieldCheck size={16} color="var(--accent-gold)" /> My Policies & Vault
+                      </Link>
+
                       {isAdmin && (
                         <Link
                           to="/admin"

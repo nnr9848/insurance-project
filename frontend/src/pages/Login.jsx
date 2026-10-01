@@ -40,7 +40,7 @@ export default function Login() {
         if (hasCrmAccess) {
           navigate('/admin');
         } else {
-          navigate('/');
+          navigate('/my-account');
         }
       }
     } catch (err) {

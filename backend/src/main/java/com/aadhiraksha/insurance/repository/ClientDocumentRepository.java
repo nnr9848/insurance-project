@@ -22,4 +22,7 @@ public interface ClientDocumentRepository extends JpaRepository<ClientDocument, 
 
     @Query("SELECT d FROM ClientDocument d WHERE d.client.assignedAdvisor.id = :advisorId ORDER BY d.createdAt DESC")
     List<ClientDocument> findByAdvisorId(@Param("advisorId") Long advisorId);
+
+    @Query("SELECT d FROM ClientDocument d WHERE d.client.customerUser.id = :customerUserId OR d.uploadedBy.id = :customerUserId ORDER BY d.createdAt DESC")
+    List<ClientDocument> findByCustomerUserId(@Param("customerUserId") Long customerUserId);
 }

@@ -410,12 +410,15 @@ public class CrmClientService {
     public List<ClientDto.ClientResponse> getClientsForUser(User user) {
         boolean isSuperAdmin = user == null || user.getRoles() == null || user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_SUPER_ADMIN") || r.getName().equals("ROLE_ADMIN"));
         boolean isManager = user != null && user.getRoles() != null && user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_MANAGER"));
+        boolean isPosp = user != null && user.getRoles() != null && user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_POSP_AGENT"));
 
         List<Client> clients;
         if (isSuperAdmin) {
             clients = clientRepository.findAll();
         } else if (isManager) {
             clients = clientRepository.findByManagerIdOrderByUpdatedAtDesc(user.getId());
+        } else if (isPosp) {
+            clients = clientRepository.findByPospAgentIdOrderByUpdatedAtDesc(user.getId());
         } else {
             clients = clientRepository.findByAssignedAdvisorIdOrderByUpdatedAtDesc(user.getId());
         }

@@ -215,104 +215,7 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
       }
     } catch (err) {
       console.error('Failed to load CRM leads:', err);
-      // Fallback demo dataset if backend leads are empty
-      setLeads([
-        {
-          id: 1,
-          clientCode: 'CL-801245',
-          fullName: 'Ahmed Ali',
-          companyName: 'Ali Logistics Pvt Ltd',
-          phoneNumber: '+91 9849012345',
-          whatsappNumber: '+91 9849012345',
-          email: 'ahmed.ali@example.com',
-          city: 'Hyderabad',
-          insuranceType: 'Health Insurance',
-          existingInsurer: 'Star Health',
-          policyExpiryDate: '2026-10-15',
-          sumInsured: '₹10 Lakhs',
-          estimatedPremium: 18500,
-          stage: 'FOLLOWUP',
-          priority: 'HIGH',
-          assignedAdvisorName: 'Rajesh Kumar',
-          notes: 'Requested comparative quote for ₹10L Family Floater.'
-        },
-        {
-          id: 2,
-          clientCode: 'CL-801246',
-          fullName: 'Venkatesh Rao',
-          companyName: 'VR Software Solutions',
-          phoneNumber: '+91 9988112233',
-          whatsappNumber: '+91 9988112233',
-          email: 'v.rao@example.com',
-          city: 'Hyderabad',
-          insuranceType: 'Term Life Insurance',
-          existingInsurer: 'LIC',
-          policyExpiryDate: '2026-11-20',
-          sumInsured: '₹1 Crore',
-          estimatedPremium: 14200,
-          stage: 'QUOTATION',
-          priority: 'HIGH',
-          assignedAdvisorName: 'Rajesh Kumar',
-          notes: 'Needs 30-year term quote with critical illness rider.'
-        },
-        {
-          id: 3,
-          clientCode: 'CL-801247',
-          fullName: 'Dr. Sunita Deshmukh',
-          companyName: 'Apollo Clinic ECIL',
-          phoneNumber: '+91 9849556677',
-          whatsappNumber: '+91 9849556677',
-          email: 'dr.sunita@example.com',
-          city: 'Hyderabad',
-          insuranceType: 'Vehicle / Motor Insurance',
-          existingInsurer: 'ICICI Lombard',
-          policyExpiryDate: '2026-09-28',
-          sumInsured: '₹8 Lakhs IDV',
-          estimatedPremium: 9800,
-          stage: 'MEETING',
-          priority: 'MEDIUM',
-          assignedAdvisorName: 'Priya Sharma',
-          notes: 'Scheduled Google Meet to finalize Hyundai Creta zero-dep policy.'
-        },
-        {
-          id: 4,
-          clientCode: 'CL-801248',
-          fullName: 'Kiran Patel',
-          companyName: 'Patel Engineering Works',
-          phoneNumber: '+91 9700114455',
-          whatsappNumber: '+91 9700114455',
-          email: 'kiran.patel@example.com',
-          city: 'Secunderabad',
-          insuranceType: 'Group / SME Insurance',
-          existingInsurer: 'New India Assurance',
-          policyExpiryDate: '2026-12-05',
-          sumInsured: '₹50 Lakhs',
-          estimatedPremium: 85000,
-          stage: 'DOCUMENTS',
-          priority: 'HIGH',
-          assignedAdvisorName: 'Priya Sharma',
-          notes: 'Employee health data collection in progress.'
-        },
-        {
-          id: 5,
-          clientCode: 'CL-801249',
-          fullName: 'Rohan Sharma',
-          companyName: 'Individual',
-          phoneNumber: '+91 9123456789',
-          whatsappNumber: '+91 9123456789',
-          email: 'rohan.s@example.com',
-          city: 'Hyderabad',
-          insuranceType: 'Two Wheeler Insurance',
-          existingInsurer: 'Bajaj Allianz',
-          policyExpiryDate: '2026-09-20',
-          sumInsured: '₹65,000 IDV',
-          estimatedPremium: 1450,
-          stage: 'POLICY_ISSUED',
-          priority: 'LOW',
-          assignedAdvisorName: 'Rajesh Kumar',
-          notes: 'Policy issued and shared on WhatsApp.'
-        }
-      ]);
+      setLeads([]);
     } finally {
       setLoading(false);
     }
@@ -605,6 +508,73 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      
+      {/* View Header: Title, Client Count & Primary Add Client Action */}
+      <div 
+        className="crm-sheet-header-bar"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          padding: '0 0.25rem'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h2 style={{
+            margin: 0,
+            fontSize: '1.25rem',
+            fontWeight: 800,
+            color: 'var(--primary-navy)',
+            letterSpacing: '-0.02em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            Client Directory
+            <span style={{
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              background: '#e0f2fe',
+              color: '#0284c7',
+              padding: '2px 8px',
+              borderRadius: '9999px'
+            }}>
+              {filteredLeads.length} {filteredLeads.length === 1 ? 'Client' : 'Clients'}
+            </span>
+          </h2>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'none' }} className="crm-sheet-header-sub">
+            • Real-time insurance customer records & stage tracking
+          </span>
+        </div>
+
+        {/* Primary "+ Add Client" Action Button moved to Top Row */}
+        <button
+          onClick={() => setShowAddLeadModal(true)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover))',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '10px',
+            fontSize: '0.85rem',
+            fontWeight: 800,
+            color: '#ffffff',
+            cursor: 'pointer',
+            boxShadow: '0 4px 14px rgba(217, 119, 6, 0.25)',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+          title="Add a single new client or lead"
+        >
+          <Plus size={16} /> Add Client
+        </button>
+      </div>
+
       {/* Top Search & Filter Bar */}
       <div 
         className="crm-sheet-toolbar"
@@ -953,28 +923,6 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
                 </>
               )}
             </div>
-
-            {/* Primary Add Client CTA */}
-            <button
-              onClick={() => setShowAddLeadModal(true)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover))',
-                border: 'none',
-                padding: '7px 14px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 800,
-                color: '#ffffff',
-                cursor: 'pointer',
-                boxShadow: 'var(--shadow-gold)'
-              }}
-              title="Add a single new client or lead"
-            >
-              <Plus size={15} /> Add Client
-            </button>
           </div>
         </div>
 

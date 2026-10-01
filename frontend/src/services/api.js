@@ -411,6 +411,33 @@ export const portalService = {
   },
 };
 
+// Customer Reviews, Social Proof & Smart Grievance Routing Service
+export const customerReviewService = {
+  // Public endpoints
+  submitReview: async (reviewData) => {
+    const res = await api.post('/reviews', reviewData);
+    return res.data;
+  },
+  getPublishedReviews: async () => {
+    const res = await api.get('/reviews/published');
+    return res.data;
+  },
+  getReviewStats: async () => {
+    const res = await api.get('/reviews/stats');
+    return res.data;
+  },
+
+  // Admin moderation endpoints
+  getAllReviewsAdmin: async () => {
+    const res = await api.get('/admin/reviews');
+    return res.data;
+  },
+  updateReviewStatus: async (id, data) => {
+    const res = await api.put(`/admin/reviews/${id}`, data);
+    return res.data;
+  }
+};
+
 // Web Lead Inquiries & Portal Triage Service
 export const leadInquiryService = {
   getInquiries: async () => {
@@ -431,4 +458,45 @@ export const leadInquiryService = {
   }
 };
 
+// POSP Agent Partner Portal Service
+export const pospService = {
+  getDashboard: async () => {
+    const res = await api.get('/agent/dashboard');
+    return res.data;
+  },
+  getCommissions: async () => {
+    const res = await api.get('/agent/commissions');
+    return res.data;
+  },
+  getClients: async () => {
+    const res = await api.get('/agent/clients');
+    return res.data;
+  },
+  bookPolicy: async (data) => {
+    const res = await api.post('/agent/book', data);
+    return res.data;
+  }
+};
+
+// Customer Self-Service Portal Service
+export const customerService = {
+  getDashboard: async () => {
+    const res = await api.get('/customer/dashboard');
+    return res.data;
+  },
+  getMyPolicies: async () => {
+    const res = await api.get('/customer/policies');
+    return res.data;
+  },
+  getMyDocuments: async () => {
+    const res = await api.get('/customer/documents');
+    return res.data;
+  },
+  uploadDocument: async (data) => {
+    const res = await api.post('/customer/documents/upload', data);
+    return res.data;
+  }
+};
+
 export default api;
+

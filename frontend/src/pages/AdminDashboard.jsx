@@ -54,7 +54,8 @@ import {
   Car,
   HeartPulse,
   Plane,
-  Building
+  Building,
+  Star
 } from 'lucide-react';
 import { portalService, crmService } from '../services/api';
 import UserManagementView from '../components/crm/UserManagementView';
@@ -81,6 +82,8 @@ import PospApplicationsView from '../components/crm/PospApplicationsView';
 import ClaimsIntimationView from '../components/crm/ClaimsIntimationView';
 import NetworkHospitalsView from '../components/crm/NetworkHospitalsView';
 import InsurancePartnersManagementView from '../components/crm/InsurancePartnersManagementView';
+import CustomerReviewsAdminView from '../components/crm/CustomerReviewsAdminView';
+import PospPartnerPortalView from '../components/crm/PospPartnerPortalView';
 
 export default function AdminDashboard() {
   const { 
@@ -91,6 +94,7 @@ export default function AdminDashboard() {
     isSuperAdmin,
     isManager,
     isAdvisor,
+    isPospAgent,
     canManageUsers,
     canAccessCRM
   } = useAuth();
@@ -172,7 +176,12 @@ export default function AdminDashboard() {
   const getViewMeta = (viewId) => {
     switch (viewId) {
       case 'clients':
-        return {
+        return isPospAgent ? {
+          title: 'My Attributed Client Book',
+          category: 'POSP Portfolio',
+          subtitle: 'Verified portfolio of clients introduced and serviced under your POSP accreditation.',
+          icon: <FileText size={18} color="#0284c7" />
+        } : {
           title: 'Client Data Sheet',
           category: 'CRM Workspace',
           subtitle: 'Interactive spreadsheet for fast lead filtering, client updates, and multi-advisor assignment.',
@@ -290,8 +299,20 @@ export default function AdminDashboard() {
           subtitle: 'Centrally configure helpline telephone numbers, support emails, operational hours, and registered communication address.',
           icon: <Building size={18} color="#059669" />
         };
-      default:
+      case 'reviews':
         return {
+          title: 'Customer Reviews & Grievance Interception',
+          category: 'Operations & Management',
+          subtitle: 'Manage verified customer ratings, public testimonials, and resolve negative complaints before Google.',
+          icon: <Star size={18} color="#f59e0b" fill="#f59e0b" />
+        };
+      default:
+        return isPospAgent ? {
+          title: 'POSP Partner Portal',
+          category: 'Partner Network',
+          subtitle: 'Certified POSP dashboard: IRDAI license credentials, policy booking, commission tracking, and payouts.',
+          icon: <Award size={18} color="#d97706" />
+        } : {
           title: 'Dashboard Overview',
           category: 'Portal',
           subtitle: 'High-level business analytics and operational performance summary.',
@@ -426,7 +447,12 @@ export default function AdminDashboard() {
 
 
   // Navigation Items
-  const navItemsCRM = [
+  const navItemsCRM = isPospAgent ? [
+    { id: 'dashboard', label: 'POSP Partner Portal', icon: <Award size={19} color="var(--accent-gold)" />, count: null },
+    { id: 'clients', label: 'My Client Book', icon: <FileText size={19} />, count: leads.length, badgeColor: '#0284c7' },
+    { id: 'proposals', label: 'Multi-Insurer Quotes', icon: <FileSpreadsheet size={19} />, count: null },
+    { id: 'renewals', label: 'Client Renewals', icon: <ShieldCheck size={19} />, count: null },
+  ] : [
     { id: 'dashboard', label: 'CRM Dashboard', icon: <LayoutDashboard size={19} />, count: null },
     { id: 'enquiries', label: 'Enquiries', icon: <Briefcase size={19} />, count: quotes.length, badgeColor: '#16a34a' },
     { id: 'clients', label: 'Client Data Sheet', icon: <FileText size={19} />, count: leads.length, badgeColor: '#0284c7' },
@@ -446,7 +472,10 @@ export default function AdminDashboard() {
     { id: 'documents', label: 'Document Locker', icon: <FolderCheck size={19} />, count: null },
   ];
 
-  const navItemsAdmin = [
+  const navItemsAdmin = isPospAgent ? [
+    { id: 'hospitals', label: 'Cashless Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' },
+    { id: 'partners', label: 'Insurance Partners', icon: <Globe size={19} />, count: null }
+  ] : [
     ...(canManageUsers ? [{ id: 'users', label: 'User & Team Hierarchy', icon: <Users size={19} />, count: null }] : []),
     ...((isSuperAdmin || isManager) ? [
       { id: 'approvals', label: 'Manager Approvals Desk', icon: <CheckSquare size={19} />, count: null },
@@ -455,6 +484,7 @@ export default function AdminDashboard() {
     { id: 'posp', label: 'POSP Agent Network', icon: <UserCheck size={19} />, count: pospList.filter(p => p.status === 'PENDING').length, badgeColor: '#d97706' },
     { id: 'hospitals', label: 'Cashless Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' },
     { id: 'partners', label: 'Insurance Partners', icon: <Globe size={19} />, count: null },
+    { id: 'reviews', label: 'Customer Reviews', icon: <Star size={19} />, count: null },
     ...((isSuperAdmin || isManager) ? [
       { id: 'profile', label: 'Company Profile & Helpline', icon: <Building size={19} />, count: null }
     ] : []),
@@ -1282,7 +1312,11 @@ export default function AdminDashboard() {
 
           {/* VIEW: CRM DASHBOARD OVERVIEW */}
           {activeView === 'dashboard' && (
-            isSuperAdmin ? (
+            isPospAgent ? (
+              <PospPartnerPortalView 
+                user={user}
+              />
+            ) : isSuperAdmin ? (
               <SuperAdminDashboardOverview 
                 user={user}
                 analytics={superAdminAnalytics}
@@ -1313,16 +1347,23 @@ export default function AdminDashboard() {
 
           {/* VIEW: CLIENT DATA SHEET (EXCEL GRID) */}
           {activeView === 'clients' && (
-            <ClientDataSheetView 
-              quotes={quotes}
-              setQuotes={setQuotes}
-              onOpenClient360={(lead) => setSelectedClient360(lead)}
-              onOpenCallModal={() => handleNavigateView('agenda')}
-              onOpenMeetingModal={(lead) => {
-                setPreselectedMeetingClient(lead);
-                handleNavigateView('meetings');
-              }}
-            />
+            isPospAgent ? (
+              <PospPartnerPortalView 
+                user={user}
+                initialTab="clients"
+              />
+            ) : (
+              <ClientDataSheetView 
+                quotes={quotes}
+                setQuotes={setQuotes}
+                onOpenClient360={(lead) => setSelectedClient360(lead)}
+                onOpenCallModal={() => handleNavigateView('agenda')}
+                onOpenMeetingModal={(lead) => {
+                  setPreselectedMeetingClient(lead);
+                  handleNavigateView('meetings');
+                }}
+              />
+            )
           )}
 
           {/* VIEW: DAILY CALL AGENDA */}
@@ -1455,6 +1496,11 @@ export default function AdminDashboard() {
           {/* VIEW: COMPANY PROFILE & CONTACT SETTINGS */}
           {activeView === 'profile' && (
             <BusinessProfileSettingsView />
+          )}
+
+          {/* VIEW: CUSTOMER REVIEWS & GRIEVANCE INTERCEPTION */}
+          {activeView === 'reviews' && (
+            <CustomerReviewsAdminView />
           )}
 
           {/* 3. MINIMALIST ENTERPRISE CRM FOOTER (Scrolls naturally at bottom, non-sticky) */}

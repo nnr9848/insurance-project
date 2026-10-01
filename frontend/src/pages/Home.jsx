@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 
 import PartnerLeadModal from '../components/common/PartnerLeadModal';
+import CustomerReviewsSection from '../components/common/CustomerReviewsSection';
 import { PARTNER_LOGO_MAP, DEFAULT_PARTNERS_FALLBACK } from '../utils/partnerAssetCatalog';
 
 export default function Home() {
@@ -479,6 +480,9 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {/* Customer Ratings, Reviews & Social Proof Section */}
+      <CustomerReviewsSection />
 
       {/* Partner Lead Capture & Direct Portal Redirection Modal */}
       {selectedPartnerModal && (

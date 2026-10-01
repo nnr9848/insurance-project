@@ -40,4 +40,12 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     long countByAssignedAdvisorId(Long advisorId);
 
     long countByManagerId(Long managerId);
+
+    List<Client> findByPospAgentIdOrderByUpdatedAtDesc(Long pospAgentId);
+
+    long countByPospAgentId(Long pospAgentId);
+
+    List<Client> findByCustomerUserIdOrderByUpdatedAtDesc(Long customerUserId);
+
+    Optional<Client> findFirstByCustomerUserId(Long customerUserId);
 }

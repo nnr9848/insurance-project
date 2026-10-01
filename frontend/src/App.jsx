@@ -18,6 +18,7 @@ import Loans from './pages/Loans';
 import LegalCompliance from './pages/LegalCompliance';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
+import CustomerPortal from './pages/CustomerPortal';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -113,6 +114,8 @@ export default function App() {
 
             <Route path="/login" element={<Login />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/my-account" element={<CustomerPortal />} />
+            <Route path="/customer-portal" element={<CustomerPortal />} />
           </Routes>
         </main>
 

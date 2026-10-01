@@ -90,6 +90,16 @@ public class Client {
     @JsonIgnoreProperties({"manager", "roles", "password"})
     private User manager;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "posp_agent_id")
+    @JsonIgnoreProperties({"manager", "roles", "password"})
+    private User pospAgent;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_user_id")
+    @JsonIgnoreProperties({"manager", "roles", "password"})
+    private User customerUser;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 

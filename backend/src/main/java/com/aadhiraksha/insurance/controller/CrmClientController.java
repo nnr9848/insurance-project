@@ -34,7 +34,7 @@ public class CrmClientController {
 
     // 1. Clients Master & Individual Profile
     @GetMapping({"/clients", "/leads"})
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
     @Operation(summary = "Get clients visible to the current authenticated user")
     public ResponseEntity<List<ClientDto.ClientResponse>> getClients(Authentication auth) {
         User user = getAuthenticatedUser(auth);
@@ -42,7 +42,7 @@ public class CrmClientController {
     }
 
     @GetMapping({"/clients/{id}", "/leads/{id}"})
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
     @Operation(summary = "Get single client master profile by ID")
     public ResponseEntity<ClientDto.ClientResponse> getClientById(@PathVariable Long id, Authentication auth) {
         User user = getAuthenticatedUser(auth);
@@ -50,7 +50,7 @@ public class CrmClientController {
     }
 
     @PostMapping({"/clients", "/leads"})
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
     @Operation(summary = "Create a new client entry")
     public ResponseEntity<ClientDto.ClientResponse> createClient(@RequestBody ClientDto.CreateClientRequest request, Authentication auth) {
         User user = getAuthenticatedUser(auth);

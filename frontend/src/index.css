@@ -810,7 +810,8 @@ h1, h2, h3, h4, h5, h6 {
 .hero-slider-overlay {
   position: relative;
   z-index: 2;
-  background: linear-gradient(180deg, rgba(9, 26, 44, 0.35) 0%, rgba(9, 26, 44, 0.7) 45%, rgba(9, 26, 44, 0.96) 100%);
+  /* Vivid authentic imagery: transparent top with bottom text scrim */
+  background: linear-gradient(to top, rgba(9, 26, 44, 0.92) 0%, rgba(9, 26, 44, 0.55) 35%, rgba(9, 26, 44, 0.1) 65%, transparent 100%);
   padding: 2.5rem 2rem 2rem;
   height: 100%;
   display: flex;
@@ -1081,7 +1082,7 @@ h1, h2, h3, h4, h5, h6 {
 
   .hero-slider-overlay {
     padding: 1.25rem 1rem 1rem;
-    background: linear-gradient(180deg, rgba(9, 26, 44, 0.25) 0%, rgba(9, 26, 44, 0.75) 50%, rgba(9, 26, 44, 0.96) 100%);
+    background: linear-gradient(to top, rgba(9, 26, 44, 0.95) 0%, rgba(9, 26, 44, 0.6) 45%, rgba(9, 26, 44, 0.05) 75%, transparent 100%);
   }
 
   .hero-badge {
@@ -1492,8 +1493,9 @@ h1, h2, h3, h4, h5, h6 {
   width: auto;
   height: auto;
   object-fit: contain;
-  filter: none;
-  opacity: 1;
+  filter: none !important;
+  -webkit-filter: none !important;
+  opacity: 1 !important;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 

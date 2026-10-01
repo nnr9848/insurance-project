@@ -1,9 +1,11 @@
 package com.aadhiraksha.insurance.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -13,6 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class AgentProfile {
 
     @Id
@@ -21,6 +24,7 @@ public class AgentProfile {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @JsonIgnoreProperties({"password", "manager", "roles"})
     private User user;
 
     @Column(name = "pan_number", nullable = false, length = 20)
@@ -42,6 +46,33 @@ public class AgentProfile {
     @Builder.Default
     @Column(length = 30)
     private String status = "PENDING"; // PENDING, APPROVED, REJECTED
+
+    @Column(name = "certificate_number", length = 100)
+    private String certificateNumber;
+
+    @Column(name = "irdai_license_code", length = 100)
+    private String irdaiLicenseCode;
+
+    @Builder.Default
+    @Column(name = "training_completed")
+    private Boolean trainingCompleted = true;
+
+    @Builder.Default
+    @Column(name = "exam_score_percentage")
+    private Integer examScorePercentage = 85;
+
+    @Builder.Default
+    @Column(name = "default_commission_rate", precision = 5, scale = 2)
+    private BigDecimal defaultCommissionRate = new BigDecimal("15.00");
+
+    @Column(name = "bank_account_number", length = 50)
+    private String bankAccountNumber;
+
+    @Column(name = "ifsc_code", length = 20)
+    private String ifscCode;
+
+    @Column(name = "bank_name", length = 100)
+    private String bankName;
 
     @CreationTimestamp
     @Column(name = "applied_at", updatable = false)

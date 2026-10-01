@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface ClaimRepository extends JpaRepository<Claim, Long> {
     List<Claim> findByPolicyNumberOrderByCreatedAtDesc(String policyNumber);
+    List<Claim> findByContactPhoneOrderByCreatedAtDesc(String contactPhone);
     List<Claim> findAllByOrderByCreatedAtDesc();
 }
