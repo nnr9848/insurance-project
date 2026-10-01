@@ -511,17 +511,21 @@ export default function CustomerPortal() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.4rem',
-                background: '#dc2626',
-                color: '#ffffff',
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                color: 'var(--primary-navy)',
                 textDecoration: 'none',
                 borderRadius: '8px',
-                padding: '0.5rem 1rem',
+                padding: '0.5rem 0.95rem',
                 fontSize: '0.8rem',
-                fontWeight: 800,
-                boxShadow: '0 2px 6px rgba(220, 38, 38, 0.25)'
+                fontWeight: 700,
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'all 0.2s ease'
               }}
+              title="Need assistance filing a cashless hospital or accidental claim?"
             >
-              <ShieldAlert size={15} /> Emergency Claim
+              <LifeBuoy size={14} color="#0284c7" />
+              <span>Claim Assistance</span>
             </a>
           </div>
         </div>
@@ -1251,16 +1255,20 @@ export default function CustomerPortal() {
                   <a
                     href="/claim-support"
                     style={{
-                      background: '#dc2626',
+                      background: 'var(--primary-navy)',
                       color: '#ffffff',
                       textDecoration: 'none',
                       borderRadius: '8px',
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.8rem',
-                      fontWeight: 800
+                      padding: '0.55rem 1.15rem',
+                      fontSize: '0.82rem',
+                      fontWeight: 800,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      boxShadow: 'var(--shadow-sm)'
                     }}
                   >
-                    + Intimate New Claim
+                    <Plus size={15} /> Intimate New Claim
                   </a>
                 </div>
 
