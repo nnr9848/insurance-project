@@ -226,6 +226,78 @@ export default function CustomerPortal() {
     countdown: 0
   });
 
+  // Document Management States (Delete, Rename, Replace)
+  const [deleteConfirmDoc, setDeleteConfirmDoc] = useState(null);
+  const [deletingDoc, setDeletingDoc] = useState(false);
+  const [renameDocModal, setRenameDocModal] = useState({ isOpen: false, doc: null, fileName: '', documentType: '' });
+  const [renamingDoc, setRenamingDoc] = useState(false);
+  const [replaceDocModal, setReplaceDocModal] = useState({ isOpen: false, doc: null, file: null });
+  const [replacingDoc, setReplacingDoc] = useState(false);
+
+  const handleDeleteDocument = async () => {
+    if (!deleteConfirmDoc) return;
+    setDeletingDoc(true);
+    try {
+      await customerService.deleteDocument(deleteConfirmDoc.id);
+      toast?.show('Document removed successfully from your vault', 'success');
+      setDeleteConfirmDoc(null);
+      loadCustomerData();
+    } catch (err) {
+      console.error('Delete doc failed', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to delete document';
+      toast?.show(msg, 'error');
+    } finally {
+      setDeletingDoc(false);
+    }
+  };
+
+  const handleRenameDocument = async (e) => {
+    e.preventDefault();
+    if (!renameDocModal.doc || !renameDocModal.fileName.trim()) {
+      toast?.show('Please enter a valid document title', 'warning');
+      return;
+    }
+    setRenamingDoc(true);
+    try {
+      await customerService.renameDocument(renameDocModal.doc.id, {
+        fileName: renameDocModal.fileName.trim(),
+        documentType: renameDocModal.documentType || renameDocModal.doc.documentType
+      });
+      toast?.show('Document details updated successfully', 'success');
+      setRenameDocModal({ isOpen: false, doc: null, fileName: '', documentType: '' });
+      loadCustomerData();
+    } catch (err) {
+      console.error('Rename doc failed', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to update document details';
+      toast?.show(msg, 'error');
+    } finally {
+      setRenamingDoc(false);
+    }
+  };
+
+  const handleReplaceDocument = async (e) => {
+    e.preventDefault();
+    if (!replaceDocModal.doc || !replaceDocModal.file) {
+      toast?.show('Please choose a replacement file to upload', 'warning');
+      return;
+    }
+    setReplacingDoc(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', replaceDocModal.file);
+      await customerService.replaceDocumentFile(replaceDocModal.doc.id, formData);
+      toast?.show('Document replaced and re-submitted for review!', 'success');
+      setReplaceDocModal({ isOpen: false, doc: null, file: null });
+      loadCustomerData();
+    } catch (err) {
+      console.error('Replace doc failed', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to replace document';
+      toast?.show(msg, 'error');
+    } finally {
+      setReplacingDoc(false);
+    }
+  };
+
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     setSavingProfile(true);
@@ -1023,22 +1095,114 @@ export default function CustomerPortal() {
                                 </span>
                               </td>
                               <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
-                                <a
-                                  href={doc.fileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '0.3rem',
-                                    color: '#0284c7',
-                                    textDecoration: 'none',
-                                    fontWeight: 700,
-                                    fontSize: '0.8rem'
-                                  }}
-                                >
-                                  <Download size={13} /> View File
-                                </a>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                                  <a
+                                    href={doc.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '0.25rem',
+                                      color: '#0284c7',
+                                      background: '#f0f9ff',
+                                      border: '1px solid #bae6fd',
+                                      padding: '4px 8px',
+                                      borderRadius: '6px',
+                                      textDecoration: 'none',
+                                      fontWeight: 700,
+                                      fontSize: '0.75rem'
+                                    }}
+                                    title="View / Stream Document"
+                                  >
+                                    <Download size={12} /> View
+                                  </a>
+
+                                  {doc.verificationStatus !== 'VERIFIED' && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => setRenameDocModal({
+                                          isOpen: true,
+                                          doc,
+                                          fileName: doc.fileName || '',
+                                          documentType: doc.documentType || 'AADHAAR'
+                                        })}
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '0.25rem',
+                                          color: '#475569',
+                                          background: '#f8fafc',
+                                          border: '1px solid #cbd5e1',
+                                          padding: '4px 8px',
+                                          borderRadius: '6px',
+                                          fontWeight: 700,
+                                          fontSize: '0.75rem',
+                                          cursor: 'pointer'
+                                        }}
+                                        title="Rename or update category"
+                                      >
+                                        <Edit3 size={12} /> Rename
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => setReplaceDocModal({
+                                          isOpen: true,
+                                          doc,
+                                          file: null
+                                        })}
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '0.25rem',
+                                          color: '#d97706',
+                                          background: '#fffbeb',
+                                          border: '1px solid #fde68a',
+                                          padding: '4px 8px',
+                                          borderRadius: '6px',
+                                          fontWeight: 700,
+                                          fontSize: '0.75rem',
+                                          cursor: 'pointer'
+                                        }}
+                                        title="Re-upload or replace document"
+                                      >
+                                        <UploadCloud size={12} /> Replace
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => setDeleteConfirmDoc(doc)}
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '0.25rem',
+                                          color: '#dc2626',
+                                          background: '#fef2f2',
+                                          border: '1px solid #fecaca',
+                                          padding: '4px 8px',
+                                          borderRadius: '6px',
+                                          fontWeight: 700,
+                                          fontSize: '0.75rem',
+                                          cursor: 'pointer'
+                                        }}
+                                        title="Remove document from vault"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
+                                    </>
+                                  )}
+
+                                  {doc.verificationStatus === 'VERIFIED' && (
+                                    <span 
+                                      style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 700, padding: '4px 6px', background: '#dcfce7', borderRadius: '5px' }}
+                                      title="Locked: Approved KYC records cannot be altered directly"
+                                    >
+                                      🔒 Locked
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -2291,6 +2455,341 @@ export default function CustomerPortal() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE DOCUMENT CONFIRMATION MODAL */}
+      {deleteConfirmDoc && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            maxWidth: '440px',
+            width: '100%',
+            padding: '1.75rem',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{
+                background: '#fee2e2',
+                color: '#dc2626',
+                borderRadius: '50%',
+                width: '42px',
+                height: '42px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)' }}>
+                  Remove from Vault?
+                </h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                  Irreversible file purge from digital document vault
+                </p>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.86rem', color: '#475569', lineHeight: 1.5, margin: '0 0 1.25rem' }}>
+              Are you sure you want to delete <strong style={{ color: 'var(--primary-navy)' }}>{deleteConfirmDoc.fileName}</strong>? Once deleted, underwriters and advisors will no longer have access to this record.
+            </p>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmDoc(null)}
+                disabled={deletingDoc}
+                style={{
+                  padding: '0.6rem 1.1rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#475569',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteDocument}
+                disabled={deletingDoc}
+                style={{
+                  padding: '0.6rem 1.25rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#dc2626',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem'
+                }}
+              >
+                {deletingDoc ? <RefreshCw size={14} className="spin" /> : <Trash2 size={14} />}
+                <span>{deletingDoc ? 'Deleting...' : 'Delete Document'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RENAME DOCUMENT MODAL */}
+      {renameDocModal.isOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            maxWidth: '460px',
+            width: '100%',
+            padding: '1.75rem',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <Edit3 size={18} color="var(--primary-navy)" />
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)' }}>
+                  Edit Document Details
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRenameDocModal({ isOpen: false, doc: null, fileName: '', documentType: '' })}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleRenameDocument} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                  Category Tag
+                </label>
+                <select
+                  value={renameDocModal.documentType}
+                  onChange={(e) => setRenameDocModal(prev => ({ ...prev, documentType: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    outline: 'none'
+                  }}
+                >
+                  <option value="AADHAAR">Aadhaar Card</option>
+                  <option value="PAN">PAN Card</option>
+                  <option value="RC_BOOK">Vehicle RC</option>
+                  <option value="MEDICAL_RECORD">Medical History</option>
+                  <option value="PREVIOUS_POLICY">Previous Policy</option>
+                  <option value="OTHER">Other Document</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                  Document Display Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={renameDocModal.fileName}
+                  onChange={(e) => setRenameDocModal(prev => ({ ...prev, fileName: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setRenameDocModal({ isOpen: false, doc: null, fileName: '', documentType: '' })}
+                  disabled={renamingDoc}
+                  style={{
+                    padding: '0.6rem 1.1rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#475569',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={renamingDoc}
+                  style={{
+                    padding: '0.6rem 1.25rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'var(--primary-navy)',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem'
+                  }}
+                >
+                  {renamingDoc ? <RefreshCw size={14} className="spin" /> : <Check size={14} />}
+                  <span>{renamingDoc ? 'Saving...' : 'Update Details'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* REPLACE DOCUMENT MODAL */}
+      {replaceDocModal.isOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            maxWidth: '460px',
+            width: '100%',
+            padding: '1.75rem',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <UploadCloud size={20} color="#d97706" />
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)' }}>
+                  Replace Document File
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReplaceDocModal({ isOpen: false, doc: null, file: null })}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 1rem' }}>
+              Replacing file for: <strong style={{ color: 'var(--primary-navy)' }}>{replaceDocModal.doc?.fileName}</strong>. This replaces the old scan and re-submits it for underwriting review.
+            </p>
+
+            <form onSubmit={handleReplaceDocument} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <label style={{
+                border: '2px dashed #cbd5e1',
+                borderRadius: '12px',
+                padding: '1.5rem 1rem',
+                textAlign: 'center',
+                background: '#f8fafc',
+                cursor: 'pointer',
+                display: 'block'
+              }}>
+                <input
+                  type="file"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) setReplaceDocModal(prev => ({ ...prev, file: f }));
+                  }}
+                />
+                <UploadCloud size={28} color="#0284c7" style={{ margin: '0 auto 6px auto' }} />
+                <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#0f2b48' }}>
+                  {replaceDocModal.file ? replaceDocModal.file.name : 'Choose New File (PDF, PNG, JPG)'}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                  {replaceDocModal.file ? `${(replaceDocModal.file.size / (1024 * 1024)).toFixed(2)} MB` : 'Max limit: 25MB'}
+                </div>
+              </label>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setReplaceDocModal({ isOpen: false, doc: null, file: null })}
+                  disabled={replacingDoc}
+                  style={{
+                    padding: '0.6rem 1.1rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#475569',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={replacingDoc || !replaceDocModal.file}
+                  style={{
+                    padding: '0.6rem 1.25rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: '#059669',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    opacity: (!replaceDocModal.file || replacingDoc) ? 0.6 : 1
+                  }}
+                >
+                  {replacingDoc ? <RefreshCw size={14} className="spin" /> : <UploadCloud size={14} />}
+                  <span>{replacingDoc ? 'Uploading...' : 'Confirm & Replace'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

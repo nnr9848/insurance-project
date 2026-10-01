@@ -62,4 +62,18 @@ public class FileStorageService {
     public Path loadFileAsPath(String fileName) {
         return this.rootStorageLocation.resolve(fileName).normalize();
     }
+
+    /**
+     * Deletes a physical file securely from disk.
+     */
+    public boolean deleteFile(String fileName) {
+        if (fileName == null || fileName.isBlank()) return false;
+        try {
+            Path path = loadFileAsPath(fileName);
+            return Files.deleteIfExists(path);
+        } catch (Exception ex) {
+            log.warn("Failed to delete physical file: {}", fileName, ex);
+            return false;
+        }
+    }
 }

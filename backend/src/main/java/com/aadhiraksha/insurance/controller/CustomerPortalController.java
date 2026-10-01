@@ -101,6 +101,38 @@ public class CustomerPortalController {
         }
     }
 
+    @DeleteMapping("/documents/{docId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> deleteMyDocument(Authentication auth, @PathVariable Long docId) {
+        User user = getAuthenticatedUser(auth);
+        customerPortalService.deleteMyDocument(user, docId);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Document deleted successfully"));
+    }
+
+    @PutMapping("/documents/{docId}/rename")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ClientDocument> renameMyDocument(
+            Authentication auth,
+            @PathVariable Long docId,
+            @RequestBody Map<String, String> payload
+    ) {
+        User user = getAuthenticatedUser(auth);
+        String title = payload.get("fileName");
+        String category = payload.get("documentType");
+        return ResponseEntity.ok(customerPortalService.renameMyDocument(user, docId, title, category));
+    }
+
+    @PostMapping(value = "/documents/{docId}/replace", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ClientDocument> replaceMyDocument(
+            Authentication auth,
+            @PathVariable Long docId,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file
+    ) {
+        User user = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(customerPortalService.replaceMyDocument(user, docId, file));
+    }
+
     @PutMapping("/profile")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> updateMyProfile(Authentication auth, @RequestBody Map<String, Object> payload) {

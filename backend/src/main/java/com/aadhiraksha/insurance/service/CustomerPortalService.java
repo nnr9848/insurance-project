@@ -273,7 +273,6 @@ public class CustomerPortalService {
         ClientDocument doc = clientDocumentRepository.findById(docId)
                 .orElseThrow(() -> new IllegalArgumentException("Document not found with ID: " + docId));
 
-        // Security authorization check: User can only access their own documents unless staff/admin
         boolean isOwner = (doc.getClient() != null && doc.getClient().getCustomerUser() != null && doc.getClient().getCustomerUser().getId().equals(user.getId()))
                 || (doc.getUploadedBy() != null && doc.getUploadedBy().getId().equals(user.getId()));
 
@@ -282,6 +281,102 @@ public class CustomerPortalService {
         }
 
         return doc;
+    }
+
+    @Transactional
+    public void deleteMyDocument(User user, Long docId) {
+        ClientDocument doc = getCustomerDocumentById(user, docId);
+
+        // Compliance guard: Verified documents cannot be deleted directly by customer
+        if ("VERIFIED".equalsIgnoreCase(doc.getVerificationStatus())) {
+            throw new IllegalStateException("Approved and verified KYC/Policy documents cannot be deleted directly. Please contact your dedicated insurance advisor to request a revision.");
+        }
+
+        // Clean up physical file if stored locally
+        if (doc.getFileUrl() != null && doc.getFileUrl().contains("/view-file/")) {
+            String fileName = doc.getFileUrl().substring(doc.getFileUrl().lastIndexOf("/") + 1);
+            fileStorageService.deleteFile(fileName);
+        }
+
+        // Audit log
+        auditService.logAction(
+                "CLIENT",
+                doc.getClient() != null ? doc.getClient().getId() : null,
+                "DOCUMENT_DELETE",
+                "Digital KYC Vault",
+                doc.getFileName(),
+                null,
+                user,
+                null
+        );
+
+        clientDocumentRepository.delete(doc);
+    }
+
+    @Transactional
+    public ClientDocument renameMyDocument(User user, Long docId, String newTitle, String newCategory) {
+        ClientDocument doc = getCustomerDocumentById(user, docId);
+
+        if ("VERIFIED".equalsIgnoreCase(doc.getVerificationStatus())) {
+            throw new IllegalStateException("Verified documents cannot be renamed. Please contact your advisor.");
+        }
+
+        if (newTitle != null && !newTitle.isBlank()) {
+            doc.setFileName(newTitle.trim());
+        }
+        if (newCategory != null && !newCategory.isBlank()) {
+            doc.setDocumentType(newCategory.trim());
+        }
+
+        auditService.logAction(
+                "CLIENT",
+                doc.getClient() != null ? doc.getClient().getId() : null,
+                "DOCUMENT_UPDATE",
+                "Digital KYC Vault",
+                null,
+                "Customer updated document metadata: " + doc.getFileName(),
+                user,
+                null
+        );
+
+        return clientDocumentRepository.save(doc);
+    }
+
+    @Transactional
+    public ClientDocument replaceMyDocument(User user, Long docId, org.springframework.web.multipart.MultipartFile newFile) {
+        ClientDocument doc = getCustomerDocumentById(user, docId);
+
+        if ("VERIFIED".equalsIgnoreCase(doc.getVerificationStatus())) {
+            throw new IllegalStateException("Approved documents cannot be directly overwritten. Please consult your advisor.");
+        }
+
+        // Delete previous physical file if existing
+        if (doc.getFileUrl() != null && doc.getFileUrl().contains("/view-file/")) {
+            String oldFile = doc.getFileUrl().substring(doc.getFileUrl().lastIndexOf("/") + 1);
+            fileStorageService.deleteFile(oldFile);
+        }
+
+        // Store new physical file
+        String originalFilename = newFile.getOriginalFilename();
+        String storedFileName = fileStorageService.storeFile(newFile, originalFilename);
+
+        doc.setFileUrl("/api/customer/documents/view-file/" + storedFileName);
+        doc.setFileSizeBytes(newFile.getSize());
+        doc.setFileType(newFile.getContentType() != null ? newFile.getContentType() : "application/pdf");
+        doc.setVerificationStatus("PENDING_REVIEW"); // Reset status on replacement
+
+        auditService.logAction(
+                "CLIENT",
+                doc.getClient() != null ? doc.getClient().getId() : null,
+                "DOCUMENT_REPLACE",
+                "Digital KYC Vault",
+                doc.getFileName(),
+                "Replaced with " + originalFilename,
+                user,
+                null
+        );
+
+        return clientDocumentRepository.save(doc);
     }
 
     @Transactional

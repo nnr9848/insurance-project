@@ -509,6 +509,22 @@ export const customerService = {
     });
     return res.data;
   },
+  deleteDocument: async (docId) => {
+    const res = await api.delete(`/customer/documents/${docId}`);
+    return res.data;
+  },
+  renameDocument: async (docId, data) => {
+    const res = await api.put(`/customer/documents/${docId}/rename`, data);
+    return res.data;
+  },
+  replaceDocumentFile: async (docId, formData) => {
+    const res = await api.post(`/customer/documents/${docId}/replace`, formData, {
+      headers: {
+        'Content-Type': undefined,
+      },
+    });
+    return res.data;
+  },
   updateProfile: async (data) => {
     const res = await api.put('/customer/profile', data);
     return res.data;
