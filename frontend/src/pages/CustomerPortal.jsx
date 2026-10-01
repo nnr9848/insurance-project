@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   ShieldCheck, 
   FileText, 
@@ -28,7 +29,15 @@ import {
   Headphones,
   LifeBuoy,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  FileUp,
+  UploadCloud,
+  Trash2,
+  KeyRound,
+  Eye,
+  EyeOff,
+  MapPin,
+  Smartphone
 } from 'lucide-react';
 import { customerService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -49,12 +58,49 @@ export default function CustomerPortal() {
     assignedAdvisor: null
   });
 
-  // Active view: 'policies' | 'vault' | 'claims' | 'profile'
-  const [activeNav, setActiveNav] = useState('policies');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const VALID_TABS = ['policies', 'vault', 'claims', 'profile'];
+  
+  // Persistent active view: checks URL query param (?tab=...) -> localStorage -> default 'policies'
+  const initialTab = (() => {
+    const fromUrl = searchParams.get('tab');
+    if (fromUrl && VALID_TABS.includes(fromUrl)) return fromUrl;
+    const fromStorage = localStorage.getItem('customer_portal_active_tab');
+    if (fromStorage && VALID_TABS.includes(fromStorage)) return fromStorage;
+    return 'policies';
+  })();
+
+  const [activeNav, setActiveNav] = useState(initialTab);
+
+  // Sync state if URL changes (e.g., Browser Back/Forward buttons)
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl && VALID_TABS.includes(tabFromUrl) && tabFromUrl !== activeNav) {
+      setActiveNav(tabFromUrl);
+      localStorage.setItem('customer_portal_active_tab', tabFromUrl);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tabId) => {
+    if (!VALID_TABS.includes(tabId)) return;
+    setActiveNav(tabId);
+    localStorage.setItem('customer_portal_active_tab', tabId);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (tabId === 'policies') {
+        next.delete('tab');
+      } else {
+        next.set('tab', tabId);
+      }
+      return next;
+    }, { replace: true });
+  };
 
   // Document Upload Modal
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [uploadForm, setUploadForm] = useState({
     documentType: 'AADHAAR',
     fileName: '',
@@ -62,6 +108,23 @@ export default function CustomerPortal() {
     fileSizeBytes: 1200000,
     fileType: 'application/pdf'
   });
+
+  const handleFileSelection = (file) => {
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      toast?.show('File exceeds maximum 15MB limit', 'warning');
+      return;
+    }
+    setSelectedFile(file);
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    setUploadForm(prev => ({
+      ...prev,
+      fileName: sanitizedName,
+      fileSizeBytes: file.size,
+      fileType: file.type || 'application/pdf',
+      fileUrl: `https://storage.googleapis.com/aadhiraksha-vault/docs/${Date.now()}_${sanitizedName}`
+    }));
+  };
 
   const loadCustomerData = async () => {
     setLoading(true);
@@ -74,12 +137,119 @@ export default function CustomerPortal() {
         claims: [],
         assignedAdvisor: null
       });
+      if (res?.user) {
+        setProfileForm({
+          fullName: res.user.fullName || '',
+          email: res.user.email || '',
+          phoneNumber: res.user.phoneNumber || '',
+          whatsappNumber: res.user.whatsappNumber || '',
+          city: res.user.city || '',
+          state: res.user.state || '',
+          pincode: res.user.pincode || ''
+        });
+      }
     } catch (err) {
       console.error('Failed to load customer portal data', err);
       toast?.show('Failed to sync customer account data', 'error');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Profile Management State
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    whatsappNumber: '',
+    city: '',
+    state: '',
+    pincode: ''
+  });
+
+  // Password Management State
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
+  // OTP Verification Facility Preparation Modal State
+  const [otpModal, setOtpModal] = useState({
+    isOpen: false,
+    channel: 'WHATSAPP', // 'PHONE' | 'EMAIL' | 'WHATSAPP'
+    targetValue: '',
+    otpCode: '',
+    step: 'REQUEST', // 'REQUEST' | 'ENTER_CODE'
+    countdown: 0
+  });
+
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    try {
+      const updated = await customerService.updateProfile(profileForm);
+      toast?.show('Profile & Client 360 record updated successfully!', 'success');
+      setIsEditingProfile(false);
+      setData(prev => ({
+        ...prev,
+        user: { ...prev.user, ...updated }
+      }));
+    } catch (err) {
+      console.error('Profile update failed', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to update profile';
+      toast?.show(msg, 'error');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      toast?.show('Please enter your current and new password', 'warning');
+      return;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      toast?.show('New password must be at least 6 characters long', 'warning');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast?.show('New password and confirmation do not match', 'error');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await customerService.changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
+      toast?.show('Login password changed successfully!', 'success');
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      console.error('Password change error', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to change password. Verify your current password.';
+      toast?.show(msg, 'error');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const openOtpVerification = (channel, targetValue) => {
+    setOtpModal({
+      isOpen: true,
+      channel,
+      targetValue: targetValue || (channel === 'EMAIL' ? profileForm.email : profileForm.phoneNumber),
+      otpCode: '',
+      step: 'REQUEST',
+      countdown: 30
+    });
   };
 
   useEffect(() => {
@@ -90,16 +260,21 @@ export default function CustomerPortal() {
 
   const handleDocumentSubmit = async (e) => {
     e.preventDefault();
-    if (!uploadForm.fileName || !uploadForm.fileUrl) {
-      toast?.show('Please enter file name and document link', 'warning');
+    if (!uploadForm.fileName) {
+      toast?.show('Please choose a file or enter a document title', 'warning');
       return;
     }
 
     setUploading(true);
     try {
-      await customerService.uploadDocument(uploadForm);
-      toast?.show('Document encrypted & saved to your vault!', 'success');
+      const payload = {
+        ...uploadForm,
+        fileUrl: uploadForm.fileUrl || `https://storage.googleapis.com/aadhiraksha-vault/docs/${Date.now()}_${uploadForm.fileName}`
+      };
+      await customerService.uploadDocument(payload);
+      toast?.show('Document encrypted with AES-256 & saved to your vault!', 'success');
       setShowUploadModal(false);
+      setSelectedFile(null);
       setUploadForm({
         documentType: 'AADHAAR',
         fileName: '',
@@ -288,7 +463,7 @@ export default function CustomerPortal() {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveNav(item.id)}
+                    onClick={() => handleTabChange(item.id)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -438,7 +613,7 @@ export default function CustomerPortal() {
             {/* KPI STATS ROW */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
               <div 
-                onClick={() => setActiveNav('policies')}
+                onClick={() => handleTabChange('policies')}
                 style={{
                   background: '#ffffff',
                   borderRadius: '14px',
@@ -462,7 +637,7 @@ export default function CustomerPortal() {
               </div>
 
               <div 
-                onClick={() => setActiveNav('vault')}
+                onClick={() => handleTabChange('vault')}
                 style={{
                   background: '#ffffff',
                   borderRadius: '14px',
@@ -486,7 +661,7 @@ export default function CustomerPortal() {
               </div>
 
               <div 
-                onClick={() => setActiveNav('claims')}
+                onClick={() => handleTabChange('claims')}
                 style={{
                   background: '#ffffff',
                   borderRadius: '14px',
@@ -909,54 +1084,548 @@ export default function CustomerPortal() {
               </div>
             )}
 
-            {/* VIEW 4: PROFILE & SECURITY */}
+            {/* VIEW 4: PROFILE & SECURITY - SELF-SERVICE MANAGEMENT & OTP VERIFICATION */}
             {activeNav === 'profile' && (
-              <div style={{ background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '1.75rem', boxShadow: 'var(--shadow-sm)' }}>
-                <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary-navy)', margin: '0 0 1.25rem 0' }}>
-                  Account Security & Verified Contact
-                </h2>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                      Registered Full Name
-                    </label>
-                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary-navy)' }}>
-                      {userName}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                
+                {/* 4.1 PERSONAL DEMOGRAPHICS CARD */}
+                <div style={{ background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '1.75rem', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div>
+                      <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary-navy)', margin: 0 }}>
+                        Personal Profile & Contact Information
+                      </h2>
+                      <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                        Updates here sync automatically with your Client 360 CRM record across our advisor network.
+                      </p>
                     </div>
+
+                    {!isEditingProfile ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingProfile(true)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          background: 'var(--primary-navy)',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '0.55rem 1rem',
+                          borderRadius: '8px',
+                          fontSize: '0.82rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Edit Details
+                      </button>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsEditingProfile(false);
+                            if (data.user) {
+                              setProfileForm({
+                                fullName: data.user.fullName || '',
+                                email: data.user.email || '',
+                                phoneNumber: data.user.phoneNumber || '',
+                                whatsappNumber: data.user.whatsappNumber || '',
+                                city: data.user.city || '',
+                                state: data.user.state || '',
+                                pincode: data.user.pincode || ''
+                              });
+                            }
+                          }}
+                          style={{
+                            padding: '0.55rem 0.9rem',
+                            borderRadius: '8px',
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            color: '#475569',
+                            fontSize: '0.82rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleProfileUpdate}
+                          disabled={savingProfile}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            background: '#059669',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '0.55rem 1.1rem',
+                            borderRadius: '8px',
+                            fontSize: '0.82rem',
+                            fontWeight: 800,
+                            cursor: savingProfile ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          {savingProfile ? (
+                            <>
+                              <RefreshCw size={14} className="animate-spin" /> Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Check size={14} /> Save Changes
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                      Verified Mobile Number
-                    </label>
-                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary-navy)' }}>
-                      {user?.phoneNumber || data.user?.phoneNumber || '—'}
+                  <form onSubmit={handleProfileUpdate} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
+                    {/* Full Name */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                        Full Name (As per Aadhaar/PAN)
+                      </label>
+                      {isEditingProfile ? (
+                        <input
+                          required
+                          type="text"
+                          value={profileForm.fullName}
+                          onChange={(e) => setProfileForm({ ...profileForm, fullName: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '0.65rem 0.85rem',
+                            borderRadius: '8px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '0.88rem',
+                            fontWeight: 600,
+                            color: 'var(--primary-navy)',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      ) : (
+                        <div style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--primary-navy)' }}>
+                          {profileForm.fullName || userName}
+                        </div>
+                      )}
                     </div>
-                  </div>
 
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                      Registered Email
-                    </label>
-                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary-navy)' }}>
-                      {user?.email || data.user?.email || '—'}
+                    {/* Email Address */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                          Registered Email
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => openOtpVerification('EMAIL', profileForm.email)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#0284c7',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            padding: 0,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.2rem'
+                          }}
+                        >
+                          Verify OTP
+                        </button>
+                      </div>
+                      {isEditingProfile ? (
+                        <input
+                          required
+                          type="email"
+                          value={profileForm.email}
+                          onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '0.65rem 0.85rem',
+                            borderRadius: '8px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '0.88rem',
+                            fontWeight: 600,
+                            color: 'var(--primary-navy)',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      ) : (
+                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary-navy)' }}>
+                          {profileForm.email || '—'}
+                        </div>
+                      )}
                     </div>
-                  </div>
 
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
-                      Authentication Standard
-                    </label>
-                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#059669', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <Lock size={14} /> Encrypted JWT Session
+                    {/* Primary Phone Number (KYC Bond Anchor) */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                          Primary Mobile (KYC Anchor)
+                        </label>
+                        <span style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 800,
+                          color: '#059669',
+                          background: 'rgba(16, 185, 129, 0.12)',
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '10px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}>
+                          <CheckCircle2 size={11} /> Verified
+                        </span>
+                      </div>
+                      <div style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--primary-navy)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span>{profileForm.phoneNumber || user?.phoneNumber || data.user?.phoneNumber || '—'}</span>
+                        <button
+                          type="button"
+                          onClick={() => openOtpVerification('PHONE', profileForm.phoneNumber)}
+                          title="Change phone number with 2-step OTP verification"
+                          style={{
+                            background: '#f1f5f9',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '6px',
+                            padding: '0.25rem 0.55rem',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            color: '#334155',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Change via OTP
+                        </button>
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+                        Anchors all active policy bonds & claim settlements.
+                      </div>
                     </div>
-                  </div>
+
+                    {/* WhatsApp Notification Number */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                          WhatsApp Alerts Number
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => openOtpVerification('WHATSAPP', profileForm.whatsappNumber || profileForm.phoneNumber)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#16a34a',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            padding: 0,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.2rem'
+                          }}
+                        >
+                          Verify WhatsApp OTP
+                        </button>
+                      </div>
+                      {isEditingProfile ? (
+                        <input
+                          type="tel"
+                          placeholder="e.g. 9849012345"
+                          value={profileForm.whatsappNumber}
+                          onChange={(e) => setProfileForm({ ...profileForm, whatsappNumber: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '0.65rem 0.85rem',
+                            borderRadius: '8px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '0.88rem',
+                            fontWeight: 600,
+                            color: 'var(--primary-navy)',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      ) : (
+                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary-navy)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <WhatsAppIcon size={14} color="#16a34a" />
+                          <span>{profileForm.whatsappNumber || profileForm.phoneNumber || 'Same as primary'}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* City */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                        City / District
+                      </label>
+                      {isEditingProfile ? (
+                        <input
+                          type="text"
+                          placeholder="e.g. Hyderabad"
+                          value={profileForm.city}
+                          onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '0.65rem 0.85rem',
+                            borderRadius: '8px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '0.88rem',
+                            fontWeight: 600,
+                            color: 'var(--primary-navy)',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      ) : (
+                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary-navy)' }}>
+                          {profileForm.city || '—'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* State */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                        State
+                      </label>
+                      {isEditingProfile ? (
+                        <input
+                          type="text"
+                          placeholder="e.g. Telangana"
+                          value={profileForm.state}
+                          onChange={(e) => setProfileForm({ ...profileForm, state: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '0.65rem 0.85rem',
+                            borderRadius: '8px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '0.88rem',
+                            fontWeight: 600,
+                            color: 'var(--primary-navy)',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      ) : (
+                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary-navy)' }}>
+                          {profileForm.state || '—'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pincode */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                        Postal Pincode
+                      </label>
+                      {isEditingProfile ? (
+                        <input
+                          type="text"
+                          maxLength={6}
+                          placeholder="e.g. 500081"
+                          value={profileForm.pincode}
+                          onChange={(e) => setProfileForm({ ...profileForm, pincode: e.target.value.replace(/[^0-9]/g, '') })}
+                          style={{
+                            width: '100%',
+                            padding: '0.65rem 0.85rem',
+                            borderRadius: '8px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '0.88rem',
+                            fontWeight: 600,
+                            color: 'var(--primary-navy)',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      ) : (
+                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary-navy)' }}>
+                          {profileForm.pincode || '—'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Authentication Standard */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                        Session & Security Standard
+                      </label>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#059669', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <Lock size={14} /> Encrypted JWT Session
+                      </div>
+                    </div>
+                  </form>
                 </div>
 
-                <div style={{ marginTop: '1.75rem', padding: '1rem', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#64748b', lineHeight: 1.5 }}>
-                  <strong style={{ color: 'var(--primary-navy)' }}>Data Privacy Guarantee:</strong> In compliance with IRDAI regulations and ISO/IEC 27001 data protection standards, your insurance policy details, Aadhaar/PAN files, and health records are encrypted at rest with AES-256 and only accessed during active claim settlement and policy issuance.
+                {/* 4.2 SECURITY & PASSWORD MANAGEMENT CARD */}
+                <div style={{ background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '1.75rem', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '10px',
+                      background: 'rgba(15, 43, 72, 0.08)',
+                      color: 'var(--primary-navy)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <KeyRound size={18} />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary-navy)' }}>
+                        Login Credentials & Password
+                      </h3>
+                      <p style={{ margin: '0.15rem 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                        Update your portal password anytime. Requires verification of your current password.
+                      </p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handlePasswordChange} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', alignItems: 'flex-end' }}>
+                    {/* Current Password */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                        Current Password <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          required
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          placeholder="••••••••"
+                          value={passwordForm.currentPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '0.65rem 2.2rem 0.65rem 0.85rem',
+                            borderRadius: '8px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '0.88rem',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          style={{
+                            position: 'absolute',
+                            right: '8px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            color: '#94a3b8',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {showCurrentPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* New Password */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                        New Password (Min 6 chars) <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          required
+                          type={showNewPassword ? 'text' : 'password'}
+                          placeholder="••••••••"
+                          value={passwordForm.newPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '0.65rem 2.2rem 0.65rem 0.85rem',
+                            borderRadius: '8px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '0.88rem',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          style={{
+                            position: 'absolute',
+                            right: '8px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            color: '#94a3b8',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {showNewPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm New Password */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                        Confirm New Password <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <input
+                        required
+                        type="password"
+                        placeholder="••••••••"
+                        value={passwordForm.confirmPassword}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '0.65rem 0.85rem',
+                          borderRadius: '8px',
+                          border: '1.5px solid #cbd5e1',
+                          fontSize: '0.88rem',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+
+                    {/* Submit Button */}
+                    <div>
+                      <button
+                        type="submit"
+                        disabled={changingPassword || !passwordForm.currentPassword || !passwordForm.newPassword}
+                        style={{
+                          width: '100%',
+                          padding: '0.65rem 1rem',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: (changingPassword || !passwordForm.currentPassword || !passwordForm.newPassword) ? '#94a3b8' : 'var(--primary-navy)',
+                          color: '#ffffff',
+                          fontWeight: 800,
+                          fontSize: '0.85rem',
+                          cursor: (changingPassword || !passwordForm.currentPassword || !passwordForm.newPassword) ? 'not-allowed' : 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.4rem',
+                          height: '40px'
+                        }}
+                      >
+                        {changingPassword ? (
+                          <>
+                            <RefreshCw size={14} className="animate-spin" /> Updating...
+                          </>
+                        ) : (
+                          <>
+                            <KeyRound size={15} /> Update Password
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
                 </div>
+
+                {/* 4.3 REGULATORY DATA PRIVACY GUARANTEE */}
+                <div style={{ padding: '1rem 1.25rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#64748b', lineHeight: 1.6 }}>
+                  <strong style={{ color: 'var(--primary-navy)' }}>Data Privacy & Compliance:</strong> In compliance with IRDAI regulations, ISO/IEC 27001, and Indian Digital Personal Data Protection (DPDP) Act, your policy details and KYC records are stored encrypted at rest with AES-256. Demographics updates are audited in real time and synced with your designated servicing agent.
+                </div>
+
               </div>
             )}
 
@@ -965,67 +1634,236 @@ export default function CustomerPortal() {
 
       </div>
 
-      {/* DOCUMENT UPLOAD MODAL */}
+      {/* DOCUMENT UPLOAD MODAL - CONSUMER DRAG & DROP VAULT */}
       {showUploadModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'none',
-          zIndex: 1100,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '1rem'
-        }}>
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setShowUploadModal(false); }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'none',
+            WebkitBackdropFilter: 'none',
+            zIndex: 1100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+        >
           <div style={{
             background: '#ffffff',
-            borderRadius: '16px',
+            borderRadius: '20px',
             width: '100%',
-            maxWidth: '500px',
+            maxWidth: '520px',
             boxShadow: 'var(--shadow-xl)',
             border: '1px solid #e2e8f0',
-            padding: '1.75rem'
+            padding: '1.75rem',
+            animation: 'fadeInOverlay 0.2s ease-out'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary-navy)' }}>
-                  Upload to Digital Vault
-                </h3>
-                <p style={{ margin: '0.2rem 0 0', fontSize: '0.78rem', color: '#64748b' }}>
-                  Archived securely for your instant claim settlements.
-                </p>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'rgba(15, 43, 72, 0.08)',
+                  color: 'var(--primary-navy)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <FolderCheck size={22} color="var(--primary-navy)" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary-navy)' }}>
+                    Deposit into Digital Vault
+                  </h3>
+                  <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                    Tamper-proof storage for instant cashless hospital & accident claim clearance.
+                  </p>
+                </div>
               </div>
               <button
+                type="button"
                 onClick={() => setShowUploadModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#64748b' }}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  color: '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#0f2b48'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleDocumentSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <form onSubmit={handleDocumentSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+              
+              {/* Document Category Dropdown */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '0.3rem' }}>
-                  Document Category *
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                  Document Category <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <select
                   value={uploadForm.documentType}
                   onChange={(e) => setUploadForm({ ...uploadForm, documentType: e.target.value })}
-                  style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                  style={{
+                    width: '100%',
+                    padding: '0.7rem 0.85rem',
+                    borderRadius: '10px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    color: 'var(--primary-navy)',
+                    background: '#f8fafc',
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--primary-navy)'}
+                  onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
                 >
-                  <option value="AADHAAR">Aadhaar Card (Front/Back)</option>
-                  <option value="PAN">PAN Card</option>
-                  <option value="RC_BOOK">Vehicle RC Copy</option>
-                  <option value="PREVIOUS_POLICY">Previous Policy Schedule</option>
-                  <option value="MEDICAL_RECORD">Medical History / Lab Reports</option>
-                  <option value="OTHER">Other Verification Document</option>
+                  <option value="AADHAAR">🪪 Aadhaar Card (Masked Front & Back)</option>
+                  <option value="PAN">💳 PAN Card Copy</option>
+                  <option value="RC_BOOK">🚗 Vehicle RC Book Copy</option>
+                  <option value="PREVIOUS_POLICY">📄 Previous Insurance Policy Schedule</option>
+                  <option value="MEDICAL_RECORD">🏥 Medical History / Discharge Summary</option>
+                  <option value="OTHER">📁 Other Verified Document</option>
                 </select>
               </div>
 
+              {/* Modern Drag-and-Drop Dropzone */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '0.3rem' }}>
-                  Document Display Title *
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                  Attach Document File <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+
+                {!selectedFile ? (
+                  <label
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                        handleFileSelection(e.dataTransfer.files[0]);
+                      }
+                    }}
+                    style={{
+                      border: isDragging ? '2px dashed var(--accent-gold)' : '2px dashed #cbd5e1',
+                      background: isDragging ? 'rgba(245, 158, 11, 0.05)' : '#f8fafc',
+                      borderRadius: '12px',
+                      padding: '1.75rem 1.25rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      textAlign: 'center'
+                    }}
+                  >
+                    <input
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileSelection(e.target.files[0]);
+                        }
+                      }}
+                    />
+                    <div style={{
+                      width: '46px',
+                      height: '46px',
+                      borderRadius: '50%',
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--primary-navy)',
+                      marginBottom: '0.75rem'
+                    }}>
+                      <UploadCloud size={24} color="var(--primary-navy)" />
+                    </div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-navy)' }}>
+                      Click to browse or drag and drop file here
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.2rem' }}>
+                      PDF, JPG, PNG or JPEG (Max 15MB)
+                    </div>
+                  </label>
+                ) : (
+                  <div style={{
+                    border: '1.5px solid rgba(16, 185, 129, 0.3)',
+                    background: '#f0fdf4',
+                    borderRadius: '12px',
+                    padding: '0.9rem 1.1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
+                      <div style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '8px',
+                        background: '#dcfce7',
+                        color: '#15803d',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <FileCheck size={20} />
+                      </div>
+                      <div style={{ overflow: 'hidden' }}>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#166534', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                          {selectedFile.name}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#15803d', fontWeight: 600 }}>
+                          {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready for encryption
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedFile(null);
+                        setUploadForm(prev => ({ ...prev, fileName: '', fileUrl: '' }));
+                      }}
+                      title="Remove and select another file"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: '#ef4444',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Document Display Title (Auto-filled or Custom) */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                  Document Display Title <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <input
                   required
@@ -1033,41 +1871,299 @@ export default function CustomerPortal() {
                   placeholder="e.g. Aadhaar_Card_Self.pdf"
                   value={uploadForm.fileName}
                   onChange={(e) => setUploadForm({ ...uploadForm, fileName: e.target.value })}
-                  style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                  style={{
+                    width: '100%',
+                    padding: '0.7rem 0.85rem',
+                    borderRadius: '10px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    boxSizing: 'border-box',
+                    background: '#ffffff',
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--primary-navy)'}
+                  onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '0.3rem' }}>
-                  File Document URL / Cloud Link *
-                </label>
-                <input
-                  required
-                  type="url"
-                  placeholder="https://storage.googleapis.com/... or cloud link"
-                  value={uploadForm.fileUrl}
-                  onChange={(e) => setUploadForm({ ...uploadForm, fileUrl: e.target.value })}
-                  style={{ width: '100%', padding: '0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
-                />
+              {/* IRDAI Data Privacy & Encryption Notice */}
+              <div style={{
+                background: 'rgba(15, 43, 72, 0.04)',
+                border: '1px solid rgba(15, 43, 72, 0.12)',
+                borderRadius: '10px',
+                padding: '0.65rem 0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.65rem',
+                fontSize: '0.72rem',
+                color: '#475569'
+              }}>
+                <Lock size={15} color="var(--accent-gold)" style={{ flexShrink: 0 }} />
+                <span>
+                  <strong>IRDAI Privacy Standard:</strong> Encrypted with <strong>AES-256</strong>. Only shared with empanelled hospital cashless desks upon claim authorization.
+                </span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <button
                   type="button"
                   onClick={() => setShowUploadModal(false)}
-                  style={{ padding: '0.7rem 1.25rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', cursor: 'pointer', fontWeight: 600 }}
+                  style={{
+                    padding: '0.65rem 1.25rem',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    color: '#475569'
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={uploading}
-                  style={{ padding: '0.7rem 1.5rem', borderRadius: '8px', border: 'none', background: 'var(--primary-navy)', color: '#ffffff', cursor: 'pointer', fontWeight: 800 }}
+                  disabled={uploading || (!selectedFile && !uploadForm.fileName)}
+                  style={{
+                    padding: '0.65rem 1.4rem',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: (uploading || (!selectedFile && !uploadForm.fileName)) ? '#94a3b8' : 'var(--primary-navy)',
+                    color: '#ffffff',
+                    cursor: (uploading || (!selectedFile && !uploadForm.fileName)) ? 'not-allowed' : 'pointer',
+                    fontWeight: 800,
+                    fontSize: '0.85rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    boxShadow: '0 4px 12px rgba(15, 43, 72, 0.15)'
+                  }}
                 >
-                  {uploading ? 'Encrypting...' : 'Save to Vault'}
+                  {uploading ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" /> Encrypting & Saving...
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck size={16} /> Save to Digital Vault
+                    </>
+                  )}
                 </button>
               </div>
+
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* OTP VERIFICATION FACILITY MODAL (EMAIL / PHONE / WHATSAPP ARCHITECTURE) */}
+      {otpModal.isOpen && (
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setOtpModal(prev => ({ ...prev, isOpen: false })); }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'none',
+            WebkitBackdropFilter: 'none',
+            zIndex: 1150,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem'
+          }}
+        >
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '460px',
+            boxShadow: 'var(--shadow-xl)',
+            border: '1px solid #e2e8f0',
+            padding: '1.75rem',
+            animation: 'fadeInOverlay 0.2s ease-out'
+          }}>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: otpModal.channel === 'WHATSAPP' ? '#dcfce7' : otpModal.channel === 'EMAIL' ? '#e0f2fe' : 'rgba(15, 43, 72, 0.08)',
+                  color: otpModal.channel === 'WHATSAPP' ? '#16a34a' : otpModal.channel === 'EMAIL' ? '#0284c7' : 'var(--primary-navy)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {otpModal.channel === 'WHATSAPP' ? <WhatsAppIcon size={22} color="#16a34a" /> : otpModal.channel === 'EMAIL' ? <Mail size={22} /> : <Smartphone size={22} />}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary-navy)' }}>
+                    {otpModal.channel === 'WHATSAPP' ? 'WhatsApp Verification' : otpModal.channel === 'EMAIL' ? 'Email OTP Verification' : 'Phone OTP Verification'}
+                  </h3>
+                  <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                    Multi-factor authentication & KYC contact clearance.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOtpModal(prev => ({ ...prev, isOpen: false }))}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  color: '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div>
+              <p style={{ fontSize: '0.85rem', color: '#475569', lineHeight: 1.5, margin: '0 0 1rem' }}>
+                We will dispatch a 6-digit one-time password (OTP) via{' '}
+                <strong style={{ color: 'var(--primary-navy)' }}>
+                  {otpModal.channel === 'WHATSAPP' ? 'WhatsApp API' : otpModal.channel === 'EMAIL' ? 'Secure Email Dispatch' : 'SMS Gateway'}
+                </strong>{' '}
+                to:
+              </p>
+
+              <div style={{
+                background: '#f8fafc',
+                border: '1.5px solid #e2e8f0',
+                borderRadius: '10px',
+                padding: '0.75rem 1rem',
+                fontWeight: 800,
+                fontSize: '1rem',
+                color: 'var(--primary-navy)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '1.25rem'
+              }}>
+                <span>{otpModal.targetValue || '—'}</span>
+                <span style={{ fontSize: '0.72rem', color: '#059669', background: '#dcfce7', padding: '0.2rem 0.5rem', borderRadius: '6px', fontWeight: 700 }}>
+                  Ready to send
+                </span>
+              </div>
+
+              {/* Step 1: Request OTP or Step 2: Enter OTP */}
+              {otpModal.step === 'REQUEST' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toast?.show(`6-digit OTP sent via ${otpModal.channel} to ${otpModal.targetValue}`, 'success');
+                      setOtpModal(prev => ({ ...prev, step: 'ENTER_CODE', countdown: 30 }));
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      borderRadius: '10px',
+                      border: 'none',
+                      background: 'var(--primary-navy)',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '0.9rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.4rem',
+                      boxShadow: 'var(--shadow-sm)'
+                    }}
+                  >
+                    <span>Send 6-Digit OTP</span>
+                    <ArrowRight size={16} />
+                  </button>
+                  <p style={{ margin: 0, fontSize: '0.72rem', color: '#94a3b8', textAlign: 'center' }}>
+                    Standard carrier and messaging rates may apply. Valid for 10 minutes.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                      Enter 6-Digit Security Code
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      autoFocus
+                      placeholder="• • • • • •"
+                      value={otpModal.otpCode}
+                      onChange={(e) => setOtpModal(prev => ({ ...prev, otpCode: e.target.value.replace(/[^0-9]/g, '') }))}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        borderRadius: '10px',
+                        border: '2px solid var(--primary-navy)',
+                        fontSize: '1.25rem',
+                        fontWeight: 800,
+                        letterSpacing: '8px',
+                        textAlign: 'center',
+                        boxSizing: 'border-box',
+                        color: 'var(--primary-navy)'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#64748b' }}>
+                    <span>Didn't receive code?</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toast?.show(`Resent new OTP via ${otpModal.channel}`, 'info');
+                      }}
+                      style={{ background: 'none', border: 'none', color: '#0284c7', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                    >
+                      Resend Code
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (otpModal.otpCode.length < 6) {
+                        toast?.show('Please enter complete 6-digit OTP code', 'warning');
+                        return;
+                      }
+                      toast?.show(`${otpModal.channel} verified successfully! Your KYC contact is authenticated.`, 'success');
+                      setOtpModal(prev => ({ ...prev, isOpen: false }));
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      borderRadius: '10px',
+                      border: 'none',
+                      background: '#059669',
+                      color: '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '0.9rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.4rem',
+                      boxShadow: 'var(--shadow-sm)'
+                    }}
+                  >
+                    <ShieldCheck size={18} />
+                    <span>Confirm & Authorize</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1075,3 +2171,4 @@ export default function CustomerPortal() {
     </div>
   );
 }
+

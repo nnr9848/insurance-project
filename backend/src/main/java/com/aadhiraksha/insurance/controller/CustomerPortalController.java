@@ -60,4 +60,19 @@ public class CustomerPortalController {
         User user = getAuthenticatedUser(auth);
         return ResponseEntity.ok(customerPortalService.uploadMyDocument(user, payload));
     }
+
+    @PutMapping("/profile")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> updateMyProfile(Authentication auth, @RequestBody Map<String, Object> payload) {
+        User user = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(customerPortalService.updateCustomerProfile(user, payload));
+    }
+
+    @PostMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, String>> changeMyPassword(Authentication auth, @RequestBody Map<String, String> payload) {
+        User user = getAuthenticatedUser(auth);
+        customerPortalService.changePassword(user, payload);
+        return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
+    }
 }

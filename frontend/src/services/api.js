@@ -495,6 +495,14 @@ export const customerService = {
   uploadDocument: async (data) => {
     const res = await api.post('/customer/documents/upload', data);
     return res.data;
+  },
+  updateProfile: async (data) => {
+    const res = await api.put('/customer/profile', data);
+    return res.data;
+  },
+  changePassword: async (data) => {
+    const res = await api.post('/customer/change-password', data);
+    return res.data;
   }
 };
 

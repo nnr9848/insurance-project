@@ -28,7 +28,7 @@ export const ToastProvider = ({ children }) => {
   const warning = useCallback((msg, action) => showToast(msg, 'warning', 4500, action), [showToast]);
 
   return (
-    <ToastContext.Provider value={{ showToast, removeToast, success, error, info, warning }}>
+    <ToastContext.Provider value={{ showToast, show: showToast, removeToast, success, error, info, warning }}>
       {children}
 
       {/* Floating Modern Toast Deck (Top-Right Industry Standard) */}

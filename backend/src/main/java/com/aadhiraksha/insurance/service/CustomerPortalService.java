@@ -25,6 +25,7 @@ public class CustomerPortalService {
     private final ClaimRepository claimRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
+    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public Map<String, Object> getCustomerDashboard(User user) {
@@ -62,12 +63,25 @@ public class CustomerPortalService {
             }
         }
 
-        response.put("user", Map.of(
-                "id", user.getId(),
-                "fullName", user.getFullName(),
-                "email", user.getEmail() != null ? user.getEmail() : "",
-                "phoneNumber", user.getPhoneNumber() != null ? user.getPhoneNumber() : ""
-        ));
+        Map<String, Object> userProfile = new HashMap<>();
+        userProfile.put("id", user.getId());
+        userProfile.put("fullName", user.getFullName());
+        userProfile.put("email", user.getEmail() != null ? user.getEmail() : "");
+        userProfile.put("phoneNumber", user.getPhoneNumber() != null ? user.getPhoneNumber() : "");
+        if (!clientRecords.isEmpty()) {
+            Client primary = clientRecords.get(0);
+            userProfile.put("city", primary.getCity() != null ? primary.getCity() : "");
+            userProfile.put("state", primary.getState() != null ? primary.getState() : "");
+            userProfile.put("pincode", primary.getPincode() != null ? primary.getPincode() : "");
+            userProfile.put("whatsappNumber", primary.getWhatsappNumber() != null ? primary.getWhatsappNumber() : "");
+        } else {
+            userProfile.put("city", "");
+            userProfile.put("state", "");
+            userProfile.put("pincode", "");
+            userProfile.put("whatsappNumber", "");
+        }
+
+        response.put("user", userProfile);
         response.put("policies", clientRecords);
         response.put("documents", documents);
         response.put("claims", claims);
@@ -183,5 +197,103 @@ public class CustomerPortalService {
         );
 
         return saved;
+    }
+
+    @Transactional
+    public Map<String, Object> updateCustomerProfile(User user, Map<String, Object> payload) {
+        String newFullName = (String) payload.get("fullName");
+        String newEmail = (String) payload.get("email");
+        String newCity = (String) payload.get("city");
+        String newState = (String) payload.get("state");
+        String newPincode = (String) payload.get("pincode");
+        String newWhatsapp = (String) payload.get("whatsappNumber");
+
+        if (newFullName != null && !newFullName.isBlank()) {
+            user.setFullName(newFullName.trim());
+        }
+        if (newEmail != null && !newEmail.isBlank() && !newEmail.equalsIgnoreCase(user.getEmail())) {
+            // Check if email taken by someone else
+            Optional<User> existing = userRepository.findByEmail(newEmail.trim());
+            if (existing.isPresent() && !existing.get().getId().equals(user.getId())) {
+                throw new IllegalArgumentException("Email is already registered by another account");
+            }
+            user.setEmail(newEmail.trim());
+        }
+
+        userRepository.save(user);
+
+        // Bi-directional sync with Client 360 CRM record(s)
+        List<Client> clients = clientRepository.findByCustomerUserIdOrderByUpdatedAtDesc(user.getId());
+        if (clients.isEmpty() && user.getPhoneNumber() != null) {
+            String clean = user.getPhoneNumber().replaceAll("[^0-9]", "");
+            if (clean.length() >= 10) {
+                clients = clientRepository.findByPhoneSuffix(clean.substring(clean.length() - 10));
+            }
+        }
+
+        for (Client c : clients) {
+            if (newFullName != null && !newFullName.isBlank()) c.setFullName(newFullName.trim());
+            if (newEmail != null && !newEmail.isBlank()) c.setEmail(newEmail.trim());
+            if (newCity != null) c.setCity(newCity.trim());
+            if (newState != null) c.setState(newState.trim());
+            if (newPincode != null) c.setPincode(newPincode.trim());
+            if (newWhatsapp != null) c.setWhatsappNumber(newWhatsapp.trim());
+            c.setCustomerUser(user);
+            clientRepository.save(c);
+
+            auditService.logAction(
+                    "CLIENT",
+                    c.getId(),
+                    "CUSTOMER_PROFILE_UPDATE",
+                    "Client 360 Demographics",
+                    null,
+                    "Customer updated profile details via Self-Service Portal (bi-directional sync)",
+                    user,
+                    null
+            );
+        }
+
+        Map<String, Object> updatedProfile = new HashMap<>();
+        updatedProfile.put("id", user.getId());
+        updatedProfile.put("fullName", user.getFullName());
+        updatedProfile.put("email", user.getEmail());
+        updatedProfile.put("phoneNumber", user.getPhoneNumber());
+        if (!clients.isEmpty()) {
+            Client primary = clients.get(0);
+            updatedProfile.put("city", primary.getCity() != null ? primary.getCity() : "");
+            updatedProfile.put("state", primary.getState() != null ? primary.getState() : "");
+            updatedProfile.put("pincode", primary.getPincode() != null ? primary.getPincode() : "");
+            updatedProfile.put("whatsappNumber", primary.getWhatsappNumber() != null ? primary.getWhatsappNumber() : "");
+        }
+
+        return updatedProfile;
+    }
+
+    @Transactional
+    public void changePassword(User user, Map<String, String> payload) {
+        String currentPassword = payload.get("currentPassword");
+        String newPassword = payload.get("newPassword");
+
+        if (currentPassword == null || newPassword == null || newPassword.length() < 6) {
+            throw new IllegalArgumentException("Password must be at least 6 characters");
+        }
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("Incorrect current password entered");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        auditService.logAction(
+                "USER",
+                user.getId(),
+                "PASSWORD_CHANGE",
+                "Account Security",
+                null,
+                "Customer successfully changed portal login password",
+                user,
+                null
+        );
     }
 }
