@@ -37,7 +37,10 @@ import {
   Eye,
   EyeOff,
   MapPin,
-  Smartphone
+  Smartphone,
+  Edit3,
+  File,
+  Shield
 } from 'lucide-react';
 import { customerService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -109,6 +112,28 @@ export default function CustomerPortal() {
     fileType: 'application/pdf'
   });
 
+  // Document Category Map for Smart Auto-Titling
+  const DOC_CATEGORY_LABELS = {
+    AADHAAR: 'Aadhaar Card',
+    PAN: 'PAN Card',
+    RC_BOOK: 'Vehicle RC Book',
+    PREVIOUS_POLICY: 'Previous Policy Schedule',
+    MEDICAL_RECORD: 'Medical Record / Discharge Summary',
+    OTHER: 'Verified Document'
+  };
+
+  const [isCustomTitle, setIsCustomTitle] = useState(false);
+
+  const generateAutoTitle = (docType, fileName) => {
+    const categoryName = DOC_CATEGORY_LABELS[docType] || 'Document';
+    const clientName = user?.fullName || data.user?.fullName;
+    const ext = fileName ? fileName.slice(fileName.lastIndexOf('.')) : '';
+    if (clientName) {
+      return `${categoryName} (${clientName})${ext}`;
+    }
+    return `${categoryName}${ext}`;
+  };
+
   const handleFileSelection = (file) => {
     if (!file) return;
     if (file.size > 15 * 1024 * 1024) {
@@ -116,14 +141,26 @@ export default function CustomerPortal() {
       return;
     }
     setSelectedFile(file);
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const sanitizedOriginal = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const autoTitle = generateAutoTitle(uploadForm.documentType, sanitizedOriginal);
     setUploadForm(prev => ({
       ...prev,
-      fileName: sanitizedName,
+      fileName: isCustomTitle && prev.fileName ? prev.fileName : autoTitle,
       fileSizeBytes: file.size,
       fileType: file.type || 'application/pdf',
-      fileUrl: `https://storage.googleapis.com/aadhiraksha-vault/docs/${Date.now()}_${sanitizedName}`
+      fileUrl: `https://storage.googleapis.com/aadhiraksha-vault/docs/${Date.now()}_${sanitizedOriginal}`
     }));
+  };
+
+  const handleCategorySelect = (categoryKey) => {
+    setUploadForm(prev => {
+      const nextTitle = isCustomTitle && prev.fileName ? prev.fileName : generateAutoTitle(categoryKey, selectedFile?.name || '');
+      return {
+        ...prev,
+        documentType: categoryKey,
+        fileName: nextTitle
+      };
+    });
   };
 
   const loadCustomerData = async () => {
@@ -1707,43 +1744,55 @@ export default function CustomerPortal() {
               </button>
             </div>
 
-            <form onSubmit={handleDocumentSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+            <form onSubmit={handleDocumentSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               
-              {/* Document Category Dropdown */}
+              {/* 1. 1-Click Visual Category Pills */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
-                  Document Category <span style={{ color: '#ef4444' }}>*</span>
+                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#334155', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Select Document Category <span style={{ color: '#ef4444' }}>*</span>
                 </label>
-                <select
-                  value={uploadForm.documentType}
-                  onChange={(e) => setUploadForm({ ...uploadForm, documentType: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '0.7rem 0.85rem',
-                    borderRadius: '10px',
-                    border: '1.5px solid #cbd5e1',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    color: 'var(--primary-navy)',
-                    background: '#f8fafc',
-                    outline: 'none',
-                    transition: 'border-color 0.2s ease'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--primary-navy)'}
-                  onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
-                >
-                  <option value="AADHAAR">🪪 Aadhaar Card (Masked Front & Back)</option>
-                  <option value="PAN">💳 PAN Card Copy</option>
-                  <option value="RC_BOOK">🚗 Vehicle RC Book Copy</option>
-                  <option value="PREVIOUS_POLICY">📄 Previous Insurance Policy Schedule</option>
-                  <option value="MEDICAL_RECORD">🏥 Medical History / Discharge Summary</option>
-                  <option value="OTHER">📁 Other Verified Document</option>
-                </select>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.45rem' }}>
+                  {[
+                    { id: 'AADHAAR', label: 'Aadhaar Card', icon: '🪪' },
+                    { id: 'PAN', label: 'PAN Card', icon: '💳' },
+                    { id: 'RC_BOOK', label: 'Vehicle RC', icon: '🚗' },
+                    { id: 'PREVIOUS_POLICY', label: 'Prev. Policy', icon: '📄' },
+                    { id: 'MEDICAL_RECORD', label: 'Medical History', icon: '🏥' },
+                    { id: 'OTHER', label: 'Other Document', icon: '📁' }
+                  ].map(cat => {
+                    const isSelected = uploadForm.documentType === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => handleCategorySelect(cat.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.4rem',
+                          padding: '0.55rem 0.7rem',
+                          borderRadius: '10px',
+                          border: `1.5px solid ${isSelected ? 'var(--primary-navy)' : '#e2e8f0'}`,
+                          background: isSelected ? 'rgba(15, 43, 72, 0.06)' : '#ffffff',
+                          color: isSelected ? 'var(--primary-navy)' : '#475569',
+                          fontWeight: isSelected ? 800 : 600,
+                          fontSize: '0.8rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <span style={{ fontSize: '1rem' }}>{cat.icon}</span>
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cat.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Modern Drag-and-Drop Dropzone */}
+              {/* 2. Drag-and-Drop Dropzone or Elevated Preview Card */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#334155', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Attach Document File <span style={{ color: '#ef4444' }}>*</span>
                 </label>
 
@@ -1761,8 +1810,8 @@ export default function CustomerPortal() {
                     style={{
                       border: isDragging ? '2px dashed var(--accent-gold)' : '2px dashed #cbd5e1',
                       background: isDragging ? 'rgba(245, 158, 11, 0.05)' : '#f8fafc',
-                      borderRadius: '12px',
-                      padding: '1.75rem 1.25rem',
+                      borderRadius: '14px',
+                      padding: '2rem 1.25rem',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
@@ -1783,42 +1832,43 @@ export default function CustomerPortal() {
                       }}
                     />
                     <div style={{
-                      width: '46px',
-                      height: '46px',
+                      width: '50px',
+                      height: '50px',
                       borderRadius: '50%',
                       background: '#ffffff',
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                      border: '1.5px solid #e2e8f0',
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.06)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: 'var(--primary-navy)',
                       marginBottom: '0.75rem'
                     }}>
-                      <UploadCloud size={24} color="var(--primary-navy)" />
+                      <UploadCloud size={26} color="var(--primary-navy)" />
                     </div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-navy)' }}>
-                      Click to browse or drag and drop file here
+                    <div style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--primary-navy)' }}>
+                      Click to browse or drop file here
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.2rem' }}>
-                      PDF, JPG, PNG or JPEG (Max 15MB)
+                    <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '0.25rem' }}>
+                      PDF, PNG, JPG or JPEG up to 15MB
                     </div>
                   </label>
                 ) : (
                   <div style={{
-                    border: '1.5px solid rgba(16, 185, 129, 0.3)',
+                    border: '1.5px solid #86efac',
                     background: '#f0fdf4',
-                    borderRadius: '12px',
-                    padding: '0.9rem 1.1rem',
+                    borderRadius: '14px',
+                    padding: '1rem 1.15rem',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.08)'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', overflow: 'hidden' }}>
                       <div style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '8px',
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '10px',
                         background: '#dcfce7',
                         color: '#15803d',
                         display: 'flex',
@@ -1826,71 +1876,139 @@ export default function CustomerPortal() {
                         justifyContent: 'center',
                         flexShrink: 0
                       }}>
-                        <FileCheck size={20} />
+                        <FileCheck size={24} />
                       </div>
                       <div style={{ overflow: 'hidden' }}>
-                        <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#166534', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                          {selectedFile.name}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{ fontSize: '0.86rem', fontWeight: 800, color: '#166534', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                            {selectedFile.name}
+                          </span>
+                          <span style={{
+                            fontSize: '0.66rem',
+                            fontWeight: 800,
+                            background: '#bbf7d0',
+                            color: '#166534',
+                            padding: '0.1rem 0.4rem',
+                            borderRadius: '4px',
+                            textTransform: 'uppercase'
+                          }}>
+                            {selectedFile.name.split('.').pop() || 'FILE'}
+                          </span>
                         </div>
-                        <div style={{ fontSize: '0.72rem', color: '#15803d', fontWeight: 600 }}>
-                          {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready for encryption
+                        <div style={{ fontSize: '0.74rem', color: '#15803d', fontWeight: 600, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span>{(selectedFile.size / (1024 * 1024)).toFixed(2)} MB</span>
+                          <span>•</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                            <CheckCircle2 size={12} /> Ready for AES-256 Encryption
+                          </span>
                         </div>
                       </div>
                     </div>
+
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedFile(null);
                         setUploadForm(prev => ({ ...prev, fileName: '', fileUrl: '' }));
+                        setIsCustomTitle(false);
                       }}
                       title="Remove and select another file"
                       style={{
-                        background: 'none',
-                        border: 'none',
+                        background: '#ffffff',
+                        border: '1px solid #fecaca',
+                        borderRadius: '8px',
                         cursor: 'pointer',
                         color: '#ef4444',
-                        padding: '4px',
+                        padding: '6px 8px',
                         display: 'flex',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        fontSize: '0.72rem',
+                        fontWeight: 700
                       }}
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={14} />
+                      <span>Change</span>
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* Document Display Title (Auto-filled or Custom) */}
+              {/* 3. Smart Document Label (Auto-Generated with 1-Click Edit) */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
-                  Document Display Title <span style={{ color: '#ef4444' }}>*</span>
-                </label>
-                <input
-                  required
-                  type="text"
-                  placeholder="e.g. Aadhaar_Card_Self.pdf"
-                  value={uploadForm.fileName}
-                  onChange={(e) => setUploadForm({ ...uploadForm, fileName: e.target.value })}
-                  style={{
-                    width: '100%',
-                    padding: '0.7rem 0.85rem',
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Vault Display Title
+                  </label>
+                  {!isCustomTitle && (
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomTitle(true)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#0284c7',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}
+                    >
+                      <Edit3 size={11} /> Edit Custom Title
+                    </button>
+                  )}
+                </div>
+
+                {isCustomTitle ? (
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. Aadhaar Card (Kavita Rao)"
+                    value={uploadForm.fileName}
+                    onChange={(e) => setUploadForm({ ...uploadForm, fileName: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.65rem 0.85rem',
+                      borderRadius: '10px',
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: '0.85rem',
+                      boxSizing: 'border-box',
+                      background: '#ffffff',
+                      outline: 'none',
+                      color: 'var(--primary-navy)',
+                      fontWeight: 600
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = 'var(--primary-navy)'}
+                    onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                  />
+                ) : (
+                  <div style={{
+                    padding: '0.6rem 0.85rem',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
                     borderRadius: '10px',
-                    border: '1.5px solid #cbd5e1',
-                    fontSize: '0.85rem',
-                    boxSizing: 'border-box',
-                    background: '#ffffff',
-                    outline: 'none',
-                    transition: 'border-color 0.2s ease'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--primary-navy)'}
-                  onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
-                />
+                    fontSize: '0.84rem',
+                    fontWeight: 700,
+                    color: 'var(--primary-navy)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <span>{uploadForm.fileName || `${DOC_CATEGORY_LABELS[uploadForm.documentType]} (${userName})`}</span>
+                    <span style={{ fontSize: '0.68rem', color: '#059669', background: '#dcfce7', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: 700 }}>
+                      Auto-Labeled
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {/* IRDAI Data Privacy & Encryption Notice */}
+              {/* 4. Trust & Security Strip */}
               <div style={{
                 background: 'rgba(15, 43, 72, 0.04)',
-                border: '1px solid rgba(15, 43, 72, 0.12)',
+                border: '1px solid rgba(15, 43, 72, 0.1)',
                 borderRadius: '10px',
                 padding: '0.65rem 0.85rem',
                 display: 'flex',
@@ -1901,12 +2019,12 @@ export default function CustomerPortal() {
               }}>
                 <Lock size={15} color="var(--accent-gold)" style={{ flexShrink: 0 }} />
                 <span>
-                  <strong>IRDAI Privacy Standard:</strong> Encrypted with <strong>AES-256</strong>. Only shared with empanelled hospital cashless desks upon claim authorization.
+                  <strong>AES-256 Vault Encryption:</strong> Tamper-proof storage. Shared only with empanelled cashless desks upon pre-authorization.
                 </span>
               </div>
 
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              {/* 5. Frictionless Action CTAs */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.35rem' }}>
                 <button
                   type="button"
                   onClick={() => setShowUploadModal(false)}
@@ -1943,11 +2061,11 @@ export default function CustomerPortal() {
                 >
                   {uploading ? (
                     <>
-                      <RefreshCw size={14} className="animate-spin" /> Encrypting & Saving...
+                      <RefreshCw size={14} className="animate-spin" /> Encrypting & Depositing...
                     </>
                   ) : (
                     <>
-                      <ShieldCheck size={16} /> Save to Digital Vault
+                      <ShieldCheck size={16} /> Encrypt & Deposit
                     </>
                   )}
                 </button>
