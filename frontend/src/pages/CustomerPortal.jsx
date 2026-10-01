@@ -330,7 +330,8 @@ export default function CustomerPortal() {
       loadCustomerData();
     } catch (err) {
       console.error('Upload error', err);
-      toast?.show('Failed to save document. Please try again.', 'error');
+      const serverMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to save document. Please try again.';
+      toast?.show(serverMsg, 'error');
     } finally {
       setUploading(false);
     }

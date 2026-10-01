@@ -33,6 +33,8 @@ services:
       SPRING_DATASOURCE_USERNAME: insurance_user
       SPRING_DATASOURCE_PASSWORD: insurance_secure_pass_2026
       CORS_ALLOWED_ORIGINS: "*"
+    volumes:
+      - document_uploads:/app/uploads
     networks:
       - insurance-network
 
@@ -56,3 +58,4 @@ networks:
 
 volumes:
   postgres_data:
+  document_uploads:

@@ -38,6 +38,10 @@ Thumbs.db
 *.sublime-project
 *.sublime-workspace
 
+# Local uploads
+uploads/
+backend/uploads/
+
 # Binaries & Tooling
 cloudflared
 *.tar.gz

@@ -2,9 +2,6 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 // Attach JWT Bearer Token if present
@@ -238,7 +235,7 @@ export const crmService = {
   uploadDocumentFile: async (formData) => {
     const res = await api.post('/crm/documents/upload-file', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': undefined,
       },
     });
     return res.data;
@@ -507,7 +504,7 @@ export const customerService = {
   uploadDocumentFile: async (formData) => {
     const res = await api.post('/customer/documents/upload-file', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        'Content-Type': undefined,
       },
     });
     return res.data;
