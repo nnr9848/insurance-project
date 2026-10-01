@@ -136,7 +136,7 @@ export default function Header() {
           
           {/* Top Row: Brand Logo, Hamburger Menu & User Profile / Login */}
           <div className="header-brand-row">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className="header-logo-container" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <button
                 onClick={() => setIsMobileOpen(true)}
                 style={{

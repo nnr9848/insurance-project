@@ -197,29 +197,48 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @media (min-width: 769px) {
-  .header-brand-row {
+  .top-header-container {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
-    flex: 1;
     justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .header-brand-row {
+    display: contents; /* Allows child elements (Logo, Desktop Slogan, User Action) to participate directly in the parent flex row with Helpline Row */
+  }
+
+  .header-logo-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    order: 1;
+    flex-shrink: 0;
+  }
+
+  .desktop-slogan {
+    order: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto;
+  }
+
+  .header-helpline-row {
+    display: flex;
+    align-items: center;
+    order: 3;
+    margin-left: auto;
+    flex-shrink: 0;
   }
 
   .header-user-action {
     display: flex;
     align-items: center;
     gap: 12px;
-    order: 3;
-  }
-
-  .desktop-slogan {
-    order: 2;
-  }
-
-  .header-helpline-row {
-    display: flex;
-    align-items: center;
-    order: 4;
+    order: 4; /* Terminal right: Avatar/Sign-in is the absolute last item on desktop */
+    flex-shrink: 0;
   }
 }
 
@@ -4642,6 +4661,21 @@ h1, h2, h3, h4, h5, h6 {
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+/* Customer Portal Responsive Hub Layout */
+.customer-portal-grid {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 1.75rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .customer-portal-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.25rem !important;
   }
 }
 
