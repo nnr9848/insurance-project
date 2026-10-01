@@ -25,6 +25,7 @@ public class CustomerPortalService {
     private final ClaimRepository claimRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
+    private final FileStorageService fileStorageService;
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
@@ -200,6 +201,90 @@ public class CustomerPortalService {
     }
 
     @Transactional
+    public ClientDocument uploadMyDocumentMultipart(User user, org.springframework.web.multipart.MultipartFile file, String documentType, String displayTitle) {
+        String originalFilename = file.getOriginalFilename();
+        String storedFileName = fileStorageService.storeFile(file, originalFilename);
+        
+        String effectiveDocType = (documentType != null && !documentType.isBlank()) ? documentType : "OTHER";
+        String effectiveTitle = (displayTitle != null && !displayTitle.isBlank()) ? displayTitle : (originalFilename != null ? originalFilename : "Document_" + System.currentTimeMillis());
+        String contentType = file.getContentType() != null ? file.getContentType() : "application/pdf";
+        long size = file.getSize();
+
+        // Find or link client
+        Optional<Client> clientOpt = clientRepository.findFirstByCustomerUserId(user.getId());
+        Client client;
+        if (clientOpt.isPresent()) {
+            client = clientOpt.get();
+        } else {
+            List<Client> byPhone = user.getPhoneNumber() != null ? clientRepository.findByPhoneSuffix(user.getPhoneNumber().length() >= 10 ? user.getPhoneNumber().substring(user.getPhoneNumber().length() - 10) : user.getPhoneNumber()) : Collections.emptyList();
+            if (!byPhone.isEmpty()) {
+                client = byPhone.get(0);
+                client.setCustomerUser(user);
+                clientRepository.save(client);
+            } else {
+                client = Client.builder()
+                        .clientCode("CL-U" + (System.currentTimeMillis() % 100000))
+                        .fullName(user.getFullName())
+                        .phoneNumber(user.getPhoneNumber() != null ? user.getPhoneNumber() : "0000000000")
+                        .email(user.getEmail())
+                        .customerUser(user)
+                        .stage("DOCUMENTS")
+                        .leadSource("PORTAL_SELF_SERVICE")
+                        .notes("Self-registered portal customer.")
+                        .build();
+                client = clientRepository.save(client);
+            }
+        }
+
+        ClientDocument doc = ClientDocument.builder()
+                .client(client)
+                .documentType(effectiveDocType)
+                .fileName(effectiveTitle)
+                .fileUrl("/api/customer/documents/view-file/" + storedFileName)
+                .fileSizeBytes(size)
+                .fileType(contentType)
+                .verificationStatus("PENDING_REVIEW")
+                .uploadedBy(user)
+                .build();
+
+        ClientDocument saved = clientDocumentRepository.save(doc);
+
+        if ("NEW_LEAD".equals(client.getStage()) || "CONTACTED".equals(client.getStage()) || "FOLLOWUP".equals(client.getStage())) {
+            client.setStage("DOCUMENTS");
+            clientRepository.save(client);
+        }
+
+        auditService.logAction(
+                "CLIENT",
+                client.getId(),
+                "DOCUMENT_UPLOAD",
+                "Digital KYC Vault",
+                null,
+                "Customer deposited " + effectiveDocType + " (" + effectiveTitle + ") into secure vault",
+                user,
+                null
+        );
+
+        return saved;
+    }
+
+    @Transactional(readOnly = true)
+    public ClientDocument getCustomerDocumentById(User user, Long docId) {
+        ClientDocument doc = clientDocumentRepository.findById(docId)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found with ID: " + docId));
+
+        // Security authorization check: User can only access their own documents unless staff/admin
+        boolean isOwner = (doc.getClient() != null && doc.getClient().getCustomerUser() != null && doc.getClient().getCustomerUser().getId().equals(user.getId()))
+                || (doc.getUploadedBy() != null && doc.getUploadedBy().getId().equals(user.getId()));
+
+        if (!isOwner) {
+            throw new org.springframework.security.access.AccessDeniedException("You do not have permission to view this document");
+        }
+
+        return doc;
+    }
+
+    @Transactional
     public Map<String, Object> updateCustomerProfile(User user, Map<String, Object> payload) {
         String newFullName = (String) payload.get("fullName");
         String newEmail = (String) payload.get("email");
@@ -295,5 +380,9 @@ public class CustomerPortalService {
                 user,
                 null
         );
+    }
+
+    public FileStorageService getFileStorageService() {
+        return this.fileStorageService;
     }
 }

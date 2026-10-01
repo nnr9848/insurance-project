@@ -27,6 +27,7 @@ public class DocumentService {
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
     private final AuditService auditService;
+    private final FileStorageService fileStorageService;
 
     @Transactional
     public DocumentDto.Response uploadDocument(DocumentDto.UploadRequest request, String userEmail) {
@@ -68,6 +69,56 @@ public class DocumentService {
         );
 
         return mapToResponse(saved);
+    }
+
+    @Transactional
+    public DocumentDto.Response uploadDocumentMultipart(Long clientId, String documentType, org.springframework.web.multipart.MultipartFile file, String userEmail) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + clientId));
+
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + userEmail));
+
+        String originalFilename = file.getOriginalFilename();
+        String storedFileName = fileStorageService.storeFile(file, originalFilename);
+        String contentType = file.getContentType() != null ? file.getContentType() : "application/pdf";
+
+        ClientDocument doc = ClientDocument.builder()
+                .client(client)
+                .documentType((documentType != null && !documentType.isBlank()) ? documentType : "OTHER")
+                .fileName(originalFilename != null ? originalFilename : "Document_" + System.currentTimeMillis())
+                .fileUrl("/api/crm/documents/view-file/" + storedFileName)
+                .fileSizeBytes(file.getSize())
+                .fileType(contentType)
+                .verificationStatus("PENDING_REVIEW")
+                .uploadedBy(user)
+                .build();
+
+        ClientDocument saved = clientDocumentRepository.save(doc);
+
+        if ("NEW_LEAD".equals(client.getStage()) || "FOLLOWUP".equals(client.getStage()) || "QUOTATION".equals(client.getStage())) {
+            client.setStage("DOCUMENTS");
+            clientRepository.save(client);
+        }
+
+        auditService.logAction(
+                "Client",
+                client.getId(),
+                "UPLOAD",
+                "Document Added",
+                null,
+                "Uploaded " + doc.getDocumentType() + " (" + doc.getFileName() + ") via Client 360",
+                user,
+                null
+        );
+
+        return mapToResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public ClientDocument getDocumentById(Long docId) {
+        return clientDocumentRepository.findById(docId)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found with ID: " + docId));
     }
 
     @Transactional(readOnly = true)
@@ -215,5 +266,9 @@ public class DocumentService {
                 .uploadedByName(d.getUploadedBy() != null ? d.getUploadedBy().getFullName() : "System")
                 .createdAt(d.getCreatedAt())
                 .build();
+    }
+
+    public FileStorageService getFileStorageService() {
+        return this.fileStorageService;
     }
 }

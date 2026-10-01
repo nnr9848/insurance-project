@@ -235,6 +235,14 @@ export const crmService = {
     const res = await api.post('/crm/documents/upload', docData);
     return res.data;
   },
+  uploadDocumentFile: async (formData) => {
+    const res = await api.post('/crm/documents/upload-file', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  },
   verifyDocument: async (docId, verifyData) => {
     const res = await api.patch(`/crm/documents/${docId}/verify`, verifyData);
     return res.data;
@@ -494,6 +502,14 @@ export const customerService = {
   },
   uploadDocument: async (data) => {
     const res = await api.post('/customer/documents/upload', data);
+    return res.data;
+  },
+  uploadDocumentFile: async (formData) => {
+    const res = await api.post('/customer/documents/upload-file', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return res.data;
   },
   updateProfile: async (data) => {

@@ -61,6 +61,46 @@ public class CustomerPortalController {
         return ResponseEntity.ok(customerPortalService.uploadMyDocument(user, payload));
     }
 
+    @PostMapping(value = "/documents/upload-file", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ClientDocument> uploadMyDocumentFile(
+            Authentication auth,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @RequestParam(value = "documentType", required = false) String documentType,
+            @RequestParam(value = "fileName", required = false) String fileName
+    ) {
+        User user = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(customerPortalService.uploadMyDocumentMultipart(user, file, documentType, fileName));
+    }
+
+    @GetMapping("/documents/view-file/{fileName:.+}")
+    public ResponseEntity<org.springframework.core.io.Resource> viewMyDocumentFile(@PathVariable String fileName) {
+        try {
+            java.nio.file.Path filePath = customerPortalService.getFileStorageService().loadFileAsPath(fileName);
+            org.springframework.core.io.Resource resource = new org.springframework.core.io.UrlResource(filePath.toUri());
+
+            if (!resource.exists() || !resource.isReadable()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            String contentType = null;
+            try {
+                contentType = java.nio.file.Files.probeContentType(filePath);
+            } catch (Exception ignored) {}
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                    .body(resource);
+        } catch (Exception ex) {
+            log.error("Failed to stream document file: {}", fileName, ex);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @PutMapping("/profile")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> updateMyProfile(Authentication auth, @RequestBody Map<String, Object> payload) {

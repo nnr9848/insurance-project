@@ -148,7 +148,7 @@ export default function CustomerPortal() {
       fileName: isCustomTitle && prev.fileName ? prev.fileName : autoTitle,
       fileSizeBytes: file.size,
       fileType: file.type || 'application/pdf',
-      fileUrl: `https://storage.googleapis.com/aadhiraksha-vault/docs/${Date.now()}_${sanitizedOriginal}`
+      fileUrl: ''
     }));
   };
 
@@ -297,19 +297,27 @@ export default function CustomerPortal() {
 
   const handleDocumentSubmit = async (e) => {
     e.preventDefault();
-    if (!uploadForm.fileName) {
+    if (!uploadForm.fileName && !selectedFile) {
       toast?.show('Please choose a file or enter a document title', 'warning');
       return;
     }
 
     setUploading(true);
     try {
-      const payload = {
-        ...uploadForm,
-        fileUrl: uploadForm.fileUrl || `https://storage.googleapis.com/aadhiraksha-vault/docs/${Date.now()}_${uploadForm.fileName}`
-      };
-      await customerService.uploadDocument(payload);
-      toast?.show('Document encrypted with AES-256 & saved to your vault!', 'success');
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('documentType', uploadForm.documentType || 'OTHER');
+        formData.append('fileName', uploadForm.fileName || selectedFile.name);
+        await customerService.uploadDocumentFile(formData);
+      } else {
+        const payload = {
+          ...uploadForm,
+          fileUrl: uploadForm.fileUrl || `/api/customer/documents/view-file/document_${Date.now()}`
+        };
+        await customerService.uploadDocument(payload);
+      }
+      toast?.show('Document uploaded and saved to your secure digital vault!', 'success');
       setShowUploadModal(false);
       setSelectedFile(null);
       setUploadForm({

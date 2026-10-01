@@ -1887,14 +1887,11 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                     const file = e.target.files?.[0];
                     if (!file) return;
                     try {
-                      await crmService.uploadDocument({
-                        clientId: currentClient.id,
-                        documentType: 'OTHER',
-                        fileName: file.name,
-                        fileUrl: `https://storage.googleapis.com/aadhiraksha-kyc/${Date.now()}-${file.name}`,
-                        fileSizeBytes: file.size,
-                        fileType: file.type || 'application/pdf'
-                      });
+                      const formData = new FormData();
+                      formData.append('clientId', currentClient.id);
+                      formData.append('documentType', 'OTHER');
+                      formData.append('file', file);
+                      await crmService.uploadDocumentFile(formData);
                       loadClientDocs(currentClient.id);
                     } catch (err) {
                       alert('Failed to upload file: ' + (err.response?.data?.message || err.message));

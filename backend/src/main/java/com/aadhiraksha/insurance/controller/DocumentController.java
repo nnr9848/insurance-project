@@ -33,6 +33,46 @@ public class DocumentController {
         return ResponseEntity.ok(documentService.uploadDocument(request, userDetails.getUsername()));
     }
 
+    @PostMapping(value = "/upload-file", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @Operation(summary = "Upload physical document file and attach to a client")
+    public ResponseEntity<DocumentDto.Response> uploadDocumentFile(
+            @RequestParam("clientId") Long clientId,
+            @RequestParam(value = "documentType", required = false) String documentType,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        return ResponseEntity.ok(documentService.uploadDocumentMultipart(clientId, documentType, file, userDetails.getUsername()));
+    }
+
+    @GetMapping("/view-file/{fileName:.+}")
+    @Operation(summary = "Securely stream original document file inline for preview / download")
+    public ResponseEntity<org.springframework.core.io.Resource> viewDocumentFile(@PathVariable String fileName) {
+        try {
+            java.nio.file.Path filePath = documentService.getFileStorageService().loadFileAsPath(fileName);
+            org.springframework.core.io.Resource resource = new org.springframework.core.io.UrlResource(filePath.toUri());
+
+            if (!resource.exists() || !resource.isReadable()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            String contentType = null;
+            try {
+                contentType = java.nio.file.Files.probeContentType(filePath);
+            } catch (Exception ignored) {}
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                    .body(resource);
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
     @Operation(summary = "Get all documents scoped to user role & hierarchy")
