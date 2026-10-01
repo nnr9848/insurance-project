@@ -68,6 +68,78 @@ public class AuthService {
         return new AuthDto.AuthResponse(token, user.getId(), user.getFullName(), user.getEmail(), user.getPhoneNumber(), roleNames);
     }
 
+    @Transactional
+    public AuthDto.AuthResponse firebaseLogin(AuthDto.FirebaseLoginRequest request) {
+        String phoneNumber = null;
+        String name = request.getFullName();
+
+        try {
+            // Verify with Firebase Admin if initialized
+            if (!com.google.firebase.FirebaseApp.getApps().isEmpty()) {
+                com.google.firebase.auth.FirebaseToken decodedToken = 
+                        com.google.firebase.auth.FirebaseAuth.getInstance().verifyIdToken(request.getIdToken());
+                phoneNumber = (String) decodedToken.getClaims().get("phone_number");
+                if (name == null || name.isBlank()) {
+                    name = decodedToken.getName();
+                }
+            } else {
+                // In local/mock mode without active Firebase keys, accept token payload safely for dev/testing
+                phoneNumber = request.getIdToken().startsWith("+") ? request.getIdToken() : "+919876543210";
+            }
+        } catch (Exception ex) {
+            throw new BadCredentialsException("Failed to verify Firebase authentication token: " + ex.getMessage());
+        }
+
+        if (phoneNumber == null || phoneNumber.isBlank()) {
+            throw new BadCredentialsException("No phone number associated with this Firebase authentication token");
+        }
+
+        // Clean phone number (keep last 10 digits or normalized standard)
+        String cleanPhone = phoneNumber.replaceAll("[^0-9]", "");
+        if (cleanPhone.length() > 10) {
+            cleanPhone = cleanPhone.substring(cleanPhone.length() - 10);
+        }
+
+        final String finalPhone = cleanPhone;
+        final String finalName = (name != null && !name.isBlank()) ? name : "User " + finalPhone.substring(Math.max(0, finalPhone.length() - 4));
+
+        User user = userRepository.findByPhoneNumber(finalPhone).orElseGet(() -> {
+            String roleName = (request.getRole() != null && !request.getRole().isBlank()) 
+                    ? request.getRole() 
+                    : "ROLE_USER";
+            if (!roleName.startsWith("ROLE_")) {
+                roleName = "ROLE_" + roleName;
+            }
+
+            final String targetRole = roleName;
+            Role role = roleRepository.findByName(targetRole)
+                    .orElseGet(() -> roleRepository.save(Role.builder().name(targetRole).build()));
+
+            String syntheticEmail = "phone_" + finalPhone + "@aadhiraksha.internal";
+            // Ensure unique email
+            if (userRepository.existsByEmail(syntheticEmail)) {
+                syntheticEmail = "phone_" + finalPhone + "_" + System.currentTimeMillis() + "@aadhiraksha.internal";
+            }
+
+            User newUser = User.builder()
+                    .fullName(finalName)
+                    .email(syntheticEmail)
+                    .phoneNumber(finalPhone)
+                    .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString()))
+                    .isActive(true)
+                    .roles(new HashSet<>(Collections.singletonList(role)))
+                    .build();
+
+            return userRepository.save(newUser);
+        });
+
+        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
+        String token = jwtUtils.generateToken(userDetails);
+
+        List<String> roleNames = user.getRoles().stream().map(Role::getName).collect(Collectors.toList());
+        return new AuthDto.AuthResponse(token, user.getId(), user.getFullName(), user.getEmail(), user.getPhoneNumber(), roleNames);
+    }
+
     public AuthDto.AuthResponse login(AuthDto.LoginRequest request) {
         User user = userRepository.findByEmail(request.getIdentifier())
                 .or(() -> userRepository.findByPhoneNumber(request.getIdentifier()))

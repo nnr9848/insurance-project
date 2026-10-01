@@ -17,6 +17,15 @@ public class AuthDto {
     }
 
     @Data
+    public static class FirebaseLoginRequest {
+        @NotBlank(message = "Firebase ID Token is required")
+        private String idToken;
+
+        private String fullName;
+        private String role; // Optional: "ROLE_POSP_AGENT" or default "ROLE_USER"
+    }
+
+    @Data
     public static class RegisterRequest {
         @NotBlank(message = "Full name is required")
         private String fullName;

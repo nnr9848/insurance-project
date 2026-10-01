@@ -32,6 +32,13 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
+  const firebaseLogin = async (payload) => {
+    const data = await authService.firebaseLogin(payload);
+    localStorage.setItem('token', data.token);
+    setUser(data);
+    return data;
+  };
+
   const register = async (formData) => {
     const data = await authService.register(formData);
     localStorage.setItem('token', data.token);
@@ -66,6 +73,7 @@ export const AuthProvider = ({ children }) => {
       user, 
       loading, 
       login, 
+      firebaseLogin,
       register, 
       logout, 
       isAuthenticated: !!user,

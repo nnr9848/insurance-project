@@ -33,6 +33,20 @@ app:
     secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     expiration-ms: 86400000 # 24 hours
 
+# Firebase Authentication (Phone OTP)
+firebase:
+  enabled: ${FIREBASE_ENABLED:false}
+  project-id: ${FIREBASE_PROJECT_ID:aadhiraksha-insurance}
+  credentials-path: ${FIREBASE_CREDENTIALS_PATH:} # Optional path to serviceAccountKey.json
+
+# Meta WhatsApp Cloud API (Free Tier: 1,000 service/auth conversations per month)
+whatsapp:
+  enabled: ${WHATSAPP_ENABLED:false}
+  api-url: ${WHATSAPP_API_URL:https://graph.facebook.com/v19.0}
+  phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:your_meta_phone_number_id_here}
+  access-token: ${WHATSAPP_ACCESS_TOKEN:your_meta_permanent_access_token_here}
+  business-account-id: ${WHATSAPP_BUSINESS_ACCOUNT_ID:your_meta_waba_id_here}
+
 # CORS Configuration
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:3000,http://localhost:8080}

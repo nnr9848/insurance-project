@@ -31,6 +31,12 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
+    @PostMapping("/firebase-login")
+    @Operation(summary = "Login or register automatically using verified Firebase Phone OTP ID Token")
+    public ResponseEntity<AuthDto.AuthResponse> firebaseLogin(@Valid @RequestBody AuthDto.FirebaseLoginRequest request) {
+        return ResponseEntity.ok(authService.firebaseLogin(request));
+    }
+
     @GetMapping("/me")
     @Operation(summary = "Get current authenticated user profile")
     public ResponseEntity<AuthDto.AuthResponse> me(@AuthenticationPrincipal UserDetails userDetails) {
