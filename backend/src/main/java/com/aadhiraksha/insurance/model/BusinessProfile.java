@@ -96,6 +96,30 @@ public class BusinessProfile {
     @Column(name = "notify_docs_on_whatsapp")
     private Boolean notifyDocsOnWhatsapp = true;
 
+    // Google Firebase Phone Auth Settings
+    @Builder.Default
+    @Column(name = "firebase_enabled")
+    private Boolean firebaseEnabled = true;
+
+    @Builder.Default
+    @Column(name = "firebase_project_id", length = 100)
+    private String firebaseProjectId = "aadhiraksha-insurance";
+
+    @Column(name = "firebase_api_key", length = 150)
+    private String firebaseApiKey;
+
+    @Column(name = "firebase_auth_domain", length = 150)
+    private String firebaseAuthDomain;
+
+    @Column(name = "firebase_app_id", length = 150)
+    private String firebaseAppId;
+
+    @Column(name = "firebase_storage_bucket", length = 150)
+    private String firebaseStorageBucket;
+
+    @Column(name = "firebase_messaging_sender_id", length = 50)
+    private String firebaseMessagingSenderId;
+
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;

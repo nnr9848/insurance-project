@@ -55,7 +55,8 @@ import {
   HeartPulse,
   Plane,
   Building,
-  Star
+  Star,
+  Cpu
 } from 'lucide-react';
 import { portalService, crmService } from '../services/api';
 import UserManagementView from '../components/crm/UserManagementView';
@@ -75,6 +76,7 @@ import AuditTrailView from '../components/crm/AuditTrailView';
 import QuotationManagementView from '../components/crm/QuotationManagementView';
 import DocumentLockerView from '../components/crm/DocumentLockerView';
 import BusinessProfileSettingsView from '../components/crm/BusinessProfileSettingsView';
+import IntegrationsSettingsView from '../components/crm/IntegrationsSettingsView';
 import CallHistoryView from '../components/crm/CallHistoryView';
 import ManagerApprovalsView from '../components/crm/ManagerApprovalsView';
 import LeadInquiriesView from '../components/crm/LeadInquiriesView';
@@ -299,10 +301,17 @@ export default function AdminDashboard() {
         };
       case 'profile':
         return {
-          title: 'Company Profile & Contact Settings',
+          title: 'Company Profile & Branding Settings',
           category: 'Operations & Management',
-          subtitle: 'Centrally configure helpline telephone numbers, support emails, operational hours, and registered communication address.',
+          subtitle: 'Centrally configure company legal name, IRDAI registration number, public helpline, and registered communication address.',
           icon: <Building size={18} color="#059669" />
+        };
+      case 'integrations':
+        return {
+          title: 'Integrations & Cloud Communications',
+          category: 'Operations & Management',
+          subtitle: 'Manage Google Firebase Phone Authentication (SMS OTP) and Meta WhatsApp Cloud API credentials & live delivery testing.',
+          icon: <Cpu size={18} color="#2563eb" />
         };
       case 'reviews':
         return {
@@ -492,7 +501,8 @@ export default function AdminDashboard() {
     ] : []),
     { id: 'reviews', label: 'Customer Reviews', icon: <Star size={19} />, count: null },
     ...((isSuperAdmin || isManager) ? [
-      { id: 'profile', label: 'Company Profile & Helpline', icon: <Building size={19} />, count: null }
+      { id: 'profile', label: 'Company Profile & Branding', icon: <Building size={19} />, count: null },
+      { id: 'integrations', label: 'Integrations & Cloud APIs', icon: <Cpu size={19} />, count: null }
     ] : []),
   ];
 
@@ -1500,9 +1510,14 @@ export default function AdminDashboard() {
             <InsurancePartnersManagementView />
           )}
 
-          {/* VIEW: COMPANY PROFILE & CONTACT SETTINGS */}
+          {/* VIEW: COMPANY PROFILE & BRANDING SETTINGS */}
           {activeView === 'profile' && (
             <BusinessProfileSettingsView />
+          )}
+
+          {/* VIEW: INTEGRATIONS & CLOUD COMMUNICATIONS */}
+          {activeView === 'integrations' && (isSuperAdmin || isManager) && (
+            <IntegrationsSettingsView />
           )}
 
           {/* VIEW: CUSTOMER REVIEWS & GRIEVANCE INTERCEPTION */}

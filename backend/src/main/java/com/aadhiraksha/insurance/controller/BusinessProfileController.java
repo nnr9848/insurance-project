@@ -133,11 +133,34 @@ public class BusinessProfileController {
             profile.setNotifyDocsOnWhatsapp(updateReq.getNotifyDocsOnWhatsapp());
         }
 
+        // Firebase Phone Auth Settings
+        if (updateReq.getFirebaseEnabled() != null) {
+            profile.setFirebaseEnabled(updateReq.getFirebaseEnabled());
+        }
+        if (updateReq.getFirebaseProjectId() != null && !updateReq.getFirebaseProjectId().trim().isEmpty()) {
+            profile.setFirebaseProjectId(updateReq.getFirebaseProjectId().trim());
+        }
+        if (updateReq.getFirebaseApiKey() != null) {
+            profile.setFirebaseApiKey(updateReq.getFirebaseApiKey().trim());
+        }
+        if (updateReq.getFirebaseAuthDomain() != null) {
+            profile.setFirebaseAuthDomain(updateReq.getFirebaseAuthDomain().trim());
+        }
+        if (updateReq.getFirebaseAppId() != null) {
+            profile.setFirebaseAppId(updateReq.getFirebaseAppId().trim());
+        }
+        if (updateReq.getFirebaseStorageBucket() != null) {
+            profile.setFirebaseStorageBucket(updateReq.getFirebaseStorageBucket().trim());
+        }
+        if (updateReq.getFirebaseMessagingSenderId() != null) {
+            profile.setFirebaseMessagingSenderId(updateReq.getFirebaseMessagingSenderId().trim());
+        }
+
         profile.setUpdatedAt(LocalDateTime.now());
 
         BusinessProfile saved = repository.save(profile);
-        log.info("Business profile and contact details updated by admin: primaryPhone={}, supportEmail={}, whatsappEnabled={}", 
-                saved.getPrimaryPhone(), saved.getSupportEmail(), saved.getWhatsappEnabled());
+        log.info("Business profile and integrations updated by admin: primaryPhone={}, whatsappEnabled={}, firebaseEnabled={}", 
+                saved.getPrimaryPhone(), saved.getWhatsappEnabled(), saved.getFirebaseEnabled());
 
         return ResponseEntity.ok(saved);
     }
