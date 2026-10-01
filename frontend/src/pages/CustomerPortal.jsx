@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   ShieldCheck, 
   FileText, 
@@ -51,6 +51,17 @@ import { formatWhatsAppNumber } from '../utils/crmDeduplication';
 export default function CustomerPortal() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const toast = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Protected Route Guard: Redirect guests/logged-out visitors to Login with return URL
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      toast?.show('Please sign in to access your digital policy vault & account', 'info');
+      const currentUrl = encodeURIComponent(location.pathname + location.search);
+      navigate(`/login?redirect=${currentUrl}`, { replace: true });
+    }
+  }, [authLoading, isAuthenticated, location, navigate]);
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({
@@ -433,6 +444,17 @@ export default function CustomerPortal() {
 
   const userName = user?.fullName || data.user?.fullName || 'Customer';
   const userInitials = userName.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div style={{ background: '#f8fafc', minHeight: 'calc(100vh - 140px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', color: '#64748b' }}>
+          <div style={{ width: '36px', height: '36px', border: '3px solid #cbd5e1', borderTopColor: 'var(--primary-navy)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px auto' }} />
+          <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>Securing session & verifying policyholder credentials...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: '#f8fafc', minHeight: 'calc(100vh - 140px)', padding: '2rem 1rem 3rem' }}>

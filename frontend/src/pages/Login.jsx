@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, Phone, Shield, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 export default function Login() {
+  const [searchParams] = useSearchParams();
+  const redirectUrl = searchParams.get('redirect');
+
   const [isRegister, setIsRegister] = useState(false);
   const [identifier, setIdentifier] = useState('admin@aadhiraksha.com');
   const [password, setPassword] = useState('Admin@12345');
@@ -25,7 +28,11 @@ export default function Login() {
     try {
       if (isRegister) {
         await register({ fullName, email, phoneNumber, password, role });
-        navigate('/');
+        if (redirectUrl) {
+          navigate(redirectUrl);
+        } else {
+          navigate('/');
+        }
       } else {
         const user = await login(identifier, password);
         const hasCrmAccess = user?.roles?.some(r => [
@@ -37,7 +44,9 @@ export default function Login() {
           'ROLE_POSP_AGENT'
         ].includes(r));
 
-        if (hasCrmAccess) {
+        if (redirectUrl) {
+          navigate(redirectUrl);
+        } else if (hasCrmAccess) {
           navigate('/admin');
         } else {
           navigate('/my-account');
