@@ -31,7 +31,8 @@ spring:
 app:
   jwt:
     secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
-    expiration-ms: 86400000 # 24 hours
+    expiration-ms: 86400000 # 24 hours for CRM Admin, Managers, and Staff
+    customer-expiration-ms: 2592000000 # 30 days (720 hours) for Customers & POSP Agents (zero re-OTP friction)
 
 # Firebase Authentication (Phone OTP)
 firebase:

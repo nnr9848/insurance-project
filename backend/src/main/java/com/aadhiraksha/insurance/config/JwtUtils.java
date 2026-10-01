@@ -22,6 +22,9 @@ public class JwtUtils {
     @Value("${app.jwt.expiration-ms:86400000}")
     private long jwtExpirationMs;
 
+    @Value("${app.jwt.customer-expiration-ms:2592000000}")
+    private long customerExpirationMs;
+
     private SecretKey getSigningKey() {
         byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
         return Keys.hmacShaKeyFor(keyBytes);
@@ -29,15 +32,29 @@ public class JwtUtils {
 
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
-        return createToken(claims, userDetails.getUsername());
+        boolean isStaffOrAdmin = userDetails.getAuthorities().stream().anyMatch(a -> 
+            a.getAuthority().equals("ROLE_SUPER_ADMIN") ||
+            a.getAuthority().equals("ROLE_ADMIN") ||
+            a.getAuthority().equals("ROLE_MANAGER") ||
+            a.getAuthority().equals("ROLE_ADVISOR") ||
+            a.getAuthority().equals("ROLE_STAFF")
+        );
+
+        long ttl = isStaffOrAdmin ? jwtExpirationMs : customerExpirationMs;
+        return createToken(claims, userDetails.getUsername(), ttl);
     }
 
-    private String createToken(Map<String, Object> claims, String subject) {
+    public String generateTokenWithTtl(UserDetails userDetails, long customTtlMs) {
+        Map<String, Object> claims = new HashMap<>();
+        return createToken(claims, userDetails.getUsername(), customTtlMs);
+    }
+
+    private String createToken(Map<String, Object> claims, String subject, long ttlMs) {
         return Jwts.builder()
                 .claims(claims)
                 .subject(subject)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + jwtExpirationMs))
+                .expiration(new Date(System.currentTimeMillis() + ttlMs))
                 .signWith(getSigningKey(), Jwts.SIG.HS256)
                 .compact();
     }
