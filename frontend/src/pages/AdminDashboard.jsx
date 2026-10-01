@@ -279,10 +279,15 @@ export default function AdminDashboard() {
           icon: <ShieldAlert size={18} color="#dc2626" />
         };
       case 'hospitals':
-        return {
+        return (isSuperAdmin || isManager) ? {
           title: 'Cashless Hospital Network',
           category: 'Operations & Management',
-          subtitle: 'Comprehensive directory of verified cashless hospital admission desks and contacts.',
+          subtitle: 'Comprehensive directory of verified cashless hospital admission desks, tie-ups, and contacts.',
+          icon: <Building2 size={18} color="#0891b2" />
+        } : {
+          title: 'Cashless Hospital Directory',
+          category: isPospAgent ? 'POSP Lookup Desk' : 'Advisory Lookup Desk',
+          subtitle: 'Search empanelled cashless hospitals and TPA desks across cities to assist your clients during admission.',
           icon: <Building2 size={18} color="#0891b2" />
         };
       case 'partners':
@@ -473,8 +478,7 @@ export default function AdminDashboard() {
   ];
 
   const navItemsAdmin = isPospAgent ? [
-    { id: 'hospitals', label: 'Cashless Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' },
-    { id: 'partners', label: 'Insurance Partners', icon: <Globe size={19} />, count: null }
+    { id: 'hospitals', label: 'Cashless Hospitals Directory', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' }
   ] : [
     ...(canManageUsers ? [{ id: 'users', label: 'User & Team Hierarchy', icon: <Users size={19} />, count: null }] : []),
     ...((isSuperAdmin || isManager) ? [
@@ -482,8 +486,10 @@ export default function AdminDashboard() {
       { id: 'audit', label: 'Audit Trail & Compliance', icon: <ShieldCheck size={19} />, count: null }
     ] : []),
     { id: 'posp', label: 'POSP Agent Network', icon: <UserCheck size={19} />, count: pospList.filter(p => p.status === 'PENDING').length, badgeColor: '#d97706' },
-    { id: 'hospitals', label: 'Cashless Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' },
-    { id: 'partners', label: 'Insurance Partners', icon: <Globe size={19} />, count: null },
+    { id: 'hospitals', label: (isSuperAdmin || isManager) ? 'Cashless Hospitals' : 'Cashless Hospitals Directory', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' },
+    ...((isSuperAdmin || isManager) ? [
+      { id: 'partners', label: 'Insurance Partners', icon: <Globe size={19} />, count: null }
+    ] : []),
     { id: 'reviews', label: 'Customer Reviews', icon: <Star size={19} />, count: null },
     ...((isSuperAdmin || isManager) ? [
       { id: 'profile', label: 'Company Profile & Helpline', icon: <Building size={19} />, count: null }
@@ -1480,16 +1486,17 @@ export default function AdminDashboard() {
             />
           )}
 
-          {/* VIEW: CASHLESS HOSPITALS */}
+          {/* VIEW: CASHLESS HOSPITALS (Manageable only by Super Admin & Manager; Read-Only Lookup for Advisors, Staff, POSPs) */}
           {activeView === 'hospitals' && (
             <NetworkHospitalsView 
               hospitals={hospitals} 
               setHospitals={setHospitals} 
+              readOnly={!(isSuperAdmin || isManager)}
             />
           )}
 
-          {/* VIEW: INSURANCE PARTNERS & REDIRECTIONS */}
-          {activeView === 'partners' && (
+          {/* VIEW: INSURANCE PARTNERS & REDIRECTIONS (Strictly Super Admin & Manager only) */}
+          {activeView === 'partners' && (isSuperAdmin || isManager) && (
             <InsurancePartnersManagementView />
           )}
 

@@ -14,7 +14,8 @@ import { useToast } from '../../context/ToastContext';
 
 export default function NetworkHospitalsView({
   hospitals = [],
-  setHospitals
+  setHospitals,
+  readOnly = false
 }) {
   const toast = useToast();
   const [hospSearch, setHospSearch] = useState('');
@@ -213,44 +214,46 @@ export default function NetworkHospitalsView({
           </select>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => setShowAddHospitalModal(true)}
-            style={{
-              background: '#059669',
-              color: '#fff',
-              border: 'none',
-              padding: '0.55rem 1rem',
-              borderRadius: '8px',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              cursor: 'pointer'
-            }}
-          >
-            <Plus size={16} /> Add Single Hospital
-          </button>
-          <button
-            onClick={() => setShowBulkUploadModal(true)}
-            style={{
-              background: '#0f2b48',
-              color: '#fff',
-              border: 'none',
-              padding: '0.55rem 1rem',
-              borderRadius: '8px',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              cursor: 'pointer'
-            }}
-          >
-            <Upload size={16} /> Bulk Upload (CSV/JSON)
-          </button>
-        </div>
+        {!readOnly && (
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setShowAddHospitalModal(true)}
+              style={{
+                background: '#059669',
+                color: '#fff',
+                border: 'none',
+                padding: '0.55rem 1rem',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer'
+              }}
+            >
+              <Plus size={16} /> Add Single Hospital
+            </button>
+            <button
+              onClick={() => setShowBulkUploadModal(true)}
+              style={{
+                background: '#0f2b48',
+                color: '#fff',
+                border: 'none',
+                padding: '0.55rem 1rem',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                cursor: 'pointer'
+              }}
+            >
+              <Upload size={16} /> Bulk Upload (CSV/JSON)
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Hospitals Table */}
@@ -263,13 +266,13 @@ export default function NetworkHospitalsView({
               <th style={{ padding: '1rem' }}>Complete Address</th>
               <th style={{ padding: '1rem' }}>Contact Number</th>
               <th style={{ padding: '1rem' }}>Specialties</th>
-              <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>
+              {!readOnly && <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {filteredHospitals.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                <td colSpan={readOnly ? 5 : 6} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
                   <Building2 size={36} color="#94a3b8" style={{ margin: '0 auto 0.5rem' }} />
                   <div>No hospitals match your search criteria.</div>
                   <button
@@ -329,27 +332,29 @@ export default function NetworkHospitalsView({
                   <td style={{ padding: '1rem', fontSize: '0.78rem', color: '#64748b', maxWidth: '200px' }}>
                     {hosp.specialties || '-'}
                   </td>
-                  <td style={{ padding: '1rem', textAlign: 'center' }}>
-                    <button
-                      onClick={() => handleToggleHospitalStatus(hosp.id, hosp.hospitalName, hosp.isActive !== false)}
-                      title={hosp.isActive !== false ? "Soft-deactivate hospital" : "Restore hospital"}
-                      style={{
-                        background: hosp.isActive !== false ? '#fee2e2' : '#ecfdf5',
-                        color: hosp.isActive !== false ? '#dc2626' : '#059669',
-                        border: 'none',
-                        padding: '0.4rem 0.65rem',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        fontSize: '0.75rem',
-                        fontWeight: 700
-                      }}
-                    >
-                      {hosp.isActive !== false ? 'Deactivate' : 'Restore'}
-                    </button>
-                  </td>
+                  {!readOnly && (
+                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                      <button
+                        onClick={() => handleToggleHospitalStatus(hosp.id, hosp.hospitalName, hosp.isActive !== false)}
+                        title={hosp.isActive !== false ? "Soft-deactivate hospital" : "Restore hospital"}
+                        style={{
+                          background: hosp.isActive !== false ? '#fee2e2' : '#ecfdf5',
+                          color: hosp.isActive !== false ? '#dc2626' : '#059669',
+                          border: 'none',
+                          padding: '0.4rem 0.65rem',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 700
+                        }}
+                      >
+                        {hosp.isActive !== false ? 'Deactivate' : 'Restore'}
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))
             )}

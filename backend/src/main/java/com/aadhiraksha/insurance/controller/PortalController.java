@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -333,9 +334,10 @@ public class PortalController {
         return ResponseEntity.ok(hospitalRepository.searchAllHospitalsForAdmin(city, query));
     }
 
-    // Admin Hospital Management APIs
+    // Admin Hospital Management APIs (Strictly Super Admin & Manager only)
     @PostMapping("/admin/hospitals")
-    @Operation(summary = "Add a new network hospital (Admin/Staff only)")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Add a new network hospital (Super Admin / Manager only)")
     public ResponseEntity<NetworkHospital> createHospital(@Valid @RequestBody NetworkHospital hospital, org.springframework.security.core.Authentication auth) {
         hospital.setIsActive(true);
         NetworkHospital saved = hospitalRepository.save(hospital);
@@ -345,7 +347,8 @@ public class PortalController {
     }
 
     @PostMapping("/admin/hospitals/bulk")
-    @Operation(summary = "Bulk import network hospitals list (Admin/Staff only)")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Bulk import network hospitals list (Super Admin / Manager only)")
     public ResponseEntity<List<NetworkHospital>> createHospitalsBulk(@RequestBody List<NetworkHospital> hospitals, org.springframework.security.core.Authentication auth) {
         for (NetworkHospital h : hospitals) {
             h.setIsActive(true);
@@ -357,7 +360,8 @@ public class PortalController {
     }
 
     @PostMapping("/admin/hospitals/{id}/toggle-status")
-    @Operation(summary = "Soft-deactivate or restore a network hospital (Zero Hard Deletes)")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Soft-deactivate or restore a network hospital (Super Admin / Manager only)")
     public ResponseEntity<NetworkHospital> toggleHospitalStatus(@PathVariable Long id, org.springframework.security.core.Authentication auth) {
         NetworkHospital hospital = hospitalRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Hospital not found with ID: " + id));
@@ -375,7 +379,8 @@ public class PortalController {
     }
 
     @DeleteMapping("/admin/hospitals/{id}")
-    @Operation(summary = "Soft delete a network hospital (Backward compatibility)")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Soft delete a network hospital (Super Admin / Manager only)")
     public ResponseEntity<?> deleteHospital(@PathVariable Long id, org.springframework.security.core.Authentication auth) {
         return toggleHospitalStatus(id, auth);
     }
