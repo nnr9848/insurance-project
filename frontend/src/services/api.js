@@ -418,6 +418,10 @@ export const portalService = {
     const res = await api.put('/admin/settings/business-profile', data);
     return res.data;
   },
+  testWhatsAppMessage: async (testPhone) => {
+    const res = await api.post('/admin/settings/whatsapp/test', { testPhone });
+    return res.data;
+  },
 };
 
 // Customer Reviews, Social Proof & Smart Grievance Routing Service

@@ -66,6 +66,36 @@ public class BusinessProfile {
     @Column(name = "irdai_registration_no", length = 100)
     private String irdaiRegistrationNo;
 
+    // Meta WhatsApp Cloud API Integration Settings
+    @Builder.Default
+    @Column(name = "whatsapp_enabled")
+    private Boolean whatsappEnabled = false;
+
+    @Builder.Default
+    @Column(name = "whatsapp_api_url")
+    private String whatsappApiUrl = "https://graph.facebook.com/v19.0";
+
+    @Column(name = "whatsapp_phone_number_id", length = 100)
+    private String whatsappPhoneNumberId;
+
+    @Column(name = "whatsapp_access_token", columnDefinition = "TEXT")
+    private String whatsappAccessToken;
+
+    @Column(name = "whatsapp_business_account_id", length = 100)
+    private String whatsappBusinessAccountId;
+
+    @Builder.Default
+    @Column(name = "notify_leads_on_whatsapp")
+    private Boolean notifyLeadsOnWhatsapp = true;
+
+    @Builder.Default
+    @Column(name = "notify_claims_on_whatsapp")
+    private Boolean notifyClaimsOnWhatsapp = true;
+
+    @Builder.Default
+    @Column(name = "notify_docs_on_whatsapp")
+    private Boolean notifyDocsOnWhatsapp = true;
+
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;

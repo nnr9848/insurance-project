@@ -31,7 +31,39 @@ public class WhatsAppNotificationService {
     @Value("${whatsapp.access-token:}")
     private String accessToken;
 
+    private final com.aadhiraksha.insurance.repository.BusinessProfileRepository businessProfileRepository;
     private final RestTemplate restTemplate = new RestTemplate();
+
+    public WhatsAppNotificationService(com.aadhiraksha.insurance.repository.BusinessProfileRepository businessProfileRepository) {
+        this.businessProfileRepository = businessProfileRepository;
+    }
+
+    private boolean isWhatsAppActive() {
+        return businessProfileRepository.findById(1L)
+                .map(com.aadhiraksha.insurance.model.BusinessProfile::getWhatsappEnabled)
+                .orElse(enabled);
+    }
+
+    private String resolveApiUrl() {
+        return businessProfileRepository.findById(1L)
+                .map(com.aadhiraksha.insurance.model.BusinessProfile::getWhatsappApiUrl)
+                .filter(u -> u != null && !u.isBlank())
+                .orElse(apiUrl);
+    }
+
+    private String resolvePhoneNumberId() {
+        return businessProfileRepository.findById(1L)
+                .map(com.aadhiraksha.insurance.model.BusinessProfile::getWhatsappPhoneNumberId)
+                .filter(p -> p != null && !p.isBlank())
+                .orElse(phoneNumberId);
+    }
+
+    private String resolveAccessToken() {
+        return businessProfileRepository.findById(1L)
+                .map(com.aadhiraksha.insurance.model.BusinessProfile::getWhatsappAccessToken)
+                .filter(t -> t != null && !t.isBlank())
+                .orElse(accessToken);
+    }
 
     /**
      * Send instant confirmation to user when they submit an insurance quote/lead inquiry.
@@ -78,13 +110,18 @@ public class WhatsAppNotificationService {
      * Core dispatch mechanism sending formatted text to Meta WhatsApp Cloud API endpoint.
      */
     public boolean sendTextMessage(String rawPhoneNumber, String messageText) {
-        if (!enabled) {
-            log.info("[WhatsApp MOCK] Notifications disabled in application.yml. Message to {}: {}", rawPhoneNumber, messageText);
+        boolean active = isWhatsAppActive();
+        String currentApiUrl = resolveApiUrl();
+        String currentPhoneId = resolvePhoneNumberId();
+        String currentToken = resolveAccessToken();
+
+        if (!active) {
+            log.info("[WhatsApp MOCK] Notifications disabled in settings. Message to {}: {}", rawPhoneNumber, messageText);
             return true;
         }
 
-        if (phoneNumberId == null || phoneNumberId.isBlank() || accessToken == null || accessToken.isBlank()) {
-            log.warn("[WhatsApp WARN] Meta WhatsApp Cloud API credentials missing. Check WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN.");
+        if (currentPhoneId == null || currentPhoneId.isBlank() || currentToken == null || currentToken.isBlank()) {
+            log.warn("[WhatsApp WARN] Meta WhatsApp Cloud API credentials missing in Admin Settings. (Phone ID / Token blank)");
             return false;
         }
 
@@ -94,11 +131,11 @@ public class WhatsAppNotificationService {
                 cleanPhone = "91" + cleanPhone; // Prefix Indian country code
             }
 
-            String endpointUrl = String.format("%s/%s/messages", apiUrl, phoneNumberId);
+            String endpointUrl = String.format("%s/%s/messages", currentApiUrl, currentPhoneId);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(accessToken);
+            headers.setBearerAuth(currentToken);
 
             Map<String, Object> body = new HashMap<>();
             body.put("messaging_product", "whatsapp");

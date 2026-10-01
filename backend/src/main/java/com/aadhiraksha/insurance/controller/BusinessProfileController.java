@@ -106,12 +106,77 @@ public class BusinessProfileController {
         if (updateReq.getIrdaiRegistrationNo() != null) {
             profile.setIrdaiRegistrationNo(updateReq.getIrdaiRegistrationNo().trim());
         }
+
+        // WhatsApp Meta Cloud API settings
+        if (updateReq.getWhatsappEnabled() != null) {
+            profile.setWhatsappEnabled(updateReq.getWhatsappEnabled());
+        }
+        if (updateReq.getWhatsappApiUrl() != null && !updateReq.getWhatsappApiUrl().trim().isEmpty()) {
+            profile.setWhatsappApiUrl(updateReq.getWhatsappApiUrl().trim());
+        }
+        if (updateReq.getWhatsappPhoneNumberId() != null) {
+            profile.setWhatsappPhoneNumberId(updateReq.getWhatsappPhoneNumberId().trim());
+        }
+        if (updateReq.getWhatsappAccessToken() != null && !updateReq.getWhatsappAccessToken().trim().isEmpty()) {
+            profile.setWhatsappAccessToken(updateReq.getWhatsappAccessToken().trim());
+        }
+        if (updateReq.getWhatsappBusinessAccountId() != null) {
+            profile.setWhatsappBusinessAccountId(updateReq.getWhatsappBusinessAccountId().trim());
+        }
+        if (updateReq.getNotifyLeadsOnWhatsapp() != null) {
+            profile.setNotifyLeadsOnWhatsapp(updateReq.getNotifyLeadsOnWhatsapp());
+        }
+        if (updateReq.getNotifyClaimsOnWhatsapp() != null) {
+            profile.setNotifyClaimsOnWhatsapp(updateReq.getNotifyClaimsOnWhatsapp());
+        }
+        if (updateReq.getNotifyDocsOnWhatsapp() != null) {
+            profile.setNotifyDocsOnWhatsapp(updateReq.getNotifyDocsOnWhatsapp());
+        }
+
         profile.setUpdatedAt(LocalDateTime.now());
 
         BusinessProfile saved = repository.save(profile);
-        log.info("Business profile and contact details updated by admin: primaryPhone={}, supportEmail={}", 
-                saved.getPrimaryPhone(), saved.getSupportEmail());
+        log.info("Business profile and contact details updated by admin: primaryPhone={}, supportEmail={}, whatsappEnabled={}", 
+                saved.getPrimaryPhone(), saved.getSupportEmail(), saved.getWhatsappEnabled());
 
         return ResponseEntity.ok(saved);
+    }
+
+    /**
+     * Admin endpoint: Send instant live test WhatsApp message to verify Meta API credentials
+     */
+    @PostMapping("/admin/settings/whatsapp/test")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @Operation(summary = "Send Test WhatsApp Message", description = "Dispatches a live test message to verify Meta credentials")
+    public ResponseEntity<java.util.Map<String, Object>> testWhatsAppDispatch(
+            @RequestBody java.util.Map<String, String> requestBody,
+            @org.springframework.beans.factory.annotation.Autowired com.aadhiraksha.insurance.service.WhatsAppNotificationService whatsAppService) {
+        
+        String testPhone = requestBody.get("testPhone");
+        if (testPhone == null || testPhone.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                "success", false,
+                "message", "Recipient phone number is required"
+            ));
+        }
+
+        String message = String.format(
+            "🔔 *Aadhiraksha WhatsApp Integration Test*\n\nYour Meta WhatsApp Cloud API credentials have been successfully connected and verified!\nTimestamp: %s\n\nPlatform: https://www.aadhirakshainsurance.com",
+            LocalDateTime.now()
+        );
+
+        boolean dispatched = whatsAppService.sendTextMessage(testPhone.trim(), message);
+
+        if (dispatched) {
+            return ResponseEntity.ok(java.util.Map.of(
+                "success", true,
+                "message", "Test WhatsApp message dispatched successfully! Check phone: " + testPhone
+            ));
+        } else {
+            return ResponseEntity.status(400).body(java.util.Map.of(
+                "success", false,
+                "message", "Failed to dispatch test message. Please verify Phone Number ID and Access Token."
+            ));
+        }
     }
 }
