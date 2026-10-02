@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, Phone, Shield, ArrowRight, CheckCircle2, KeyRound, Smartphone, RefreshCw, MessageSquare } from 'lucide-react';
 import { auth } from '../config/firebase';
@@ -31,11 +31,16 @@ export default function Login({ isAdminPortal = false }) {
 
   const { login, register, firebaseLogin, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Reset default authMode if isAdminPortal changes
+  // Reset errors and auth mode when route or portal mode changes
   useEffect(() => {
+    setError('');
     setAuthMode(isAdminPortal ? 'password' : 'otp');
-  }, [isAdminPortal]);
+    setOtpStep('phone');
+    setOtpCode(['', '', '', '', '', '']);
+    setConfirmationResult(null);
+  }, [location.pathname, isAdminPortal]);
 
   // Countdown timer for Resend OTP
   useEffect(() => {
@@ -366,6 +371,7 @@ export default function Login({ isAdminPortal = false }) {
                 <div style={{ marginTop: '0.5rem' }}>
                   <Link 
                     to="/login" 
+                    onClick={() => setError('')}
                     style={{ 
                       color: '#b91c1c', 
                       fontWeight: 800, 
@@ -661,14 +667,22 @@ export default function Login({ isAdminPortal = false }) {
             {isAdminPortal ? (
               <span>
                 Looking for policyholder services?{' '}
-                <Link to="/login" style={{ color: '#0284c7', fontWeight: 700, textDecoration: 'none' }}>
+                <Link 
+                  to="/login" 
+                  onClick={() => setError('')}
+                  style={{ color: '#0284c7', fontWeight: 700, textDecoration: 'none' }}
+                >
                   Switch to Customer Login →
                 </Link>
               </span>
             ) : (
               <span>
                 Are you an employee or advisor?{' '}
-                <Link to="/admin/login" style={{ color: '#0284c7', fontWeight: 700, textDecoration: 'none' }}>
+                <Link 
+                  to="/admin/login" 
+                  onClick={() => setError('')}
+                  style={{ color: '#0284c7', fontWeight: 700, textDecoration: 'none' }}
+                >
                   Internal Staff Portal →
                 </Link>
               </span>
