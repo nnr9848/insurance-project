@@ -17,8 +17,8 @@ export default function Login({ isAdminPortal = false }) {
   const [countdown, setCountdown] = useState(0);
 
   const [isRegister, setIsRegister] = useState(false);
-  const [identifier, setIdentifier] = useState(isAdminPortal ? 'admin@aadhiraksha.com' : '');
-  const [password, setPassword] = useState(isAdminPortal ? 'Admin@12345' : '');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
@@ -35,10 +35,6 @@ export default function Login({ isAdminPortal = false }) {
   // Reset default authMode if isAdminPortal changes
   useEffect(() => {
     setAuthMode(isAdminPortal ? 'password' : 'otp');
-    if (isAdminPortal) {
-      if (!identifier) setIdentifier('admin@aadhiraksha.com');
-      if (!password) setPassword('Admin@12345');
-    }
   }, [isAdminPortal]);
 
   // Countdown timer for Resend OTP
@@ -608,60 +604,7 @@ export default function Login({ isAdminPortal = false }) {
             </div>
           )}
 
-          {/* Quick Demo Logins: ONLY visible on /admin/login for developer & testing convenience */}
-          {isAdminPortal && (
-            <div style={{
-              marginTop: '1.5rem',
-              padding: '1.1rem',
-              background: '#f8fafc',
-              borderRadius: '12px',
-              border: '1px solid var(--border-subtle)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary-navy)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  ⚡ Staff Demo Credentials
-                </span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>1-Tap to Autofill</span>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {[
-                  { role: 'Super Admin', email: 'admin@aadhiraksha.com', pass: 'Admin@12345', badge: '👑 Super Admin' },
-                  { role: 'Branch Manager', email: 'manager@aadhiraksha.com', pass: 'Manager@12345', badge: '👔 Manager' },
-                  { role: 'Insurance Advisor', email: 'advisor@aadhiraksha.com', pass: 'Advisor@12345', badge: '🎯 Advisor' },
-                  { role: 'POSP Agent', email: 'posp@aadhiraksha.com', pass: 'Posp@12345', badge: '🤝 POSP Partner' }
-                ].map((demo, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      setIdentifier(demo.email);
-                      setPassword(demo.pass);
-                    }}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: '5px 10px',
-                      borderRadius: '8px',
-                      border: identifier === demo.email ? '1.5px solid #059669' : '1px solid #cbd5e1',
-                      background: identifier === demo.email ? '#ecfdf5' : '#ffffff',
-                      color: identifier === demo.email ? '#065f46' : '#334155',
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
-                    }}
-                    title={`Click to fill: ${demo.email}`}
-                  >
-                    {demo.badge}
-                  </button>
-                ))}
-              </div>
-              <div style={{ marginTop: '0.6rem', fontSize: '0.72rem', color: '#64748b' }}>
-                Selected: <code>{identifier}</code> | Password: <code>{password}</code>
-              </div>
-            </div>
-          )}
+
 
           {/* Cross-Portal Switcher Link */}
           <div style={{

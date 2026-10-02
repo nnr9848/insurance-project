@@ -20,7 +20,7 @@ import { useAuth } from '../../context/AuthContext';
 import { authService, crmService } from '../../services/api';
 
 export default function UserProfileModal({ isOpen, onClose, defaultTab = 'profile' }) {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   
   const [activeTab, setActiveTab] = useState(defaultTab); // 'profile' | 'security'
   
@@ -152,13 +152,15 @@ export default function UserProfileModal({ isOpen, onClose, defaultTab = 'profil
             <span>Security & Password</span>
           </button>
 
-          <button
-            onClick={() => { setActiveTab('preferences'); setStatusMessage(null); }}
-            className={`crm-segmented-btn ${activeTab === 'preferences' ? 'active' : ''}`}
-          >
-            <ShieldCheck size={15} color={activeTab === 'preferences' ? '#7c3aed' : 'currentColor'} />
-            <span>Sandbox & Data Engine</span>
-          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={() => { setActiveTab('preferences'); setStatusMessage(null); }}
+              className={`crm-segmented-btn ${activeTab === 'preferences' ? 'active' : ''}`}
+            >
+              <ShieldCheck size={15} color={activeTab === 'preferences' ? '#7c3aed' : 'currentColor'} />
+              <span>Sandbox & Data Engine</span>
+            </button>
+          )}
         </div>
 
         {/* Status Toast Alert */}
