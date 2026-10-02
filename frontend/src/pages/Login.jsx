@@ -543,11 +543,13 @@ export default function Login({ isAdminPortal = false }) {
 
               {!isRegister && (
                 <div className="form-group">
-                  <label className="form-label">Email or Phone Number *</label>
+                  <label className="form-label">
+                    {isAdminPortal ? 'Corporate Email or Employee ID *' : 'Mobile Number or Email *'}
+                  </label>
                   <input
                     type="text"
                     required
-                    placeholder="admin@aadhiraksha.com or phone"
+                    placeholder={isAdminPortal ? 'e.g. name@aadhiraksha.com or ADM001' : 'e.g. 9876543210 or name@example.com'}
                     className="form-input"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}

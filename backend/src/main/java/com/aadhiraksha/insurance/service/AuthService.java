@@ -141,12 +141,14 @@ public class AuthService {
     }
 
     public AuthDto.AuthResponse login(AuthDto.LoginRequest request) {
-        User user = userRepository.findByEmail(request.getIdentifier())
-                .or(() -> userRepository.findByPhoneNumber(request.getIdentifier()))
-                .orElseThrow(() -> new BadCredentialsException("Invalid email/phone or password"));
+        String trimmedIdentifier = request.getIdentifier() != null ? request.getIdentifier().trim() : "";
+        User user = userRepository.findByEmail(trimmedIdentifier)
+                .or(() -> userRepository.findByPhoneNumber(trimmedIdentifier))
+                .or(() -> userRepository.findByEmployeeCode(trimmedIdentifier.toUpperCase()))
+                .orElseThrow(() -> new BadCredentialsException("Invalid email, employee ID or password"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new BadCredentialsException("Invalid email/phone or password");
+            throw new BadCredentialsException("Invalid email, employee ID or password");
         }
 
         authenticationManager.authenticate(
