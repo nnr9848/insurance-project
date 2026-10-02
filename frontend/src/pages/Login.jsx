@@ -29,7 +29,7 @@ export default function Login({ isAdminPortal = false }) {
   const otpInputRefs = useRef([]);
   const recaptchaVerifierRef = useRef(null);
 
-  const { login, register, firebaseLogin } = useAuth();
+  const { login, register, firebaseLogin, logout } = useAuth();
   const navigate = useNavigate();
 
   // Reset default authMode if isAdminPortal changes
@@ -69,10 +69,28 @@ export default function Login({ isAdminPortal = false }) {
       'ROLE_POSP_AGENT'
     ].includes(r));
 
-    if (redirectUrl) {
+    // STRICT ROLE BOUNDARY GUARD:
+    // If a normal customer attempts to log in via the internal staff portal (/admin/login)
+    if (isAdminPortal && !hasCrmAccess) {
+      // Invalidate session immediately
+      logout();
+      setError('Access Restricted: This portal is reserved exclusively for company staff & advisors. Please use the Customer Login.');
+      return;
+    }
+
+    // Direction 1: Internal staff signing in from /login (or /admin/login) are seamlessly directed to /admin
+    if (hasCrmAccess) {
+      if (redirectUrl && !redirectUrl.startsWith('/login') && !redirectUrl.startsWith('/my-account')) {
+        navigate(redirectUrl);
+      } else {
+        navigate('/admin');
+      }
+      return;
+    }
+
+    // Direction 2: Customers signing in from /login go to /my-account
+    if (redirectUrl && !redirectUrl.startsWith('/admin')) {
       navigate(redirectUrl);
-    } else if (hasCrmAccess) {
-      navigate('/admin');
     } else {
       navigate('/my-account');
     }
@@ -333,8 +351,31 @@ export default function Login({ isAdminPortal = false }) {
           <div id="recaptcha-container"></div>
 
           {error && (
-            <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '0.75rem', borderRadius: '10px', fontSize: '0.82rem', marginBottom: '1.25rem', border: '1px solid #f87171' }}>
-              {error}
+            <div style={{ 
+              background: '#fee2e2', 
+              color: '#b91c1c', 
+              padding: '0.85rem 1rem', 
+              borderRadius: '10px', 
+              fontSize: '0.82rem', 
+              marginBottom: '1.25rem', 
+              border: '1px solid #f87171',
+              lineHeight: 1.5
+            }}>
+              <div>{error}</div>
+              {error.includes('Customer Login') && (
+                <div style={{ marginTop: '0.5rem' }}>
+                  <Link 
+                    to="/login" 
+                    style={{ 
+                      color: '#b91c1c', 
+                      fontWeight: 800, 
+                      textDecoration: 'underline' 
+                    }}
+                  >
+                    Go to Customer Portal Sign In →
+                  </Link>
+                </div>
+              )}
             </div>
           )}
 
