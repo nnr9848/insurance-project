@@ -655,16 +655,16 @@ export default function Login({ isAdminPortal = false }) {
 
 
 
-          {/* Cross-Portal Switcher Link */}
-          <div style={{
-            marginTop: '1.5rem',
-            paddingTop: '1.25rem',
-            borderTop: '1px solid #e2e8f0',
-            textAlign: 'center',
-            fontSize: '0.8rem',
-            color: '#64748b'
-          }}>
-            {isAdminPortal ? (
+          {/* Cross-Portal Switcher Link: Only show on /admin/login to guide mistakenly arriving customers */}
+          {isAdminPortal && (
+            <div style={{
+              marginTop: '1.5rem',
+              paddingTop: '1.25rem',
+              borderTop: '1px solid #e2e8f0',
+              textAlign: 'center',
+              fontSize: '0.8rem',
+              color: '#64748b'
+            }}>
               <span>
                 Looking for policyholder services?{' '}
                 <Link 
@@ -675,19 +675,8 @@ export default function Login({ isAdminPortal = false }) {
                   Switch to Customer Login →
                 </Link>
               </span>
-            ) : (
-              <span>
-                Are you an employee or advisor?{' '}
-                <Link 
-                  to="/admin/login" 
-                  onClick={() => setError('')}
-                  style={{ color: '#0284c7', fontWeight: 700, textDecoration: 'none' }}
-                >
-                  Internal Staff Portal →
-                </Link>
-              </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
