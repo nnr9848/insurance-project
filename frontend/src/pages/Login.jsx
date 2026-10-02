@@ -1,24 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, Phone, Shield, ArrowRight, CheckCircle2, KeyRound, Smartphone, RefreshCw, MessageSquare } from 'lucide-react';
 import { auth } from '../config/firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
-export default function Login() {
+export default function Login({ isAdminPortal = false }) {
   const [searchParams] = useSearchParams();
   const redirectUrl = searchParams.get('redirect');
 
-  // Auth Mode: 'otp' (Recommended standard for customers/POSPs) vs 'password' (Admin/Staff)
-  const [authMode, setAuthMode] = useState('otp'); // 'otp' | 'password'
+  // Customer portal default is 'otp' (Fast SMS verification). Admin portal is strictly 'password'
+  const [authMode, setAuthMode] = useState(isAdminPortal ? 'password' : 'otp');
   const [otpStep, setOtpStep] = useState('phone'); // 'phone' | 'verify'
   const [confirmationResult, setConfirmationResult] = useState(null);
   const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
   const [countdown, setCountdown] = useState(0);
 
   const [isRegister, setIsRegister] = useState(false);
-  const [identifier, setIdentifier] = useState('admin@aadhiraksha.com');
-  const [password, setPassword] = useState('Admin@12345');
+  const [identifier, setIdentifier] = useState(isAdminPortal ? 'admin@aadhiraksha.com' : '');
+  const [password, setPassword] = useState(isAdminPortal ? 'Admin@12345' : '');
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
@@ -31,6 +31,15 @@ export default function Login() {
 
   const { login, register, firebaseLogin } = useAuth();
   const navigate = useNavigate();
+
+  // Reset default authMode if isAdminPortal changes
+  useEffect(() => {
+    setAuthMode(isAdminPortal ? 'password' : 'otp');
+    if (isAdminPortal) {
+      if (!identifier) setIdentifier('admin@aadhiraksha.com');
+      if (!password) setPassword('Admin@12345');
+    }
+  }, [isAdminPortal]);
 
   // Countdown timer for Resend OTP
   useEffect(() => {
@@ -211,8 +220,10 @@ export default function Login() {
               width: '54px',
               height: '54px',
               borderRadius: '16px',
-              background: 'linear-gradient(135deg, var(--primary-navy), #1e3a8a)',
-              color: 'var(--accent-gold)',
+              background: isAdminPortal 
+                ? 'linear-gradient(135deg, #0f172a, #1e293b)' 
+                : 'linear-gradient(135deg, var(--primary-navy), #1e3a8a)',
+              color: isAdminPortal ? '#38bdf8' : 'var(--accent-gold)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -221,74 +232,106 @@ export default function Login() {
             }}>
               <Shield size={28} />
             </div>
-            <h2 style={{ fontSize: '1.5rem', color: 'var(--primary-navy)', fontWeight: 800 }}>
-              {authMode === 'otp' ? 'Secure Mobile Login' : (isRegister ? 'Create an Account' : 'Portal Sign In')}
-            </h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-              {authMode === 'otp' 
-                ? 'Instant 1-tap OTP verification for Customers & POSP Agents'
-                : 'Access CRM workspace, customer accounts & admin console'
-              }
-            </p>
+            
+            {isAdminPortal ? (
+              <>
+                <div style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  padding: '4px 12px', 
+                  borderRadius: '20px', 
+                  background: '#f1f5f9', 
+                  color: '#334155', 
+                  fontSize: '0.75rem', 
+                  fontWeight: 700, 
+                  letterSpacing: '0.5px', 
+                  textTransform: 'uppercase',
+                  marginBottom: '0.5rem'
+                }}>
+                  🔒 Internal Staff Portal
+                </div>
+                <h2 style={{ fontSize: '1.5rem', color: 'var(--primary-navy)', fontWeight: 800 }}>
+                  Employee Sign In
+                </h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                  Restricted to Super Admins, Branch Managers, Advisors & POSP staff
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 style={{ fontSize: '1.5rem', color: 'var(--primary-navy)', fontWeight: 800 }}>
+                  {authMode === 'otp' ? 'Customer Sign In' : (isRegister ? 'Create an Account' : 'Policyholder Login')}
+                </h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                  {authMode === 'otp' 
+                    ? 'Instant 1-tap OTP verification to access your digital policy vault'
+                    : 'Manage your active insurance policies, renewals & claims'
+                  }
+                </p>
+              </>
+            )}
           </div>
 
-          {/* Mode Switcher Tabs: OTP vs Password */}
-          <div style={{
-            display: 'flex',
-            background: '#f1f5f9',
-            padding: '4px',
-            borderRadius: '12px',
-            marginBottom: '1.5rem'
-          }}>
-            <button
-              type="button"
-              onClick={() => { setAuthMode('otp'); setError(''); }}
-              style={{
-                flex: 1,
-                padding: '9px 12px',
-                borderRadius: '8px',
-                border: 'none',
-                background: authMode === 'otp' ? '#ffffff' : 'transparent',
-                color: authMode === 'otp' ? 'var(--primary-navy)' : '#64748b',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                boxShadow: authMode === 'otp' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <Smartphone size={16} color={authMode === 'otp' ? '#059669' : '#64748b'} />
-              Mobile OTP (Fast)
-            </button>
-            <button
-              type="button"
-              onClick={() => { setAuthMode('password'); setError(''); }}
-              style={{
-                flex: 1,
-                padding: '9px 12px',
-                borderRadius: '8px',
-                border: 'none',
-                background: authMode === 'password' ? '#ffffff' : 'transparent',
-                color: authMode === 'password' ? 'var(--primary-navy)' : '#64748b',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                boxShadow: authMode === 'password' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <KeyRound size={16} color={authMode === 'password' ? '#2563eb' : '#64748b'} />
-              Password / Staff
-            </button>
-          </div>
+          {/* Mode Switcher Tabs: Shown for customer login so users can pick OTP vs Password */}
+          {!isAdminPortal && (
+            <div style={{
+              display: 'flex',
+              background: '#f1f5f9',
+              padding: '4px',
+              borderRadius: '12px',
+              marginBottom: '1.5rem'
+            }}>
+              <button
+                type="button"
+                onClick={() => { setAuthMode('otp'); setError(''); }}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: authMode === 'otp' ? '#ffffff' : 'transparent',
+                  color: authMode === 'otp' ? 'var(--primary-navy)' : '#64748b',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  boxShadow: authMode === 'otp' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Smartphone size={16} color={authMode === 'otp' ? '#059669' : '#64748b'} />
+                Mobile OTP (Fast)
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAuthMode('password'); setError(''); }}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: authMode === 'password' ? '#ffffff' : 'transparent',
+                  color: authMode === 'password' ? 'var(--primary-navy)' : '#64748b',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  boxShadow: authMode === 'password' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <KeyRound size={16} color={authMode === 'password' ? '#2563eb' : '#64748b'} />
+                Email & Password
+              </button>
+            </div>
+          )}
 
           {/* Hidden reCAPTCHA container for Firebase */}
           <div id="recaptcha-container"></div>
@@ -538,31 +581,35 @@ export default function Login() {
             </form>
           )}
 
-          <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            {isRegister ? (
-              <span>
-                Already have an account?{' '}
-                <button
-                  onClick={() => setIsRegister(false)}
-                  style={{ color: 'var(--accent-gold-hover)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
-                >
-                  Sign In
-                </button>
-              </span>
-            ) : (
-              <span>
-                Don't have an account yet?{' '}
-                <button
-                  onClick={() => setIsRegister(true)}
-                  style={{ color: 'var(--accent-gold-hover)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
-                >
-                  Register Now
-                </button>
-              </span>
-            )}
-          </div>
+          {/* Account Registration Link - Only for public Customer Portal */}
+          {!isAdminPortal && (
+            <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              {isRegister ? (
+                <span>
+                  Already have an account?{' '}
+                  <button
+                    onClick={() => setIsRegister(false)}
+                    style={{ color: 'var(--accent-gold-hover)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
+                  >
+                    Sign In
+                  </button>
+                </span>
+              ) : (
+                <span>
+                  Don't have an account yet?{' '}
+                  <button
+                    onClick={() => setIsRegister(true)}
+                    style={{ color: 'var(--accent-gold-hover)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
+                  >
+                    Register Now
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
 
-          {!isRegister && (
+          {/* Quick Demo Logins: ONLY visible on /admin/login for developer & testing convenience */}
+          {isAdminPortal && (
             <div style={{
               marginTop: '1.5rem',
               padding: '1.1rem',
@@ -572,17 +619,16 @@ export default function Login() {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
                 <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary-navy)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  ⚡ Quick Demo Logins
+                  ⚡ Staff Demo Credentials
                 </span>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>1-Tap to Autofill</span>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {[
-                  { role: 'Super Admin', email: 'admin@aadhiraksha.com', pass: 'Admin@12345', badge: '👑 Admin' },
+                  { role: 'Super Admin', email: 'admin@aadhiraksha.com', pass: 'Admin@12345', badge: '👑 Super Admin' },
                   { role: 'Branch Manager', email: 'manager@aadhiraksha.com', pass: 'Manager@12345', badge: '👔 Manager' },
                   { role: 'Insurance Advisor', email: 'advisor@aadhiraksha.com', pass: 'Advisor@12345', badge: '🎯 Advisor' },
-                  { role: 'POSP Agent', email: 'posp@aadhiraksha.com', pass: 'Posp@12345', badge: '🤝 POSP Partner' },
-                  { role: 'Customer', email: 'customer@aadhiraksha.com', pass: 'Customer@12345', badge: '👤 Client' }
+                  { role: 'POSP Agent', email: 'posp@aadhiraksha.com', pass: 'Posp@12345', badge: '🤝 POSP Partner' }
                 ].map((demo, idx) => (
                   <button
                     key={idx}
@@ -616,6 +662,32 @@ export default function Login() {
               </div>
             </div>
           )}
+
+          {/* Cross-Portal Switcher Link */}
+          <div style={{
+            marginTop: '1.5rem',
+            paddingTop: '1.25rem',
+            borderTop: '1px solid #e2e8f0',
+            textAlign: 'center',
+            fontSize: '0.8rem',
+            color: '#64748b'
+          }}>
+            {isAdminPortal ? (
+              <span>
+                Looking for policyholder services?{' '}
+                <Link to="/login" style={{ color: '#0284c7', fontWeight: 700, textDecoration: 'none' }}>
+                  Switch to Customer Login →
+                </Link>
+              </span>
+            ) : (
+              <span>
+                Are you an employee or advisor?{' '}
+                <Link to="/admin/login" style={{ color: '#0284c7', fontWeight: 700, textDecoration: 'none' }}>
+                  Internal Staff Portal →
+                </Link>
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>

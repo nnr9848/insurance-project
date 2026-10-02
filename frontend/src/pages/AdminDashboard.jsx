@@ -413,11 +413,16 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate('/admin/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
+      return;
+    }
+    if (!canAccessCRM) {
+      toast?.show('Your account does not have internal staff portal permissions', 'error');
+      navigate('/my-account');
       return;
     }
     loadData();
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading, canAccessCRM]);
 
   const loadData = async () => {
     setLoading(true);

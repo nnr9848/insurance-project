@@ -112,7 +112,8 @@ export default function App() {
             <Route path="/irdai-disclaimer" element={<LegalCompliance />} />
             <Route path="/grievance-redressal" element={<LegalCompliance />} />
 
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={<Login isAdminPortal={false} />} />
+            <Route path="/admin/login" element={<Login isAdminPortal={true} />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/my-account" element={<CustomerPortal />} />
             <Route path="/customer-portal" element={<CustomerPortal />} />
