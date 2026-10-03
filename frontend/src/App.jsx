@@ -115,6 +115,7 @@ export default function App() {
             <Route path="/login" element={<Login isAdminPortal={false} />} />
             <Route path="/admin/login" element={<Login isAdminPortal={true} />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/*" element={<AdminDashboard />} />
             <Route path="/my-account" element={<CustomerPortal />} />
             <Route path="/customer-portal" element={<CustomerPortal />} />
           </Routes>
