@@ -434,20 +434,6 @@ export default function Login({ isAdminPortal = false }) {
                     />
                   </div>
 
-                  <div className="form-group" style={{ marginTop: '1rem' }}>
-                    <label className="form-label" style={{ fontSize: '0.85rem', fontWeight: 700 }}>
-                      Login As
-                    </label>
-                    <select
-                      className="form-select"
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                    >
-                      <option value="ROLE_USER">Customer / Policyholder</option>
-                      <option value="ROLE_POSP_AGENT">Certified POSP Partner</option>
-                    </select>
-                  </div>
-
                   <button
                     type="submit"
                     disabled={loading || phoneNumber.length !== 10}
@@ -573,18 +559,6 @@ export default function Login({ isAdminPortal = false }) {
                       onChange={(e) => setPhoneNumber(e.target.value)}
                     />
                   </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Account Type</label>
-                    <select
-                      className="form-select"
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                    >
-                      <option value="ROLE_USER">Customer / Policyholder</option>
-                      <option value="ROLE_POSP_AGENT">POSP Insurance Agent</option>
-                    </select>
-                  </div>
                 </>
               )}
 
@@ -630,15 +604,23 @@ export default function Login({ isAdminPortal = false }) {
           {!isAdminPortal && (
             <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               {isRegister ? (
-                <span>
-                  Already have an account?{' '}
-                  <button
-                    onClick={() => setIsRegister(false)}
-                    style={{ color: 'var(--accent-gold-hover)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
-                  >
-                    Sign In
-                  </button>
-                </span>
+                <>
+                  <div>
+                    Already have an account?{' '}
+                    <button
+                      onClick={() => setIsRegister(false)}
+                      style={{ color: 'var(--accent-gold-hover)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}
+                    >
+                      Sign In
+                    </button>
+                  </div>
+                  <div style={{ marginTop: '0.85rem', paddingTop: '0.85rem', borderTop: '1px dashed #e2e8f0', fontSize: '0.78rem', color: '#64748b' }}>
+                    Want to become an Insurance Partner?{' '}
+                    <Link to="/become-posp" style={{ color: '#0284c7', fontWeight: 700, textDecoration: 'none' }}>
+                      Apply as POSP Agent →
+                    </Link>
+                  </div>
+                </>
               ) : (
                 <span>
                   Don't have an account yet?{' '}
