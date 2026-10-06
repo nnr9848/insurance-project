@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Star, 
   X, 
@@ -8,11 +8,15 @@ import {
   CheckCircle2, 
   Send,
   ExternalLink,
-  AlertCircle
+  AlertCircle,
+  UserCheck
 } from 'lucide-react';
 import { customerReviewService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function CustomerReviewModal({ isOpen, onClose, onReviewSubmitted }) {
+  const { user, isAuthenticated } = useAuth();
+
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
   const [customerName, setCustomerName] = useState('');
@@ -26,6 +30,24 @@ export default function CustomerReviewModal({ isOpen, onClose, onReviewSubmitted
   const [submitting, setSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState(null); // { isPositive: boolean, message: string }
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Auto-populate customer fields when authenticated user opens the modal
+  useEffect(() => {
+    if (isOpen) {
+      if (user) {
+        if (user.fullName) setCustomerName(user.fullName);
+        if (user.phoneNumber) setCustomerPhone(user.phoneNumber);
+        if (user.email && !user.email.includes('@aadhiraksha.internal')) setCustomerEmail(user.email);
+        if (user.city) setCity(user.city);
+      }
+      setRating(5);
+      setHoverRating(0);
+      setReviewTitle('');
+      setReviewText('');
+      setSubmitResult(null);
+      setErrorMsg('');
+    }
+  }, [isOpen, user]);
 
   if (!isOpen) return null;
 
@@ -403,6 +425,26 @@ export default function CustomerReviewModal({ isOpen, onClose, onReviewSubmitted
                   />
                 </div>
               </div>
+
+              {/* Authenticated User Verified Badge */}
+              {isAuthenticated && user && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                  background: '#ecfdf5',
+                  borderRadius: '10px',
+                  border: '1px solid #a7f3d0',
+                  fontSize: '0.8rem',
+                  color: '#065f46'
+                }}>
+                  <UserCheck size={16} color="#059669" style={{ flexShrink: 0 }} />
+                  <span>
+                    Submitting as verified client: <strong>{user.fullName || user.phoneNumber}</strong> (Details auto-filled)
+                  </span>
+                </div>
+              )}
 
               {/* Customer Name & Phone */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
