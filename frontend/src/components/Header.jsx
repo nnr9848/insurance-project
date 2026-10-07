@@ -162,10 +162,9 @@ export default function Header() {
               </Link>
             </div>
 
-            {/* Desktop Center: Brand Trust Mission Slogan */}
+            {/* Desktop Center: Brand Legal Entity */}
             <div className="slogan-box desktop-slogan">
-              <span className="slogan-main">Insurance is the first line of defense for everyone's life.</span>
-              <span className="slogan-sub">INDIA'S NO. 1 MOST TRUSTED INSURANCE PLATFORM FOR ALL</span>
+              <span className="slogan-main">Insurance Marketing & Financial Services Pvt Ltd.</span>
             </div>
 
             {/* Top Right: User Profile / Login button (beside logo on mobile, right on desktop) */}
@@ -299,13 +298,9 @@ export default function Header() {
             </div>
           </div>
 
-          {/* Mobile Trust Mission Slogan Banner (shown between Logo and Quick Contact) */}
+          {/* Mobile Legal Entity Banner */}
           <div className="mobile-slogan-box">
-            <span className="mobile-slogan-main">Insurance is the first line of defense for everyone's life.</span>
-            <div className="mobile-slogan-badge">
-              <ShieldCheck size={13} />
-              <span>INDIA'S NO. 1 MOST TRUSTED INSURANCE PLATFORM FOR ALL</span>
-            </div>
+            <span className="mobile-slogan-main">Insurance Marketing & Financial Services Pvt Ltd.</span>
           </div>
 
           {/* Quick Contact Helpline Card (stacked full-width on mobile, beside slogan on desktop) */}
