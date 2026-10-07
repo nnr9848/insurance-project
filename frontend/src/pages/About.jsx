@@ -114,13 +114,7 @@ export default function About() {
     <div className="about-page-wrapper" style={{ background: '#f8fafc', color: 'var(--text-dark)', minHeight: '100vh' }}>
       
       {/* 1. HERO BANNER */}
-      <section style={{
-        background: 'linear-gradient(135deg, #091a2f 0%, #0f2b48 60%, #1e3a5f 100%)',
-        color: '#ffffff',
-        padding: '3.5rem 1rem 4rem',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
+      <section className="about-hero-section">
         {/* Decorative Grid Pattern */}
         <div style={{
           position: 'absolute',
@@ -132,13 +126,13 @@ export default function About() {
         }} />
 
         <div className="container" style={{ maxWidth: '1180px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.85rem' }}>
             <span style={{
               background: 'rgba(217, 119, 6, 0.2)',
               color: 'var(--accent-gold)',
               padding: '4px 12px',
               borderRadius: '9999px',
-              fontSize: '0.8rem',
+              fontSize: '0.78rem',
               fontWeight: 800,
               letterSpacing: '0.04em',
               textTransform: 'uppercase',
@@ -147,16 +141,16 @@ export default function About() {
               alignItems: 'center',
               gap: '6px'
             }}>
-              <ShieldCheck size={14} /> Corporate Profile & Mission
+              <ShieldCheck size={14} /> Corporate Profile
             </span>
-            <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>• {irdaiNo}</span>
+            <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>• {irdaiNo}</span>
           </div>
 
-          <h1 style={{
-            fontSize: 'clamp(2rem, 4vw, 3rem)',
+          <h1 className="about-hero-title" style={{
+            fontSize: 'clamp(1.85rem, 4vw, 3rem)',
             fontWeight: 900,
             lineHeight: 1.2,
-            margin: '0 0 1.2rem',
+            margin: '0 0 1rem',
             letterSpacing: '-0.02em',
             color: '#ffffff'
           }}>
@@ -170,19 +164,20 @@ export default function About() {
             </span>
           </h1>
 
-          <p style={{
-            fontSize: '1.05rem',
+          <p className="about-hero-desc" style={{
+            fontSize: '1.02rem',
             lineHeight: 1.6,
             color: '#cbd5e1',
             maxWidth: '780px',
-            margin: '0 0 2rem'
+            margin: '0 0 1.75rem'
           }}>
             At <strong>Aadhiraksha Insurance Marketing & Financial Services Pvt Ltd</strong>, we believe every Indian family deserves unbiased, transparent, and prompt insurance advisory with zero hidden catches. Rooted in Hyderabad with a pan-regional network of over 1,200 certified advisors, we don't just sell policies — we stand beside you during claim settlements.
           </p>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
+          <div className="about-hero-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
             <a 
               href={`tel:${cleanPhone}`}
+              className="about-hero-btn-primary"
               style={{
                 background: 'var(--accent-gold)',
                 color: '#ffffff',
@@ -203,6 +198,7 @@ export default function About() {
 
             <Link 
               to="/become-posp"
+              className="about-hero-btn-secondary"
               style={{
                 background: 'rgba(255, 255, 255, 0.1)',
                 color: '#ffffff',
@@ -224,52 +220,42 @@ export default function About() {
       </section>
 
       {/* 2. LIVE IMPACT METRICS */}
-      <section style={{ marginTop: '-2rem', position: 'relative', zIndex: 10 }}>
+      <section className="about-metrics-bar">
         <div className="container" style={{ maxWidth: '1180px', margin: '0 auto', padding: '0 1rem' }}>
-          <div style={{
-            background: '#ffffff',
-            borderRadius: '20px',
-            boxShadow: '0 20px 40px -15px rgba(0, 0, 0, 0.1)',
-            border: '1px solid var(--border-subtle)',
-            padding: '1.75rem 2rem',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '1.5rem',
-            alignItems: 'center'
-          }}>
-            <div style={{ textAlign: 'center', borderRight: '1px solid #f1f5f9' }}>
-              <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--primary-navy)', letterSpacing: '-0.02em' }}>
+          <div className="about-metrics-card">
+            <div className="about-metric-cell">
+              <div className="about-metric-val" style={{ color: 'var(--primary-navy)' }}>
                 ₹50+ Cr
               </div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginTop: '4px' }}>
+              <div className="about-metric-lbl">
                 Claims Settled Seamlessly
               </div>
             </div>
 
-            <div style={{ textAlign: 'center', borderRight: '1px solid #f1f5f9' }}>
-              <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--accent-emerald)', letterSpacing: '-0.02em' }}>
+            <div className="about-metric-cell">
+              <div className="about-metric-val" style={{ color: 'var(--accent-emerald)' }}>
                 25,000+
               </div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginTop: '4px' }}>
-                Families & Businesses Protected
+              <div className="about-metric-lbl">
+                Families Protected
               </div>
             </div>
 
-            <div style={{ textAlign: 'center', borderRight: '1px solid #f1f5f9' }}>
-              <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--accent-gold)', letterSpacing: '-0.02em' }}>
+            <div className="about-metric-cell">
+              <div className="about-metric-val" style={{ color: 'var(--accent-gold)' }}>
                 1,200+
               </div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginTop: '4px' }}>
-                Certified POSP Advisors
+              <div className="about-metric-lbl">
+                Certified Advisors
               </div>
             </div>
 
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#0284c7', letterSpacing: '-0.02em' }}>
+            <div className="about-metric-cell">
+              <div className="about-metric-val" style={{ color: '#0284c7' }}>
                 98.8%
               </div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginTop: '4px' }}>
-                Claim Resolution Satisfaction
+              <div className="about-metric-lbl">
+                Resolution Ratio
               </div>
             </div>
           </div>
@@ -369,7 +355,7 @@ export default function About() {
       <section style={{ padding: '3.5rem 1rem 4.5rem', background: '#f1f5f9' }}>
         <div className="container" style={{ maxWidth: '1180px', margin: '0 auto' }}>
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2.5rem' }}>
+          <div className="about-gallery-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2.5rem' }}>
             <div>
               <span style={{
                 color: 'var(--accent-gold)',
@@ -390,16 +376,8 @@ export default function About() {
               </h2>
             </div>
 
-            {/* Filter Tabs */}
-            <div style={{
-              display: 'inline-flex',
-              background: '#ffffff',
-              padding: '4px',
-              borderRadius: '12px',
-              border: '1px solid var(--border-subtle)',
-              gap: '4px',
-              flexWrap: 'wrap'
-            }}>
+            {/* Native Mobile Swipeable Filter Chips */}
+            <div className="about-gallery-chips-wrapper">
               {[
                 { id: 'all', label: 'All Photos' },
                 { id: 'office', label: 'Headquarters' },
@@ -410,14 +388,8 @@ export default function About() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
+                  className="about-filter-chip"
                   style={{
-                    padding: '8px 14px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
                     background: activeTab === tab.id ? 'var(--primary-navy)' : 'transparent',
                     color: activeTab === tab.id ? '#ffffff' : '#64748b'
                   }}
@@ -429,7 +401,7 @@ export default function About() {
           </div>
 
           {/* Gallery Grid */}
-          <div style={{
+          <div className="about-gallery-grid" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
             gap: '1.5rem'
@@ -457,7 +429,7 @@ export default function About() {
                   e.currentTarget.style.boxShadow = '0 4px 18px rgba(0, 0, 0, 0.04)';
                 }}
               >
-                <div style={{ position: 'relative', height: '220px', overflow: 'hidden', background: '#091a2f' }}>
+                <div className="about-gallery-card-img-box" style={{ position: 'relative', height: '220px', overflow: 'hidden', background: '#091a2f' }}>
                   <img 
                     src={item.image} 
                     alt={item.title} 
@@ -652,7 +624,7 @@ export default function About() {
       {/* 7. PHYSICAL HEADQUARTERS & WALK-IN ASSISTANCE */}
       <section style={{ padding: '4rem 1rem 5rem', background: '#f8fafc' }}>
         <div className="container" style={{ maxWidth: '1180px', margin: '0 auto' }}>
-          <div style={{
+          <div className="about-headquarters-card" style={{
             background: 'linear-gradient(135deg, #091a2f 0%, #0f2b48 100%)',
             borderRadius: '24px',
             color: '#ffffff',
@@ -726,7 +698,7 @@ export default function About() {
             </div>
 
             {/* Quick Consultation Request Card */}
-            <div style={{
+            <div className="about-consultation-box" style={{
               background: '#ffffff',
               borderRadius: '20px',
               padding: '2rem',

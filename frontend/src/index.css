@@ -4695,6 +4695,198 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* ==========================================================================
+   NATIVE MOBILE APP UX STANDARD: ABOUT US & GALLERY PAGE
+   ========================================================================== */
+.about-hero-section {
+  background: linear-gradient(135deg, #091a2f 0%, #0f2b48 60%, #1e3a5f 100%);
+  color: #ffffff;
+  padding: 3.5rem 1rem 4rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.about-metrics-bar {
+  margin-top: -2rem;
+  position: relative;
+  z-index: 10;
+}
+
+.about-metrics-card {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-subtle);
+  padding: 1.75rem 2rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.about-metric-cell {
+  text-align: center;
+  border-right: 1px solid #f1f5f9;
+}
+
+.about-metric-cell:last-child {
+  border-right: none;
+}
+
+.about-metric-val {
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.about-metric-lbl {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* Gallery Filter Navigation Chips */
+.about-gallery-chips-wrapper {
+  display: inline-flex;
+  background: #ffffff;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  gap: 4px;
+}
+
+.about-filter-chip {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+/* Native Mobile Layout Customization (< 768px) */
+@media (max-width: 768px) {
+  .about-hero-section {
+    padding: 2rem 1rem 2.75rem !important;
+  }
+
+  .about-hero-title {
+    font-size: 1.6rem !important;
+    line-height: 1.25 !important;
+    margin-bottom: 0.85rem !important;
+  }
+
+  .about-hero-desc {
+    font-size: 0.88rem !important;
+    line-height: 1.55 !important;
+    margin-bottom: 1.25rem !important;
+  }
+
+  /* Compact Native Side-by-Side or Stacked Mobile Action Buttons */
+  .about-hero-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.65rem !important;
+    width: 100% !important;
+  }
+
+  .about-hero-btn-primary,
+  .about-hero-btn-secondary {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 11px 16px !important;
+    font-size: 0.88rem !important;
+    border-radius: 12px !important;
+  }
+
+  /* Native 2x2 Compact Metric Grid */
+  .about-metrics-bar {
+    margin-top: -1.25rem !important;
+  }
+
+  .about-metrics-card {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    padding: 0.75rem !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .about-metric-cell {
+    border-right: none !important;
+    border-bottom: none !important;
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 10px 8px !important;
+  }
+
+  .about-metric-val {
+    font-size: 1.45rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .about-metric-lbl {
+    font-size: 0.72rem !important;
+    margin-top: 2px !important;
+    line-height: 1.3 !important;
+  }
+
+  /* Native App Horizontal Swipeable Filter Chips with Hide Scrollbar */
+  .about-gallery-header-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
+    margin-bottom: 1.5rem !important;
+  }
+
+  .about-gallery-chips-wrapper {
+    width: 100% !important;
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 4px !important;
+    background: #ffffff !important;
+    border-radius: 12px !important;
+  }
+
+  .about-gallery-chips-wrapper::-webkit-scrollbar {
+    display: none;
+  }
+
+  .about-filter-chip {
+    flex-shrink: 0 !important;
+    padding: 7px 14px !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Native Mobile Gallery Card Touch Sizing */
+  .about-gallery-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  .about-gallery-card-img-box {
+    height: 190px !important;
+  }
+
+  /* Headquarters Visit Card on Mobile */
+  .about-headquarters-card {
+    padding: 1.5rem 1.25rem !important;
+    border-radius: 18px !important;
+    gap: 1.5rem !important;
+  }
+
+  .about-consultation-box {
+    padding: 1.25rem !important;
+    border-radius: 16px !important;
+  }
+}
+
+
 
 
 
