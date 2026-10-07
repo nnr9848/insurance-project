@@ -555,6 +555,15 @@ export default function Header() {
               LOANS
             </NavLink>
 
+            {/* 7. ABOUT US Direct Link */}
+            <NavLink
+              to="/about"
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+              style={{ height: '38px' }}
+            >
+              ABOUT US
+            </NavLink>
+
           </div>
 
           {/* Right Mobile Toggle for Dark Bar */}
@@ -978,6 +987,44 @@ export default function Header() {
                 <Building2 size={18} color="#059669" />
               </div>
               <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f2b48' }}>Loans & Financing</span>
+            </div>
+            <ChevronRight size={16} color="#94a3b8" />
+          </Link>
+
+          {/* Direct About Us & Gallery Tile */}
+          <Link
+            to="/about"
+            onClick={() => setIsMobileOpen(false)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 14px',
+              borderRadius: '14px',
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              textDecoration: 'none',
+              flexShrink: 0,
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: '#fef3c7',
+                border: '1px solid #fde68a',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Sparkles size={18} color="#d97706" />
+              </div>
+              <div>
+                <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f2b48', display: 'block' }}>About Us & Gallery</span>
+                <span style={{ fontSize: '0.72rem', color: '#d97706', fontWeight: 600 }}>Company Profile & Moments</span>
+              </div>
             </div>
             <ChevronRight size={16} color="#94a3b8" />
           </Link>

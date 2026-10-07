@@ -97,6 +97,7 @@ export default function Footer() {
           </div>
 
           <div className="footer-legal-links">
+            <Link to="/about" className="legal-link" style={{ fontWeight: 700, color: 'var(--accent-gold)' }}>About Us & Gallery</Link>
             <Link to="/privacy-policy" className="legal-link">Privacy Policy</Link>
             <Link to="/terms-of-service" className="legal-link">Terms of Service</Link>
             <Link to="/irdai-disclaimer" className="legal-link">IRDAI Disclaimer</Link>
