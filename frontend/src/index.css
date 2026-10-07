@@ -198,6 +198,20 @@ h1, h2, h3, h4, h5, h6 {
   text-transform: uppercase;
 }
 
+.header-brand-logo {
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+  transition: height 0.2s ease;
+}
+
+@media (min-width: 1024px) {
+  .header-brand-logo {
+    height: 58px;
+  }
+}
+
 @media (min-width: 769px) {
   .top-header-container {
     display: flex;

@@ -157,7 +157,7 @@ export default function Header() {
                 <img 
                   src={logoImg} 
                   alt="Aadhiraksha Insurance Marketing & Financial Services" 
-                  style={{ height: '46px', width: 'auto', objectFit: 'contain' }}
+                  className="header-brand-logo"
                 />
               </Link>
             </div>
