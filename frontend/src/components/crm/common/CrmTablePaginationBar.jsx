@@ -151,3 +151,5 @@ export function CrmTopMiniPager({
     </div>
   );
 }
+
+export default CrmTablePaginationBar;

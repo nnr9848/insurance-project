@@ -31,6 +31,7 @@ import {
   PARTNER_LOGO_MAP, 
   DEFAULT_PARTNERS_FALLBACK 
 } from '../../utils/partnerAssetCatalog';
+import CrmTablePaginationBar, { CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
 export default function InsurancePartnersManagementView() {
   const toast = useToast();
@@ -42,6 +43,23 @@ export default function InsurancePartnersManagementView() {
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [resetting, setResetting] = useState(false);
+
+  // Pagination State (Default 10 items per page with localStorage memory)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => {
+    const saved = localStorage.getItem('crm_insurance_partners_page_size');
+    return saved ? parseInt(saved, 10) : 10;
+  });
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    localStorage.setItem('crm_insurance_partners_page_size', String(newSize));
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, categoryFilter]);
 
   // Edit / Create Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -356,26 +374,38 @@ export default function InsurancePartnersManagementView() {
     return matchesSearch && matchesCat;
   });
 
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedPartners = filtered.slice(startIndex, startIndex + pageSize);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: 'calc(100vh - 120px)',
+      maxHeight: 'calc(100vh - 120px)',
+      gap: '0.65rem',
+      overflow: 'hidden'
+    }}>
       
-      {/* Top Action & Filter Bar */}
+      {/* Top Action & Filter Bar with Integrated Top Mini-Pager */}
       <div style={{
         background: '#ffffff',
         borderRadius: '12px',
-        padding: '1rem 1.25rem',
+        padding: '0.65rem 1rem',
         border: '1px solid var(--crm-border-subtle, #e2e8f0)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '1rem',
-        boxShadow: 'var(--shadow-sm)'
+        gap: '0.75rem',
+        boxShadow: 'var(--shadow-sm)',
+        flexShrink: 0
       }}>
         {/* Search & Category Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '280px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flex: 1, minWidth: '260px' }}>
           <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+            <Search size={15} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
             <input 
               type="text"
               placeholder="Search partner by name or destination URL..."
@@ -383,10 +413,10 @@ export default function InsurancePartnersManagementView() {
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: '100%',
-                padding: '0.6rem 0.75rem 0.6rem 2.3rem',
+                padding: '0.45rem 0.65rem 0.45rem 2rem',
                 borderRadius: '8px',
                 border: '1px solid var(--crm-border-subtle, #cbd5e1)',
-                fontSize: '0.88rem',
+                fontSize: '0.82rem',
                 outline: 'none'
               }}
             />
@@ -396,10 +426,10 @@ export default function InsurancePartnersManagementView() {
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
             style={{
-              padding: '0.6rem 0.85rem',
+              padding: '0.45rem 0.75rem',
               borderRadius: '8px',
               border: '1px solid var(--crm-border-subtle, #cbd5e1)',
-              fontSize: '0.88rem',
+              fontSize: '0.82rem',
               background: '#ffffff',
               color: 'var(--crm-text-primary, #1e293b)',
               fontWeight: 600,
@@ -413,8 +443,17 @@ export default function InsurancePartnersManagementView() {
           </select>
         </div>
 
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+        {/* Action Buttons & Top Mini Pager */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+          <CrmTopMiniPager
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filtered.length}
+            startIndex={startIndex}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
+
           <button
             onClick={fetchPartners}
             title="Refresh Partners"
@@ -487,7 +526,11 @@ export default function InsurancePartnersManagementView() {
         borderRadius: '12px',
         border: '1px solid var(--crm-border-subtle, #e2e8f0)',
         overflow: 'hidden',
-        boxShadow: 'var(--shadow-sm)'
+        boxShadow: 'var(--shadow-sm)',
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        minHeight: 0
       }}>
         {loading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
@@ -509,31 +552,32 @@ export default function InsurancePartnersManagementView() {
             <p style={{ fontSize: '0.88rem' }}>No insurance partners match your filter criteria.</p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="crm-table-scroll-container" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
-              <thead>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                 <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--crm-border-subtle, #e2e8f0)', color: '#475569', fontWeight: 700, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  <th style={{ padding: '0.85rem 1rem', width: '90px' }}>Reorder</th>
-                  <th style={{ padding: '0.85rem 1rem' }}>Partner Insurer</th>
-                  <th style={{ padding: '0.85rem 1rem' }}>Category</th>
-                  <th style={{ padding: '0.85rem 1rem' }}>Target Redirect URL</th>
-                  <th style={{ padding: '0.85rem 1rem' }}>Status</th>
-                  <th style={{ padding: '0.85rem 1.25rem', textAlign: 'right' }}>Actions</th>
+                  <th style={{ padding: '0.75rem 1rem', width: '90px', background: '#f8fafc' }}>Reorder</th>
+                  <th style={{ padding: '0.75rem 1rem', background: '#f8fafc' }}>Partner Insurer</th>
+                  <th style={{ padding: '0.75rem 1rem', background: '#f8fafc' }}>Category</th>
+                  <th style={{ padding: '0.75rem 1rem', background: '#f8fafc' }}>Target Redirect URL</th>
+                  <th style={{ padding: '0.75rem 1rem', background: '#f8fafc' }}>Status</th>
+                  <th style={{ padding: '0.75rem 1.25rem', textAlign: 'right', background: '#f8fafc' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((partner, index) => {
+                {paginatedPartners.map((partner, index) => {
+                  const actualIndex = startIndex + index;
                   const logoSrc = resolvePartnerLogoSrc(partner);
-                  const isBeingDragged = draggedIndex === index;
-                  const isDropTarget = dragOverIndex === index && draggedIndex !== index;
+                  const isBeingDragged = draggedIndex === actualIndex;
+                  const isDropTarget = dragOverIndex === actualIndex && draggedIndex !== actualIndex;
 
                   return (
                     <tr 
                       key={partner.id}
                       draggable
-                      onDragStart={(e) => handleDragStart(e, index)}
-                      onDragOver={(e) => handleDragOver(e, index)}
-                      onDrop={(e) => handleDrop(e, index)}
+                      onDragStart={(e) => handleDragStart(e, actualIndex)}
+                      onDragOver={(e) => handleDragOver(e, actualIndex)}
+                      onDrop={(e) => handleDrop(e, actualIndex)}
                       onDragEnd={handleDragEnd}
                       style={{ 
                         borderBottom: '1px solid #f1f5f9',
@@ -735,6 +779,17 @@ export default function InsurancePartnersManagementView() {
             </table>
           </div>
         )}
+
+        <CrmTablePaginationBar
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={handlePageSizeChange}
+          startIndex={startIndex}
+          itemName="partners"
+        />
       </div>
 
       {/* Add / Edit Partner Modal with Integrated Media Picker */}

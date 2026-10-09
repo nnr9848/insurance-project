@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import WhatsAppIcon from '../common/WhatsAppIcon';
+import { CrmTablePaginationBar, CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
 const INSURERS = [
   'Star Health and Allied Insurance',
@@ -52,6 +53,25 @@ export default function QuotationManagementView({ onOpenClient360 }) {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [insurerFilter, setInsurerFilter] = useState('ALL');
   const [selectedQuoteForCompare, setSelectedQuoteForCompare] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => {
+    const saved = localStorage.getItem('quotations_page_size');
+    return saved ? parseInt(saved, 10) : 10;
+  });
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    try {
+      localStorage.setItem('quotations_page_size', String(newSize));
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, insurerFilter]);
 
   // View & Edit Modal States
   const [viewingQuote, setViewingQuote] = useState(null);
@@ -268,6 +288,10 @@ export default function QuotationManagementView({ onOpenClient360 }) {
     return matchesSearch && matchesStatus && matchesInsurer;
   });
 
+  const totalPages = Math.ceil(filteredQuotes.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedQuotes = filteredQuotes.slice(startIndex, startIndex + pageSize);
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'ACCEPTED':
@@ -286,52 +310,67 @@ export default function QuotationManagementView({ onOpenClient360 }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      height: 'calc(100vh - 120px)',
+      maxHeight: 'calc(100vh - 120px)',
+      gap: '0.65rem',
+      overflow: 'hidden'
+    }}>
       
-      {/* Header Banner */}
+      {/* 1. COMPACT ACTION HEADER (Replaces 160px dark banner) */}
       <div style={{
-        background: 'linear-gradient(135deg, #091726 0%, #0f2b48 100%)',
-        borderRadius: '16px',
-        padding: '1.5rem',
-        color: '#ffffff',
+        background: '#ffffff',
+        borderRadius: '12px',
+        padding: '0.65rem 1rem',
+        border: '1px solid #e2e8f0',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '1rem',
-        boxShadow: '0 4px 14px rgba(0,0,0,0.1)'
+        gap: '0.75rem',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+        flexShrink: 0
       }}>
-        <div style={{ maxWidth: '650px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '4px 10px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 800, marginBottom: '8px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-            <FileSpreadsheet size={14} /> MULTI-INSURER QUOTATION ENGINE
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <FileSpreadsheet size={17} />
           </div>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '-0.02em', color: '#ffffff' }}>
-            Quotation Management & Comparative Matrix
-          </h2>
-          <p style={{ fontSize: '0.84rem', color: '#cbd5e1', margin: 0, lineHeight: 1.5 }}>
-            Prepare, compare, and dispatch multi-insurer quotation sheets directly to clients via WhatsApp and Email with automated GST calculation and benefit breakdown.
-          </p>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: '#091726' }}>
+                Quotation Management & Comparative Matrix
+              </h2>
+              <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '2px 7px', borderRadius: '999px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>
+                COMPARISON ENGINE
+              </span>
+            </div>
+            <p style={{ fontSize: '0.74rem', color: '#64748b', margin: 0 }}>
+              Prepare, compare, and dispatch multi-insurer quotation sheets directly to clients.
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             onClick={() => setShowCreateModal(true)}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '5px',
               background: '#f59e0b',
               color: '#091726',
               border: 'none',
-              padding: '9px 16px',
-              borderRadius: '8px',
-              fontSize: '0.84rem',
+              padding: '6px 12px',
+              borderRadius: '7px',
+              fontSize: '0.78rem',
               fontWeight: 800,
               cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.35)'
+              boxShadow: '0 1px 4px rgba(245, 158, 11, 0.25)'
             }}
           >
-            <Plus size={16} /> New Quotation
+            <Plus size={14} /> New Quotation
           </button>
           
           <button
@@ -340,70 +379,71 @@ export default function QuotationManagementView({ onOpenClient360 }) {
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
-              background: 'rgba(255,255,255,0.12)',
-              color: '#ffffff',
-              border: '1px solid rgba(255,255,255,0.2)',
-              padding: '8px 14px',
-              borderRadius: '8px',
-              fontSize: '0.82rem',
+              gap: '5px',
+              background: '#f8fafc',
+              color: '#475569',
+              border: '1px solid #cbd5e1',
+              padding: '6px 10px',
+              borderRadius: '7px',
+              fontSize: '0.78rem',
               fontWeight: 700,
               cursor: 'pointer'
             }}
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             {loading ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* Compact Status Ribbon */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '12px'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: '0.65rem',
+        flexShrink: 0
       }}>
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
-            <FileText size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.55rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '30px', height: '30px', borderRadius: '7px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', flexShrink: 0 }}>
+            <FileText size={16} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Quotations</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>{quotations.length}</div>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Quotes</div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.1 }}>{quotations.length}</div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7' }}>
-            <Send size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.55rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '30px', height: '30px', borderRadius: '7px', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7', flexShrink: 0 }}>
+            <Send size={16} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Dispatched to Clients</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Dispatched</div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.1 }}>
               {quotations.filter(q => q.status === 'SENT').length}
             </div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
-            <CheckCircle2 size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.55rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '30px', height: '30px', borderRadius: '7px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a', flexShrink: 0 }}>
+            <CheckCircle2 size={16} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Accepted & Converted</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Accepted</div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.1 }}>
               {quotations.filter(q => q.status === 'ACCEPTED').length}
             </div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
-            <Sparkles size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.55rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '30px', height: '30px', borderRadius: '7px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706', flexShrink: 0 }}>
+            <Sparkles size={16} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Draft In Progress</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Draft In Progress</div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.1 }}>
               {quotations.filter(q => q.status === 'DRAFT').length}
             </div>
           </div>
@@ -520,17 +560,18 @@ export default function QuotationManagementView({ onOpenClient360 }) {
         </div>
       )}
 
-      {/* Control & Search Bar */}
+      {/* Control & Search Bar with Integrated Top Mini-Pager */}
       <div style={{
         background: '#ffffff',
-        borderRadius: '14px',
-        padding: '1rem 1.25rem',
+        borderRadius: '12px',
+        padding: '0.65rem 1rem',
         border: '1px solid #e2e8f0',
         display: 'flex',
         flexWrap: 'wrap',
-        gap: '12px',
+        gap: '10px',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 280px' }}>
           <form 
@@ -538,7 +579,7 @@ export default function QuotationManagementView({ onOpenClient360 }) {
             onSubmit={(e) => e.preventDefault()}
             style={{ position: 'relative', width: '100%', margin: 0 }}
           >
-            <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+            <Search size={15} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="search"
               name="quotations-search-filter"
@@ -551,26 +592,26 @@ export default function QuotationManagementView({ onOpenClient360 }) {
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
                 width: '100%',
-                padding: '8px 12px 8px 34px',
+                padding: '6px 12px 6px 32px',
                 borderRadius: '8px',
                 border: '1px solid #cbd5e1',
-                fontSize: '0.84rem',
+                fontSize: '0.82rem',
                 outline: 'none'
               }}
             />
           </form>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {/* Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             style={{
-              padding: '7px 10px',
-              borderRadius: '8px',
+              padding: '6px 10px',
+              borderRadius: '7px',
               border: '1px solid #cbd5e1',
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               color: '#334155',
               fontWeight: 600,
               outline: 'none',
@@ -589,10 +630,10 @@ export default function QuotationManagementView({ onOpenClient360 }) {
             value={insurerFilter}
             onChange={(e) => setInsurerFilter(e.target.value)}
             style={{
-              padding: '7px 10px',
-              borderRadius: '8px',
+              padding: '6px 10px',
+              borderRadius: '7px',
               border: '1px solid #cbd5e1',
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               color: '#334155',
               fontWeight: 600,
               outline: 'none',
@@ -604,6 +645,16 @@ export default function QuotationManagementView({ onOpenClient360 }) {
               <option key={ins} value={ins}>{ins}</option>
             ))}
           </select>
+
+          {/* Top Mini Pager */}
+          <CrmTopMiniPager
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredQuotes.length}
+            startIndex={startIndex}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 
@@ -621,30 +672,34 @@ export default function QuotationManagementView({ onOpenClient360 }) {
         </div>
       ) : (
         <>
-          {/* 1. DESKTOP TABLE VIEW (≥ 768px) - Exact Unchanged UX */}
+          {/* 1. DESKTOP TABLE VIEW (≥ 768px) */}
           <div className="crm-desktop-table-container" style={{
             background: '#ffffff',
-            borderRadius: '16px',
+            borderRadius: '12px',
             border: '1px solid #e2e8f0',
             overflow: 'hidden',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
+            boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+            minHeight: 0
           }}>
-            <div style={{ overflowX: 'auto' }}>
+            <div className="crm-table-scroll-container" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-                <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr>
-                    <th style={{ padding: '12px 14px', width: '40px' }}>Compare</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Quote # / Date</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Client</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Insurer & Plan</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Sum Insured</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Total Premium</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Status</th>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Actions</th>
+                    <th style={{ padding: '10px 14px', width: '40px', background: '#f8fafc' }}>Compare</th>
+                    <th style={{ padding: '10px 16px', fontWeight: 700, color: '#475569', background: '#f8fafc' }}>Quote # / Date</th>
+                    <th style={{ padding: '10px 16px', fontWeight: 700, color: '#475569', background: '#f8fafc' }}>Client</th>
+                    <th style={{ padding: '10px 16px', fontWeight: 700, color: '#475569', background: '#f8fafc' }}>Insurer & Plan</th>
+                    <th style={{ padding: '10px 16px', fontWeight: 700, color: '#475569', background: '#f8fafc' }}>Sum Insured</th>
+                    <th style={{ padding: '10px 16px', fontWeight: 700, color: '#475569', background: '#f8fafc' }}>Total Premium</th>
+                    <th style={{ padding: '10px 16px', fontWeight: 700, color: '#475569', background: '#f8fafc' }}>Status</th>
+                    <th style={{ padding: '10px 16px', fontWeight: 700, color: '#475569', textAlign: 'right', background: '#f8fafc' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredQuotes.map((q) => {
+                  {paginatedQuotes.map((q) => {
                     const badge = getStatusBadge(q.status);
                     const isCompared = selectedQuoteForCompare.some(item => item.id === q.id);
 
@@ -825,11 +880,22 @@ export default function QuotationManagementView({ onOpenClient360 }) {
                 </tbody>
               </table>
             </div>
+
+            <CrmTablePaginationBar
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredQuotes.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={handlePageSizeChange}
+              startIndex={startIndex}
+              itemName="quotations"
+            />
           </div>
 
           {/* 2. MOBILE NATIVE CARD DECK VIEW (< 768px) - Matches Clients Page Standard */}
-          <div className="crm-mobile-cards-container">
-            {filteredQuotes.map((q) => {
+          <div className="crm-mobile-cards-container" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+            {paginatedQuotes.map((q) => {
               const badge = getStatusBadge(q.status);
               const isCompared = selectedQuoteForCompare.some(item => item.id === q.id);
               const matchedClient = clients.find(c => String(c.id) === String(q.clientId));
@@ -1061,6 +1127,16 @@ export default function QuotationManagementView({ onOpenClient360 }) {
                 </div>
               );
             })}
+            <CrmTablePaginationBar
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredQuotes.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={handlePageSizeChange}
+              startIndex={startIndex}
+              itemName="quotations"
+            />
           </div>
         </>
       )}

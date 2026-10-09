@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { CrmTablePaginationBar, CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
 const REQUEST_TYPES = [
   { id: 'SPECIAL_DISCOUNT', label: 'Special Discount / NCB Waiver', icon: <DollarSign size={14} />, bg: '#eff6ff', color: '#1d4ed8' },
@@ -42,6 +43,25 @@ export default function ManagerApprovalsView({ onOpenClient360 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [typeFilter, setTypeFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => {
+    const saved = localStorage.getItem('manager_approvals_page_size');
+    return saved ? parseInt(saved, 10) : 10;
+  });
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    try {
+      localStorage.setItem('manager_approvals_page_size', String(newSize));
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, typeFilter]);
 
   // Submit Modal state
   const [showSubmitModal, setShowSubmitModal] = useState(false);
@@ -158,6 +178,10 @@ export default function ManagerApprovalsView({ onOpenClient360 }) {
     return matchesSearch && matchesStatus && matchesType;
   });
 
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedApprovals = filtered.slice(startIndex, startIndex + pageSize);
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'APPROVED':
@@ -175,49 +199,64 @@ export default function ManagerApprovalsView({ onOpenClient360 }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      height: 'calc(100vh - 120px)',
+      maxHeight: 'calc(100vh - 120px)',
+      gap: '0.65rem',
+      overflow: 'hidden'
+    }}>
       
-      {/* Banner */}
+      {/* 1. COMPACT ACTION HEADER (Replaces 160px dark banner) */}
       <div style={{
-        background: 'linear-gradient(135deg, #091726 0%, #0f2b48 100%)',
-        borderRadius: '16px',
-        padding: '1.5rem',
-        color: '#ffffff',
+        background: '#ffffff',
+        borderRadius: '12px',
+        padding: '0.65rem 1rem',
+        border: '1px solid #e2e8f0',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '1rem',
-        boxShadow: '0 4px 14px rgba(0,0,0,0.1)'
+        gap: '0.75rem',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+        flexShrink: 0
       }}>
-        <div style={{ maxWidth: '650px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '4px 10px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 800, marginBottom: '8px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-            <CheckSquare size={14} /> MANAGER APPROVALS & GOVERNANCE
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <CheckSquare size={17} />
           </div>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '-0.02em', color: '#ffffff' }}>
-            Executive Approval Workflows & Exception Desk
-          </h2>
-          <p style={{ fontSize: '0.84rem', color: '#cbd5e1', margin: 0, lineHeight: 1.5 }}>
-            Manage and sign off on high-value quotation discounts, special NCB waivers, HNW policy underwriting exceptions, and portfolio reassignments.
-          </p>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: '#091726' }}>
+                Executive Approvals & Exceptions Desk
+              </h2>
+              <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '2px 7px', borderRadius: '999px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>
+                GOVERNANCE
+              </span>
+            </div>
+            <p style={{ fontSize: '0.74rem', color: '#64748b', margin: 0 }}>
+              Sign-off on quote discounts, special NCB waivers, and HNW exceptions.
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             onClick={() => setShowSubmitModal(true)}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '5px',
               background: '#f59e0b',
               color: '#091726',
               border: 'none',
-              padding: '9px 16px',
-              borderRadius: '8px',
-              fontSize: '0.84rem',
+              padding: '6px 12px',
+              borderRadius: '7px',
+              fontSize: '0.78rem',
               fontWeight: 800,
               cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.35)'
+              boxShadow: '0 1px 4px rgba(245, 158, 11, 0.25)'
             }}
           >
             Submit Request
@@ -229,97 +268,99 @@ export default function ManagerApprovalsView({ onOpenClient360 }) {
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
-              background: 'rgba(255,255,255,0.12)',
-              color: '#ffffff',
-              border: '1px solid rgba(255,255,255,0.2)',
-              padding: '8px 14px',
-              borderRadius: '8px',
-              fontSize: '0.82rem',
+              gap: '5px',
+              background: '#f8fafc',
+              color: '#475569',
+              border: '1px solid #cbd5e1',
+              padding: '6px 10px',
+              borderRadius: '7px',
+              fontSize: '0.78rem',
               fontWeight: 700,
               cursor: 'pointer'
             }}
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             {loading ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* 2. COMPACT 1-LINE KPI STATUS RIBBON */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '12px'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+        gap: '0.5rem',
+        flexShrink: 0
       }}>
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
-            <Clock size={20} />
-          </div>
+        <div style={{ background: '#ffffff', border: '1px solid #fde68a', borderRadius: '10px', padding: '0.55rem 0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Pending Review</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
+            <div style={{ fontSize: '0.68rem', color: '#b45309', fontWeight: 700, textTransform: 'uppercase' }}>Pending Review</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48', marginTop: '1px' }}>
               {approvals.filter(a => a.status === 'PENDING').length}
             </div>
           </div>
+          <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
+            <Clock size={15} />
+          </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
-            <CheckCircle2 size={20} />
-          </div>
+        <div style={{ background: '#ffffff', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '0.55rem 0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Approved Requests</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
+            <div style={{ fontSize: '0.68rem', color: '#15803d', fontWeight: 700, textTransform: 'uppercase' }}>Approved Requests</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48', marginTop: '1px' }}>
               {approvals.filter(a => a.status === 'APPROVED').length}
             </div>
           </div>
+          <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
+            <CheckCircle2 size={15} />
+          </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }}>
-            <XCircle size={20} />
-          </div>
+        <div style={{ background: '#ffffff', border: '1px solid #fecaca', borderRadius: '10px', padding: '0.55rem 0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Rejected Exceptions</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
+            <div style={{ fontSize: '0.68rem', color: '#b91c1c', fontWeight: 700, textTransform: 'uppercase' }}>Rejected Exceptions</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48', marginTop: '1px' }}>
               {approvals.filter(a => a.status === 'REJECTED').length}
             </div>
           </div>
+          <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }}>
+            <XCircle size={15} />
+          </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
-            <DollarSign size={20} />
-          </div>
+        <div style={{ background: '#ffffff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '0.55rem 0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Discount Waivers</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
+            <div style={{ fontSize: '0.68rem', color: '#1d4ed8', fontWeight: 700, textTransform: 'uppercase' }}>Discount Waivers</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48', marginTop: '1px' }}>
               {approvals.filter(a => a.requestType === 'SPECIAL_DISCOUNT').length}
             </div>
+          </div>
+          <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
+            <DollarSign size={15} />
           </div>
         </div>
       </div>
 
-      {/* Control & Search Bar */}
+      {/* 3. TOOLBAR WITH INTEGRATED SEARCH, FILTERS & TOP MINI PAGER */}
       <div style={{
         background: '#ffffff',
-        borderRadius: '14px',
-        padding: '1rem 1.25rem',
+        borderRadius: '10px',
+        padding: '0.55rem 0.85rem',
         border: '1px solid #e2e8f0',
         display: 'flex',
         flexWrap: 'wrap',
-        gap: '12px',
+        gap: '8px',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        flexShrink: 0
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 280px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 240px' }}>
           <form 
             role="search"
             onSubmit={(e) => e.preventDefault()}
             style={{ position: 'relative', width: '100%', margin: 0 }}
           >
-            <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+            <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="search"
               name="manager-approvals-search-filter"
@@ -332,26 +373,26 @@ export default function ManagerApprovalsView({ onOpenClient360 }) {
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{
                 width: '100%',
-                padding: '8px 12px 8px 34px',
-                borderRadius: '8px',
+                padding: '6px 10px 6px 30px',
+                borderRadius: '7px',
                 border: '1px solid #cbd5e1',
-                fontSize: '0.84rem',
+                fontSize: '0.8rem',
                 outline: 'none'
               }}
             />
           </form>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {/* Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             style={{
-              padding: '7px 10px',
-              borderRadius: '8px',
+              padding: '6px 8px',
+              borderRadius: '7px',
               border: '1px solid #cbd5e1',
-              fontSize: '0.82rem',
+              fontSize: '0.78rem',
               color: '#334155',
               fontWeight: 600,
               outline: 'none',
@@ -369,10 +410,10 @@ export default function ManagerApprovalsView({ onOpenClient360 }) {
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
             style={{
-              padding: '7px 10px',
-              borderRadius: '8px',
+              padding: '6px 8px',
+              borderRadius: '7px',
               border: '1px solid #cbd5e1',
-              fontSize: '0.82rem',
+              fontSize: '0.78rem',
               color: '#334155',
               fontWeight: 600,
               outline: 'none',
@@ -384,16 +425,28 @@ export default function ManagerApprovalsView({ onOpenClient360 }) {
               <option key={t.id} value={t.id}>{t.label}</option>
             ))}
           </select>
+
+          {/* Top Mini Pager */}
+          <CrmTopMiniPager
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filtered.length}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 
-      {/* Main Table */}
+      {/* 4. VIEWPORT-LOCKED TABLE CARD WITH INTERNAL SCROLLING & PINNED PAGER */}
       <div style={{
         background: '#ffffff',
-        borderRadius: '16px',
+        borderRadius: '14px',
         border: '1px solid #e2e8f0',
         overflow: 'hidden',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        minHeight: 0
       }}>
         {loading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
@@ -407,20 +460,20 @@ export default function ManagerApprovalsView({ onOpenClient360 }) {
             <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>All advisor discount waivers and policy exceptions will appear here.</div>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="crm-table-scroll-container" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-              <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 10 }}>
                 <tr>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Workflow Type</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Target Client</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Proposed Change</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Submitted By</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Status</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Actions</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569' }}>Workflow Type</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569' }}>Target Client</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569' }}>Proposed Change</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569' }}>Submitted By</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569' }}>Status</th>
+                  <th style={{ padding: '10px 14px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((item) => {
+                {paginatedApprovals.map((item) => {
                   const statusBadge = getStatusBadge(item.status);
                   const typeMeta = getTypeMeta(item.requestType);
 
@@ -551,6 +604,17 @@ export default function ManagerApprovalsView({ onOpenClient360 }) {
             </table>
           </div>
         )}
+
+        {/* Pinned Pagination Footer */}
+        <CrmTablePaginationBar
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={filtered.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={handlePageSizeChange}
+          itemName="approval requests"
+        />
       </div>
 
       {/* SUBMIT REQUEST MODAL */}
