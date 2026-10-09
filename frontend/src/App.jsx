@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import ScrollToTop from './components/common/ScrollToTop';
 import { captureUtmParameters } from './utils/trafficAttribution';
 
 import Home from './pages/Home';
@@ -86,6 +87,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <ScrollToTop />
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative' }}>
         {!isAdminRoute && <Header />}
         
