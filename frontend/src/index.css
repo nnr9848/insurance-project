@@ -3552,8 +3552,39 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* 6. Centralized CRM Data Table System (Industry Standard) */
+.crm-table-scroll-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+  position: relative;
+  background: var(--crm-surface-card);
+}
+
+.crm-table-scroll-container::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.crm-table-scroll-container::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 4px;
+}
+
+.crm-table-scroll-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.crm-table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 .crm-table {
   width: 100%;
+  min-width: 1060px; /* Guarantees columns never crush or truncate off-screen */
   border-collapse: collapse;
   text-align: left;
   font-size: 0.85rem;
@@ -3562,6 +3593,9 @@ h1, h2, h3, h4, h5, h6 {
 .crm-table-head {
   background: var(--crm-surface-muted);
   border-bottom: 1px solid var(--crm-border-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .crm-table-th {
@@ -3573,6 +3607,7 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: 0.05em;
   white-space: nowrap;
   user-select: none;
+  background: var(--crm-surface-muted);
 }
 
 .crm-table-row {
@@ -3608,6 +3643,45 @@ h1, h2, h3, h4, h5, h6 {
 .crm-table-action-btn:hover {
   transform: translateY(-1px);
   filter: brightness(0.96);
+}
+
+/* CRM Table Pagination Footer (Enterprise Standard) */
+.crm-table-pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  background: #ffffff;
+  border-top: 1px solid var(--crm-border-subtle);
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+  color: var(--crm-text-secondary);
+}
+
+.crm-pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+  font-weight: 600;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.crm-pagination-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.crm-pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* =========================================================

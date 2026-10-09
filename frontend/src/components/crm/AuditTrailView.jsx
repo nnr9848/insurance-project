@@ -19,7 +19,8 @@ import {
   Database,
   Eye,
   SlidersHorizontal,
-  ChevronRight
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 
@@ -30,6 +31,8 @@ export default function AuditTrailView({ onOpenClient360 }) {
   const [actionFilter, setActionFilter] = useState('ALL');
   const [fieldFilter, setFieldFilter] = useState('ALL');
   const [userFilter, setUserFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
 
   useEffect(() => {
     fetchAuditFeed();
@@ -92,10 +95,16 @@ export default function AuditTrailView({ onOpenClient360 }) {
 
     const matchesAction = actionFilter === 'ALL' || item.action === actionFilter;
     const matchesUser = userFilter === 'ALL' || item.performedByName === userFilter;
-    const matchesField = fieldFilter === 'ALL' || item.fieldName === fieldFilter;
-
     return matchesSearch && matchesAction && matchesUser && matchesField;
   });
+
+  // Pagination calculation
+  const totalRecords = filteredLogs.length;
+  const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalRecords);
+  const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 
   // Extract unique users and fields for filters
   const uniqueUsers = Array.from(new Set(auditLogs.map(l => l.performedByName).filter(Boolean)));
@@ -345,21 +354,22 @@ export default function AuditTrailView({ onOpenClient360 }) {
             </div>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-              <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                <tr>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Timestamp</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>User / Employee</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Action & Target</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Field Modified</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Original Value</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Updated Value</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLogs.map((log) => {
+          <>
+            <div className="crm-table-scroll-container" style={{ maxHeight: '680px', overflowY: 'auto' }}>
+              <table className="crm-table" style={{ minWidth: '1060px' }}>
+                <thead className="crm-table-head">
+                  <tr>
+                    <th className="crm-table-th" style={{ minWidth: '170px' }}>Timestamp</th>
+                    <th className="crm-table-th" style={{ minWidth: '180px' }}>User / Employee</th>
+                    <th className="crm-table-th" style={{ minWidth: '190px' }}>Action & Target</th>
+                    <th className="crm-table-th" style={{ minWidth: '160px' }}>Field Modified</th>
+                    <th className="crm-table-th" style={{ minWidth: '160px' }}>Original Value</th>
+                    <th className="crm-table-th" style={{ minWidth: '160px' }}>Updated Value</th>
+                    <th className="crm-table-th" style={{ minWidth: '110px', textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedLogs.map((log) => {
                   const badge = getActionBadge(log.action);
                   return (
                     <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = '#ffffff'}>
@@ -484,8 +494,64 @@ export default function AuditTrailView({ onOpenClient360 }) {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+
+          {/* Table Pagination Bar */}
+          <div className="crm-table-pagination-bar">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Rows per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  color: '#334155'
+                }}
+              >
+                <option value={15}>15</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span style={{ color: '#64748b', marginLeft: '6px' }}>
+                Showing <strong>{totalRecords === 0 ? 0 : startIndex + 1}</strong> – <strong>{endIndex}</strong> of <strong>{totalRecords}</strong> audit logs
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color: '#64748b', marginRight: '4px' }}>
+                Page <strong>{safeCurrentPage}</strong> of <strong>{totalPages}</strong>
+              </span>
+
+              <button
+                type="button"
+                className="crm-pagination-btn"
+                disabled={safeCurrentPage <= 1}
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              >
+                <ChevronLeft size={14} /> Previous
+              </button>
+
+              <button
+                type="button"
+                className="crm-pagination-btn"
+                disabled={safeCurrentPage >= totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              >
+                Next <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
 
     </div>
   );

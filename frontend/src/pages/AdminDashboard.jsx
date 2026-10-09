@@ -978,7 +978,7 @@ export default function AdminDashboard() {
       </aside>
 
       {/* 2. MAIN APP SHELL WORKSPACE (Natural Document Window Scrolling) */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh' }}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: '100vh', maxWidth: '100vw' }}>
         
         {/* TOP CRM APP BAR (Sticky to Viewport Top) */}
         <header 
