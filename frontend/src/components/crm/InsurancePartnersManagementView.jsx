@@ -21,7 +21,8 @@ import {
   CheckCircle2,
   FolderOpen,
   GripVertical,
-  RotateCcw
+  RotateCcw,
+  FileText
 } from 'lucide-react';
 import { portalService } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -54,9 +55,14 @@ export default function InsurancePartnersManagementView() {
     logoUrl: '',
     logoKey: 'starHealthLogo',
     displayOrder: 1,
-    isActive: true
+    isActive: true,
+    slug: '',
+    brochureUrl: '',
+    description: '',
+    keyHighlights: ''
   });
-  const [submitting, setSubmitting] = useState(false);
+  const [brochureUploading, setBrochureUploading] = useState(false);
+  const brochureInputRef = useRef(null);
 
   const fetchPartners = async () => {
     setLoading(true);
@@ -90,7 +96,11 @@ export default function InsurancePartnersManagementView() {
       logoUrl: '',
       logoKey: 'starHealthLogo',
       displayOrder: partners.length + 1,
-      isActive: true
+      isActive: true,
+      slug: '',
+      brochureUrl: '',
+      description: '',
+      keyHighlights: ''
     });
     setModalOpen(true);
   };
@@ -112,7 +122,11 @@ export default function InsurancePartnersManagementView() {
       logoUrl: partner.logoUrl || '',
       logoKey: partner.logoKey || 'starHealthLogo',
       displayOrder: partner.displayOrder ?? 0,
-      isActive: partner.isActive ?? true
+      isActive: partner.isActive ?? true,
+      slug: partner.slug || '',
+      brochureUrl: partner.brochureUrl || '',
+      description: partner.description || '',
+      keyHighlights: partner.keyHighlights || ''
     });
     setModalOpen(true);
   };
@@ -252,6 +266,40 @@ export default function InsurancePartnersManagementView() {
       toast?.show('Logo image uploaded successfully!', 'success');
     };
     reader.readAsDataURL(file);
+  };
+
+  // PDF Brochure Upload handler
+  const handleBrochureUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.includes('pdf')) {
+      toast?.show('Please select a valid PDF brochure file.', 'error');
+      return;
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+      toast?.show('Brochure file should be below 25MB.', 'error');
+      return;
+    }
+
+    if (editingPartner?.id) {
+      setBrochureUploading(true);
+      try {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', file);
+        const updated = await portalService.uploadPartnerBrochure(editingPartner.id, uploadFormData);
+        setFormData(prev => ({ ...prev, brochureUrl: updated.brochureUrl }));
+        setPartners(prev => prev.map(p => p.id === editingPartner.id ? updated : p));
+        toast?.show('Official PDF brochure uploaded successfully!', 'success');
+      } catch (err) {
+        toast?.show(err.response?.data?.message || 'Failed to upload brochure to server.', 'error');
+      } finally {
+        setBrochureUploading(false);
+      }
+    } else {
+      toast?.show('Please save the partner first, then upload the brochure.', 'info');
+    }
   };
 
   const handleSaveSubmit = async (e) => {
@@ -626,6 +674,25 @@ export default function InsurancePartnersManagementView() {
 
                       <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <a
+                            href={`/partners/${partner.slug || partner.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="View Public Brochure Page"
+                            style={{
+                              padding: '0.35rem 0.55rem',
+                              borderRadius: '6px',
+                              background: partner.brochureUrl ? '#f0fdf4' : '#f8fafc',
+                              color: partner.brochureUrl ? '#16a34a' : '#64748b',
+                              border: `1px solid ${partner.brochureUrl ? '#bbf7d0' : '#e2e8f0'}`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              textDecoration: 'none'
+                            }}
+                          >
+                            <FileText size={14} />
+                          </a>
+
                           <button
                             onClick={() => handleOpenEdit(partner)}
                             title="Edit Configuration"
@@ -858,8 +925,130 @@ export default function InsurancePartnersManagementView() {
                   />
                 </div>
                 <span style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.2rem', display: 'block' }}>
-                  Visitors will be securely redirected to this URL after entering their inquiry.
+                  Visitors can also click through to the partner's official portal if needed.
                 </span>
+              </div>
+
+              {/* PDF BROCHURE UPLOAD SECTION */}
+              <div style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                padding: '1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <FolderOpen size={16} color="var(--primary-navy, #0f2b48)" />
+                    <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#1e293b' }}>
+                      Official Company PDF Brochure
+                    </span>
+                  </div>
+                  {formData.brochureUrl && (
+                    <a
+                      href={formData.brochureUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: '0.74rem', color: '#059669', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <CheckCircle2 size={13} /> View Current PDF
+                    </a>
+                  )}
+                </div>
+
+                <input 
+                  type="file" 
+                  ref={brochureInputRef} 
+                  onChange={handleBrochureUpload} 
+                  accept="application/pdf"
+                  style={{ display: 'none' }}
+                />
+
+                <div
+                  onClick={() => brochureInputRef.current?.click()}
+                  style={{
+                    border: '1.5px dashed #cbd5e1',
+                    borderRadius: '8px',
+                    padding: '0.9rem',
+                    textAlign: 'center',
+                    background: '#ffffff',
+                    cursor: brochureUploading ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <Upload size={18} color="#64748b" style={{ margin: '0 auto 0.25rem' }} />
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b' }}>
+                    {brochureUploading ? 'Uploading PDF Brochure...' : (formData.brochureUrl ? 'Click to replace company brochure (PDF)' : 'Click to upload official product brochure (PDF)')}
+                  </div>
+                  <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                    Max 25MB • Displayed directly on customer-facing /partners/:slug page
+                  </span>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#64748b', marginBottom: '0.2rem' }}>
+                    Or Direct Brochure URL
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://example.com/star-health-brochure.pdf"
+                    value={formData.brochureUrl}
+                    onChange={(e) => setFormData({ ...formData, brochureUrl: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.65rem',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.82rem',
+                      outline: 'none',
+                      background: '#ffffff'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Short Company Description */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.35rem' }}>
+                  Company Overview & Product Narrative
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Overview of insurer coverage, hospitals, and unique selling points..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 0.75rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.86rem',
+                    outline: 'none',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+
+              {/* Key Highlights */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.35rem' }}>
+                  Key Coverage Highlights (Comma-separated)
+                </label>
+                <input
+                  type="text"
+                  placeholder="14,000+ Cashless Hospitals, Day-1 Cover, 2-Hour Approvals"
+                  value={formData.keyHighlights}
+                  onChange={(e) => setFormData({ ...formData, keyHighlights: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 0.75rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.86rem',
+                    outline: 'none'
+                  }}
+                />
               </div>
 
               {/* MEDIA PICKER & UPLOADER SECTION */}

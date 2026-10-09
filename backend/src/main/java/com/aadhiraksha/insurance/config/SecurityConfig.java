@@ -61,6 +61,8 @@ public class SecurityConfig {
                                 AntPathRequestMatcher.antMatcher("/api/claims/submit"),
                                 AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/partners"),
                                 AntPathRequestMatcher.antMatcher("/api/partners"),
+                                AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/partners/**"),
+                                AntPathRequestMatcher.antMatcher("/api/partners/**"),
                                 AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/settings/business-profile"),
                                 AntPathRequestMatcher.antMatcher("/api/reviews"),
                                 AntPathRequestMatcher.antMatcher("/api/customer/documents/view-file/**"),

@@ -21,10 +21,12 @@ public class InsurancePartnerController {
 
     private final InsurancePartnerRepository partnerRepository;
     private final AuditService auditService;
+    private final com.aadhiraksha.insurance.service.FileStorageService fileStorageService;
 
-    public InsurancePartnerController(InsurancePartnerRepository partnerRepository, AuditService auditService) {
+    public InsurancePartnerController(InsurancePartnerRepository partnerRepository, AuditService auditService, com.aadhiraksha.insurance.service.FileStorageService fileStorageService) {
         this.partnerRepository = partnerRepository;
         this.auditService = auditService;
+        this.fileStorageService = fileStorageService;
     }
 
     // Public Endpoint: Retrieve active insurance partners for homepage grid
@@ -32,6 +34,17 @@ public class InsurancePartnerController {
     @Operation(summary = "Get all active insurance partners for the public portal")
     public ResponseEntity<List<InsurancePartner>> getActivePartners() {
         return ResponseEntity.ok(partnerRepository.findByIsActiveTrueOrderByDisplayOrderAsc());
+    }
+
+    // Public Endpoint: Retrieve partner by slug for on-platform brochure & profile page
+    @GetMapping("/partners/{slug}")
+    @Operation(summary = "Get single insurance partner by URL slug (public access)")
+    public ResponseEntity<InsurancePartner> getPartnerBySlug(@PathVariable String slug) {
+        return partnerRepository.findBySlugIgnoreCase(slug)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> partnerRepository.findBySlug(slug)
+                        .map(ResponseEntity::ok)
+                        .orElse(ResponseEntity.notFound().build()));
     }
 
     // Admin Endpoint: List all partners (including inactive)
@@ -65,6 +78,9 @@ public class InsurancePartnerController {
         if (partner.getIsActive() == null) {
             partner.setIsActive(true);
         }
+        if (partner.getSlug() == null || partner.getSlug().isBlank()) {
+            partner.setSlug(partner.getName().trim().toLowerCase().replaceAll("[^a-z0-9]+", "-"));
+        }
 
         InsurancePartner saved = partnerRepository.save(partner);
 
@@ -85,10 +101,10 @@ public class InsurancePartnerController {
         return ResponseEntity.ok(saved);
     }
 
-    // Admin Endpoint: Update partner details (URL, Logo, Category, Display Order)
+    // Admin Endpoint: Update partner details (URL, Logo, Category, Display Order, Brochure, Highlights)
     @PutMapping("/admin/partners/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER')")
-    @Operation(summary = "Update an existing partner's redirection URL, logo, or category")
+    @Operation(summary = "Update an existing partner's redirection URL, logo, brochure, or category")
     public ResponseEntity<InsurancePartner> updatePartner(
             @PathVariable Long id,
             @RequestBody InsurancePartner payload,
@@ -104,6 +120,10 @@ public class InsurancePartnerController {
         if (payload.getLogoKey() != null) partner.setLogoKey(payload.getLogoKey().trim());
         if (payload.getDisplayOrder() != null) partner.setDisplayOrder(payload.getDisplayOrder());
         if (payload.getIsActive() != null) partner.setIsActive(payload.getIsActive());
+        if (payload.getSlug() != null && !payload.getSlug().isBlank()) partner.setSlug(payload.getSlug().trim().toLowerCase().replaceAll("[^a-z0-9]+", "-"));
+        if (payload.getBrochureUrl() != null) partner.setBrochureUrl(payload.getBrochureUrl().trim());
+        if (payload.getDescription() != null) partner.setDescription(payload.getDescription().trim());
+        if (payload.getKeyHighlights() != null) partner.setKeyHighlights(payload.getKeyHighlights().trim());
 
         InsurancePartner updated = partnerRepository.save(partner);
 
@@ -122,6 +142,45 @@ public class InsurancePartnerController {
         );
 
         return ResponseEntity.ok(updated);
+    }
+
+    // Admin Endpoint: Upload PDF Brochure directly for a partner
+    @PostMapping(value = "/admin/partners/{id}/upload-brochure", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Upload official company PDF brochure for an insurance partner")
+    public ResponseEntity<InsurancePartner> uploadPartnerBrochure(
+            @PathVariable Long id,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file,
+            Authentication authentication
+    ) {
+        InsurancePartner partner = partnerRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Partner not found with ID: " + id));
+
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("Brochure file cannot be empty");
+        }
+
+        String storedFileName = fileStorageService.storeFile(file, "brochure_" + partner.getSlug() + ".pdf");
+        String fileDownloadUri = "/api/crm/documents/view-file/" + storedFileName;
+        partner.setBrochureUrl(fileDownloadUri);
+
+        InsurancePartner saved = partnerRepository.save(partner);
+
+        User performedBy = (authentication != null && authentication.getPrincipal() instanceof User)
+                ? (User) authentication.getPrincipal() : null;
+
+        auditService.logAction(
+                "INSURANCE_PARTNER",
+                id,
+                "UPLOAD_BROCHURE",
+                "brochure",
+                null,
+                "Uploaded brochure for " + partner.getName(),
+                performedBy,
+                "Admin attached new product brochure PDF"
+        );
+
+        return ResponseEntity.ok(saved);
     }
 
     // Admin Endpoint: Toggle Active/Inactive status

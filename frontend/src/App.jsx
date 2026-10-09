@@ -16,6 +16,7 @@ import NetworkHospitals from './pages/NetworkHospitals';
 import BecomePOSP from './pages/BecomePOSP';
 import Loans from './pages/Loans';
 import About from './pages/About';
+import PartnerDetail from './pages/PartnerDetail';
 import LegalCompliance from './pages/LegalCompliance';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
@@ -108,6 +109,7 @@ export default function App() {
             <Route path="/loans" element={<Loans />} />
             <Route path="/about" element={<About />} />
             <Route path="/about-us" element={<About />} />
+            <Route path="/partners/:slug" element={<PartnerDetail />} />
 
             {/* Legal, Compliance & IRDAI Regulatory Disclosures */}
             <Route path="/privacy-policy" element={<LegalCompliance />} />

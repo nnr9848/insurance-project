@@ -380,6 +380,10 @@ export const portalService = {
     const res = await api.get('/partners');
     return res.data;
   },
+  getPartnerBySlug: async (slug) => {
+    const res = await api.get(`/partners/${slug}`);
+    return res.data;
+  },
   getAdminPartners: async () => {
     const res = await api.get('/admin/partners');
     return res.data;
@@ -390,6 +394,14 @@ export const portalService = {
   },
   updatePartner: async (id, data) => {
     const res = await api.put(`/admin/partners/${id}`, data);
+    return res.data;
+  },
+  uploadPartnerBrochure: async (id, formData) => {
+    const res = await api.post(`/admin/partners/${id}/upload-brochure`, formData, {
+      headers: {
+        'Content-Type': undefined,
+      },
+    });
     return res.data;
   },
   togglePartnerStatus: async (id) => {

@@ -444,12 +444,14 @@ export default function Home() {
           <div className={`pb-partners-grid ${showAllPartnersMobile ? 'mobile-expanded' : 'mobile-clamped'}`}>
             {filteredPartners.map((partner, idx) => {
               const logo = getPartnerLogo(partner);
+              const partnerSlug = partner.slug || partner.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
               return (
-                <div
+                <Link
                   key={partner.id || idx}
+                  to={`/partners/${partnerSlug}`}
                   className="partner-card-modern"
-                  title={`Check instant quotes with ${partner.name}`}
-                  onClick={() => setSelectedPartnerModal({ partner, logo })}
+                  title={`View official plans, brochures & quotes for ${partner.name}`}
+                  style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
                   <img
                     src={logo}
@@ -457,7 +459,7 @@ export default function Home() {
                     className="partner-logo-img"
                     loading="lazy"
                   />
-                </div>
+                </Link>
               );
             })}
           </div>

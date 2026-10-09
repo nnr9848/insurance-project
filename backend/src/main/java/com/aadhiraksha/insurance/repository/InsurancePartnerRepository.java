@@ -12,4 +12,8 @@ public interface InsurancePartnerRepository extends JpaRepository<InsurancePartn
     List<InsurancePartner> findByIsActiveTrueOrderByDisplayOrderAsc();
 
     List<InsurancePartner> findAllByOrderByDisplayOrderAsc();
+
+    java.util.Optional<InsurancePartner> findBySlug(String slug);
+
+    java.util.Optional<InsurancePartner> findBySlugIgnoreCase(String slug);
 }

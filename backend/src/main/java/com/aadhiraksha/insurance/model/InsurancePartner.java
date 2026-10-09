@@ -29,6 +29,18 @@ public class InsurancePartner {
     @Column(name = "redirect_url", nullable = false, columnDefinition = "text")
     private String redirectUrl;
 
+    @Column(name = "slug", length = 120, unique = true)
+    private String slug;
+
+    @Column(name = "brochure_url", columnDefinition = "text")
+    private String brochureUrl;
+
+    @Column(name = "description", columnDefinition = "text")
+    private String description;
+
+    @Column(name = "key_highlights", columnDefinition = "text")
+    private String keyHighlights;
+
     @Column(name = "display_order")
     private Integer displayOrder = 0;
 
@@ -46,13 +58,17 @@ public class InsurancePartner {
     public InsurancePartner() {
     }
 
-    public InsurancePartner(Long id, String name, String category, String logoUrl, String logoKey, String redirectUrl, Integer displayOrder, Boolean isActive, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public InsurancePartner(Long id, String name, String category, String logoUrl, String logoKey, String redirectUrl, String slug, String brochureUrl, String description, String keyHighlights, Integer displayOrder, Boolean isActive, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.name = name;
         this.category = category;
         this.logoUrl = logoUrl;
         this.logoKey = logoKey;
         this.redirectUrl = redirectUrl;
+        this.slug = slug;
+        this.brochureUrl = brochureUrl;
+        this.description = description;
+        this.keyHighlights = keyHighlights;
         this.displayOrder = displayOrder != null ? displayOrder : 0;
         this.isActive = isActive != null ? isActive : true;
         this.createdAt = createdAt;
@@ -105,6 +121,38 @@ public class InsurancePartner {
 
     public void setRedirectUrl(String redirectUrl) {
         this.redirectUrl = redirectUrl;
+    }
+
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
+    }
+
+    public String getBrochureUrl() {
+        return brochureUrl;
+    }
+
+    public void setBrochureUrl(String brochureUrl) {
+        this.brochureUrl = brochureUrl;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getKeyHighlights() {
+        return keyHighlights;
+    }
+
+    public void setKeyHighlights(String keyHighlights) {
+        this.keyHighlights = keyHighlights;
     }
 
     public Integer getDisplayOrder() {
