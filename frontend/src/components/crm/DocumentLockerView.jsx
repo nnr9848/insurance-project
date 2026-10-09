@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react';
 import { crmService } from '../../services/api';
+import { CrmTablePaginationBar, CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
 const DOC_TYPES = [
   { id: 'AADHAAR', label: 'Aadhaar Card' },
@@ -40,6 +41,21 @@ export default function DocumentLockerView({ onOpenClient360 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [typeFilter, setTypeFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => {
+    const saved = localStorage.getItem('document_locker_page_size');
+    return saved ? parseInt(saved, 10) : 10;
+  });
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    try {
+      localStorage.setItem('document_locker_page_size', String(newSize));
+    } catch (e) {
+      // ignore
+    }
+  };
 
   // Upload Modal State
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -195,35 +211,72 @@ export default function DocumentLockerView({ onOpenClient360 }) {
     return `${mb} MB`;
   };
 
+  // Pagination calculation
+  const totalRecords = filteredDocs.length;
+  const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalRecords);
+  const paginatedDocs = filteredDocs.slice(startIndex, endIndex);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: 'calc(100vh - 120px)',
+      maxHeight: 'calc(100vh - 120px)',
+      gap: '0.75rem',
+      overflow: 'hidden'
+    }}>
       
-      {/* Banner */}
+      {/* 1. Sleek Compact Header Bar (Industry Standard SaaS) */}
       <div style={{
-        background: 'linear-gradient(135deg, #091726 0%, #0f2b48 100%)',
-        borderRadius: '16px',
-        padding: '1.5rem',
-        color: '#ffffff',
         display: 'flex',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '1rem',
-        boxShadow: '0 4px 14px rgba(0,0,0,0.1)'
+        gap: '0.75rem',
+        padding: '0 0 0.25rem 0',
+        flexShrink: 0
       }}>
-        <div style={{ maxWidth: '650px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '4px 10px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 800, marginBottom: '8px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-            <FolderCheck size={14} /> DIGITAL KYC & PROPOSAL LOCKER
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            background: '#fef3c7',
+            color: '#b45309',
+            border: '1px solid #fde68a',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <FolderCheck size={18} />
           </div>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '-0.02em', color: '#ffffff' }}>
-            Document Collection & Verification Desk
-          </h2>
-          <p style={{ fontSize: '0.84rem', color: '#cbd5e1', margin: 0, lineHeight: 1.5 }}>
-            Centralized document repository for Aadhaar, PAN, medical discharge summaries, vehicle RC books, and signed proposal forms with verification workflows.
-          </p>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy, #0f2b48)', margin: 0, letterSpacing: '-0.02em' }}>
+                Document Locker & KYC Vault
+              </h2>
+              <span style={{
+                background: '#f1f5f9',
+                color: '#475569',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '999px',
+                border: '1px solid #e2e8f0'
+              }}>
+                {filteredDocs.length} files
+              </span>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
+              KYC verification, proposal forms, policy archives & compliance documents
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             onClick={() => setShowUploadModal(true)}
             style={{
@@ -233,15 +286,15 @@ export default function DocumentLockerView({ onOpenClient360 }) {
               background: '#f59e0b',
               color: '#091726',
               border: 'none',
-              padding: '9px 16px',
+              padding: '7px 14px',
               borderRadius: '8px',
-              fontSize: '0.84rem',
+              fontSize: '0.8rem',
               fontWeight: 800,
               cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.35)'
+              boxShadow: '0 1px 3px rgba(245, 158, 11, 0.3)'
             }}
           >
-            <Upload size={15} /> Upload KYC Document
+            <Upload size={14} /> Upload KYC Doc
           </button>
 
           <button
@@ -251,86 +304,90 @@ export default function DocumentLockerView({ onOpenClient360 }) {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              background: 'rgba(255,255,255,0.12)',
-              color: '#ffffff',
-              border: '1px solid rgba(255,255,255,0.2)',
-              padding: '8px 14px',
+              background: '#ffffff',
+              color: '#0f2b48',
+              border: '1px solid #cbd5e1',
+              padding: '6px 12px',
               borderRadius: '8px',
-              fontSize: '0.82rem',
+              fontSize: '0.78rem',
               fontWeight: 700,
-              cursor: 'pointer'
+              cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+              transition: 'all 0.15s ease'
             }}
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} color="#059669" />
             {loading ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </div>
 
-      {/* KPI Stats */}
+      {/* KPI Stats Bar (Compact & Sleek) */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '12px'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: '10px',
+        flexShrink: 0
       }}>
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
-            <FileText size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.65rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', flexShrink: 0 }}>
+            <FileText size={17} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Documents</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>{documents.length}</div>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Documents</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.2 }}>{documents.length}</div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
-            <CheckCircle2 size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.65rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a', flexShrink: 0 }}>
+            <CheckCircle2 size={17} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Verified & Approved</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Verified & Approved</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.2 }}>
               {documents.filter(d => d.verificationStatus === 'VERIFIED').length}
             </div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
-            <Clock size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.65rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706', flexShrink: 0 }}>
+            <Clock size={17} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Pending KYC Review</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Pending KYC Review</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.2 }}>
               {documents.filter(d => d.verificationStatus === 'PENDING_REVIEW').length}
             </div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }}>
-            <XCircle size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.65rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', flexShrink: 0 }}>
+            <XCircle size={17} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Rejected / Re-upload Due</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Rejected / Re-upload Due</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.2 }}>
               {documents.filter(d => d.verificationStatus === 'REJECTED').length}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Control & Search Bar */}
+      {/* Control & Search Bar (Pinned at top of table) */}
       <div style={{
         background: '#ffffff',
-        borderRadius: '14px',
-        padding: '1rem 1.25rem',
+        borderRadius: '12px',
+        padding: '0.75rem 1rem',
         border: '1px solid #e2e8f0',
         display: 'flex',
         flexWrap: 'wrap',
-        gap: '12px',
+        gap: '10px',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 280px' }}>
           <form 
@@ -346,15 +403,18 @@ export default function DocumentLockerView({ onOpenClient360 }) {
               autoComplete="search"
               data-lpignore="true"
               data-form-type="other"
-              placeholder="Search by file name, client name, phone, or doc type..."
+              placeholder="Search file name, client, phone, doc type..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               style={{
                 width: '100%',
-                padding: '8px 12px 8px 34px',
+                padding: '7px 12px 7px 34px',
                 borderRadius: '8px',
                 border: '1px solid #cbd5e1',
-                fontSize: '0.84rem',
+                fontSize: '0.82rem',
                 outline: 'none'
               }}
             />
@@ -365,12 +425,15 @@ export default function DocumentLockerView({ onOpenClient360 }) {
           {/* Status Filter */}
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setCurrentPage(1);
+            }}
             style={{
-              padding: '7px 10px',
+              padding: '6px 10px',
               borderRadius: '8px',
               border: '1px solid #cbd5e1',
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               color: '#334155',
               fontWeight: 600,
               outline: 'none',
@@ -386,12 +449,15 @@ export default function DocumentLockerView({ onOpenClient360 }) {
           {/* Doc Type Filter */}
           <select
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
+            onChange={(e) => {
+              setTypeFilter(e.target.value);
+              setCurrentPage(1);
+            }}
             style={{
-              padding: '7px 10px',
+              padding: '6px 10px',
               borderRadius: '8px',
               border: '1px solid #cbd5e1',
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               color: '#334155',
               fontWeight: 600,
               outline: 'none',
@@ -403,16 +469,27 @@ export default function DocumentLockerView({ onOpenClient360 }) {
               <option key={t.id} value={t.id}>{t.label}</option>
             ))}
           </select>
+
+          {/* Top Mini Pager */}
+          <CrmTopMiniPager
+            currentPage={safeCurrentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 
-      {/* Main Table */}
+      {/* Main Table Card (Viewport-locked Flex container) */}
       <div style={{
         background: '#ffffff',
         borderRadius: '16px',
         border: '1px solid #e2e8f0',
         overflow: 'hidden',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
+        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        minHeight: 0
       }}>
         {loading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
@@ -426,20 +503,21 @@ export default function DocumentLockerView({ onOpenClient360 }) {
             <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>Click "Upload KYC Document" to attach files to any client.</div>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-              <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                <tr>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Document Name & Type</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Client</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Size & Date</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Uploaded By</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Verification</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
+          <>
+            <div className="crm-table-scroll-container" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+              <table className="crm-table" style={{ minWidth: '1060px' }}>
+                <thead className="crm-table-head">
+                  <tr>
+                    <th className="crm-table-th" style={{ minWidth: '220px' }}>Document Name & Type</th>
+                    <th className="crm-table-th" style={{ minWidth: '180px' }}>Client</th>
+                    <th className="crm-table-th" style={{ minWidth: '150px' }}>Size & Date</th>
+                    <th className="crm-table-th" style={{ minWidth: '150px' }}>Uploaded By</th>
+                    <th className="crm-table-th" style={{ minWidth: '150px' }}>Verification</th>
+                    <th className="crm-table-th" style={{ minWidth: '150px', textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
               <tbody>
-                {filteredDocs.map((d) => {
+                {paginatedDocs.map((d) => {
                   const badge = getStatusBadge(d.verificationStatus);
 
                   return (
@@ -559,8 +637,20 @@ export default function DocumentLockerView({ onOpenClient360 }) {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+
+          {/* Pinned Bottom Pagination Footer */}
+          <CrmTablePaginationBar
+            currentPage={safeCurrentPage}
+            totalPages={totalPages}
+            totalRecords={totalRecords}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
+            unitName="documents"
+          />
+        </>
+      )}
+    </div>
 
       {/* UPLOAD MODAL */}
       {showUploadModal && (

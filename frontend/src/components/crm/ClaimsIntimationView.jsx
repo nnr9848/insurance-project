@@ -29,6 +29,7 @@ import { portalService, crmService } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import WhatsAppIcon from '../common/WhatsAppIcon';
 import { normalizePhoneNumber, formatWhatsAppNumber } from '../../utils/crmDeduplication';
+import { CrmTablePaginationBar, CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
 const CLAIM_STATUSES = [
   { key: 'SUBMITTED', label: 'Submitted (New)', color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' },
@@ -53,6 +54,25 @@ export default function ClaimsIntimationView({
   const [updatingId, setUpdatingId] = useState(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => {
+    const saved = localStorage.getItem('claims_desk_page_size');
+    return saved ? parseInt(saved, 10) : 10;
+  });
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    try {
+      localStorage.setItem('claims_desk_page_size', String(newSize));
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, statusFilter, typeFilter]);
 
   // New claim form state
   const [formData, setFormData] = useState({
@@ -167,51 +187,60 @@ export default function ClaimsIntimationView({
     return matchesSearch && matchesStatus && matchesType;
   });
 
+  const totalPages = Math.ceil(filteredClaims.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedClaims = filteredClaims.slice(startIndex, startIndex + pageSize);
+
   return (
-    <div className="crm-claims-desk" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div className="crm-claims-desk" style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      height: 'calc(100vh - 120px)',
+      maxHeight: 'calc(100vh - 120px)',
+      gap: '0.65rem',
+      overflow: 'hidden'
+    }}>
       
       {/* 1. TOP EXECUTIVE TELEMETRY BAR */}
       <div 
         style={{ 
           background: 'linear-gradient(135deg, #091726 0%, #1e293b 100%)', 
-          borderRadius: '16px', 
-          padding: '1.4rem 1.6rem', 
+          borderRadius: '12px', 
+          padding: '0.8rem 1.25rem', 
           color: '#ffffff',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '1rem',
-          boxShadow: '0 4px 20px -4px rgba(9, 23, 38, 0.2)'
+          gap: '0.75rem',
+          boxShadow: '0 2px 10px rgba(9, 23, 38, 0.15)',
+          flexShrink: 0
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
             <span style={{ 
               background: 'rgba(220, 38, 38, 0.2)', 
               color: '#f87171', 
               border: '1px solid rgba(248, 113, 113, 0.35)', 
-              fontSize: '0.72rem', 
+              fontSize: '0.68rem', 
               fontWeight: 800, 
-              padding: '0.15rem 0.6rem', 
+              padding: '0.1rem 0.5rem', 
               borderRadius: '20px', 
               textTransform: 'uppercase',
               letterSpacing: '0.04em',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.3rem'
+              gap: '0.25rem'
             }}>
-              <ShieldAlert size={12} /> Post-Sales Claims Desk
+              <ShieldAlert size={11} /> Claims Desk
             </span>
-            <span style={{ color: '#64748b', fontSize: '0.75rem' }}>•</span>
-            <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: 600 }}>Emergency Cashless & TPA Assistance</span>
+            <span style={{ color: '#64748b', fontSize: '0.72rem' }}>•</span>
+            <span style={{ color: '#94a3b8', fontSize: '0.76rem', fontWeight: 600 }}>Emergency Cashless & TPA Assistance</span>
           </div>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, color: '#ffffff' }}>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: '#ffffff' }}>
             Insurance Claims Intimation & Settlement Desk
           </h2>
-          <p style={{ color: '#94a3b8', fontSize: '0.82rem', margin: '3px 0 0 0', fontWeight: 500 }}>
-            Real-time hospitalization intimations, motor garage surveyor tracking, 1-tap WhatsApp updates, and full client portfolio syncing.
-          </p>
         </div>
 
         <button
@@ -220,19 +249,19 @@ export default function ClaimsIntimationView({
             background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-hover))',
             color: '#ffffff',
             border: 'none',
-            padding: '0.65rem 1.15rem',
-            borderRadius: '10px',
+            padding: '0.45rem 0.95rem',
+            borderRadius: '8px',
             fontWeight: 800,
-            fontSize: '0.82rem',
+            fontSize: '0.78rem',
             cursor: 'pointer',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '0.4rem',
+            gap: '0.35rem',
             boxShadow: 'var(--shadow-gold)',
             transition: 'all 0.2s ease'
           }}
         >
-          <Plus size={16} /> Lodge New Claim Intimation
+          <Plus size={15} /> Lodge New Claim Intimation
         </button>
       </div>
 
@@ -444,11 +473,29 @@ export default function ClaimsIntimationView({
               <option key={s.key} value={s.key}>{s.label}</option>
             ))}
           </select>
+
+          <CrmTopMiniPager
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredClaims.length}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 
       {/* 4. ACTIVE CLAIMS FEED */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+      <div 
+        className="crm-table-scroll-container" 
+        style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '0.85rem',
+          flex: 1,
+          overflowY: 'auto',
+          minHeight: 0,
+          paddingRight: '4px'
+        }}
+      >
         {filteredClaims.length === 0 ? (
           <div style={{ background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-subtle)', padding: '3.5rem 1.5rem', textAlign: 'center' }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#eff6ff', color: '#2563eb', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
@@ -484,7 +531,7 @@ export default function ClaimsIntimationView({
             </button>
           </div>
         ) : (
-          filteredClaims.map((claim) => {
+          paginatedClaims.map((claim) => {
             const matchingClient = findMatchingClient(claim);
             const statusObj = CLAIM_STATUSES.find(s => s.key === claim.status) || {
               label: claim.status,
@@ -724,6 +771,17 @@ export default function ClaimsIntimationView({
           })
         )}
       </div>
+
+      {/* Pinned Pagination Footer */}
+      <CrmTablePaginationBar
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalItems={filteredClaims.length}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={handlePageSizeChange}
+        itemName="claims"
+      />
 
       {/* 5. LODGE NEW CLAIM MODAL */}
       {showNewModal && (

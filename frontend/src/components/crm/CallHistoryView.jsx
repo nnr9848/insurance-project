@@ -21,6 +21,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { crmService } from '../../services/api';
+import { CrmTablePaginationBar, CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
 const CALL_RESULTS = [
   { id: 'INTERESTED', label: 'Interested', color: '#16a34a', bg: '#dcfce7' },
@@ -41,6 +42,21 @@ export default function CallHistoryView({ onOpenClient360 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [resultFilter, setResultFilter] = useState('ALL');
   const [advisorFilter, setAdvisorFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => {
+    const saved = localStorage.getItem('call_history_page_size');
+    return saved ? parseInt(saved, 10) : 10;
+  });
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    try {
+      localStorage.setItem('call_history_page_size', String(newSize));
+    } catch (e) {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     fetchCallHistory();
@@ -98,122 +114,157 @@ export default function CallHistoryView({ onOpenClient360 }) {
   const totalTalkSeconds = callLogs.reduce((acc, curr) => acc + (curr.callDurationSeconds || 0), 0);
   const avgTalkMins = totalCalls > 0 ? (totalTalkSeconds / totalCalls / 60).toFixed(1) : '0';
 
+  // Pagination calculation
+  const totalRecords = filteredLogs.length;
+  const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalRecords);
+  const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: 'calc(100vh - 120px)',
+      maxHeight: 'calc(100vh - 120px)',
+      gap: '0.75rem',
+      overflow: 'hidden'
+    }}>
       
-      {/* Banner */}
+      {/* 1. Sleek Compact Header Bar (Industry Standard SaaS) */}
       <div style={{
-        background: 'linear-gradient(135deg, #091726 0%, #0f2b48 100%)',
-        borderRadius: '16px',
-        padding: '1.5rem',
-        color: '#ffffff',
         display: 'flex',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '1rem',
-        boxShadow: '0 4px 14px rgba(0,0,0,0.1)'
+        gap: '0.75rem',
+        padding: '0 0 0.25rem 0',
+        flexShrink: 0
       }}>
-        <div style={{ maxWidth: '650px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '4px 10px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 800, marginBottom: '8px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-            <PhoneCall size={14} /> CALL HISTORY & TELEPHONY REPOSITORIES
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            background: '#fef3c7',
+            color: '#b45309',
+            border: '1px solid #fde68a',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <PhoneCall size={18} />
           </div>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '-0.02em', color: '#ffffff' }}>
-            Advisor Call Log Archive & Talk Time Analytics
-          </h2>
-          <p style={{ fontSize: '0.84rem', color: '#cbd5e1', margin: 0, lineHeight: 1.5 }}>
-            Audit every client interaction with call duration, outcomes, discussion notes, and scheduled next follow-ups across the branch.
-          </p>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy, #0f2b48)', margin: 0, letterSpacing: '-0.02em' }}>
+                Call History & Telephony Log
+              </h2>
+              <span style={{
+                background: '#f1f5f9',
+                color: '#475569',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '999px',
+                border: '1px solid #e2e8f0'
+              }}>
+                {filteredLogs.length} calls
+              </span>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
+              Advisor call recordings, discussion notes, duration analytics & follow-ups
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button
-            onClick={fetchCallHistory}
-            disabled={loading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: 'rgba(255,255,255,0.12)',
-              color: '#ffffff',
-              border: '1px solid rgba(255,255,255,0.2)',
-              padding: '8px 14px',
-              borderRadius: '8px',
-              fontSize: '0.82rem',
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-          >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Refreshing...' : 'Refresh Logs'}
-          </button>
-        </div>
+        <button
+          onClick={fetchCallHistory}
+          disabled={loading}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: '#ffffff',
+            color: '#0f2b48',
+            border: '1px solid #cbd5e1',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            fontSize: '0.78rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} color="#059669" />
+          {loading ? 'Refreshing...' : 'Refresh Logs'}
+        </button>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Stats Bar (Compact & Sleek) */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '12px'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: '10px',
+        flexShrink: 0
       }}>
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
-            <PhoneCall size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.65rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', flexShrink: 0 }}>
+            <PhoneCall size={17} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Calls Logged</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>{totalCalls}</div>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Calls Logged</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.2 }}>{totalCalls}</div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
-            <CheckCircle2 size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.65rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a', flexShrink: 0 }}>
+            <CheckCircle2 size={17} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Connected Calls</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
-              {connectedCalls} <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 700 }}>({totalCalls > 0 ? Math.round((connectedCalls / totalCalls) * 100) : 0}%)</span>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Connected Calls</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.2 }}>
+              {connectedCalls} <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 700 }}>({totalCalls > 0 ? Math.round((connectedCalls / totalCalls) * 100) : 0}%)</span>
             </div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7c3aed' }}>
-            <TrendingUp size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.65rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7c3aed', flexShrink: 0 }}>
+            <TrendingUp size={17} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Positive Outcomes</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
-              {convertedCalls}
-            </div>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Positive Outcomes</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.2 }}>{convertedCalls}</div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
-            <Clock size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.65rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706', flexShrink: 0 }}>
+            <Clock size={17} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Avg Call Duration</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
-              {avgTalkMins} mins
-            </div>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Avg Call Duration</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.2 }}>{avgTalkMins} mins</div>
           </div>
         </div>
       </div>
 
-      {/* Control & Search Bar */}
+      {/* Control & Search Bar (Pinned at top of table) */}
       <div style={{
         background: '#ffffff',
-        borderRadius: '14px',
-        padding: '1rem 1.25rem',
+        borderRadius: '12px',
+        padding: '0.75rem 1rem',
         border: '1px solid #e2e8f0',
         display: 'flex',
         flexWrap: 'wrap',
-        gap: '12px',
+        gap: '10px',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 280px' }}>
           <form 
@@ -229,15 +280,18 @@ export default function CallHistoryView({ onOpenClient360 }) {
               autoComplete="search"
               data-lpignore="true"
               data-form-type="other"
-              placeholder="Search by client name, phone, advisor, disposition, or notes..."
+              placeholder="Search client, phone, advisor, disposition..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               style={{
                 width: '100%',
-                padding: '8px 12px 8px 34px',
+                padding: '7px 12px 7px 34px',
                 borderRadius: '8px',
                 border: '1px solid #cbd5e1',
-                fontSize: '0.84rem',
+                fontSize: '0.82rem',
                 outline: 'none'
               }}
             />
@@ -248,12 +302,15 @@ export default function CallHistoryView({ onOpenClient360 }) {
           {/* Result Filter */}
           <select
             value={resultFilter}
-            onChange={(e) => setResultFilter(e.target.value)}
+            onChange={(e) => {
+              setResultFilter(e.target.value);
+              setCurrentPage(1);
+            }}
             style={{
-              padding: '7px 10px',
+              padding: '6px 10px',
               borderRadius: '8px',
               border: '1px solid #cbd5e1',
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               color: '#334155',
               fontWeight: 600,
               outline: 'none',
@@ -269,12 +326,15 @@ export default function CallHistoryView({ onOpenClient360 }) {
           {/* Advisor Filter */}
           <select
             value={advisorFilter}
-            onChange={(e) => setAdvisorFilter(e.target.value)}
+            onChange={(e) => {
+              setAdvisorFilter(e.target.value);
+              setCurrentPage(1);
+            }}
             style={{
-              padding: '7px 10px',
+              padding: '6px 10px',
               borderRadius: '8px',
               border: '1px solid #cbd5e1',
-              fontSize: '0.82rem',
+              fontSize: '0.8rem',
               color: '#334155',
               fontWeight: 600,
               outline: 'none',
@@ -286,158 +346,182 @@ export default function CallHistoryView({ onOpenClient360 }) {
               <option key={a} value={a}>{a}</option>
             ))}
           </select>
+
+          {/* Top Mini Pager */}
+          <CrmTopMiniPager
+            currentPage={safeCurrentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 
-      {/* Main Table */}
+      {/* Main Table Card (Viewport-locked Flex container) */}
       <div style={{
         background: '#ffffff',
         borderRadius: '16px',
         border: '1px solid #e2e8f0',
         overflow: 'hidden',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
+        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        minHeight: 0
       }}>
         {loading ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+          <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
             <div style={{ width: '32px', height: '32px', border: '3px solid #cbd5e1', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px auto' }} />
             <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>Loading call history logs...</div>
           </div>
         ) : filteredLogs.length === 0 ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
+          <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
             <PhoneCall size={40} color="#cbd5e1" style={{ margin: '0 auto 10px auto' }} />
             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#475569' }}>No call logs found</div>
             <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>Calls logged from the Daily Call Agenda will appear here.</div>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-              <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                <tr>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Call Date & Time</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Client</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Advisor</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Disposition Outcome</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Duration</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Discussion Notes</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Next Follow-Up</th>
-                  <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLogs.map((log) => {
-                  const badge = getResultBadge(log.callResult);
+          <>
+            <div className="crm-table-scroll-container" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+              <table className="crm-table" style={{ minWidth: '1060px' }}>
+                <thead className="crm-table-head">
+                  <tr>
+                    <th className="crm-table-th" style={{ minWidth: '170px' }}>Call Date & Time</th>
+                    <th className="crm-table-th" style={{ minWidth: '180px' }}>Client</th>
+                    <th className="crm-table-th" style={{ minWidth: '150px' }}>Advisor</th>
+                    <th className="crm-table-th" style={{ minWidth: '180px' }}>Disposition Outcome</th>
+                    <th className="crm-table-th" style={{ minWidth: '110px' }}>Duration</th>
+                    <th className="crm-table-th" style={{ minWidth: '240px' }}>Discussion Notes</th>
+                    <th className="crm-table-th" style={{ minWidth: '150px' }}>Next Follow-Up</th>
+                    <th className="crm-table-th" style={{ minWidth: '120px', textAlign: 'right' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedLogs.map((log) => {
+                    const badge = getResultBadge(log.callResult);
 
-                  return (
-                    <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = '#ffffff'}>
-                      
-                      {/* Date */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', color: '#64748b' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>
-                          <Clock size={13} color="#94a3b8" />
-                          {log.createdAt ? new Date(log.createdAt).toLocaleDateString('en-IN', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true
-                          }) : '-'}
-                        </div>
-                      </td>
-
-                      {/* Client */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontWeight: 700, color: '#0f2b48' }}>{log.clientName}</span>
-                          {onOpenClient360 && (
-                            <button
-                              onClick={() => onOpenClient360({ id: log.clientId })}
-                              style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', padding: 0 }}
-                              title="Open Client 360"
-                            >
-                              <ExternalLink size={12} />
-                            </button>
-                          )}
-                        </div>
-                        <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{log.clientPhone}</div>
-                      </td>
-
-                      {/* Advisor */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <div style={{ fontWeight: 600, color: '#0f2b48', fontSize: '0.82rem' }}>
-                          {log.advisorName}
-                        </div>
-                      </td>
-
-                      {/* Outcome Badge */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          background: badge.bg,
-                          color: badge.color,
-                          padding: '3px 8px',
-                          borderRadius: '6px',
-                          fontSize: '0.72rem',
-                          fontWeight: 700
-                        }}>
-                          {badge.label}
-                        </span>
-                      </td>
-
-                      {/* Duration */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', color: '#0f2b48', fontWeight: 600 }}>
-                        {formatDuration(log.callDurationSeconds)}
-                      </td>
-
-                      {/* Notes */}
-                      <td style={{ padding: '12px 16px', maxWidth: '280px' }}>
-                        <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {log.callNotes || '-'}
-                        </div>
-                      </td>
-
-                      {/* Next follow up */}
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', color: '#0284c7', fontWeight: 600, fontSize: '0.78rem' }}>
-                        {log.nextFollowUpDate ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Calendar size={13} />
-                            {new Date(log.nextFollowUpDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    return (
+                      <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = '#ffffff'}>
+                        
+                        {/* Date */}
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', color: '#64748b' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>
+                            <Clock size={13} color="#94a3b8" />
+                            {log.createdAt ? new Date(log.createdAt).toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true
+                            }) : '-'}
                           </div>
-                        ) : (
-                          <span style={{ color: '#94a3b8' }}>None</span>
-                        )}
-                      </td>
+                        </td>
 
-                      {/* Action */}
-                      <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <a
-                          href={`tel:${log.clientPhone}`}
-                          style={{
+                        {/* Client */}
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontWeight: 700, color: '#0f2b48' }}>{log.clientName}</span>
+                            {onOpenClient360 && (
+                              <button
+                                onClick={() => onOpenClient360({ id: log.clientId })}
+                                style={{ background: 'none', border: 'none', color: '#0284c7', cursor: 'pointer', padding: 0 }}
+                                title="Open Client 360"
+                              >
+                                <ExternalLink size={12} />
+                              </button>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{log.clientPhone}</div>
+                        </td>
+
+                        {/* Advisor */}
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontWeight: 600, color: '#0f2b48', fontSize: '0.82rem' }}>
+                            {log.advisorName}
+                          </div>
+                        </td>
+
+                        {/* Outcome Badge */}
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px',
-                            background: '#eff6ff',
-                            color: '#1d4ed8',
-                            border: '1px solid #bfdbfe',
-                            padding: '4px 8px',
+                            background: badge.bg,
+                            color: badge.color,
+                            padding: '3px 8px',
                             borderRadius: '6px',
-                            fontSize: '0.74rem',
-                            fontWeight: 700,
-                            textDecoration: 'none'
-                          }}
-                        >
-                          <Phone size={12} /> Call Again
-                        </a>
-                      </td>
+                            fontSize: '0.72rem',
+                            fontWeight: 700
+                          }}>
+                            {badge.label}
+                          </span>
+                        </td>
 
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        {/* Duration */}
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', color: '#0f2b48', fontWeight: 600 }}>
+                          {formatDuration(log.callDurationSeconds)}
+                        </td>
+
+                        {/* Notes */}
+                        <td style={{ padding: '12px 16px', maxWidth: '280px' }}>
+                          <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {log.callNotes || '-'}
+                          </div>
+                        </td>
+
+                        {/* Next follow up */}
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', color: '#0284c7', fontWeight: 600, fontSize: '0.78rem' }}>
+                          {log.nextFollowUpDate ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Calendar size={13} />
+                              {new Date(log.nextFollowUpDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </div>
+                          ) : (
+                            <span style={{ color: '#94a3b8' }}>None</span>
+                          )}
+                        </td>
+
+                        {/* Action */}
+                        <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <a
+                            href={`tel:${log.clientPhone}`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              border: '1px solid #bfdbfe',
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.74rem',
+                              fontWeight: 700,
+                              textDecoration: 'none'
+                            }}
+                          >
+                            <Phone size={12} /> Call Again
+                          </a>
+                        </td>
+
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pinned Bottom Pagination Footer */}
+            <CrmTablePaginationBar
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              totalRecords={totalRecords}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={handlePageSizeChange}
+              unitName="call logs"
+            />
+          </>
         )}
       </div>
 

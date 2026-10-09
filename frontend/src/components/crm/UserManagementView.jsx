@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { CrmTablePaginationBar, CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
 export default function UserManagementView() {
   const { 
@@ -47,6 +48,25 @@ export default function UserManagementView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [activeActionMenuId, setActiveActionMenuId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => {
+    const saved = localStorage.getItem('user_management_page_size');
+    return saved ? parseInt(saved, 10) : 10;
+  });
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    try {
+      localStorage.setItem('user_management_page_size', String(newSize));
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, roleFilter]);
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -411,16 +431,27 @@ export default function UserManagementView() {
     return matchesSearch && matchesRole;
   });
 
+  const totalPages = Math.ceil(filteredUsers.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedUsers = filteredUsers.slice(startIndex, startIndex + pageSize);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      height: 'calc(100vh - 120px)',
+      maxHeight: 'calc(100vh - 120px)',
+      gap: '0.75rem',
+      overflow: 'hidden'
+    }}>
       
       {/* Top Header & Actions */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', flexShrink: 0 }}>
         <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--crm-text-primary)', margin: 0 }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--crm-text-primary)', margin: 0 }}>
             {isSuperAdmin ? 'Organization Staff & Team Hierarchy' : 'My Team Members'}
           </h2>
-          <p style={{ color: 'var(--crm-text-muted)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+          <p style={{ color: 'var(--crm-text-muted)', fontSize: '0.8rem', margin: '2px 0 0 0' }}>
             {isSuperAdmin 
               ? 'Manage Super Admins, Insurance Managers, Advisors, and global user provisioning.'
               : 'View and manage insurance advisors and employees assigned directly under your team hierarchy.'}
@@ -514,6 +545,13 @@ export default function UserManagementView() {
             <option value="ROLE_ADVISOR">Insurance Advisors</option>
             <option value="ROLE_POSP_AGENT">POSP Agents</option>
           </select>
+
+          <CrmTopMiniPager
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredUsers.length}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 
@@ -523,7 +561,11 @@ export default function UserManagementView() {
         borderRadius: '16px',
         border: '1px solid var(--crm-border-subtle)',
         overflow: 'hidden',
-        boxShadow: 'var(--shadow-sm)'
+        boxShadow: 'var(--shadow-sm)',
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        minHeight: 0
       }}>
         {loading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--crm-text-muted)' }}>
@@ -542,9 +584,9 @@ export default function UserManagementView() {
             </p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="crm-table-scroll-container" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
             <table className="crm-table">
-              <thead className="crm-table-head">
+              <thead className="crm-table-head" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                 <tr>
                   <th className="crm-table-th">Employee</th>
                   <th className="crm-table-th">Role</th>
@@ -555,7 +597,7 @@ export default function UserManagementView() {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((u) => {
+                {paginatedUsers.map((u) => {
                   const isSuper = u.roles.includes('ROLE_SUPER_ADMIN') || u.roles.includes('ROLE_ADMIN');
                   const isMgr = u.roles.includes('ROLE_MANAGER');
                   const isAdv = u.roles.includes('ROLE_ADVISOR');
@@ -780,6 +822,17 @@ export default function UserManagementView() {
             </table>
           </div>
         )}
+
+        {/* Pinned Pagination Footer */}
+        <CrmTablePaginationBar
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={filteredUsers.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={handlePageSizeChange}
+          itemName="staff members"
+        />
       </div>
 
       {/* 1. Modal: Add New Employee / Manager */}

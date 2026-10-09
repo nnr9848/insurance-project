@@ -27,6 +27,7 @@ import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { formatWhatsAppNumber } from '../../utils/crmDeduplication';
 import WhatsAppIcon from '../common/WhatsAppIcon';
+import { CrmTablePaginationBar, CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
 export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingModal }) {
   const { isSuperAdmin, isManager } = useAuth();
@@ -37,6 +38,21 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
   const [activeBucket, setActiveBucket] = useState('ALL'); // ALL, 7_DAYS, 15_DAYS, 30_DAYS, 45_DAYS, EXPIRED
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVertical, setSelectedVertical] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => {
+    const saved = localStorage.getItem('renewal_desk_page_size');
+    return saved ? parseInt(saved, 10) : 10;
+  });
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    try {
+      localStorage.setItem('renewal_desk_page_size', String(newSize));
+    } catch (e) {
+      // ignore
+    }
+  };
 
   // Trigger Scan state
   const [scanning, setScanning] = useState(false);
@@ -50,8 +66,13 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
   const [copiedId, setCopiedId] = useState(null);
 
   useEffect(() => {
+    setCurrentPage(1);
     loadData();
   }, [activeBucket]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedVertical]);
 
   const loadData = async () => {
     setLoading(true);
@@ -134,6 +155,10 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
     return matchesSearch && matchesVertical;
   });
 
+  const totalPages = Math.ceil(filteredRenewals.length / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedRenewals = filteredRenewals.slice(startIndex, startIndex + pageSize);
+
   const getUrgencyBadge = (bucket, daysLeft) => {
     if (daysLeft < 0) {
       return { label: `Expired (${Math.abs(daysLeft)}d ago)`, bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5' };
@@ -154,88 +179,83 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      height: 'calc(100vh - 120px)',
+      maxHeight: 'calc(100vh - 120px)',
+      gap: '0.75rem', 
+      overflow: 'hidden' 
+    }}>
       
-      {/* 1. TOP STATS CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem' }}>
+      {/* 1. TOP STATS CARDS (COMPACT ROW) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.65rem', flexShrink: 0 }}>
         
         {/* Card 1: 7-Day Urgent Expiries */}
-        <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '14px', border: '1px solid #fed7aa', boxShadow: '0 2px 6px rgba(234, 88, 12, 0.06)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ background: '#ffffff', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid #fed7aa', boxShadow: '0 1px 3px rgba(234, 88, 12, 0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#c2410c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#c2410c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Urgent (≤ 7 Days)
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#ea580c', marginTop: '0.2rem' }}>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ea580c', marginTop: '0.1rem' }}>
                 {summary?.dueIn7Days ?? 0}
               </div>
             </div>
-            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#ffedd5', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Zap size={20} />
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ffedd5', color: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Zap size={17} />
             </div>
-          </div>
-          <div style={{ fontSize: '0.74rem', color: '#78716c', marginTop: '0.5rem' }}>
-            Requires immediate advisor call & WhatsApp link
           </div>
         </div>
 
         {/* Card 2: 30-Day Window */}
-        <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '14px', border: '1px solid #bfdbfe', boxShadow: '0 2px 6px rgba(37, 99, 235, 0.05)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ background: '#ffffff', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid #bfdbfe', boxShadow: '0 1px 3px rgba(37, 99, 235, 0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Due in 30 Days
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#2563eb', marginTop: '0.2rem' }}>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#2563eb', marginTop: '0.1rem' }}>
                 {summary?.dueIn30Days ?? 0}
               </div>
             </div>
-            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Clock size={20} />
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Clock size={17} />
             </div>
-          </div>
-          <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '0.5rem' }}>
-            Active renewal pipeline under advisor follow-up
           </div>
         </div>
 
         {/* Card 3: Expired / Lapsed */}
-        <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '14px', border: '1px solid #fecaca', boxShadow: '0 2px 6px rgba(220, 38, 38, 0.06)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ background: '#ffffff', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid #fecaca', boxShadow: '0 1px 3px rgba(220, 38, 38, 0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#b91c1c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Expired / Break-in Risk
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#b91c1c', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Expired / Break-in
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#dc2626', marginTop: '0.2rem' }}>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#dc2626', marginTop: '0.1rem' }}>
                 {summary?.expiredLapsed ?? 0}
               </div>
             </div>
-            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ShieldAlert size={20} />
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ShieldAlert size={17} />
             </div>
-          </div>
-          <div style={{ fontSize: '0.74rem', color: '#7f1d1d', marginTop: '0.5rem' }}>
-            NCB loss & medical re-checkup threshold
           </div>
         </div>
 
         {/* Card 4: Renewal Premium at Stake */}
-        <div style={{ background: '#ffffff', padding: '1.25rem', borderRadius: '14px', border: '1px solid #bbf7d0', boxShadow: '0 2px 6px rgba(22, 163, 74, 0.06)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ background: '#ffffff', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid #bbf7d0', boxShadow: '0 1px 3px rgba(22, 163, 74, 0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Renewal Premium Value
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Renewal Premium
               </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#16a34a', marginTop: '0.2rem' }}>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#16a34a', marginTop: '0.1rem' }}>
                 ₹{(summary?.totalRenewalPremiumAtRisk ? (summary.totalRenewalPremiumAtRisk / 100000).toFixed(2) : '0.00')} L
               </div>
             </div>
-            <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <TrendingUp size={20} />
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <TrendingUp size={17} />
             </div>
-          </div>
-          <div style={{ fontSize: '0.74rem', color: '#166534', marginTop: '0.5rem' }}>
-            Portfolio retention rate: <strong>{summary?.renewalRetentionRate ?? 85}%</strong>
           </div>
         </div>
 
@@ -348,12 +368,29 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
               {scanning ? 'Scanning...' : 'Run Auto Scan'}
             </button>
           )}
+
+          <CrmTopMiniPager
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredRenewals.length}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 
       {/* 3. POLICY RENEWAL MATRIX TABLE */}
-      <div style={{ background: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ 
+        background: '#ffffff', 
+        borderRadius: '16px', 
+        border: '1px solid #e2e8f0', 
+        overflow: 'hidden', 
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        minHeight: 0
+      }}>
+        <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <div>
             <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#091726', margin: 0 }}>
               Expiring Policy Portfolio ({filteredRenewals.length})
@@ -365,9 +402,9 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
         </div>
 
         {/* DESKTOP TABLE VIEW (>= 768px) */}
-        <div className="crm-desktop-table-container" style={{ overflowX: 'auto' }}>
+        <div className="crm-desktop-table-container crm-table-scroll-container" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-            <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+            <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 10 }}>
               <tr>
                 <th style={{ padding: '0.85rem 1rem', color: '#475569', fontWeight: 700 }}>Client & Account</th>
                 <th style={{ padding: '0.85rem 1rem', color: '#475569', fontWeight: 700 }}>Insurance & Insurer</th>
@@ -395,7 +432,7 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
                   </td>
                 </tr>
               ) : (
-                filteredRenewals.map((r) => {
+                paginatedRenewals.map((r) => {
                   const urgency = getUrgencyBadge(r.urgencyBucket, r.daysUntilExpiry);
                   return (
                     <tr key={r.clientId} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -524,7 +561,7 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
         </div>
 
         {/* MOBILE CARD DECK VIEW (< 768px) */}
-        <div className="crm-mobile-cards-container">
+        <div className="crm-mobile-cards-container crm-table-scroll-container" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {loading ? (
             <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: '#64748b', background: '#fff', borderRadius: '12px' }}>
               <RefreshCw size={18} className="animate-spin" style={{ margin: '0 auto 0.5rem' }} />
@@ -536,7 +573,7 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
               <div style={{ fontWeight: 700, color: '#091726' }}>No policies due in this bucket</div>
             </div>
           ) : (
-            filteredRenewals.map((r) => {
+            paginatedRenewals.map((r) => {
               const urgency = getUrgencyBadge(r.urgencyBucket, r.daysUntilExpiry);
               return (
                 <div 
@@ -667,6 +704,17 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
             })
           )}
         </div>
+
+        {/* Pinned Pagination Footer */}
+        <CrmTablePaginationBar
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={filteredRenewals.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={handlePageSizeChange}
+          itemName="renewals"
+        />
       </div>
 
       {/* 4. SEND RENEWAL REMINDER MODAL */}
