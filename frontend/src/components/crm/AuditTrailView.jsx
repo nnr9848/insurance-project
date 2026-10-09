@@ -95,6 +95,7 @@ export default function AuditTrailView({ onOpenClient360 }) {
 
     const matchesAction = actionFilter === 'ALL' || item.action === actionFilter;
     const matchesUser = userFilter === 'ALL' || item.performedByName === userFilter;
+    const matchesField = fieldFilter === 'ALL' || item.fieldName === fieldFilter;
     return matchesSearch && matchesAction && matchesUser && matchesField;
   });
 
