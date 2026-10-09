@@ -60,6 +60,8 @@ public class CrmUserDto {
         private String department;
         private Long managerId;
         private String role; // ROLE_MANAGER, ROLE_ADVISOR, ROLE_STAFF, ROLE_POSP_AGENT
+        private Boolean createDomainMailbox;
+        private String customMailboxUsername;
     }
 
     @Data
@@ -102,5 +104,10 @@ public class CrmUserDto {
         private Set<String> roles;
         private LocalDateTime createdAt;
         private Long assignedClientsCount;
+        private Boolean hasDomainMailbox;
+        private String domainMailboxEmail;
+        private String mailboxStatus;
+        private Integer mailboxQuotaMb;
+        private LocalDateTime mailboxCreatedAt;
     }
 }

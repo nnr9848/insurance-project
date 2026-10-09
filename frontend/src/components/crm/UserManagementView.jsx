@@ -21,7 +21,10 @@ import {
   MoreVertical,
   Lock,
   Shield,
-  UserX
+  UserX,
+  Inbox,
+  AtSign,
+  Settings
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -77,8 +80,17 @@ export default function UserManagementView() {
     department: 'Retail Sales (Health, Life & Motor)',
     role: 'ROLE_ADVISOR',
     managerId: '',
-    password: ''
+    password: '',
+    createDomainMailbox: true,
+    customMailboxUsername: ''
   });
+
+  // Mailbox Management Modals
+  const [showMailboxModal, setShowMailboxModal] = useState(false);
+  const [mailboxModalUser, setMailboxModalUser] = useState(null);
+  const [mailboxSettings, setMailboxSettings] = useState(null);
+  const [mailboxActionLoading, setMailboxActionLoading] = useState(false);
+  const [mailboxSuccessInfo, setMailboxSuccessInfo] = useState(null);
 
   const [editUserForm, setEditUserForm] = useState({
     fullName: '',
@@ -197,7 +209,9 @@ export default function UserManagementView() {
       setTempPasswordSuccess({
         email: response.user.email,
         fullName: response.user.fullName,
-        temporaryPassword: response.temporaryPassword
+        temporaryPassword: response.temporaryPassword,
+        domainMailbox: response.domainMailbox || null,
+        domainMailboxError: response.domainMailboxError || null
       });
       loadData();
       setIsCustomCreateDept(false);
@@ -213,12 +227,60 @@ export default function UserManagementView() {
         department: departments[0]?.name || 'Retail Sales (Health, Life & Motor)',
         role: 'ROLE_ADVISOR',
         managerId: '',
-        password: ''
+        password: '',
+        createDomainMailbox: true,
+        customMailboxUsername: ''
       });
     } catch (err) {
       setErrorMsg(err.response?.data?.message || 'Failed to create user. Email may already exist.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const openMailboxModal = async (user) => {
+    setMailboxModalUser(user);
+    setShowMailboxModal(true);
+    setMailboxActionLoading(true);
+    setMailboxSuccessInfo(null);
+    try {
+      const settings = await crmService.getMailboxSettings(user.id);
+      setMailboxSettings(settings);
+    } catch (err) {
+      console.warn('Failed to fetch mailbox settings:', err);
+    } finally {
+      setMailboxActionLoading(false);
+    }
+  };
+
+  const handleProvisionMailboxNow = async () => {
+    if (!mailboxModalUser) return;
+    setMailboxActionLoading(true);
+    try {
+      const res = await crmService.provisionMailbox(mailboxModalUser.id);
+      setMailboxSuccessInfo(res);
+      loadData();
+      // Refresh settings
+      const settings = await crmService.getMailboxSettings(mailboxModalUser.id);
+      setMailboxSettings(settings);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to provision mailbox on mail server.');
+    } finally {
+      setMailboxActionLoading(false);
+    }
+  };
+
+  const handleResetMailboxPasswordNow = async () => {
+    if (!mailboxModalUser) return;
+    if (!window.confirm(`Generate new secure password for ${mailboxModalUser.domainMailboxEmail}?`)) return;
+    setMailboxActionLoading(true);
+    try {
+      const res = await crmService.resetMailboxPassword(mailboxModalUser.id);
+      setMailboxSuccessInfo(res);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to reset mailbox password.');
+    } finally {
+      setMailboxActionLoading(false);
     }
   };
 
@@ -550,6 +612,24 @@ export default function UserManagementView() {
                                 {u.designation} ({u.department || 'Sales'})
                               </div>
                             )}
+                            {u.hasDomainMailbox && u.domainMailboxEmail && (
+                              <div style={{ 
+                                marginTop: '3px',
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: '4px', 
+                                background: '#f0fdf4', 
+                                color: '#166534', 
+                                border: '1px solid #bbf7d0',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                fontSize: '0.7rem',
+                                fontWeight: 700 
+                              }}>
+                                <AtSign size={10} />
+                                {u.domainMailboxEmail}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -650,6 +730,17 @@ export default function UserManagementView() {
                                   className="crm-popover-btn"
                                 >
                                   <Key size={14} color="var(--accent-gold)" /> Reset Password
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveActionMenuId(null);
+                                    openMailboxModal(u);
+                                  }}
+                                  className="crm-popover-btn"
+                                >
+                                  <AtSign size={14} color="#059669" /> Manage Domain Mailbox
                                 </button>
 
                                 <div style={{ height: '1px', background: 'var(--crm-border-subtle)', margin: '4px 0' }} />
@@ -972,6 +1063,46 @@ export default function UserManagementView() {
                 </div>
               </div>
 
+              {/* Domain Corporate Email Provisioning Toggle */}
+              <div style={{
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '10px',
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>
+                  <input
+                    type="checkbox"
+                    checked={createUserForm.createDomainMailbox}
+                    onChange={(e) => setCreateUserForm({ ...createUserForm, createDomainMailbox: e.target.checked })}
+                    style={{ width: '16px', height: '16px', accentColor: '#16a34a' }}
+                  />
+                  <span>Provision Corporate Domain Email (@aadhirakshainsurance.com)</span>
+                </label>
+                {createUserForm.createDomainMailbox && (
+                  <div style={{ marginTop: '2px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden' }}>
+                      <input
+                        type="text"
+                        placeholder={createUserForm.fullName ? createUserForm.fullName.toLowerCase().replace(/\s+/g, '.') : 'employee.name'}
+                        value={createUserForm.customMailboxUsername}
+                        onChange={(e) => setCreateUserForm({ ...createUserForm, customMailboxUsername: e.target.value })}
+                        style={{ flex: 1, padding: '8px 10px', border: 'none', outline: 'none', fontSize: '0.84rem' }}
+                      />
+                      <span style={{ padding: '8px 12px', background: '#f8fafc', color: '#64748b', fontSize: '0.82rem', fontWeight: 600, borderLeft: '1px solid #e2e8f0' }}>
+                        @aadhirakshainsurance.com
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: '#15803d', marginTop: '4px', display: 'block' }}>
+                      ⚡ Creates a 5GB mailbox on the Hostinger VPS mail server with IMAP/SMTP/Webmail support.
+                    </span>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
                   Custom Password (optional)
@@ -1065,6 +1196,18 @@ export default function UserManagementView() {
               <div style={{ fontSize: '1.1rem', color: '#059669', fontWeight: 800, letterSpacing: '1px', fontFamily: 'monospace' }}>
                 {tempPasswordSuccess.temporaryPassword}
               </div>
+
+              {tempPasswordSuccess.domainMailbox && (
+                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #cbd5e1' }}>
+                  <div style={{ fontSize: '0.78rem', color: '#166534', fontWeight: 700 }}>OFFICIAL CORPORATE MAILBOX:</div>
+                  <div style={{ fontSize: '0.9rem', color: '#0f2b48', fontWeight: 800 }}>
+                    {tempPasswordSuccess.domainMailbox.domainEmail}
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>
+                    Status: <strong style={{ color: '#059669' }}>{tempPasswordSuccess.domainMailbox.status}</strong> • Webmail: {tempPasswordSuccess.domainMailbox.webmailUrl}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -1327,6 +1470,223 @@ export default function UserManagementView() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Modal: Manage Corporate Domain Mailbox */}
+      {showMailboxModal && mailboxModalUser && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '520px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              background: '#ffffff',
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid #e2e8f0'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: '#f0fdf4',
+                  color: '#16a34a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <AtSign size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: '#0f2b48' }}>
+                    Corporate Domain Mailbox
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                    {mailboxModalUser.fullName} ({mailboxModalUser.employeeCode || 'Employee'})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowMailboxModal(false)}
+                style={{ 
+                  background: '#f8fafc', 
+                  border: '1px solid #e2e8f0', 
+                  color: '#64748b', 
+                  cursor: 'pointer',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {mailboxSuccessInfo && (
+                <div style={{
+                  background: '#ecfdf5',
+                  border: '1px solid #a7f3d0',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  fontSize: '0.84rem',
+                  color: '#065f46'
+                }}>
+                  <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle2 size={16} color="#059669" />
+                    Mailbox Action Completed Successfully!
+                  </div>
+                  <div style={{ marginTop: '6px' }}>
+                    <strong>Email:</strong> {mailboxSuccessInfo.domainEmail}
+                  </div>
+                  {mailboxSuccessInfo.mailboxPassword && (
+                    <div style={{ marginTop: '3px' }}>
+                      <strong>New Password:</strong> <code style={{ background: '#ffffff', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>{mailboxSuccessInfo.mailboxPassword}</code>
+                    </div>
+                  )}
+                  {mailboxSuccessInfo.newPassword && (
+                    <div style={{ marginTop: '3px' }}>
+                      <strong>New Password:</strong> <code style={{ background: '#ffffff', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>{mailboxSuccessInfo.newPassword}</code>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Status Card */}
+              <div style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                padding: '14px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>Mailbox Status:</span>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '3px 8px',
+                    borderRadius: '999px',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    background: mailboxModalUser.hasDomainMailbox ? '#ecfdf5' : '#fef2f2',
+                    color: mailboxModalUser.hasDomainMailbox ? '#059669' : '#dc2626',
+                    border: `1px solid ${mailboxModalUser.hasDomainMailbox ? '#a7f3d0' : '#fecaca'}`
+                  }}>
+                    {mailboxModalUser.hasDomainMailbox ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+                    {mailboxModalUser.hasDomainMailbox ? 'Provisioned & Active' : 'Not Provisioned Yet'}
+                  </span>
+                </div>
+
+                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f2b48' }}>
+                  {mailboxModalUser.domainMailboxEmail || (mailboxModalUser.fullName.toLowerCase().replace(/\s+/g, '.') + '@aadhirakshainsurance.com')}
+                </div>
+                <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '4px' }}>
+                  Storage Quota: 5 GB • Server: Hostinger VPS (mail.aadhirakshainsurance.com)
+                </div>
+              </div>
+
+              {/* Connection Specs */}
+              {mailboxModalUser.hasDomainMailbox && mailboxSettings && (
+                <div style={{
+                  background: '#f1f5f9',
+                  borderRadius: '10px',
+                  padding: '12px',
+                  fontSize: '0.78rem',
+                  color: '#334155',
+                  lineHeight: 1.6
+                }}>
+                  <div style={{ fontWeight: 700, color: '#0f2b48', marginBottom: '4px' }}>
+                    📱 Client Setup (Outlook, iPhone, Android):
+                  </div>
+                  <div>• <strong>Incoming (IMAP):</strong> {mailboxSettings.imapServer} : {mailboxSettings.imapPort} (SSL)</div>
+                  <div>• <strong>Outgoing (SMTP):</strong> {mailboxSettings.smtpServer} : {mailboxSettings.smtpPort} (TLS)</div>
+                  <div>• <strong>Webmail Login:</strong> <a href={mailboxSettings.webmailUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#0284c7', fontWeight: 700 }}>{mailboxSettings.webmailUrl}</a></div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {!mailboxModalUser.hasDomainMailbox ? (
+                  <button
+                    onClick={handleProvisionMailboxNow}
+                    disabled={mailboxActionLoading}
+                    style={{
+                      padding: '11px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      background: '#059669',
+                      color: '#ffffff',
+                      fontWeight: 700,
+                      cursor: mailboxActionLoading ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <AtSign size={16} />
+                    {mailboxActionLoading ? 'Provisioning Mailbox...' : 'Provision Domain Mailbox Now'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleResetMailboxPasswordNow}
+                    disabled={mailboxActionLoading}
+                    style={{
+                      padding: '10px',
+                      borderRadius: '10px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#0f2b48',
+                      fontWeight: 700,
+                      cursor: mailboxActionLoading ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <Key size={15} color="#d97706" />
+                    {mailboxActionLoading ? 'Updating...' : 'Generate New Mailbox Password'}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowMailboxModal(false)}
+                  style={{
+                    padding: '9px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    fontWeight: 600,
+                    color: '#64748b',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -12,17 +12,20 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import com.aadhiraksha.insurance.service.MailboxProvisioningService;
+
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/crm/users")
 @RequiredArgsConstructor
-@Tag(name = "CRM User & Team Hierarchy", description = "Endpoints for managing Super Admin, Managers, Advisors, and Team Structures")
+@Tag(name = "CRM User & Team Hierarchy", description = "Endpoints for managing Super Admin, Managers, Advisors, Team Structures, and Corporate Mailboxes")
 public class CrmUserController {
 
     private final CrmUserService crmUserService;
     private final UserRepository userRepository;
+    private final MailboxProvisioningService mailboxProvisioningService;
 
     private User getAuthenticatedUser(Authentication auth) {
         if (auth == null || auth.getName() == null) return null;
@@ -105,5 +108,37 @@ public class CrmUserController {
     @Operation(summary = "Get team members assigned to a specific manager")
     public ResponseEntity<List<CrmUserDto.UserResponse>> getTeamMembers(@PathVariable Long managerId) {
         return ResponseEntity.ok(crmUserService.getTeamMembers(managerId));
+    }
+
+    @PostMapping("/{id}/mailbox/provision")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    @Operation(summary = "Provision a domain-based mailbox for an employee (e.g. name@aadhirakshainsurance.com)")
+    public ResponseEntity<Map<String, Object>> provisionMailbox(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body,
+            Authentication auth) {
+        User performedBy = getAuthenticatedUser(auth);
+        String customAlias = body != null ? body.get("customAlias") : null;
+        String initialPassword = body != null ? body.get("initialPassword") : null;
+        return ResponseEntity.ok(mailboxProvisioningService.provisionEmployeeMailbox(id, customAlias, initialPassword, performedBy));
+    }
+
+    @PostMapping("/{id}/mailbox/reset-password")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    @Operation(summary = "Reset password for an employee's domain-based mailbox")
+    public ResponseEntity<Map<String, Object>> resetMailboxPassword(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body,
+            Authentication auth) {
+        User performedBy = getAuthenticatedUser(auth);
+        String newPassword = body != null ? body.get("newPassword") : null;
+        return ResponseEntity.ok(mailboxProvisioningService.resetMailboxPassword(id, newPassword, performedBy));
+    }
+
+    @GetMapping("/{id}/mailbox/settings")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Get IMAP/SMTP/Webmail connection settings for employee's domain mailbox")
+    public ResponseEntity<Map<String, Object>> getMailboxSettings(@PathVariable Long id) {
+        return ResponseEntity.ok(mailboxProvisioningService.getMailboxSettings(id));
     }
 }

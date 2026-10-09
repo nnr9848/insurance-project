@@ -75,6 +75,20 @@ export const crmService = {
     return res.data;
   },
 
+  // Corporate Domain Mailbox Provisioning (Hostinger VPS / Stalwart Mail)
+  provisionMailbox: async (userId, data = {}) => {
+    const res = await api.post(`/crm/users/${userId}/mailbox/provision`, data);
+    return res.data;
+  },
+  resetMailboxPassword: async (userId, newPassword) => {
+    const res = await api.post(`/crm/users/${userId}/mailbox/reset-password`, { newPassword });
+    return res.data;
+  },
+  getMailboxSettings: async (userId) => {
+    const res = await api.get(`/crm/users/${userId}/mailbox/settings`);
+    return res.data;
+  },
+
   // Clients Master (CRM)
   getClients: async () => {
     const res = await api.get('/crm/clients');

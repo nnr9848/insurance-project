@@ -52,6 +52,14 @@ whatsapp:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:3000,http://localhost:8080}
 
+# Corporate Domain Mail Server (Stalwart Container on VPS)
+mailserver:
+  enabled: ${MAILSERVER_ENABLED:true}
+  domain: ${MAILSERVER_DOMAIN:aadhirakshainsurance.com}
+  api-url: ${MAILSERVER_API_URL:http://mailserver:8080/api}
+  api-secret: ${MAILSERVER_API_SECRET:AadhirakshaMailSecret2026!}
+  webmail-url: ${MAILSERVER_WEBMAIL_URL:https://mail.aadhirakshainsurance.com}
+
 # SpringDoc OpenAPI Swagger UI
 springdoc:
   api-docs:
@@ -59,3 +67,4 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
     operations-sorter: method
+

@@ -52,6 +52,25 @@ services:
     networks:
       - insurance-network
 
+  # 4. Lightweight Stalwart Mail Server (~50MB RAM single Rust binary)
+  mailserver:
+    image: stalwartlabs/mail-server:latest
+    container_name: insurance-mailserver
+    restart: always
+    environment:
+      - STALWART_ADMIN_SECRET=AadhirakshaMailSecret2026!
+      - STALWART_HOSTNAME=mail.aadhirakshainsurance.com
+    ports:
+      - "25:25"       # Inbound SMTP
+      - "587:587"     # Outbound Submission SMTP (TLS)
+      - "465:465"     # Outbound SMTPS
+      - "993:993"     # IMAP over TLS
+      - "8080:8080"   # Management REST API & Webmail
+    volumes:
+      - mail_data:/opt/stalwart-mail
+    networks:
+      - insurance-network
+
 networks:
   insurance-network:
     driver: bridge
@@ -59,3 +78,4 @@ networks:
 volumes:
   postgres_data:
   document_uploads:
+  mail_data:

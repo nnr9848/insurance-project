@@ -35,6 +35,7 @@ public class CrmUserService {
     private final ClientRepository clientRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
+    private final MailboxProvisioningService mailboxProvisioningService;
 
     private static final String CHAR_LOWER = "abcdefghijklmnopqrstuvwxyz";
     private static final String CHAR_UPPER = CHAR_LOWER.toUpperCase();
@@ -157,8 +158,27 @@ public class CrmUserService {
                 "Created user " + savedUser.getFullName() + " with role " + targetRole.getName(), performedBy, null);
 
         Map<String, Object> result = new HashMap<>();
-        result.put("user", mapToResponse(savedUser));
         result.put("temporaryPassword", rawPassword);
+
+        // Auto-provision domain mailbox if requested
+        if (Boolean.TRUE.equals(request.getCreateDomainMailbox())) {
+            try {
+                Map<String, Object> mailboxRes = mailboxProvisioningService.provisionEmployeeMailbox(
+                        savedUser.getId(),
+                        request.getCustomMailboxUsername(),
+                        rawPassword,
+                        performedBy
+                );
+                result.put("domainMailbox", mailboxRes);
+                // Refresh user entity state with newly assigned mailbox info
+                savedUser = userRepository.findById(savedUser.getId()).orElse(savedUser);
+            } catch (Exception ex) {
+                log.warn("Automatic domain mailbox provisioning failed during user creation: {}", ex.getMessage());
+                result.put("domainMailboxError", ex.getMessage());
+            }
+        }
+
+        result.put("user", mapToResponse(savedUser));
         return result;
     }
 
@@ -451,6 +471,11 @@ public class CrmUserService {
                 .roles(user.getRoles().stream().map(Role::getName).collect(Collectors.toSet()))
                 .createdAt(user.getCreatedAt())
                 .assignedClientsCount(clientCount)
+                .hasDomainMailbox(Boolean.TRUE.equals(user.getHasDomainMailbox()))
+                .domainMailboxEmail(user.getDomainMailboxEmail())
+                .mailboxStatus(user.getMailboxStatus())
+                .mailboxQuotaMb(user.getMailboxQuotaMb())
+                .mailboxCreatedAt(user.getMailboxCreatedAt())
                 .build();
     }
 }

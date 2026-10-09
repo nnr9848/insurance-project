@@ -62,6 +62,24 @@ public class User {
     private Boolean mustChangePassword = false;
 
     @Builder.Default
+    @Column(name = "has_domain_mailbox")
+    private Boolean hasDomainMailbox = false;
+
+    @Column(name = "domain_mailbox_email", length = 150)
+    private String domainMailboxEmail;
+
+    @Builder.Default
+    @Column(name = "mailbox_status", length = 50)
+    private String mailboxStatus = "NOT_PROVISIONED";
+
+    @Builder.Default
+    @Column(name = "mailbox_quota_mb")
+    private Integer mailboxQuotaMb = 5120;
+
+    @Column(name = "mailbox_created_at")
+    private LocalDateTime mailboxCreatedAt;
+
+    @Builder.Default
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",
