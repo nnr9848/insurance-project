@@ -32,7 +32,20 @@ export default function AuditTrailView({ onOpenClient360 }) {
   const [fieldFilter, setFieldFilter] = useState('ALL');
   const [userFilter, setUserFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(15);
+  const [pageSize, setPageSize] = useState(() => {
+    const saved = localStorage.getItem('audit_page_size');
+    return saved ? parseInt(saved, 10) : 10;
+  });
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+    try {
+      localStorage.setItem('audit_page_size', String(newSize));
+    } catch (e) {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     fetchAuditFeed();
@@ -112,122 +125,152 @@ export default function AuditTrailView({ onOpenClient360 }) {
   const uniqueFields = Array.from(new Set(auditLogs.map(l => l.fieldName).filter(Boolean)));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: 'calc(100vh - 120px)',
+      maxHeight: 'calc(100vh - 120px)',
+      gap: '0.75rem',
+      overflow: 'hidden'
+    }}>
       
-      {/* Top Banner & Governance Overview */}
+      {/* 1. Sleek Compact Header Bar (Industry Standard SaaS) */}
       <div style={{
-        background: 'linear-gradient(135deg, #091726 0%, #0f2b48 100%)',
-        borderRadius: '16px',
-        padding: '1.5rem',
-        color: '#ffffff',
         display: 'flex',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '1rem',
-        boxShadow: '0 4px 14px rgba(0,0,0,0.1)'
+        gap: '0.75rem',
+        padding: '0 0 0.25rem 0',
+        flexShrink: 0
       }}>
-        <div style={{ maxWidth: '650px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', padding: '4px 10px', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 800, marginBottom: '8px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-            <ShieldCheck size={14} /> ZERO-TAMPER COMPLIANCE AUDIT
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            background: '#fef3c7',
+            color: '#b45309',
+            border: '1px solid #fde68a',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <ShieldCheck size={20} />
           </div>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 6px 0', letterSpacing: '-0.02em', color: '#ffffff' }}>
-            Enterprise Audit Trail & Change Governance
-          </h2>
-          <p style={{ fontSize: '0.84rem', color: '#cbd5e1', margin: 0, lineHeight: 1.5 }}>
-            Every CRM modification, follow-up reschedule, stage transition, reassignment, and advisor call is permanently recorded with exact before-and-after states, author attribution, and timestamps.
-          </p>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-navy, #0f2b48)', margin: 0, letterSpacing: '-0.02em' }}>
+                Audit Trail & Compliance
+              </h2>
+              <span style={{
+                background: '#f1f5f9',
+                color: '#475569',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                padding: '2px 8px',
+                borderRadius: '999px',
+                border: '1px solid #e2e8f0'
+              }}>
+                {auditLogs.length} Records
+              </span>
+            </div>
+            <p style={{ margin: '1px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+              Immutable audit ledger capturing change history, author attribution, and stage transitions
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button
-            onClick={fetchAuditFeed}
-            disabled={loading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: 'rgba(255,255,255,0.12)',
-              color: '#ffffff',
-              border: '1px solid rgba(255,255,255,0.2)',
-              padding: '8px 14px',
-              borderRadius: '8px',
-              fontSize: '0.82rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Refreshing...' : 'Refresh Logs'}
-          </button>
-        </div>
+        <button
+          onClick={fetchAuditFeed}
+          disabled={loading}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: '#ffffff',
+            color: '#0f2b48',
+            border: '1px solid #cbd5e1',
+            padding: '7px 12px',
+            borderRadius: '8px',
+            fontSize: '0.8rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} color="#059669" />
+          {loading ? 'Refreshing...' : 'Refresh Logs'}
+        </button>
       </div>
 
-      {/* KPI Stats Bar */}
+      {/* KPI Stats Bar (Compact & Sleek) */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '12px'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: '10px',
+        flexShrink: 0
       }}>
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
-            <Database size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.65rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', flexShrink: 0 }}>
+            <Database size={17} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Audit Records</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>{auditLogs.length}</div>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Audit Records</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.2 }}>{auditLogs.length}</div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7c3aed' }}>
-            <UserCheck size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.65rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7c3aed', flexShrink: 0 }}>
+            <UserCheck size={17} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Reassignments Tracked</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Reassignments Tracked</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.2 }}>
               {auditLogs.filter(l => l.action === 'REASSIGN').length}
             </div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
-            <SlidersHorizontal size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.65rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706', flexShrink: 0 }}>
+            <SlidersHorizontal size={17} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Stage Transitions</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Stage Transitions</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.2 }}>
               {auditLogs.filter(l => l.action === 'STATUS_CHANGE' || l.fieldName === 'stage').length}
             </div>
           </div>
         </div>
 
-        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>
-            <Calendar size={20} />
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.65rem 0.85rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a', flexShrink: 0 }}>
+            <Calendar size={17} />
           </div>
           <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Rescheduled Calls/Dates</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f2b48' }}>
+            <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Rescheduled Calls/Dates</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', lineHeight: 1.2 }}>
               {auditLogs.filter(l => l.fieldName?.toLowerCase().includes('followup') || l.fieldName?.toLowerCase().includes('date')).length}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Control / Filter Bar */}
+      {/* Control / Filter Bar (Pinned at top of table) */}
       <div style={{
         background: '#ffffff',
-        borderRadius: '14px',
-        padding: '1rem 1.25rem',
+        borderRadius: '12px',
+        padding: '0.75rem 1rem',
         border: '1px solid #e2e8f0',
         display: 'flex',
         flexWrap: 'wrap',
-        gap: '12px',
+        gap: '10px',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 280px' }}>
           <form 
@@ -328,24 +371,87 @@ export default function AuditTrailView({ onOpenClient360 }) {
               <option key={f} value={f}>{f}</option>
             ))}
           </select>
+
+          {/* Top Mini-Pager (Industry Standard Zero-Scroll Navigation) */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            paddingLeft: '6px',
+            borderLeft: '1px solid #e2e8f0',
+            fontSize: '0.8rem',
+            color: '#475569'
+          }}>
+            <span style={{ fontWeight: 600 }}>
+              <strong>{safeCurrentPage}</strong> / <strong>{totalPages}</strong>
+            </span>
+
+            <button
+              type="button"
+              title="Previous Page"
+              disabled={safeCurrentPage <= 1}
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '28px',
+                height: '28px',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1',
+                background: safeCurrentPage <= 1 ? '#f8fafc' : '#ffffff',
+                color: safeCurrentPage <= 1 ? '#94a3b8' : '#0f2b48',
+                cursor: safeCurrentPage <= 1 ? 'not-allowed' : 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <ChevronLeft size={14} />
+            </button>
+
+            <button
+              type="button"
+              title="Next Page"
+              disabled={safeCurrentPage >= totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '28px',
+                height: '28px',
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1',
+                background: safeCurrentPage >= totalPages ? '#f8fafc' : '#ffffff',
+                color: safeCurrentPage >= totalPages ? '#94a3b8' : '#0f2b48',
+                cursor: safeCurrentPage >= totalPages ? 'not-allowed' : 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main Table Feed */}
+      {/* Main Table Feed Card (Viewport-locked Flex container) */}
       <div style={{
         background: '#ffffff',
         borderRadius: '16px',
         border: '1px solid #e2e8f0',
         overflow: 'hidden',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
+        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        minHeight: 0
       }}>
         {loading ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+          <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
             <div style={{ width: '32px', height: '32px', border: '3px solid #cbd5e1', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px auto' }} />
             <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>Loading live audit logs from database...</div>
           </div>
         ) : filteredLogs.length === 0 ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
+          <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
             <ShieldCheck size={40} color="#cbd5e1" style={{ margin: '0 auto 10px auto' }} />
             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#475569' }}>No audit trail records found</div>
             <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>
@@ -356,7 +462,7 @@ export default function AuditTrailView({ onOpenClient360 }) {
           </div>
         ) : (
           <>
-            <div className="crm-table-scroll-container" style={{ maxHeight: '680px', overflowY: 'auto' }}>
+            <div className="crm-table-scroll-container" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
               <table className="crm-table" style={{ minWidth: '1060px' }}>
                 <thead className="crm-table-head">
                   <tr>
@@ -496,16 +602,13 @@ export default function AuditTrailView({ onOpenClient360 }) {
             </table>
           </div>
 
-          {/* Table Pagination Bar */}
-          <div className="crm-table-pagination-bar">
+          {/* Table Pagination Bar (Pinned to Card Bottom) */}
+          <div className="crm-table-pagination-bar" style={{ flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>Rows per page:</span>
               <select
                 value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
                 style={{
                   padding: '3px 8px',
                   borderRadius: '6px',
@@ -516,7 +619,7 @@ export default function AuditTrailView({ onOpenClient360 }) {
                   color: '#334155'
                 }}
               >
-                <option value={15}>15</option>
+                <option value={10}>10</option>
                 <option value={25}>25</option>
                 <option value={50}>50</option>
                 <option value={100}>100</option>
