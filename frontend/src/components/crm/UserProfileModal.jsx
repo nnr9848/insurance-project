@@ -33,6 +33,7 @@ export default function UserProfileModal({ isOpen, onClose, defaultTab = 'profil
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null); // { type: 'success' | 'error', text: '' }
@@ -353,12 +354,21 @@ export default function UserProfileModal({ isOpen, onClose, defaultTab = 'profil
                 <div className="crm-input-box">
                   <KeyRound size={16} color="var(--crm-text-muted)" />
                   <input
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-type new password"
                     className="crm-input-field"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    style={{ background: 'none', border: 'none', color: 'var(--crm-text-muted)', cursor: 'pointer', padding: 0 }}
+                  >
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
               </div>
 

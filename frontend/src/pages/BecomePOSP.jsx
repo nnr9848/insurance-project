@@ -11,13 +11,16 @@ import {
   BookOpen,
   Briefcase,
   Users,
-  Smartphone
+  Smartphone,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { portalService } from '../services/api';
 
 export default function BecomePOSP() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -367,21 +370,44 @@ export default function BecomePOSP() {
                         <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>
                           Create Portal Password *
                         </label>
-                        <input
-                          type="password"
-                          required
-                          placeholder="Min 6 chars"
-                          value={formData.password}
-                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          style={{
-                            width: '100%',
-                            padding: '9px 10px',
-                            borderRadius: '8px',
-                            border: '1.5px solid #cbd5e1',
-                            fontSize: '0.85rem',
-                            boxSizing: 'border-box'
-                          }}
-                        />
+                        <div style={{ position: 'relative' }}>
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            required
+                            placeholder="Min 6 chars"
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            style={{
+                              width: '100%',
+                              padding: '9px 34px 9px 10px',
+                              borderRadius: '8px',
+                              border: '1.5px solid #cbd5e1',
+                              fontSize: '0.85rem',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            title={showPassword ? 'Hide password' : 'Show password'}
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            style={{
+                              position: 'absolute',
+                              right: '8px',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              background: 'none',
+                              border: 'none',
+                              color: '#94a3b8',
+                              cursor: 'pointer',
+                              padding: '2px',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}
+                          >
+                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
                       </div>
                     </div>
 

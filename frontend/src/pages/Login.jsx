@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Lock, Mail, Phone, Shield, ArrowRight, CheckCircle2, KeyRound, Smartphone, RefreshCw, MessageSquare } from 'lucide-react';
+import { Lock, Mail, Phone, Shield, ArrowRight, CheckCircle2, KeyRound, Smartphone, RefreshCw, MessageSquare, Eye, EyeOff } from 'lucide-react';
 import { auth } from '../config/firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
@@ -19,6 +19,7 @@ export default function Login({ isAdminPortal = false }) {
   const [isRegister, setIsRegister] = useState(false);
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
@@ -580,14 +581,40 @@ export default function Login({ isAdminPortal = false }) {
 
               <div className="form-group">
                 <label className="form-label">Password *</label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Enter password"
-                  className="form-input"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <div style={{ position: 'relative', width: '100%' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Enter password"
+                    className="form-input"
+                    style={{ width: '100%', paddingRight: '2.5rem', boxSizing: 'border-box' }}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted, #64748b)',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      zIndex: 2
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <button type="submit" disabled={loading} className="btn-submit-quote" style={{ marginTop: '1.25rem', width: '100%' }}>

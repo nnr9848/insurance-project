@@ -221,6 +221,7 @@ export default function CustomerPortal() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -1808,21 +1809,41 @@ export default function CustomerPortal() {
                       <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
                         Confirm New Password <span style={{ color: '#ef4444' }}>*</span>
                       </label>
-                      <input
-                        required
-                        type="password"
-                        placeholder="••••••••"
-                        value={passwordForm.confirmPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                        style={{
-                          width: '100%',
-                          padding: '0.65rem 0.85rem',
-                          borderRadius: '8px',
-                          border: '1.5px solid #cbd5e1',
-                          fontSize: '0.88rem',
-                          boxSizing: 'border-box'
-                        }}
-                      />
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          required
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          placeholder="••••••••"
+                          value={passwordForm.confirmPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '0.65rem 2.2rem 0.65rem 0.85rem',
+                            borderRadius: '8px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '0.88rem',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                          aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                          style={{
+                            position: 'absolute',
+                            right: '8px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            color: '#94a3b8',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Submit Button */}
