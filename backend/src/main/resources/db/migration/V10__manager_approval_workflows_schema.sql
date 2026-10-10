@@ -23,10 +23,16 @@ CREATE INDEX IF NOT EXISTS idx_approval_manager_id ON approval_requests(manager_
 CREATE INDEX IF NOT EXISTS idx_approval_requested_by ON approval_requests(requested_by_id);
 CREATE INDEX IF NOT EXISTS idx_approval_client_id ON approval_requests(client_id);
 
--- Seed Sample Pending Approvals for Manager review
+-- Seed Sample Pending Approvals for Manager review (if referenced clients exist)
 INSERT INTO approval_requests (
     request_type, client_id, requested_by_id, manager_id, current_value, proposed_value, discount_percent, status, reason
-) VALUES
-('SPECIAL_DISCOUNT', 1, 3, 2, '₹16,756 (Base Quote)', '₹14,500 (15% Corporate Partner Discount)', 15.00, 'PENDING', 'High-net-worth client with 3 active policies in family. Requesting 15% special corporate discount.'),
-('HIGH_SUM_INSURED', 2, 3, 2, 'Standard Cover (10L)', 'Ultra HNW Cover (1 Crore Sum Insured)', NULL, 'PENDING', 'Client requested Star Health Premier 1 Crore coverage. Requires Branch Manager sign-off before proposal issuance.'),
-('LEAD_REASSIGNMENT', 3, 3, 2, 'Advisor: Suresh Verma', 'Advisor: Rajesh Kumar', NULL, 'PENDING', 'Suresh is on medical leave. Reassigning high-priority motor portfolio to Rajesh Kumar.');
+)
+SELECT 
+    a.request_type, a.client_id, a.requested_by_id, a.manager_id, a.current_value, a.proposed_value, a.discount_percent, a.status, a.reason
+FROM (
+    VALUES
+    ('SPECIAL_DISCOUNT', 1, 3, 2, '₹16,756 (Base Quote)', '₹14,500 (15% Corporate Partner Discount)', 15.00, 'PENDING', 'High-net-worth client with 3 active policies in family. Requesting 15% special corporate discount.'),
+    ('HIGH_SUM_INSURED', 2, 3, 2, 'Standard Cover (10L)', 'Ultra HNW Cover (1 Crore Sum Insured)', NULL, 'PENDING', 'Client requested Star Health Premier 1 Crore coverage. Requires Branch Manager sign-off before proposal issuance.'),
+    ('LEAD_REASSIGNMENT', 3, 3, 2, 'Advisor: Suresh Verma', 'Advisor: Rajesh Kumar', NULL, 'PENDING', 'Suresh is on medical leave. Reassigning high-priority motor portfolio to Rajesh Kumar.')
+) AS a(request_type, client_id, requested_by_id, manager_id, current_value, proposed_value, discount_percent, status, reason)
+WHERE EXISTS (SELECT 1 FROM clients c WHERE c.id = a.client_id);
