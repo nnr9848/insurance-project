@@ -54,7 +54,7 @@ services:
 
   # 4. Lightweight Stalwart Mail Server (~50MB RAM single Rust binary)
   mailserver:
-    image: stalwartlabs/mail-server:latest
+    image: stalwartlabs/stalwart:latest
     container_name: insurance-mailserver
     restart: always
     environment:
