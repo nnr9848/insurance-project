@@ -13,8 +13,10 @@ import {
   CheckCircle2,
   ChevronRight
 } from 'lucide-react';
+import { useBusinessProfile } from '../context/BusinessProfileContext';
 
 export default function LegalCompliance() {
+  const { businessProfile } = useBusinessProfile();
   const location = useLocation();
 
   // Determine initial tab from route
@@ -287,10 +289,10 @@ export default function LegalCompliance() {
                 For any service deficiency, delay in policy delivery, or assistance in claim disputes, customers may reach out to our Principal Grievance Officer:
               </p>
               <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-                <div><strong>Grievance Officer:</strong> Customer Care Head</div>
-                <div><strong>Email:</strong> <a href="mailto:grievance@aadhirakshainsurance.com" style={{ color: '#0284c7' }}>grievance@aadhirakshainsurance.com</a></div>
-                <div><strong>Direct Helpline:</strong> +91 8367415156 (Mon - Sat, 9:30 AM to 6:30 PM)</div>
-                <div><strong>Office:</strong> 4th Floor, Mytri Constructions, Opp: ECIL Busstop, ECIL, Hyderabad.</div>
+                <div><strong>Grievance Officer:</strong> {businessProfile?.legalGrievanceOfficerName || 'Customer Care Head'}</div>
+                <div><strong>Email:</strong> <a href={`mailto:${businessProfile?.legalGrievanceEmail || 'grievance@aadhirakshainsurance.com'}`} style={{ color: '#0284c7' }}>{businessProfile?.legalGrievanceEmail || 'grievance@aadhirakshainsurance.com'}</a></div>
+                <div><strong>Direct Helpline:</strong> {businessProfile?.legalGrievancePhone || businessProfile?.supportPhone || '+91 8367415156'} (Mon - Sat, 9:30 AM to 6:30 PM)</div>
+                <div><strong>Office:</strong> {businessProfile?.registeredOfficeAddress || '4th Floor, Mytri Constructions, Opp: ECIL Busstop, ECIL, Hyderabad.'}</div>
               </div>
 
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f2b48' }}>Level 2: Insurer Grievance Redressal Mechanism</h3>

@@ -59,6 +59,8 @@ public class SecurityConfig {
                                 AntPathRequestMatcher.antMatcher("/api/hospitals/**"),
                                 AntPathRequestMatcher.antMatcher("/api/posp/apply"),
                                 AntPathRequestMatcher.antMatcher("/api/claims/submit"),
+                                AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/claims/track"),
+                                AntPathRequestMatcher.antMatcher("/api/claims/track"),
                                 AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/partners"),
                                 AntPathRequestMatcher.antMatcher("/api/partners"),
                                 AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/partners/**"),
@@ -67,6 +69,7 @@ public class SecurityConfig {
                                 AntPathRequestMatcher.antMatcher("/api/reviews"),
                                 AntPathRequestMatcher.antMatcher("/api/customer/documents/view-file/**"),
                                 AntPathRequestMatcher.antMatcher("/api/crm/documents/view-file/**"),
+                                AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/documents/view-file/**"),
                                 AntPathRequestMatcher.antMatcher("/v3/api-docs/**"),
                                 AntPathRequestMatcher.antMatcher("/swagger-ui/**"),
                                 AntPathRequestMatcher.antMatcher("/swagger-ui.html")

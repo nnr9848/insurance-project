@@ -336,6 +336,10 @@ export const portalService = {
     const res = await api.post('/claims/submit', data);
     return res.data;
   },
+  trackClaim: async (query) => {
+    const res = await api.get('/claims/track', { params: { query } });
+    return res.data;
+  },
   // Admin Endpoints
   getAdminQuotes: async () => {
     const res = await api.get('/admin/quotes');
@@ -446,6 +450,14 @@ export const portalService = {
   },
   testWhatsAppMessage: async (testPhone) => {
     const res = await api.post('/admin/settings/whatsapp/test', { testPhone });
+    return res.data;
+  },
+  uploadGalleryImage: async (formData) => {
+    const res = await api.post('/admin/settings/gallery/upload', formData, {
+      headers: {
+        'Content-Type': undefined,
+      },
+    });
     return res.data;
   },
 };

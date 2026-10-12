@@ -120,6 +120,98 @@ public class BusinessProfile {
     @Column(name = "firebase_messaging_sender_id", length = 50)
     private String firebaseMessagingSenderId;
 
+    // Google Maps & Reviews Links
+    @Builder.Default
+    @Column(name = "google_maps_url", columnDefinition = "TEXT")
+    private String googleMapsUrl = "https://maps.google.com/?q=Mytri+Constructions+ECIL+Hyderabad";
+
+    @Builder.Default
+    @Column(name = "google_review_url", columnDefinition = "TEXT")
+    private String googleReviewUrl = "https://maps.google.com/?q=Aadhiraksha+Insurance+Marketing+ECIL+Hyderabad";
+
+    // Social Media Links
+    @Column(name = "linkedin_url")
+    private String linkedinUrl;
+
+    @Column(name = "youtube_url")
+    private String youtubeUrl;
+
+    @Column(name = "instagram_url")
+    private String instagramUrl;
+
+    @Column(name = "facebook_url")
+    private String facebookUrl;
+
+    @Column(name = "x_twitter_url")
+    private String xTwitterUrl;
+
+    // Corporate Impact Milestones
+    @Builder.Default
+    @Column(name = "claims_settled_amount", length = 100)
+    private String claimsSettledAmount = "₹50+ Cr";
+
+    @Builder.Default
+    @Column(name = "families_protected_count", length = 100)
+    private String familiesProtectedCount = "25,000+";
+
+    @Builder.Default
+    @Column(name = "certified_advisors_count", length = 100)
+    private String certifiedAdvisorsCount = "1,200+";
+
+    @Builder.Default
+    @Column(name = "settlement_ratio", length = 50)
+    private String settlementRatio = "98.8%";
+
+    // About Us Content & Story
+    @Builder.Default
+    @Column(name = "about_hero_title", columnDefinition = "TEXT")
+    private String aboutHeroTitle = "India’s Most Dependable Bridge Between Families, Protection & Financial Freedom";
+
+    @Builder.Default
+    @Column(name = "about_hero_description", columnDefinition = "TEXT")
+    private String aboutHeroDescription = "At Aadhiraksha Insurance Marketing & Financial Services Pvt Ltd, we believe every Indian family deserves unbiased, transparent, and prompt insurance advisory with zero hidden catches. Rooted in Hyderabad with a pan-regional network of over 1,200 certified advisors, we don't just sell policies — we stand beside you during claim settlements.";
+
+    @Builder.Default
+    @Column(name = "about_mission_statement", columnDefinition = "TEXT")
+    private String aboutMissionStatement = "To democratize transparent insurance advisory across India, ensuring zero out-of-pocket surprise rejections and 100% cashless hospitalization concierge.";
+
+    @Builder.Default
+    @Column(name = "about_vision_statement", columnDefinition = "TEXT")
+    private String aboutVisionStatement = "To become the nation's most trusted insurance marketing firm, empowering families and businesses through ethical advisory and swift claim resolution.";
+
+    @Builder.Default
+    @Column(name = "about_gallery_photos_json", columnDefinition = "TEXT")
+    private String aboutGalleryPhotosJson = "[]";
+
+    // Dynamic Company Pages Content
+    @Builder.Default
+    @Column(name = "posp_page_headline", columnDefinition = "TEXT")
+    private String pospPageHeadline = "Empower Your Career as a Certified POSP Insurance Advisor";
+
+    @Builder.Default
+    @Column(name = "posp_page_subheadline", columnDefinition = "TEXT")
+    private String pospPageSubheadline = "Join Telangana & AP's fastest-growing insurtech partner network with zero initial capital, 100% digital onboarding, and direct multi-insurer quotes.";
+
+    @Builder.Default
+    @Column(name = "claims_page_headline", columnDefinition = "TEXT")
+    private String claimsPageHeadline = "24/7 Cashless Claims Assistance & Emergency Concierge";
+
+    @Builder.Default
+    @Column(name = "claims_page_subheadline", columnDefinition = "TEXT")
+    private String claimsPageSubheadline = "File your cashless hospitalization or motor damage intimation in under 60 seconds with dedicated claim managers.";
+
+    @Builder.Default
+    @Column(name = "legal_grievance_officer_name")
+    private String legalGrievanceOfficerName = "Customer Care Head";
+
+    @Builder.Default
+    @Column(name = "legal_grievance_email")
+    private String legalGrievanceEmail = "grievance@aadhirakshainsurance.com";
+
+    @Builder.Default
+    @Column(name = "legal_grievance_phone")
+    private String legalGrievancePhone = "+91 8367415156";
+
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;

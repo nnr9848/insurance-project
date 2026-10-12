@@ -101,7 +101,10 @@ public class CrmClientService {
                 .state(request.getState())
                 .pincode(request.getPincode())
                 .insuranceType(request.getInsuranceType() != null ? request.getInsuranceType() : "Health Insurance")
+                .policyType(request.getPolicyType() != null ? request.getPolicyType().toUpperCase() : "FRESH")
                 .existingInsurer(request.getExistingInsurer())
+                .existingPolicyNumber(request.getExistingPolicyNumber())
+                .portingReason(request.getPortingReason())
                 .policyExpiryDate(request.getPolicyExpiryDate())
                 .sumInsured(request.getSumInsured())
                 .estimatedPremium(request.getEstimatedPremium())
@@ -187,9 +190,21 @@ public class CrmClientService {
             auditService.logAction("CLIENT", client.getId(), "UPDATE", "Insurance Type", client.getInsuranceType(), request.getInsuranceType(), performedBy, null);
             client.setInsuranceType(request.getInsuranceType());
         }
+        if (request.getPolicyType() != null && !request.getPolicyType().equalsIgnoreCase(client.getPolicyType())) {
+            auditService.logAction("CLIENT", client.getId(), "UPDATE", "Policy Type", client.getPolicyType(), request.getPolicyType().toUpperCase(), performedBy, null);
+            client.setPolicyType(request.getPolicyType().toUpperCase());
+        }
         if (request.getExistingInsurer() != null && !request.getExistingInsurer().equals(client.getExistingInsurer())) {
             auditService.logAction("CLIENT", client.getId(), "UPDATE", "Existing Insurer", client.getExistingInsurer(), request.getExistingInsurer(), performedBy, null);
             client.setExistingInsurer(request.getExistingInsurer());
+        }
+        if (request.getExistingPolicyNumber() != null && !request.getExistingPolicyNumber().equals(client.getExistingPolicyNumber())) {
+            auditService.logAction("CLIENT", client.getId(), "UPDATE", "Existing Policy Number", client.getExistingPolicyNumber(), request.getExistingPolicyNumber(), performedBy, null);
+            client.setExistingPolicyNumber(request.getExistingPolicyNumber());
+        }
+        if (request.getPortingReason() != null && !request.getPortingReason().equals(client.getPortingReason())) {
+            auditService.logAction("CLIENT", client.getId(), "UPDATE", "Porting Reason", client.getPortingReason(), request.getPortingReason(), performedBy, null);
+            client.setPortingReason(request.getPortingReason());
         }
         if (request.getPolicyExpiryDate() != null && !request.getPolicyExpiryDate().equals(client.getPolicyExpiryDate())) {
             auditService.logAction("CLIENT", client.getId(), "UPDATE", "Policy Expiry Date", String.valueOf(client.getPolicyExpiryDate()), String.valueOf(request.getPolicyExpiryDate()), performedBy, null);
@@ -535,7 +550,10 @@ public class CrmClientService {
                 .state(client.getState())
                 .pincode(client.getPincode())
                 .insuranceType(client.getInsuranceType())
+                .policyType(client.getPolicyType() != null ? client.getPolicyType() : "FRESH")
                 .existingInsurer(client.getExistingInsurer())
+                .existingPolicyNumber(client.getExistingPolicyNumber())
+                .portingReason(client.getPortingReason())
                 .policyExpiryDate(client.getPolicyExpiryDate())
                 .sumInsured(client.getSumInsured())
                 .estimatedPremium(client.getEstimatedPremium())

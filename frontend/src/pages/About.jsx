@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ShieldCheck, 
@@ -17,10 +17,13 @@ import {
   Clock, 
   ExternalLink,
   ChevronRight,
+  ChevronLeft,
   X,
   Camera,
   Layers,
-  HelpCircle
+  HelpCircle,
+  Folder,
+  Images
 } from 'lucide-react';
 import { useBusinessProfile } from '../context/BusinessProfileContext';
 
@@ -32,20 +35,37 @@ import vehicleHero from '../assets/slides/vehicle_hero.jpg';
 import loansHero from '../assets/slides/loans_hero.jpg';
 import businessTravelHero from '../assets/slides/business_travel_hero.jpg';
 
-// Insurer logos
-import hdfcLogo from '../assets/partners/HDFC-Ergo-logo.png';
-import iciciLogo from '../assets/partners/ICICI Lombard logo.webp';
-import starLogo from '../assets/partners/star health insurance logo.png';
-import careLogo from '../assets/partners/care health insurance logo.png';
-import tataLogo from '../assets/partners/TATA AIG Insurance logo.png';
-import nivaLogo from '../assets/partners/niva health insurance logo.png';
-import bajajLogo from '../assets/partners/Bajaj Alilanz logo.png';
-import licLogo from '../assets/partners/LIC LOGO.jpg';
+// Insurer catalog
+import { portalService } from '../services/api';
+import { PARTNER_LOGO_MAP, DEFAULT_PARTNERS_FALLBACK } from '../utils/partnerAssetCatalog';
 
 export default function About() {
   const { businessProfile } = useBusinessProfile();
   const [activeTab, setActiveTab] = useState('all');
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [partners, setPartners] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    portalService.getPartners()
+      .then(data => {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setPartners(data);
+        }
+      })
+      .catch(err => {
+        console.warn('Could not load partners for About page:', err);
+      });
+    return () => { isMounted = false; };
+  }, []);
+
+  const partnerList = partners.length > 0 ? partners : DEFAULT_PARTNERS_FALLBACK;
+
+  const getPartnerLogo = (partner) => {
+    if (partner.logoUrl) return partner.logoUrl;
+    if (partner.logoKey && PARTNER_LOGO_MAP[partner.logoKey]) return PARTNER_LOGO_MAP[partner.logoKey];
+    return PARTNER_LOGO_MAP.starHealthLogo;
+  };
 
   const phone = businessProfile?.primaryPhone || '+91 8367415156';
   const cleanPhone = phone.replace(/\s+/g, '');
@@ -54,8 +74,8 @@ export default function About() {
   const address2 = businessProfile?.officeAddressLine2 || 'Opp: ECIL Busstop, ECIL, Hyderabad.';
   const irdaiNo = businessProfile?.irdaiRegistrationNo || 'IRDAI/IMF/TS/2026/00482';
 
-  // Gallery items with categories, captions, and curated high-resolution imagery
-  const galleryItems = [
+  // Dynamic Gallery items with fallback to curated high-resolution imagery
+  const defaultGalleryItems = [
     {
       id: 1,
       category: 'office',
@@ -95,20 +115,149 @@ export default function About() {
       subtitle: 'Educating policyholders on cashless porting & zero-dep protections',
       image: vehicleHero,
       tag: 'Community Camp'
-    },
-    {
-      id: 6,
-      category: 'finance',
-      title: 'Integrated SME & Business Loan Advisory',
-      subtitle: 'Expanding from protection to comprehensive wealth & MSME growth',
-      image: loansHero,
-      tag: 'Financial Services'
     }
   ];
 
-  const filteredGallery = activeTab === 'all' 
-    ? galleryItems 
-    : galleryItems.filter(item => item.category === activeTab);
+  // Default corporate albums with high-resolution imagery
+  const defaultAlbums = [
+    {
+      id: 'album-hq',
+      title: 'Corporate Headquarters & Advisory Suites',
+      subtitle: 'ECIL, Hyderabad - 4th Floor Mytri Constructions',
+      category: 'office',
+      tag: 'Headquarters',
+      coverImage: businessHero,
+      photos: [
+        {
+          id: 101,
+          title: 'Executive Advisory Suite',
+          subtitle: 'Personalized face-to-face consultation desks',
+          image: businessHero,
+          tag: 'Headquarters'
+        },
+        {
+          id: 102,
+          title: 'Policy Onboarding Wing',
+          subtitle: 'Digital instant proposal issuance infrastructure',
+          image: loansHero,
+          tag: 'Headquarters'
+        }
+      ]
+    },
+    {
+      id: 'album-conclaves',
+      title: 'Annual POSP & Advisor Conclaves',
+      subtitle: 'Empowering 1,200+ certified regional advisors across Telangana & AP',
+      category: 'conclave',
+      tag: 'Advisor Network',
+      coverImage: familyHero,
+      photos: [
+        {
+          id: 201,
+          title: 'Regional Advisor Leadership Summit',
+          subtitle: 'Novotel Hitec City Conclave',
+          image: familyHero,
+          tag: 'Advisor Network'
+        }
+      ]
+    },
+    {
+      id: 'album-claims',
+      title: '24/7 Claim Concierge Desk',
+      subtitle: 'Physical claim managers assisting cashless hospital admissions',
+      category: 'claims',
+      tag: 'Claim Support',
+      coverImage: healthHero,
+      photos: [
+        {
+          id: 301,
+          title: 'Claim Settlement Concierge in Action',
+          subtitle: 'Hospital TPA coordination suite',
+          image: healthHero,
+          tag: 'Claim Support'
+        }
+      ]
+    },
+    {
+      id: 'album-awards',
+      title: 'Industry Awards & Partner Honours',
+      subtitle: 'Top Performance recognition for settlement speed & ethical compliance',
+      category: 'awards',
+      tag: 'Awards & Honours',
+      coverImage: businessTravelHero,
+      photos: [
+        {
+          id: 401,
+          title: 'Best Regional InsurTech Marketing Firm',
+          subtitle: 'Annual Financial Services Summit Award',
+          image: businessTravelHero,
+          tag: 'Awards & Honours'
+        }
+      ]
+    },
+    {
+      id: 'album-community',
+      title: 'Family Financial Wellness & Motor Camps',
+      subtitle: 'Educating policyholders on porting rights and cashless claims',
+      category: 'community',
+      tag: 'Community Camp',
+      coverImage: vehicleHero,
+      photos: [
+        {
+          id: 501,
+          title: 'Secunderabad Road Safety & Zero-Dep Camp',
+          subtitle: 'Community outreach initiative',
+          image: vehicleHero,
+          tag: 'Community Camp'
+        }
+      ]
+    }
+  ];
+
+  const normalizeUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('/api/documents/view-file/')) {
+      return url.replace('/api/documents/view-file/', '/api/crm/documents/view-file/');
+    }
+    return url;
+  };
+
+  let corporateAlbums = defaultAlbums;
+  if (businessProfile?.aboutGalleryPhotosJson) {
+    try {
+      const parsed = JSON.parse(businessProfile.aboutGalleryPhotosJson);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed[0]?.photos)) {
+          corporateAlbums = parsed.map(album => ({
+            ...album,
+            coverImage: normalizeUrl(album.photos?.[0]?.imageUrl || album.coverImage || businessHero),
+            photos: (album.photos || []).map(p => ({
+              ...p,
+              image: normalizeUrl(p.imageUrl || p.image || businessHero)
+            }))
+          }));
+        } else {
+          // If legacy flat format, wrap into the default album categories
+          corporateAlbums = defaultAlbums.map(alb => {
+            const matchedPhotos = parsed.filter(p => p.category === alb.category);
+            return {
+              ...alb,
+              photos: matchedPhotos.length > 0 ? matchedPhotos.map(p => ({ ...p, image: p.imageUrl || p.image || alb.coverImage })) : alb.photos
+            };
+          });
+        }
+      }
+    } catch (e) {
+      corporateAlbums = defaultAlbums;
+    }
+  }
+
+  // Direct 1-click Lightbox: tracks the active album and the photo within that album
+  const [activeAlbumLightbox, setActiveAlbumLightbox] = useState(null);
+  const [lightboxPhotoIndex, setLightboxPhotoIndex] = useState(0);
+
+  const heroHeadline = businessProfile?.aboutHeroTitle || 'India’s Most Dependable Bridge Between Families, Protection & Financial Freedom';
+  const heroDescription = businessProfile?.aboutHeroDescription || 'At Aadhiraksha Insurance Marketing & Financial Services Pvt Ltd, we believe every Indian family deserves unbiased, transparent, and prompt insurance advisory with zero hidden catches. Rooted in Hyderabad with a pan-regional network of over 1,200 certified advisors, we don\'t just sell policies — we stand beside you during claim settlements.';
 
   return (
     <div className="about-page-wrapper" style={{ background: '#f8fafc', color: 'var(--text-dark)', minHeight: '100vh' }}>
@@ -154,14 +303,7 @@ export default function About() {
             letterSpacing: '-0.02em',
             color: '#ffffff'
           }}>
-            India’s Most Dependable Bridge Between <br />
-            <span style={{
-              background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
-            }}>
-              Families, Protection & Financial Freedom
-            </span>
+            {heroHeadline}
           </h1>
 
           <p className="about-hero-desc" style={{
@@ -171,7 +313,7 @@ export default function About() {
             maxWidth: '780px',
             margin: '0 0 1.75rem'
           }}>
-            At <strong>Aadhiraksha Insurance Marketing & Financial Services Pvt Ltd</strong>, we believe every Indian family deserves unbiased, transparent, and prompt insurance advisory with zero hidden catches. Rooted in Hyderabad with a pan-regional network of over 1,200 certified advisors, we don't just sell policies — we stand beside you during claim settlements.
+            {heroDescription}
           </p>
 
           <div className="about-hero-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
@@ -225,7 +367,7 @@ export default function About() {
           <div className="about-metrics-card">
             <div className="about-metric-cell">
               <div className="about-metric-val" style={{ color: 'var(--primary-navy)' }}>
-                ₹50+ Cr
+                {businessProfile?.claimsSettledAmount || '₹50+ Cr'}
               </div>
               <div className="about-metric-lbl">
                 Claims Settled Seamlessly
@@ -234,7 +376,7 @@ export default function About() {
 
             <div className="about-metric-cell">
               <div className="about-metric-val" style={{ color: 'var(--accent-emerald)' }}>
-                25,000+
+                {businessProfile?.familiesProtectedCount || '25,000+'}
               </div>
               <div className="about-metric-lbl">
                 Families Protected
@@ -243,7 +385,7 @@ export default function About() {
 
             <div className="about-metric-cell">
               <div className="about-metric-val" style={{ color: 'var(--accent-gold)' }}>
-                1,200+
+                {businessProfile?.certifiedAdvisorsCount || '1,200+'}
               </div>
               <div className="about-metric-lbl">
                 Certified Advisors
@@ -252,7 +394,7 @@ export default function About() {
 
             <div className="about-metric-cell">
               <div className="about-metric-val" style={{ color: '#0284c7' }}>
-                98.8%
+                {businessProfile?.settlementRatio || '98.8%'}
               </div>
               <div className="about-metric-lbl">
                 Resolution Ratio
@@ -355,16 +497,19 @@ export default function About() {
       <section style={{ padding: '3.5rem 1rem 4.5rem', background: '#f1f5f9' }}>
         <div className="container" style={{ maxWidth: '1180px', margin: '0 auto' }}>
           
-          <div className="about-gallery-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2.5rem' }}>
+          <div className="about-gallery-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1.5rem', marginBottom: '2rem' }}>
             <div>
               <span style={{
                 color: 'var(--accent-gold)',
                 fontSize: '0.82rem',
                 fontWeight: 800,
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em'
+                letterSpacing: '0.05em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
               }}>
-                Life at Aadhiraksha & Moments
+                <Folder size={14} /> Official Media Collections
               </span>
               <h2 style={{
                 fontSize: '2rem',
@@ -372,191 +517,310 @@ export default function About() {
                 color: 'var(--primary-navy)',
                 margin: '6px 0 0'
               }}>
-                Corporate Gallery & Outreach
+                Corporate Albums & Outreach
               </h2>
             </div>
 
-            {/* Native Mobile Swipeable Filter Chips */}
-            <div className="about-gallery-chips-wrapper">
-              {[
-                { id: 'all', label: 'All Photos' },
-                { id: 'office', label: 'Headquarters' },
-                { id: 'conclave', label: 'POSP Network' },
-                { id: 'claims', label: 'Claims Desk' },
-                { id: 'community', label: 'Community' }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className="about-filter-chip"
-                  style={{
-                    background: activeTab === tab.id ? 'var(--primary-navy)' : 'transparent',
-                    color: activeTab === tab.id ? '#ffffff' : '#64748b'
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
           </div>
 
-          {/* Gallery Grid */}
-          <div className="about-gallery-grid" style={{
+          {/* ALBUM CARDS GRID (Direct 1-click Lightbox: clicking opens the album's photos directly in modal) */}
+          <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
             gap: '1.5rem'
           }}>
-            {filteredGallery.map((item) => (
-              <div 
-                key={item.id}
-                onClick={() => setSelectedPhoto(item)}
-                style={{
-                  background: '#ffffff',
-                  borderRadius: '18px',
-                  overflow: 'hidden',
-                  border: '1px solid var(--border-subtle)',
-                  boxShadow: '0 4px 18px rgba(0, 0, 0, 0.04)',
-                  cursor: 'pointer',
-                  position: 'relative',
-                  transition: 'transform 0.25s, box-shadow 0.25s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 16px 32px rgba(0, 0, 0, 0.1)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 18px rgba(0, 0, 0, 0.04)';
-                }}
-              >
-                <div className="about-gallery-card-img-box" style={{ position: 'relative', height: '220px', overflow: 'hidden', background: '#091a2f' }}>
-                  <img 
-                    src={item.image} 
-                    alt={item.title} 
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      transition: 'transform 0.4s ease'
-                    }}
-                  />
-                  <div style={{
-                    position: 'absolute',
-                    top: '12px',
-                    left: '12px',
-                    background: 'rgba(15, 23, 42, 0.75)',
-                    color: '#ffffff',
-                    padding: '4px 10px',
-                    borderRadius: '8px',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    letterSpacing: '0.03em',
-                    textTransform: 'uppercase'
-                  }}>
-                    {item.tag}
-                  </div>
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '12px',
-                    right: '12px',
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: 'rgba(255, 255, 255, 0.9)',
+            {corporateAlbums.map((album) => {
+              const photoCount = album.photos?.length || 0;
+              return (
+                <div
+                  key={album.id}
+                  onClick={() => {
+                    setActiveAlbumLightbox(album);
+                    setLightboxPhotoIndex(0);
+                  }}
+                  style={{
+                    background: '#ffffff',
+                    borderRadius: '20px',
+                    overflow: 'hidden',
+                    border: '1px solid var(--border-subtle)',
+                    boxShadow: '0 4px 18px rgba(0, 0, 0, 0.04)',
+                    cursor: 'pointer',
+                    position: 'relative',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--primary-navy)'
-                  }}>
-                    <Camera size={16} />
+                    flexDirection: 'column',
+                    transition: 'transform 0.25s, box-shadow 0.25s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-5px)';
+                    e.currentTarget.style.boxShadow = '0 18px 36px rgba(0, 0, 0, 0.1)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 18px rgba(0, 0, 0, 0.04)';
+                  }}
+                >
+                  {/* Album Cover with Stacking Badge */}
+                  <div style={{ position: 'relative', height: '220px', overflow: 'hidden', background: '#091a2f' }}>
+                    <img
+                      src={album.coverImage}
+                      alt={album.title}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        transition: 'transform 0.4s ease'
+                      }}
+                    />
+                    
+                    {/* Photo Count Stack Badge */}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '14px',
+                      right: '14px',
+                      background: 'rgba(15, 23, 42, 0.85)',
+                      color: '#ffffff',
+                      padding: '4px 12px',
+                      borderRadius: '20px',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.3)'
+                    }}>
+                      <Images size={14} color="#fbbf24" />
+                      <span>{photoCount} Photo{photoCount !== 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+
+                  {/* Album Info */}
+                  <div style={{ padding: '1.4rem 1.6rem', display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, justifyContent: 'space-between' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary-navy)', margin: '0 0 6px', lineHeight: 1.35 }}>
+                        {album.title}
+                      </h3>
+                      {album.subtitle && (
+                        <p style={{ fontSize: '0.84rem', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+                          {album.subtitle}
+                        </p>
+                      )}
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      color: 'var(--accent-gold)',
+                      fontSize: '0.82rem',
+                      fontWeight: 800,
+                      marginTop: '12px'
+                    }}>
+                      <span>View Album ({photoCount} Photo{photoCount !== 1 ? 's' : ''})</span>
+                      <ChevronRight size={15} />
+                    </div>
                   </div>
                 </div>
-
-                <div style={{ padding: '1.25rem 1.4rem' }}>
-                  <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary-navy)', margin: '0 0 6px' }}>
-                    {item.title}
-                  </h3>
-                  <p style={{ fontSize: '0.82rem', color: '#64748b', margin: 0, lineHeight: 1.45 }}>
-                    {item.subtitle}
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
         </div>
       </section>
 
-      {/* 5. LIGHTBOX MODAL (Zero blur, crisp per AGENTS.md) */}
-      {selectedPhoto && (
-        <div 
-          onClick={() => setSelectedPhoto(null)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.85)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px'
-          }}
-        >
+      {/* 5. DIRECT 1-CLICK LIGHTBOX MODAL (Zero blur, crisp dark contrast per AGENTS.md Rule 10) */}
+      {activeAlbumLightbox && (() => {
+        const photos = activeAlbumLightbox.photos || [];
+        const safeIndex = Math.min(Math.max(lightboxPhotoIndex, 0), Math.max(photos.length - 1, 0));
+        const currentPhoto = photos[safeIndex] || {
+          image: activeAlbumLightbox.coverImage,
+          title: activeAlbumLightbox.title,
+          subtitle: activeAlbumLightbox.subtitle,
+          tag: activeAlbumLightbox.tag
+        };
+        const hasPrev = safeIndex > 0;
+        const hasNext = safeIndex < photos.length - 1;
+
+        const handlePrev = (e) => {
+          e?.stopPropagation();
+          if (hasPrev) {
+            setLightboxPhotoIndex(safeIndex - 1);
+          }
+        };
+
+        const handleNext = (e) => {
+          e?.stopPropagation();
+          if (hasNext) {
+            setLightboxPhotoIndex(safeIndex + 1);
+          }
+        };
+
+        return (
           <div 
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setActiveAlbumLightbox(null)}
             style={{
-              background: '#ffffff',
-              borderRadius: '20px',
-              maxWidth: '840px',
-              width: '100%',
-              overflow: 'hidden',
-              boxShadow: '0 25px 60px rgba(0,0,0,0.4)',
-              position: 'relative'
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.88)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '20px'
             }}
           >
-            <button
-              onClick={() => setSelectedPhoto(null)}
+            <div 
+              onClick={(e) => e.stopPropagation()}
               style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                background: 'rgba(15, 23, 42, 0.7)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '50%',
-                width: '38px',
-                height: '38px',
+                background: '#ffffff',
+                borderRadius: '20px',
+                maxWidth: '860px',
+                width: '100%',
+                overflow: 'hidden',
+                boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
+                position: 'relative',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                zIndex: 10
+                flexDirection: 'column'
               }}
-              aria-label="Close Preview"
             >
-              <X size={20} />
-            </button>
+              {/* Close Button */}
+              <button
+                onClick={() => setActiveAlbumLightbox(null)}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  background: 'rgba(15, 23, 42, 0.75)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '38px',
+                  height: '38px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 10,
+                  transition: 'background 0.2s'
+                }}
+                aria-label="Close Preview"
+              >
+                <X size={20} />
+              </button>
 
-            <img 
-              src={selectedPhoto.image} 
-              alt={selectedPhoto.title}
-              style={{ width: '100%', maxHeight: '480px', objectFit: 'cover', display: 'block' }}
-            />
+              {/* Prev / Next Floating Navigation */}
+              {hasPrev && (
+                <button
+                  onClick={handlePrev}
+                  style={{
+                    position: 'absolute',
+                    top: '40%',
+                    left: '16px',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(15, 23, 42, 0.75)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '42px',
+                    height: '42px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    zIndex: 10,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    transition: 'transform 0.15s, background 0.15s'
+                  }}
+                  aria-label="Previous Photo"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+              )}
 
-            <div style={{ padding: '1.5rem 1.75rem' }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--accent-gold)', textTransform: 'uppercase', marginBottom: '4px' }}>
-                {selectedPhoto.tag}
+              {hasNext && (
+                <button
+                  onClick={handleNext}
+                  style={{
+                    position: 'absolute',
+                    top: '40%',
+                    right: '16px',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(15, 23, 42, 0.75)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '42px',
+                    height: '42px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    zIndex: 10,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    transition: 'transform 0.15s, background 0.15s'
+                  }}
+                  aria-label="Next Photo"
+                >
+                  <ChevronRight size={24} />
+                </button>
+              )}
+
+              {/* Image Box */}
+              <div style={{ position: 'relative', width: '100%', height: '420px', minHeight: '380px', background: '#091a2f', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                <img 
+                  src={currentPhoto.image || currentPhoto.imageUrl} 
+                  alt={currentPhoto.title}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                  onError={(e) => {
+                    e.currentTarget.src = businessHero;
+                  }}
+                />
+                
+                {/* Counter Pill With Album Context */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '12px',
+                  left: '16px',
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  color: '#ffffff',
+                  padding: '4px 12px',
+                  borderRadius: '12px',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <span style={{ color: '#fbbf24' }}>{activeAlbumLightbox.title}</span>
+                  <span style={{ color: '#94a3b8' }}>•</span>
+                  <span>{safeIndex + 1} of {Math.max(photos.length, 1)}</span>
+                </div>
               </div>
-              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--primary-navy)', margin: '0 0 6px' }}>
-                {selectedPhoto.title}
-              </h3>
-              <p style={{ fontSize: '0.92rem', color: '#64748b', margin: 0 }}>
-                {selectedPhoto.subtitle}
-              </p>
+
+              {/* Caption & Metadata */}
+              <div style={{ padding: '1.25rem 1.75rem', background: '#ffffff', borderTop: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {activeAlbumLightbox.title}
+                  </span>
+                  <span style={{ fontSize: '0.74rem', color: '#94a3b8', fontWeight: 600 }}>
+                    {photos.length > 1 ? `Photo ${safeIndex + 1} of ${photos.length}` : '1 of 1'}
+                  </span>
+                </div>
+                {currentPhoto.title && (
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary-navy)', margin: '0 0 4px' }}>
+                    {currentPhoto.title}
+                  </h3>
+                )}
+                {(currentPhoto.subtitle || activeAlbumLightbox.subtitle) && (
+                  <p style={{ fontSize: '0.88rem', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+                    {currentPhoto.subtitle || activeAlbumLightbox.subtitle}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 6. TRUSTED INSURANCE PARTNERS */}
       <section style={{ padding: '4rem 1rem', background: '#ffffff', borderTop: '1px solid var(--border-subtle)' }}>
@@ -584,39 +848,47 @@ export default function About() {
             flexWrap: 'wrap',
             justifyContent: 'center',
             alignItems: 'center',
-            gap: '2rem'
+            gap: '1.5rem'
           }}>
-            {[
-              { img: hdfcLogo, name: 'HDFC ERGO' },
-              { img: iciciLogo, name: 'ICICI Lombard' },
-              { img: starLogo, name: 'Star Health' },
-              { img: careLogo, name: 'Care Health' },
-              { img: tataLogo, name: 'TATA AIG' },
-              { img: nivaLogo, name: 'Niva Bupa' },
-              { img: bajajLogo, name: 'Bajaj Allianz' },
-              { img: licLogo, name: 'LIC of India' }
-            ].map((p, idx) => (
-              <div 
-                key={idx}
-                style={{
-                  background: '#f8fafc',
-                  padding: '14px 20px',
-                  borderRadius: '14px',
-                  border: '1px solid #e2e8f0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minWidth: '130px',
-                  height: '64px'
-                }}
-              >
-                <img 
-                  src={p.img} 
-                  alt={p.name} 
-                  style={{ maxHeight: '34px', maxWidth: '120px', objectFit: 'contain' }}
-                />
-              </div>
-            ))}
+            {partnerList.map((p) => {
+              const logoSrc = getPartnerLogo(p);
+              return (
+                <Link
+                  key={p.id}
+                  to={`/partners/${p.slug || p.id}`}
+                  title={`${p.name} — View details & plans`}
+                  style={{
+                    background: '#f8fafc',
+                    padding: '12px 20px',
+                    borderRadius: '14px',
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '140px',
+                    height: '68px',
+                    textDecoration: 'none',
+                    transition: 'transform 0.2s, box-shadow 0.2s, border-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-3px)';
+                    e.currentTarget.style.borderColor = '#cbd5e1';
+                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.06)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <img 
+                    src={logoSrc} 
+                    alt={p.name} 
+                    style={{ maxHeight: '38px', maxWidth: '125px', objectFit: 'contain' }}
+                  />
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -676,7 +948,7 @@ export default function About() {
               </div>
 
               <a
-                href="https://maps.google.com/?q=Mytri+Constructions+ECIL+Hyderabad"
+                href={businessProfile?.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(`${address1} ${address2}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{

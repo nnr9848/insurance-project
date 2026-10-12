@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 public class BusinessProfileController {
 
     private final BusinessProfileRepository repository;
+    private final com.aadhiraksha.insurance.service.FileStorageService fileStorageService;
 
     /**
      * Public endpoint: retrieve canonical company contact, hotline, and communication address
@@ -156,6 +157,85 @@ public class BusinessProfileController {
             profile.setFirebaseMessagingSenderId(updateReq.getFirebaseMessagingSenderId().trim());
         }
 
+        // Google Maps & Review Links
+        if (updateReq.getGoogleMapsUrl() != null) {
+            profile.setGoogleMapsUrl(updateReq.getGoogleMapsUrl().trim());
+        }
+        if (updateReq.getGoogleReviewUrl() != null) {
+            profile.setGoogleReviewUrl(updateReq.getGoogleReviewUrl().trim());
+        }
+
+        // Social Media Profiles
+        if (updateReq.getLinkedinUrl() != null) {
+            profile.setLinkedinUrl(updateReq.getLinkedinUrl().trim());
+        }
+        if (updateReq.getYoutubeUrl() != null) {
+            profile.setYoutubeUrl(updateReq.getYoutubeUrl().trim());
+        }
+        if (updateReq.getInstagramUrl() != null) {
+            profile.setInstagramUrl(updateReq.getInstagramUrl().trim());
+        }
+        if (updateReq.getFacebookUrl() != null) {
+            profile.setFacebookUrl(updateReq.getFacebookUrl().trim());
+        }
+        if (updateReq.getXTwitterUrl() != null) {
+            profile.setXTwitterUrl(updateReq.getXTwitterUrl().trim());
+        }
+
+        // Corporate Impact Milestones
+        if (updateReq.getClaimsSettledAmount() != null) {
+            profile.setClaimsSettledAmount(updateReq.getClaimsSettledAmount().trim());
+        }
+        if (updateReq.getFamiliesProtectedCount() != null) {
+            profile.setFamiliesProtectedCount(updateReq.getFamiliesProtectedCount().trim());
+        }
+        if (updateReq.getCertifiedAdvisorsCount() != null) {
+            profile.setCertifiedAdvisorsCount(updateReq.getCertifiedAdvisorsCount().trim());
+        }
+        if (updateReq.getSettlementRatio() != null) {
+            profile.setSettlementRatio(updateReq.getSettlementRatio().trim());
+        }
+
+        // About Us Content & Story
+        if (updateReq.getAboutHeroTitle() != null) {
+            profile.setAboutHeroTitle(updateReq.getAboutHeroTitle().trim());
+        }
+        if (updateReq.getAboutHeroDescription() != null) {
+            profile.setAboutHeroDescription(updateReq.getAboutHeroDescription().trim());
+        }
+        if (updateReq.getAboutMissionStatement() != null) {
+            profile.setAboutMissionStatement(updateReq.getAboutMissionStatement().trim());
+        }
+        if (updateReq.getAboutVisionStatement() != null) {
+            profile.setAboutVisionStatement(updateReq.getAboutVisionStatement().trim());
+        }
+        if (updateReq.getAboutGalleryPhotosJson() != null) {
+            profile.setAboutGalleryPhotosJson(updateReq.getAboutGalleryPhotosJson());
+        }
+
+        // Dynamic Company Pages Content
+        if (updateReq.getPospPageHeadline() != null) {
+            profile.setPospPageHeadline(updateReq.getPospPageHeadline().trim());
+        }
+        if (updateReq.getPospPageSubheadline() != null) {
+            profile.setPospPageSubheadline(updateReq.getPospPageSubheadline().trim());
+        }
+        if (updateReq.getClaimsPageHeadline() != null) {
+            profile.setClaimsPageHeadline(updateReq.getClaimsPageHeadline().trim());
+        }
+        if (updateReq.getClaimsPageSubheadline() != null) {
+            profile.setClaimsPageSubheadline(updateReq.getClaimsPageSubheadline().trim());
+        }
+        if (updateReq.getLegalGrievanceOfficerName() != null) {
+            profile.setLegalGrievanceOfficerName(updateReq.getLegalGrievanceOfficerName().trim());
+        }
+        if (updateReq.getLegalGrievanceEmail() != null) {
+            profile.setLegalGrievanceEmail(updateReq.getLegalGrievanceEmail().trim());
+        }
+        if (updateReq.getLegalGrievancePhone() != null) {
+            profile.setLegalGrievancePhone(updateReq.getLegalGrievancePhone().trim());
+        }
+
         profile.setUpdatedAt(LocalDateTime.now());
 
         BusinessProfile saved = repository.save(profile);
@@ -202,4 +282,33 @@ public class BusinessProfileController {
             ));
         }
     }
+
+    /**
+     * Admin endpoint: Upload physical gallery photo image directly from local filesystem
+     */
+    @PostMapping(value = "/admin/settings/gallery/upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @Operation(summary = "Upload Physical Image for Corporate Gallery", description = "Stores photo on server and returns direct view URL")
+    public ResponseEntity<java.util.Map<String, Object>> uploadGalleryImage(
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                "success", false,
+                "message", "File cannot be empty"
+            ));
+        }
+
+        String storedFileName = fileStorageService.storeFile(file, file.getOriginalFilename());
+        String fileUrl = "/api/crm/documents/view-file/" + storedFileName;
+
+        log.info("Uploaded gallery photo successfully: filename={}, url={}", storedFileName, fileUrl);
+
+        return ResponseEntity.ok(java.util.Map.of(
+            "success", true,
+            "fileName", storedFileName,
+            "url", fileUrl
+        ));
+    }
 }
+

@@ -13,9 +13,11 @@ import {
 } from 'lucide-react';
 import { customerReviewService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { useBusinessProfile } from '../../context/BusinessProfileContext';
 
 export default function CustomerReviewModal({ isOpen, onClose, onReviewSubmitted }) {
   const { user, isAuthenticated } = useAuth();
+  const { businessProfile } = useBusinessProfile();
 
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
@@ -221,7 +223,7 @@ export default function CustomerReviewModal({ isOpen, onClose, onReviewSubmitted
                       Would you mind taking 30 seconds to paste this on our Google Business Profile too?
                     </p>
                     <a
-                      href="https://maps.google.com/?q=Aadhiraksha+Insurance+Marketing+ECIL+Hyderabad"
+                      href={businessProfile?.googleReviewUrl || "https://maps.google.com/?q=Aadhiraksha+Insurance+Marketing+ECIL+Hyderabad"}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="google-review-btn"

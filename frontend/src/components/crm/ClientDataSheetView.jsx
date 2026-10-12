@@ -120,7 +120,10 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
     email: '',
     city: 'Hyderabad',
     insuranceType: 'Health Insurance',
+    policyType: 'FRESH', // FRESH, RENEWAL, PORTABILITY
     existingInsurer: '',
+    existingPolicyNumber: '',
+    portingReason: '',
     policyExpiryDate: '',
     sumInsured: '₹10 Lakhs',
     estimatedPremium: '',
@@ -345,7 +348,11 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
         email: '',
         city: 'Hyderabad',
         insuranceType: 'Health Insurance',
+        policyType: 'FRESH',
         existingInsurer: '',
+        existingPolicyNumber: '',
+        portingReason: '',
+        policyExpiryDate: '',
         sumInsured: '₹10 Lakhs',
         estimatedPremium: '',
         priority: 'HIGH',
@@ -1306,22 +1313,78 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
 
                             return (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                {/* Row 1: Primary Product Tag */}
-                                <div style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  background: primaryBadge.bg,
-                                  color: primaryBadge.color,
-                                  border: `1px solid ${primaryBadge.border}`,
-                                  padding: '0.15rem 0.5rem',
-                                  borderRadius: '6px',
-                                  fontSize: '0.74rem',
-                                  fontWeight: 800,
-                                  width: 'fit-content'
-                                }}>
-                                  {primaryBadge.icon}
-                                  <span>{primaryBadge.label}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                                  {/* Row 1: Primary Product Tag */}
+                                  <div style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    background: primaryBadge.bg,
+                                    color: primaryBadge.color,
+                                    border: `1px solid ${primaryBadge.border}`,
+                                    padding: '0.15rem 0.5rem',
+                                    borderRadius: '6px',
+                                    fontSize: '0.74rem',
+                                    fontWeight: 800,
+                                    width: 'fit-content'
+                                  }}>
+                                    {primaryBadge.icon}
+                                    <span>{primaryBadge.label}</span>
+                                  </div>
+
+                                  {/* Policy Business Type Badge (Fresh / Renewal / Port) */}
+                                  {(() => {
+                                    const pType = lead.policyType || 'FRESH';
+                                    if (pType === 'PORTABILITY') {
+                                      return (
+                                        <span style={{
+                                          fontSize: '0.67rem',
+                                          fontWeight: 800,
+                                          background: '#fef3c7',
+                                          color: '#92400e',
+                                          border: '1px solid #fde68a',
+                                          borderRadius: '5px',
+                                          padding: '1px 5px',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '2px'
+                                        }} title={lead.existingInsurer ? `Porting from ${lead.existingInsurer}` : 'Portability Policy'}>
+                                          🔁 Port
+                                        </span>
+                                      );
+                                    }
+                                    if (pType === 'RENEWAL') {
+                                      return (
+                                        <span style={{
+                                          fontSize: '0.67rem',
+                                          fontWeight: 800,
+                                          background: '#e0f2fe',
+                                          color: '#0369a1',
+                                          border: '1px solid #bae6fd',
+                                          borderRadius: '5px',
+                                          padding: '1px 5px',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '2px'
+                                        }} title={lead.existingInsurer ? `Renewal with ${lead.existingInsurer}` : 'Renewal Policy'}>
+                                          🔄 Renewal
+                                        </span>
+                                      );
+                                    }
+                                    return (
+                                      <span style={{
+                                        fontSize: '0.67rem',
+                                        fontWeight: 800,
+                                        background: '#ecfdf5',
+                                        color: '#065f46',
+                                        border: '1px solid #a7f3d0',
+                                        borderRadius: '5px',
+                                        padding: '1px 5px'
+                                      }}>
+                                        🌱 Fresh
+                                      </span>
+                                    );
+                                  })()}
                                 </div>
 
                                 {/* Row 2: Multi-Policy Ingestion / Enquiries Status Badge */}
@@ -2299,6 +2362,7 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
       </div>
 
       {/* Modal: Add New Client Row */}
+      {/* Modal: Add New Client Row */}
       {showAddLeadModal && (
         <div style={{
           position: 'fixed',
@@ -2314,17 +2378,22 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
             background: '#ffffff',
             borderRadius: '20px',
             width: '100%',
-            maxWidth: '560px',
+            maxWidth: '580px',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
             overflow: 'hidden'
           }}>
+            {/* 1. Sticky / Fixed Header */}
             <div style={{
               background: '#ffffff',
-              padding: '1.25rem 1.5rem',
+              padding: '1.2rem 1.5rem',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              borderBottom: '1px solid #e2e8f0'
+              borderBottom: '1px solid #e2e8f0',
+              flexShrink: 0
             }}>
               <div>
                 <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#0f2b48', letterSpacing: '-0.2px' }}>
@@ -2355,161 +2424,323 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
               </button>
             </div>
 
-            <form onSubmit={handleCreateLead} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            {/* Form wrapping scrollable content and fixed footer */}
+            <form onSubmit={handleCreateLead} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, margin: 0 }}>
+              {/* 2. Scrollable Body */}
+              <div style={{
+                padding: '1.25rem 1.5rem',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+                flex: 1
+              }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                      Client Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Ramesh Kumar"
+                      value={newLeadForm.fullName}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, fullName: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                      Company / Organization
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. RK Tech Pvt Ltd"
+                      value={newLeadForm.companyName}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, companyName: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                      Primary Mobile *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="e.g. +91 9848012345"
+                      value={newLeadForm.phoneNumber}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, phoneNumber: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                      Alt / WhatsApp Mobile
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="e.g. +91 9848099999"
+                      value={newLeadForm.whatsappNumber}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, whatsappNumber: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Client Full Name *
+                    Email Address
                   </label>
                   <input
-                    type="text"
-                    required
-                    placeholder="e.g. Ramesh Kumar"
-                    value={newLeadForm.fullName}
-                    onChange={(e) => setNewLeadForm({ ...newLeadForm, fullName: e.target.value })}
+                    type="email"
+                    placeholder="e.g. ramesh@example.com"
+                    value={newLeadForm.email}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, email: e.target.value })}
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
                   />
                 </div>
+
+                {/* Business Policy Type Selector (Fresh vs Renewal vs Portability) */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    Policy Type (Business Category) *
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                    {[
+                      { id: 'FRESH', label: 'Fresh Policy', icon: '🌱', sub: 'New Client Policy' },
+                      { id: 'RENEWAL', label: 'Renewal', icon: '🔄', sub: 'Existing Policy Expiry' },
+                      { id: 'PORTABILITY', label: 'Port Policy', icon: '🔁', sub: 'Switch Insurer (IRDAI)' }
+                    ].map(opt => {
+                      const isSelected = newLeadForm.policyType === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setNewLeadForm({ ...newLeadForm, policyType: opt.id })}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '10px 6px',
+                            borderRadius: '10px',
+                            border: isSelected ? '2px solid var(--accent-emerald, #059669)' : '1px solid #cbd5e1',
+                            background: isSelected ? '#ecfdf5' : '#ffffff',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <span style={{ fontSize: '1.25rem', marginBottom: '2px' }}>{opt.icon}</span>
+                          <span style={{ fontSize: '0.82rem', fontWeight: isSelected ? 800 : 600, color: isSelected ? '#065f46' : '#334155' }}>
+                            {opt.label}
+                          </span>
+                          <span style={{ fontSize: '0.68rem', color: isSelected ? '#047857' : '#94a3b8', marginTop: '1px' }}>
+                            {opt.sub}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Conditional Fields for Renewal & Portability */}
+                {newLeadForm.policyType !== 'FRESH' && (
+                  <div style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 800, color: newLeadForm.policyType === 'PORTABILITY' ? '#b45309' : '#1e40af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        {newLeadForm.policyType === 'PORTABILITY' ? '🔁 Portability Details (IRDAI 45-Day Protocol)' : '🔄 Renewal Tracking Details'}
+                      </span>
+                      {newLeadForm.policyType === 'PORTABILITY' && (
+                        <span style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                          Bonus & Waiting Period Protected
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '3px' }}>
+                          Current / Existing Insurer *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Star Health, HDFC ERGO"
+                          value={newLeadForm.existingInsurer}
+                          onChange={(e) => setNewLeadForm({ ...newLeadForm, existingInsurer: e.target.value })}
+                          style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '3px' }}>
+                          Current Policy Number
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. POL-10293848"
+                          value={newLeadForm.existingPolicyNumber}
+                          onChange={(e) => setNewLeadForm({ ...newLeadForm, existingPolicyNumber: e.target.value })}
+                          style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: newLeadForm.policyType === 'PORTABILITY' ? '1fr 1fr' : '1fr', gap: '10px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '3px' }}>
+                          Policy Expiry Date
+                        </label>
+                        <input
+                          type="date"
+                          value={newLeadForm.policyExpiryDate}
+                          onChange={(e) => setNewLeadForm({ ...newLeadForm, policyExpiryDate: e.target.value })}
+                          style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                        />
+                      </div>
+                      {newLeadForm.policyType === 'PORTABILITY' && (
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '3px' }}>
+                            Reason for Porting
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. High renewal premium, Claim service"
+                            value={newLeadForm.portingReason}
+                            onChange={(e) => setNewLeadForm({ ...newLeadForm, portingReason: e.target.value })}
+                            style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                      Insurance Category *
+                    </label>
+                    <select
+                      value={newLeadForm.insuranceType}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, insuranceType: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
+                    >
+                      <option value="Health Insurance">Health Insurance</option>
+                      <option value="Term Life Insurance">Term Life Insurance</option>
+                      <option value="Vehicle / Motor Insurance">Vehicle / Motor Insurance</option>
+                      <option value="Group / SME Insurance">Group / SME Insurance</option>
+                      <option value="Travel Insurance">Travel Insurance</option>
+                      <option value="Loans & Financing">Loans & Financing</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                      Desired Sum Insured
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. ₹10 Lakhs"
+                      value={newLeadForm.sumInsured}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, sumInsured: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                      Priority
+                    </label>
+                    <select
+                      value={newLeadForm.priority}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, priority: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
+                    >
+                      <option value="HIGH">🔥 High (Immediate Followup)</option>
+                      <option value="MEDIUM">⚡ Medium</option>
+                      <option value="LOW">Standard</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Hyderabad"
+                      value={newLeadForm.city}
+                      onChange={(e) => setNewLeadForm({ ...newLeadForm, city: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Company / Organization
+                    Notes & Client Requirements
                   </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. RK Tech Pvt Ltd"
-                    value={newLeadForm.companyName}
-                    onChange={(e) => setNewLeadForm({ ...newLeadForm, companyName: e.target.value })}
+                  <textarea
+                    rows="2"
+                    placeholder="e.g. Looking for family floater policy for self, spouse, 2 kids."
+                    value={newLeadForm.notes}
+                    onChange={(e) => setNewLeadForm({ ...newLeadForm, notes: e.target.value })}
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
                   />
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Primary Mobile *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="e.g. +91 9848012345"
-                    value={newLeadForm.phoneNumber}
-                    onChange={(e) => setNewLeadForm({ ...newLeadForm, phoneNumber: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Alt / WhatsApp Mobile
-                  </label>
-                  <input
-                    type="tel"
-                    placeholder="e.g. +91 9848099999"
-                    value={newLeadForm.whatsappNumber}
-                    onChange={(e) => setNewLeadForm({ ...newLeadForm, whatsappNumber: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  placeholder="e.g. ramesh@example.com"
-                  value={newLeadForm.email}
-                  onChange={(e) => setNewLeadForm({ ...newLeadForm, email: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Insurance Category *
-                  </label>
-                  <select
-                    value={newLeadForm.insuranceType}
-                    onChange={(e) => setNewLeadForm({ ...newLeadForm, insuranceType: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
-                  >
-                    <option value="Health Insurance">Health Insurance</option>
-                    <option value="Term Life Insurance">Term Life Insurance</option>
-                    <option value="Vehicle / Motor Insurance">Vehicle / Motor Insurance</option>
-                    <option value="Group / SME Insurance">Group / SME Insurance</option>
-                    <option value="Travel Insurance">Travel Insurance</option>
-                    <option value="Loans & Financing">Loans & Financing</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Desired Sum Insured
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. ₹10 Lakhs"
-                    value={newLeadForm.sumInsured}
-                    onChange={(e) => setNewLeadForm({ ...newLeadForm, sumInsured: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Priority
-                  </label>
-                  <select
-                    value={newLeadForm.priority}
-                    onChange={(e) => setNewLeadForm({ ...newLeadForm, priority: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
-                  >
-                    <option value="HIGH">🔥 High (Immediate Followup)</option>
-                    <option value="MEDIUM">⚡ Medium</option>
-                    <option value="LOW">Standard</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    City
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Hyderabad"
-                    value={newLeadForm.city}
-                    onChange={(e) => setNewLeadForm({ ...newLeadForm, city: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                  Notes & Client Requirements
-                </label>
-                <textarea
-                  rows="2"
-                  placeholder="e.g. Looking for family floater policy for self, spouse, 2 kids."
-                  value={newLeadForm.notes}
-                  onChange={(e) => setNewLeadForm({ ...newLeadForm, notes: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', marginTop: '0.5rem' }}>
+              {/* 3. Sticky / Fixed Footer Actions */}
+              <div style={{
+                padding: '1rem 1.5rem',
+                borderTop: '1px solid #e2e8f0',
+                background: '#ffffff',
+                display: 'flex',
+                gap: '10px',
+                flexShrink: 0
+              }}>
                 <button
                   type="button"
                   onClick={() => setShowAddLeadModal(false)}
-                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', fontWeight: 600, cursor: 'pointer' }}
+                  style={{
+                    flex: 1,
+                    padding: '11px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#475569',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  style={{ flex: 2, padding: '10px', borderRadius: '8px', border: 'none', background: '#059669', color: '#ffffff', fontWeight: 700, cursor: 'pointer' }}
+                  style={{
+                    flex: 2,
+                    padding: '11px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: '#059669',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 6px -1px rgba(5, 150, 105, 0.25)',
+                    transition: 'all 0.15s ease'
+                  }}
                 >
                   Save to Sheet
                 </button>

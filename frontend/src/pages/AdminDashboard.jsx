@@ -56,7 +56,8 @@ import {
   Plane,
   Building,
   Star,
-  Cpu
+  Cpu,
+  Camera
 } from 'lucide-react';
 import { portalService, crmService } from '../services/api';
 import UserManagementView from '../components/crm/UserManagementView';
@@ -76,6 +77,8 @@ import AuditTrailView from '../components/crm/AuditTrailView';
 import QuotationManagementView from '../components/crm/QuotationManagementView';
 import DocumentLockerView from '../components/crm/DocumentLockerView';
 import BusinessProfileSettingsView from '../components/crm/BusinessProfileSettingsView';
+import GalleryManagerView from '../components/crm/GalleryManagerView';
+import CompanyPagesManagerView from '../components/crm/CompanyPagesManagerView';
 import IntegrationsSettingsView from '../components/crm/IntegrationsSettingsView';
 import CallHistoryView from '../components/crm/CallHistoryView';
 import ManagerApprovalsView from '../components/crm/ManagerApprovalsView';
@@ -507,6 +510,8 @@ export default function AdminDashboard() {
     { id: 'reviews', label: 'Customer Reviews', icon: <Star size={19} />, count: null },
     ...((isSuperAdmin || isManager) ? [
       { id: 'profile', label: 'Company Profile & Branding', icon: <Building size={19} />, count: null },
+      { id: 'pages', label: 'Company Website Pages', icon: <Globe size={19} />, count: null },
+      { id: 'gallery', label: 'Corporate Media & Albums', icon: <Camera size={19} />, count: null },
       { id: 'integrations', label: 'Integrations & Cloud APIs', icon: <Cpu size={19} />, count: null }
     ] : []),
   ];
@@ -1518,6 +1523,16 @@ export default function AdminDashboard() {
           {/* VIEW: COMPANY PROFILE & BRANDING SETTINGS */}
           {activeView === 'profile' && (
             <BusinessProfileSettingsView />
+          )}
+
+          {/* VIEW: COMPANY WEBSITE PAGES DYNAMIC CONTENT */}
+          {activeView === 'pages' && (isSuperAdmin || isManager) && (
+            <CompanyPagesManagerView />
+          )}
+
+          {/* VIEW: CORPORATE MEDIA & OUTREACH ALBUMS */}
+          {activeView === 'gallery' && (isSuperAdmin || isManager) && (
+            <GalleryManagerView />
           )}
 
           {/* VIEW: INTEGRATIONS & CLOUD COMMUNICATIONS */}

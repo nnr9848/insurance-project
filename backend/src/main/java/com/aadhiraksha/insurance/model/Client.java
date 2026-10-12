@@ -59,6 +59,16 @@ public class Client {
     @Column(name = "existing_insurer", length = 120)
     private String existingInsurer;
 
+    @Builder.Default
+    @Column(name = "policy_type", length = 40)
+    private String policyType = "FRESH"; // FRESH, RENEWAL, PORTABILITY
+
+    @Column(name = "existing_policy_number", length = 100)
+    private String existingPolicyNumber;
+
+    @Column(name = "porting_reason", columnDefinition = "TEXT")
+    private String portingReason;
+
     @Column(name = "policy_expiry_date")
     private LocalDate policyExpiryDate;
 

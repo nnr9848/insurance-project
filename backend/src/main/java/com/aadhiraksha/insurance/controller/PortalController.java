@@ -167,6 +167,93 @@ public class PortalController {
         return ResponseEntity.ok(savedClaim);
     }
 
+    // Public Claims Tracking by Ticket, Policy Number, or Mobile Number
+    @GetMapping("/claims/track")
+    @Operation(summary = "Track status of an insurance claim by ticket ID (CLM-...), policy number, or phone number")
+    public ResponseEntity<?> trackClaim(@RequestParam(value = "query", required = false) String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Search query is required"));
+        }
+        String cleanQuery = query.trim();
+        List<Claim> matches = new java.util.ArrayList<>();
+
+        // 1. Check if user provided Ticket ID format (e.g. CLM-12 or 12)
+        String idStr = cleanQuery.toUpperCase().startsWith("CLM-") ? cleanQuery.substring(4).trim() : cleanQuery;
+        try {
+            Long claimId = Long.parseLong(idStr);
+            claimRepository.findById(claimId).ifPresent(matches::add);
+        } catch (NumberFormatException ignored) {}
+
+        // 2. Check if matching by Policy Number
+        if (matches.isEmpty()) {
+            matches.addAll(claimRepository.findByPolicyNumberOrderByCreatedAtDesc(cleanQuery));
+        }
+
+        // 3. Check if matching by Mobile Number (extract last 10 digits)
+        if (matches.isEmpty()) {
+            String digitsOnly = cleanQuery.replaceAll("[^0-9]", "");
+            if (digitsOnly.length() >= 10) {
+                String suffix = digitsOnly.substring(digitsOnly.length() - 10);
+                matches.addAll(claimRepository.findByContactPhoneEndingWithOrderByCreatedAtDesc(suffix));
+            }
+        }
+
+        if (matches.isEmpty()) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "No active claim records found matching: " + cleanQuery));
+        }
+
+        Claim latest = matches.get(0);
+
+        // Map status to friendly customer label & turnaround SLA
+        String statusLabel;
+        String estimatedResolution;
+        String status = latest.getStatus() != null ? latest.getStatus() : "SUBMITTED";
+
+        switch (status) {
+            case "DOCS_PENDING":
+                statusLabel = "Additional Documents Requested by TPA";
+                estimatedResolution = "Awaiting Document Upload from Claimant";
+                break;
+            case "UNDER_REVIEW":
+                statusLabel = "Under TPA Adjudication & Surveyor Verification";
+                estimatedResolution = "Within 24-48 Business Hours";
+                break;
+            case "APPROVED":
+                statusLabel = "Cashless Pre-Authorization Approved";
+                estimatedResolution = "Discharge / Garage Clearance in Progress";
+                break;
+            case "SETTLED":
+                statusLabel = "Claim Fully Settled & Disbursed";
+                estimatedResolution = "Completed";
+                break;
+            case "REJECTED":
+                statusLabel = "Claim Closed / Repudiated by Insurer";
+                estimatedResolution = "Case Concluded";
+                break;
+            case "SUBMITTED":
+            default:
+                statusLabel = "Claim Intimated — Initial Processing";
+                estimatedResolution = "Claims Desk Priority Callback in 15 mins";
+                break;
+        }
+
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("ticketId", "CLM-" + latest.getId());
+        result.put("id", latest.getId());
+        result.put("policyNumber", latest.getPolicyNumber());
+        result.put("claimantName", latest.getClaimantName());
+        result.put("claimType", latest.getClaimType());
+        result.put("status", status);
+        result.put("statusLabel", statusLabel);
+        result.put("hospitalOrGarage", latest.getHospitalOrGarage());
+        result.put("incidentDate", latest.getIncidentDate());
+        result.put("estimatedResolution", estimatedResolution);
+        result.put("createdAt", latest.getCreatedAt());
+
+        return ResponseEntity.ok(result);
+    }
+
     // Admin APIs
     @GetMapping("/admin/quotes")
     @Operation(summary = "Get all customer quote inquiries (Admin/Staff only)")

@@ -51,21 +51,24 @@ export default function ClaimSupport() {
     setSearchParams({ tab });
   };
 
-  const handleTrackSubmit = (e) => {
+  const [trackError, setTrackError] = useState(null);
+
+  const handleTrackSubmit = async (e) => {
     e.preventDefault();
     if (!trackQuery.trim()) return;
     setTrackLoading(true);
-    setTimeout(() => {
+    setTrackError(null);
+    setTrackResult(null);
+
+    try {
+      const data = await portalService.trackClaim(trackQuery.trim());
+      setTrackResult(data);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'No active claim records found. Please check your Claim Ticket / Policy / Mobile Number or reach our 24x7 desk.';
+      setTrackError(msg);
+    } finally {
       setTrackLoading(false);
-      setTrackResult({
-        ticketId: trackQuery.trim().toUpperCase(),
-        status: 'UNDER_REVIEW',
-        statusLabel: 'Under TPA / Surveyor Verification',
-        submittedAt: 'Just Now',
-        estimatedResolution: 'Within 24-48 Business Hours',
-        assignedOfficer: 'Claims Desk Specialist (Escalations)'
-      });
-    }, 600);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -126,8 +129,14 @@ export default function ClaimSupport() {
                 margin: '0 0 1rem 0',
                 color: '#ffffff'
               }}>
-                Instant Claim Support <br />
-                <span style={{ color: '#fbbf24' }}>Direct TPA Pre-Authorization</span>
+                {businessProfile?.claimsPageHeadline ? (
+                  businessProfile.claimsPageHeadline
+                ) : (
+                  <>
+                    Instant Claim Support <br />
+                    <span style={{ color: '#fbbf24' }}>Direct TPA Pre-Authorization</span>
+                  </>
+                )}
               </h1>
 
               <p style={{
@@ -137,7 +146,7 @@ export default function ClaimSupport() {
                 maxWidth: '520px',
                 margin: '0 0 1.75rem 0'
               }}>
-                Facing emergency hospitalization or a vehicle accident? Our dedicated claims desk fast-tracks approvals directly with insurers and Third Party Administrators (TPAs) for zero-out-of-pocket settlements.
+                {businessProfile?.claimsPageSubheadline || 'Facing emergency hospitalization or a vehicle accident? Our dedicated claims desk fast-tracks approvals directly with insurers and Third Party Administrators (TPAs) for zero-out-of-pocket settlements.'}
               </p>
 
               {/* Emergency Hotline Button & Trust Badges below form on mobile */}
@@ -310,20 +319,53 @@ export default function ClaimSupport() {
                       </button>
                     </form>
 
+                    {trackError && (
+                      <div style={{
+                        marginTop: '1.25rem',
+                        padding: '1rem',
+                        background: '#fef2f2',
+                        borderRadius: '10px',
+                        border: '1px solid #fecaca',
+                        color: '#991b1b',
+                        fontSize: '0.82rem',
+                        lineHeight: 1.5,
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '8px'
+                      }}>
+                        <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px', color: '#dc2626' }} />
+                        <div>{trackError}</div>
+                      </div>
+                    )}
+
                     {trackResult && (
                       <div style={{ marginTop: '1.5rem', padding: '1.25rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#64748b' }}>TICKET: {trackResult.ticketId}</span>
-                          <span style={{ fontSize: '0.78rem', fontWeight: 800, padding: '3px 8px', borderRadius: '6px', background: '#dbeafe', color: '#1d4ed8' }}>
+                          <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f2b48' }}>{trackResult.ticketId}</span>
+                          <span style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            background: trackResult.status === 'SETTLED' ? '#dcfce7' : trackResult.status === 'REJECTED' ? '#fee2e2' : '#fef3c7',
+                            color: trackResult.status === 'SETTLED' ? '#15803d' : trackResult.status === 'REJECTED' ? '#b91c1c' : '#b45309'
+                          }}>
                             {trackResult.status}
                           </span>
                         </div>
                         <h4 style={{ fontSize: '0.98rem', fontWeight: 800, color: '#0f2b48', margin: '0 0 0.35rem 0' }}>{trackResult.statusLabel}</h4>
-                        <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 0.5rem 0' }}>
-                          Turnaround SLA: <strong>{trackResult.estimatedResolution}</strong>
-                        </p>
+                        
+                        <div style={{ fontSize: '0.78rem', color: '#64748b', margin: '0 0 0.65rem 0', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div>Claimant: <strong style={{ color: '#0f2b48' }}>{trackResult.claimantName}</strong> ({trackResult.claimType})</div>
+                          <div>Policy: <strong style={{ color: '#0f2b48' }}>{trackResult.policyNumber}</strong></div>
+                          {trackResult.hospitalOrGarage && (
+                            <div>Facility: <strong style={{ color: '#0f2b48' }}>{trackResult.hospitalOrGarage}</strong></div>
+                          )}
+                          <div>Turnaround SLA: <strong style={{ color: '#d97706' }}>{trackResult.estimatedResolution}</strong></div>
+                        </div>
+
                         <div style={{ fontSize: '0.78rem', color: '#059669', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <CheckCircle2 size={14} /> Our dedicated claims officer will contact you if extra documents are required.
+                          <CheckCircle2 size={14} /> Our dedicated claims officer is actively monitoring this case.
                         </div>
                       </div>
                     )}
@@ -366,202 +408,264 @@ export default function ClaimSupport() {
                           Submit Another Claim
                         </button>
                       </div>
-                    ) : (
-                      <form onSubmit={handleSubmit}>
-                        
-                        <div className="funnel-responsive-grid-2" style={{ marginBottom: '1rem' }}>
-                          <div>
-                            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>
-                              Policy Number *
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              placeholder="e.g. 1029384756"
-                              value={formData.policyNumber}
-                              onChange={(e) => setFormData({ ...formData, policyNumber: e.target.value })}
-                              style={{
-                                width: '100%',
-                                padding: '9px 10px',
-                                borderRadius: '8px',
-                                border: '1.5px solid #cbd5e1',
-                                fontSize: '0.85rem',
-                                boxSizing: 'border-box'
-                              }}
-                            />
-                          </div>
+                    ) : (() => {
+                        const categoryConfigs = {
+                          HEALTH: {
+                            claimantLabel: 'Patient Name *',
+                            claimantPlaceholder: 'e.g. Rahul Sharma',
+                            facilityLabel: 'Hospital Name & City',
+                            facilityPlaceholder: 'e.g. Apollo Hospital, Jubilee Hills',
+                            dateLabel: 'Admission Date',
+                            summaryPlaceholder: 'Brief illness / treatment (e.g. Dengue fever, Cardiac)',
+                            tag: '⚡ 60-Min Cashless TPA Pre-Auth'
+                          },
+                          MOTOR: {
+                            claimantLabel: 'Owner / Driver Name *',
+                            claimantPlaceholder: 'e.g. Rajesh Kumar (or TS09EA1234)',
+                            facilityLabel: 'Workshop / Garage / Spot',
+                            facilityPlaceholder: 'e.g. Authorized Hyundai Workshop',
+                            dateLabel: 'Accident Date',
+                            summaryPlaceholder: 'Brief damage description (e.g. Front bumper collision)',
+                            tag: '🚗 5,500+ Cashless Garages & Fast Survey'
+                          },
+                          LIFE: {
+                            claimantLabel: 'Nominee / Claimant Name *',
+                            claimantPlaceholder: 'e.g. Priya Sharma (Spouse)',
+                            facilityLabel: 'City / Location of Event',
+                            facilityPlaceholder: 'e.g. Hyderabad, Telangana',
+                            dateLabel: 'Date of Event',
+                            summaryPlaceholder: 'Brief circumstances & policyholder details',
+                            tag: '🤝 Priority Bereavement Desk'
+                          },
+                          OTHER: {
+                            claimantLabel: 'Contact Person Name *',
+                            claimantPlaceholder: 'e.g. Vikram Patel',
+                            facilityLabel: 'Incident Location / City',
+                            facilityPlaceholder: 'e.g. Banjara Hills Office',
+                            dateLabel: 'Incident Date',
+                            summaryPlaceholder: 'Brief summary of loss / incident',
+                            tag: '🛡️ Dedicated Corporate Claim Desk'
+                          }
+                        };
+                        const currentCfg = categoryConfigs[formData.claimType] || categoryConfigs.HEALTH;
 
-                          <div>
-                            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>
-                              Claim Category *
-                            </label>
-                            <select
-                              value={formData.claimType}
-                              onChange={(e) => setFormData({ ...formData, claimType: e.target.value })}
+                        return (
+                          <form onSubmit={handleSubmit}>
+                            {/* Minimal Category Selector (4 Clean Pills) */}
+                            <div style={{ marginBottom: '1.1rem' }}>
+                              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 800, color: '#475569', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                Insurance Claim Category *
+                              </label>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                                {[
+                                  { id: 'HEALTH', label: 'Health', icon: '🏥' },
+                                  { id: 'MOTOR', label: 'Motor', icon: '🚗' },
+                                  { id: 'LIFE', label: 'Life', icon: '🛡️' },
+                                  { id: 'OTHER', label: 'Other', icon: '🏢' }
+                                ].map(cat => {
+                                  const isSelected = formData.claimType === cat.id;
+                                  return (
+                                    <button
+                                      key={cat.id}
+                                      type="button"
+                                      onClick={() => setFormData({ ...formData, claimType: cat.id })}
+                                      style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '7px 4px',
+                                        borderRadius: '8px',
+                                        border: isSelected ? '1.5px solid #d97706' : '1px solid #cbd5e1',
+                                        background: isSelected ? '#fffbeb' : '#ffffff',
+                                        color: isSelected ? '#92400e' : '#475569',
+                                        cursor: 'pointer',
+                                        fontSize: '0.78rem',
+                                        fontWeight: isSelected ? 800 : 600,
+                                        transition: 'all 0.15s ease'
+                                      }}
+                                    >
+                                      <span style={{ fontSize: '1rem', lineHeight: 1 }}>{cat.icon}</span>
+                                      <span style={{ marginTop: '2px' }}>{cat.label}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* 1. Policy Number & Claimant Name */}
+                            <div className="funnel-responsive-grid-2" style={{ marginBottom: '0.85rem' }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                                  Policy Number *
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  placeholder="e.g. 1029384756"
+                                  value={formData.policyNumber}
+                                  onChange={(e) => setFormData({ ...formData, policyNumber: e.target.value })}
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px 10px',
+                                    borderRadius: '8px',
+                                    border: '1.5px solid #cbd5e1',
+                                    fontSize: '0.85rem',
+                                    boxSizing: 'border-box'
+                                  }}
+                                />
+                              </div>
+
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                                  {currentCfg.claimantLabel}
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  placeholder={currentCfg.claimantPlaceholder}
+                                  value={formData.claimantName}
+                                  onChange={(e) => setFormData({ ...formData, claimantName: e.target.value })}
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px 10px',
+                                    borderRadius: '8px',
+                                    border: '1.5px solid #cbd5e1',
+                                    fontSize: '0.85rem',
+                                    boxSizing: 'border-box'
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* 2. Contact Phone & Location/Facility */}
+                            <div className="funnel-responsive-grid-2" style={{ marginBottom: '0.85rem' }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                                  Contact Phone *
+                                </label>
+                                <div className="funnel-phone-input-group" style={{ height: '37px' }}>
+                                  <div className="funnel-phone-prefix" style={{ padding: '0 8px', fontSize: '0.82rem' }}>
+                                    <span>🇮🇳</span>
+                                    <span>+91</span>
+                                  </div>
+                                  <input
+                                    type="tel"
+                                    required
+                                    placeholder="10-digit mobile"
+                                    value={formData.contactPhone}
+                                    onChange={(e) => {
+                                      let digits = e.target.value.replace(/[^0-9]/g, '');
+                                      if (digits.startsWith('91') && digits.length > 10) digits = digits.slice(2);
+                                      if (digits.startsWith('0')) digits = digits.slice(1);
+                                      digits = digits.slice(0, 10);
+                                      setFormData({ ...formData, contactPhone: digits });
+                                    }}
+                                    className="funnel-phone-input"
+                                    style={{ fontSize: '0.85rem' }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                                  {currentCfg.facilityLabel}
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder={currentCfg.facilityPlaceholder}
+                                  value={formData.hospitalOrGarage}
+                                  onChange={(e) => setFormData({ ...formData, hospitalOrGarage: e.target.value })}
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px 10px',
+                                    borderRadius: '8px',
+                                    border: '1.5px solid #cbd5e1',
+                                    fontSize: '0.85rem',
+                                    boxSizing: 'border-box'
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* 3. Brief Note & Date (Single line) */}
+                            <div className="funnel-responsive-grid-2" style={{ marginBottom: '1.1rem' }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                                  {currentCfg.dateLabel}
+                                </label>
+                                <input
+                                  type="date"
+                                  value={formData.incidentDate}
+                                  onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px 10px',
+                                    borderRadius: '8px',
+                                    border: '1.5px solid #cbd5e1',
+                                    fontSize: '0.85rem',
+                                    boxSizing: 'border-box'
+                                  }}
+                                />
+                              </div>
+
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                                  Brief Incident Note
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder={currentCfg.summaryPlaceholder}
+                                  value={formData.description}
+                                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                  style={{
+                                    width: '100%',
+                                    padding: '8px 10px',
+                                    borderRadius: '8px',
+                                    border: '1.5px solid #cbd5e1',
+                                    fontSize: '0.85rem',
+                                    boxSizing: 'border-box'
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Priority Submit Action */}
+                            <button
+                              type="submit"
+                              disabled={loading}
                               style={{
                                 width: '100%',
-                                padding: '9px 10px',
-                                borderRadius: '8px',
-                                border: '1.5px solid #cbd5e1',
-                                fontSize: '0.85rem',
-                                fontWeight: 600,
-                                color: '#0f2b48',
-                                background: '#f8fafc'
+                                background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+                                color: '#ffffff',
+                                border: 'none',
+                                padding: '11px 16px',
+                                borderRadius: '10px',
+                                fontSize: '0.95rem',
+                                fontWeight: 800,
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                boxShadow: '0 4px 14px rgba(217, 119, 6, 0.3)',
+                                transition: 'all 0.15s ease'
                               }}
                             >
-                              <option value="HEALTH">Health / Hospitalization</option>
-                              <option value="MOTOR">Motor / Vehicle Damage</option>
-                              <option value="LIFE">Life / Term Claim</option>
-                              <option value="TRAVEL">Travel / Medical Overseas</option>
-                              <option value="BUSINESS">Business / Commercial Loss</option>
-                            </select>
-                          </div>
-                        </div>
+                              {loading ? 'Submitting...' : (
+                                <>
+                                  <Send size={16} /> Submit Priority Claim Intimation
+                                </>
+                              )}
+                            </button>
 
-                        <div className="funnel-responsive-grid-2" style={{ marginBottom: '1rem' }}>
-                          <div>
-                            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>
-                              Patient / Claimant Name *
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              placeholder="Name"
-                              value={formData.claimantName}
-                              onChange={(e) => setFormData({ ...formData, claimantName: e.target.value })}
-                              style={{
-                                width: '100%',
-                                padding: '9px 10px',
-                                borderRadius: '8px',
-                                border: '1.5px solid #cbd5e1',
-                                fontSize: '0.85rem',
-                                boxSizing: 'border-box'
-                              }}
-                            />
-                          </div>
-
-                          <div>
-                            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>
-                              Contact Phone *
-                            </label>
-                            <div className="funnel-phone-input-group">
-                              <div className="funnel-phone-prefix">
-                                <span>🇮🇳</span>
-                                <span>+91</span>
-                              </div>
-                              <input
-                                type="tel"
-                                required
-                                placeholder="10-digit mobile"
-                                value={formData.contactPhone}
-                                onChange={(e) => {
-                                  let digits = e.target.value.replace(/[^0-9]/g, '');
-                                  if (digits.startsWith('91') && digits.length > 10) digits = digits.slice(2);
-                                  if (digits.startsWith('0')) digits = digits.slice(1);
-                                  digits = digits.slice(0, 10);
-                                  setFormData({ ...formData, contactPhone: digits });
-                                }}
-                                className="funnel-phone-input"
-                              />
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.65rem', fontSize: '0.72rem', color: '#64748b' }}>
+                              <span>⏱️ Response within 15 mins</span>
+                              <span style={{ fontWeight: 700, color: '#d97706' }}>{currentCfg.tag}</span>
                             </div>
-                          </div>
-                        </div>
-
-                        <div className="funnel-responsive-grid-2" style={{ marginBottom: '1rem' }}>
-                          <div>
-                            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>
-                              Hospital / Workshop Name
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="e.g. Apollo Hospital"
-                              value={formData.hospitalOrGarage}
-                              onChange={(e) => setFormData({ ...formData, hospitalOrGarage: e.target.value })}
-                              style={{
-                                width: '100%',
-                                padding: '9px 10px',
-                                borderRadius: '8px',
-                                border: '1.5px solid #cbd5e1',
-                                fontSize: '0.85rem',
-                                boxSizing: 'border-box'
-                              }}
-                            />
-                          </div>
-
-                          <div>
-                            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>
-                              Incident / Admission Date
-                            </label>
-                            <input
-                              type="date"
-                              value={formData.incidentDate}
-                              onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
-                              style={{
-                                width: '100%',
-                                padding: '9px 10px',
-                                borderRadius: '8px',
-                                border: '1.5px solid #cbd5e1',
-                                fontSize: '0.85rem',
-                                boxSizing: 'border-box'
-                              }}
-                            />
-                          </div>
-                        </div>
-
-                        <div style={{ marginBottom: '1.25rem' }}>
-                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>
-                            Brief Incident Summary
-                          </label>
-                          <textarea
-                            rows={2}
-                            placeholder="Briefly describe illness, diagnosis, or accident damage"
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            style={{
-                              width: '100%',
-                              padding: '9px 10px',
-                              borderRadius: '8px',
-                              border: '1.5px solid #cbd5e1',
-                              fontSize: '0.85rem',
-                              boxSizing: 'border-box',
-                              fontFamily: 'inherit'
-                            }}
-                          />
-                        </div>
-
-                        <button
-                          type="submit"
-                          disabled={loading}
-                          style={{
-                            width: '100%',
-                            background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
-                            color: '#ffffff',
-                            border: 'none',
-                            padding: '12px 18px',
-                            borderRadius: '10px',
-                            fontSize: '1rem',
-                            fontWeight: 800,
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            boxShadow: '0 4px 14px rgba(217, 119, 6, 0.3)',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          {loading ? 'Submitting Intimation...' : (
-                            <>
-                              <Send size={18} /> Submit Priority Claim Intimation
-                            </>
-                          )}
-                        </button>
-
-                        <div style={{ textAlign: 'center', marginTop: '0.75rem', fontSize: '0.72rem', color: '#64748b' }}>
-                          ⏱️ Emergency response within 15 minutes by senior claim manager.
-                        </div>
-                      </form>
-                    )}
+                          </form>
+                        );
+                      })()}
                   </div>
                 )}
 

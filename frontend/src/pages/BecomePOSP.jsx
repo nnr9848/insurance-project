@@ -16,8 +16,10 @@ import {
   EyeOff
 } from 'lucide-react';
 import { portalService } from '../services/api';
+import { useBusinessProfile } from '../context/BusinessProfileContext';
 
 export default function BecomePOSP() {
+  const { businessProfile } = useBusinessProfile();
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -91,8 +93,14 @@ export default function BecomePOSP() {
                 margin: '0 0 1rem 0',
                 color: '#ffffff'
               }}>
-                Become a Certified POSP <br />
-                <span style={{ color: '#a5b4fc' }}>Earn Up to ₹1,00,000+/Month*</span>
+                {businessProfile?.pospPageHeadline ? (
+                  businessProfile.pospPageHeadline
+                ) : (
+                  <>
+                    Become a Certified POSP <br />
+                    <span style={{ color: '#a5b4fc' }}>Earn Up to ₹1,00,000+/Month*</span>
+                  </>
+                )}
               </h1>
 
               <p style={{
@@ -102,7 +110,7 @@ export default function BecomePOSP() {
                 maxWidth: '520px',
                 margin: '0 0 1.75rem 0'
               }}>
-                Join Aadhiraksha Insurance as a licensed Point of Sales Person (POSP). Sell Health, Life, Motor, and Commercial policies from 30+ top insurers with instant digital quotation and highest recurring renewal commissions.
+                {businessProfile?.pospPageSubheadline || 'Join Aadhiraksha Insurance as a licensed Point of Sales Person (POSP). Sell Health, Life, Motor, and Commercial policies from 30+ top insurers with instant digital quotation and highest recurring renewal commissions.'}
               </p>
 
               {/* Trust Badges & Underwriters below form on mobile */}

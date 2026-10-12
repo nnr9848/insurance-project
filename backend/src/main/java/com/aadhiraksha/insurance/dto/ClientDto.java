@@ -26,7 +26,10 @@ public class ClientDto {
         private String state;
         private String pincode;
         private String insuranceType;
+        private String policyType;
         private String existingInsurer;
+        private String existingPolicyNumber;
+        private String portingReason;
         private LocalDate policyExpiryDate;
         private String sumInsured;
         private BigDecimal estimatedPremium;
@@ -54,7 +57,10 @@ public class ClientDto {
         private String state;
         private String pincode;
         private String insuranceType;
+        private String policyType;
         private String existingInsurer;
+        private String existingPolicyNumber;
+        private String portingReason;
         private LocalDate policyExpiryDate;
         private String sumInsured;
         private BigDecimal estimatedPremium;
