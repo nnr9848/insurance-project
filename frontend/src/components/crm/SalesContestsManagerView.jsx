@@ -1064,31 +1064,58 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
             border: '1px solid #e2e8f0',
             overflow: 'hidden'
           }}>
-            {/* Modal Header */}
+            {/* Modal Header (Platform Standard: Clean White, High Contrast Typography) */}
             <div style={{
               padding: '1.25rem 1.5rem',
-              background: '#0f2b48',
-              color: '#ffffff',
+              background: '#ffffff',
+              borderBottom: '1px solid #e2e8f0',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Trophy size={20} color="#f59e0b" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  background: 'rgba(245, 158, 11, 0.12)',
+                  color: '#d97706',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <Trophy size={20} />
+                </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f2b48', letterSpacing: '-0.2px' }}>
                     {modalMode === 'CREATE' ? 'Create Sales Contest / Incentive Sprint' : 'Edit Sales Contest'}
                   </h3>
-                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8' }}>
+                  <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>
                     Configure monthly trip rewards, volume boosters, and date-to-date eligibility
                   </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
-                style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '4px' }}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#0f2b48'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
