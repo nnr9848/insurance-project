@@ -96,9 +96,10 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
   const loadContests = async () => {
     setLoading(true);
     try {
-      const data = isAgentView 
-        ? await salesContestService.getActiveContests() 
-        : await salesContestService.getAllContests();
+      // Super Admin and Managers fetch full database including drafts/archived; advisors & agents fetch active
+      const data = canManage 
+        ? await salesContestService.getAllContests()
+        : await salesContestService.getActiveContests();
       setContests(Array.isArray(data) ? data : []);
     } catch (err) {
       setErrorMsg('Failed to load sales contests: ' + (err.response?.data?.message || err.message));
