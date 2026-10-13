@@ -9,6 +9,7 @@ import {
   MessageSquare, 
   User, 
   ChevronRight, 
+  ChevronLeft,
   X,
   Sparkles,
   ArrowRight,
@@ -17,12 +18,20 @@ import {
   RefreshCw,
   Video,
   ExternalLink,
-  Plus
+  Plus,
+  List,
+  Grid,
+  ShieldCheck,
+  MoreVertical,
+  FileSpreadsheet,
+  Ban,
+  CalendarClock
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { formatWhatsAppNumber } from '../../utils/crmDeduplication';
 import WhatsAppIcon from '../common/WhatsAppIcon';
+import ActionDropdown from '../common/ActionDropdown';
 import ScheduleActivityModal from './ScheduleActivityModal';
 import { openWhatsAppWithInvite, generateGoogleCalendarUrl } from '../../utils/calendarUtils';
 
@@ -33,6 +42,7 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
   const [dueToday, setDueToday] = useState([]);
   const [overdue, setOverdue] = useState([]);
   const [todayMeetings, setTodayMeetings] = useState([]);
+  const [allClients, setAllClients] = useState([]);
   const [advisors, setAdvisors] = useState([]);
   const [activeTab, setActiveTab] = useState('dueToday'); // 'dueToday' | 'overdue' | 'meetings'
   const [loading, setLoading] = useState(true);
@@ -57,10 +67,37 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
   });
   const [submitting, setSubmitting] = useState(false);
 
+  // Date Selection State (Today, Tomorrow, or Any Custom Date)
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    return d.toISOString().slice(0, 10);
+  });
+
+  const isSelectedDateToday = (() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return selectedDate === todayStr;
+  })();
+
+  const isSelectedDateTomorrow = (() => {
+    const tom = new Date();
+    tom.setDate(tom.getDate() + 1);
+    return selectedDate === tom.toISOString().slice(0, 10);
+  })();
+
+  const handleDateChange = (newDateStr) => {
+    setSelectedDate(newDateStr);
+  };
+
+  const handleOffsetDate = (offsetDays) => {
+    const current = new Date(selectedDate);
+    current.setDate(current.getDate() + offsetDays);
+    setSelectedDate(current.toISOString().slice(0, 10));
+  };
+
   useEffect(() => {
-    loadAgenda();
+    loadAgenda(selectedDate);
     loadAdvisors();
-  }, []);
+  }, [selectedDate]);
 
   const loadAdvisors = async () => {
     try {
@@ -85,7 +122,7 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
         reassignReason || 'Reassigned from Overdue Follow-ups Cockpit'
       );
       setReassignTask(null);
-      await loadAgenda();
+      await loadAgenda(selectedDate);
     } catch (err) {
       alert('Failed to reassign lead: ' + (err.response?.data?.message || err.message));
     } finally {
@@ -93,17 +130,19 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
     }
   };
 
-  const loadAgenda = async () => {
+  const loadAgenda = async (dateStr = selectedDate) => {
     setLoading(true);
     try {
-      const [dueData, overdueData, meetingsData] = await Promise.all([
-        crmService.getDueTodayFollowUps().catch(() => []),
+      const [dueData, overdueData, meetingsData, clientsData] = await Promise.all([
+        crmService.getDueTodayFollowUps(dateStr).catch(() => []),
         crmService.getOverdueFollowUps().catch(() => []),
-        crmService.getUpcomingMeetings().catch(() => [])
+        crmService.getUpcomingMeetings().catch(() => []),
+        crmService.getClients().catch(() => [])
       ]);
       setDueToday(dueData || []);
       setOverdue(overdueData || []);
       setTodayMeetings(meetingsData || []);
+      setAllClients(clientsData || []);
     } catch (err) {
       console.error('Failed to load call agenda:', err);
     } finally {
@@ -165,10 +204,71 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
   const [filterType, setFilterType] = useState('PENDING'); // 'PENDING' | 'ALL' | 'COMPLETED' | 'MEETING' | 'CALL' | 'OVERDUE'
   const [selectedEventModal, setSelectedEventModal] = useState(null);
   const [meetingOutcomeModal, setMeetingOutcomeModal] = useState(null);
+  const [quickRescheduleTask, setQuickRescheduleTask] = useState(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('11:00');
   const [outcomeForm, setOutcomeForm] = useState({
     outcomeTag: 'INTERESTED',
     notes: ''
   });
+
+  const handleQuickRescheduleSubmit = async (e) => {
+    e.preventDefault();
+    if (!quickRescheduleTask || !rescheduleDate) return;
+    try {
+      const combinedDateTime = `${rescheduleDate}T${rescheduleTime || '10:00'}:00`;
+      await crmService.logCall({
+        clientId: quickRescheduleTask.clientId,
+        callResult: 'RESCHEDULED',
+        callDurationSeconds: 0,
+        callNotes: `Rescheduled task to ${rescheduleDate} at ${rescheduleTime}`,
+        nextFollowUpDate: combinedDateTime,
+        updateStageTo: 'FOLLOWUP'
+      });
+      setQuickRescheduleTask(null);
+      loadAgenda();
+      alert(`Task successfully rescheduled to ${rescheduleDate}!`);
+    } catch (err) {
+      alert('Failed to reschedule task: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleCancelTask = async (task) => {
+    if (!task) return;
+    const confirmCancel = window.confirm(`Are you sure you want to dismiss/cancel this scheduled activity for ${task.clientName}?`);
+    if (!confirmCancel) return;
+    try {
+      if (task.kind === 'MEETING') {
+        await crmService.updateMeetingOutcome(task.originalId, {
+          status: 'CANCELLED',
+          outcomeTag: 'CANCELLED',
+          outcomeNotes: 'Cancelled by user from Work Schedule Agenda'
+        });
+      } else {
+        await crmService.logCall({
+          clientId: task.clientId,
+          callResult: 'NOT_INTERESTED',
+          callDurationSeconds: 0,
+          callNotes: 'Dismissed/cancelled from Work Schedule Agenda'
+        });
+      }
+      loadAgenda();
+      alert('Task dismissed successfully.');
+    } catch (err) {
+      alert('Failed to dismiss task: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  // Close 3-dots menu on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.crm-agenda-more-menu-container')) {
+        setActiveMenuTaskId(null);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   // Helper to format contextual datetime ('Yesterday • 11:00 AM', 'Today • 2:30 PM', '19 Sep • 10:00 AM')
   const formatAgendaDateTime = (dt) => {
@@ -195,16 +295,17 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
     }
   };
 
-  // 1. Separate all meetings into today's and past-due/missed meetings
+  // 1. Separate all meetings into selected day's and past-due/missed meetings
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const tomorrowStart = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+  const selectedDateObj = new Date(`${selectedDate}T00:00:00`);
+  const activeDayStart = new Date(selectedDateObj.getFullYear(), selectedDateObj.getMonth(), selectedDateObj.getDate());
+  const activeDayEnd = new Date(activeDayStart.getTime() + 24 * 60 * 60 * 1000);
 
-  // Meetings scheduled strictly for today
-  const strictlyTodayMeetings = todayMeetings.filter(m => {
+  // Meetings scheduled strictly for selected date
+  const strictlySelectedDayMeetings = todayMeetings.filter(m => {
     if (!m.meetingDatetime) return false;
     const dt = new Date(m.meetingDatetime);
-    return dt >= todayStart && dt < tomorrowStart;
+    return dt >= activeDayStart && dt < activeDayEnd;
   });
 
   // Past meetings that were never marked completed/cancelled (Outcome Pending / Overdue)
@@ -217,9 +318,16 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
   // All completed meetings across the active window (recent days + today)
   const allCompletedMeetings = todayMeetings.filter(m => m.status === 'COMPLETED');
 
-  // 2. Unify today's items into a single chronological agenda
+  // Renewals expiring strictly on selected date
+  const strictlySelectedDayRenewals = allClients.filter(c => {
+    if (!c.policyExpiryDate) return false;
+    const expiryStr = typeof c.policyExpiryDate === 'string' ? c.policyExpiryDate.slice(0, 10) : '';
+    return expiryStr === selectedDate;
+  });
+
+  // 2. Unify selected date's items into a single chronological agenda
   const unifiedTodayItems = [
-    ...strictlyTodayMeetings.map(m => {
+    ...strictlySelectedDayMeetings.map(m => {
       const dt = m.meetingDatetime ? new Date(m.meetingDatetime) : new Date();
       return {
         id: `meet-${m.id}`,
@@ -262,6 +370,28 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
         badgeColor: '#059669',
         bgColor: '#ecfdf5',
         borderColor: '#a7f3d0'
+      };
+    }),
+    ...strictlySelectedDayRenewals.map(l => {
+      const dt = new Date(`${l.policyExpiryDate}T10:00:00`);
+      return {
+        id: `ren-${l.id}`,
+        originalId: l.id,
+        kind: 'RENEWAL',
+        datetime: dt,
+        title: `Policy Renewal Due: ${l.fullName}`,
+        clientName: l.fullName,
+        clientId: l.id,
+        clientPhone: l.phoneNumber,
+        clientCode: l.leadCode || `CL-${l.id}`,
+        insuranceType: l.insuranceType || 'General Policy',
+        status: 'PENDING_RENEWAL',
+        notes: `Existing policy with ${l.existingInsurer || 'current insurer'} expires on ${l.policyExpiryDate}.`,
+        advisorName: l.assignedAdvisorName,
+        advisorId: l.assignedAdvisorId,
+        badgeColor: '#d97706',
+        bgColor: '#fef3c7',
+        borderColor: '#fde68a'
       };
     })
   ].sort((a, b) => a.datetime - b.datetime);
@@ -353,6 +483,7 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
     if (filterType === 'COMPLETED') return unifiedCompletedItems;
     if (filterType === 'MEETING') return unifiedTodayItems.filter(i => i.kind === 'MEETING');
     if (filterType === 'CALL') return unifiedTodayItems.filter(i => i.kind === 'CALL');
+    if (filterType === 'RENEWAL') return unifiedTodayItems.filter(i => i.kind === 'RENEWAL');
     return unifiedTodayItems;
   })();
 
@@ -375,13 +506,13 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
         >
           <div style={{ minWidth: 0, width: '100%' }}>
             <div className="crm-agenda-kpi-title" style={{ color: filterType === 'ALL' ? '#93c5fd' : '#64748b' }}>
-              Today's Schedule
+              {isSelectedDateToday ? "Today's Schedule" : isSelectedDateTomorrow ? "Tomorrow's Schedule" : "Scheduled Work"}
             </div>
             <div className="crm-agenda-kpi-value">
               {totalTodayTasks}
             </div>
             <div className="crm-agenda-kpi-sub" style={{ color: filterType === 'ALL' ? '#dbeafe' : '#64748b' }}>
-              {strictlyTodayMeetings.length} Meets • {dueToday.length} Calls
+              {strictlySelectedDayMeetings.length} Meets • {dueToday.length} Calls{strictlySelectedDayRenewals.length > 0 ? ` • ${strictlySelectedDayRenewals.length} Renewals` : ''}
             </div>
           </div>
           <div className="crm-agenda-kpi-iconbox" style={{ background: filterType === 'ALL' ? 'rgba(255,255,255,0.15)' : '#eff6ff', color: filterType === 'ALL' ? '#ffffff' : '#2563eb' }}>
@@ -463,62 +594,117 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f2b48', margin: 0 }}>
-                {filterType === 'OVERDUE' ? '⚠️ Overdue Action Queue' : (filterType === 'COMPLETED' ? '✓ Completed Consultations & Logs' : 'Today\'s Chronological Work Schedule')}
+                {filterType === 'OVERDUE' 
+                  ? '⚠️ Overdue Action Queue' 
+                  : (filterType === 'COMPLETED' 
+                      ? '✓ Completed Consultations & Logs' 
+                      : (isSelectedDateToday 
+                          ? 'Today\'s Work Schedule' 
+                          : isSelectedDateTomorrow 
+                            ? 'Tomorrow\'s Work Schedule' 
+                            : `Work Schedule: ${new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`))}
               </h2>
 
-              {/* History Quick Links (Industry Standard Shortcuts) */}
-              {onNavigateView && (
-                <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
-                  <button
-                    type="button"
-                    onClick={() => onNavigateView('meetings')}
-                    style={{
-                      background: '#f8fafc',
-                      border: '1px solid #cbd5e1',
-                      color: '#475569',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      padding: '2px 8px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                    title="Open Full Meeting Calendar"
-                  >
-                    <Calendar size={11} color="#7c3aed" /> Full Calendar →
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onNavigateView('calls')}
-                    style={{
-                      background: '#f8fafc',
-                      border: '1px solid #cbd5e1',
-                      color: '#475569',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      padding: '2px 8px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}
-                    title="Open Full Call History Archive"
-                  >
-                    <PhoneCall size={11} color="#2563eb" /> Full Call Logs →
-                  </button>
-                </div>
-              )}
+              {/* Date Navigator Controls */}
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#f8fafc', padding: '3px 6px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <button
+                  type="button"
+                  onClick={() => handleOffsetDate(-1)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    padding: '3px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  title="Previous Day"
+                >
+                  <ChevronLeft size={15} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))}
+                  style={{
+                    border: 'none',
+                    background: isSelectedDateToday ? '#0f2b48' : '#e2e8f0',
+                    color: isSelectedDateToday ? '#ffffff' : '#334155',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '5px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Today
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tom = new Date();
+                    tom.setDate(tom.getDate() + 1);
+                    setSelectedDate(tom.toISOString().slice(0, 10));
+                  }}
+                  style={{
+                    border: 'none',
+                    background: isSelectedDateTomorrow ? '#0f2b48' : '#e2e8f0',
+                    color: isSelectedDateTomorrow ? '#ffffff' : '#334155',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '5px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Tomorrow
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleOffsetDate(1)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    padding: '3px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  title="Next Day"
+                >
+                  <ChevronRight size={15} />
+                </button>
+
+                {/* Native Date Picker */}
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => e.target.value && handleDateChange(e.target.value)}
+                  style={{
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '5px',
+                    padding: '1px 5px',
+                    fontSize: '0.74rem',
+                    fontWeight: 600,
+                    color: '#0f2b48',
+                    cursor: 'pointer',
+                    background: '#ffffff'
+                  }}
+                  title="Select specific date"
+                />
+              </div>
             </div>
             
-            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '3px' }}>
               {filterType === 'OVERDUE' 
                 ? 'Tasks & meetings requiring immediate catch-up or advisor reallocation' 
                 : (filterType === 'COMPLETED' 
                     ? 'Historical log of conducted consultations and recorded dispositions'
-                    : new Date().toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }))}
+                    : new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }))}
             </div>
           </div>
 
@@ -526,11 +712,12 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: '6px', background: '#f1f5f9', padding: '4px', borderRadius: '10px', flexWrap: 'wrap' }}>
               {[
-                { id: 'ALL', label: `All Today (${totalTodayTasks})` },
+                { id: 'ALL', label: isSelectedDateToday ? `All Today (${totalTodayTasks})` : `All Scheduled (${totalTodayTasks})` },
                 { id: 'PENDING', label: `📋 To-Do (${pendingTasksCount})` },
                 { id: 'COMPLETED', label: `✓ Completed (${completedMeetingsCount})` },
-                { id: 'MEETING', label: `🎥 Meets (${strictlyTodayMeetings.length})` },
+                { id: 'MEETING', label: `🎥 Meets (${strictlySelectedDayMeetings.length})` },
                 { id: 'CALL', label: `📞 Calls (${dueToday.length})` },
+                ...(strictlySelectedDayRenewals.length > 0 ? [{ id: 'RENEWAL', label: `🛡️ Renewals (${strictlySelectedDayRenewals.length})` }] : []),
                 { id: 'OVERDUE', label: `⚠️ Overdue (${overdueTasksCount})` }
               ].map(pill => (
                 <button
@@ -599,6 +786,7 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {displayedItems.map((item) => {
               const isMeet = item.kind === 'MEETING';
+              const isRenewal = item.kind === 'RENEWAL';
               const isCompleted = item.status === 'COMPLETED';
               const isOverdue = !isCompleted && (item.kind === 'OVERDUE_CALL' || item.status === 'OVERDUE' || item.isOverdueMeet || (filterType === 'OVERDUE'));
               const dtFormatted = formatAgendaDateTime(item.datetime);
@@ -608,8 +796,8 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                   key={item.id}
                   className="crm-agenda-feed-row"
                   style={{
-                    background: isCompleted ? '#f0fdf4' : (isOverdue ? '#fff1f2' : (isMeet ? '#f8faff' : '#ffffff')),
-                    border: isCompleted ? '1px solid #bbf7d0' : (isOverdue ? '1px solid #fecdd3' : (isMeet ? '1px solid #dbeafe' : '1px solid #e2e8f0'))
+                    background: isCompleted ? '#f0fdf4' : (isOverdue ? '#fff1f2' : (isMeet ? '#f8faff' : (isRenewal ? '#fffbeb' : '#ffffff'))),
+                    border: isCompleted ? '1px solid #bbf7d0' : (isOverdue ? '1px solid #fecdd3' : (isMeet ? '1px solid #dbeafe' : (isRenewal ? '1px solid #fde68a' : '1px solid #e2e8f0')))
                   }}
                 >
                   {/* ======================================================== */}
@@ -620,11 +808,11 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                     <div className="crm-agenda-identity-group">
                       {/* Time Slot AM/PM Badge with Day / Date Context */}
                       <div className="crm-agenda-time-pill" style={{
-                        background: isCompleted ? '#dcfce7' : (isOverdue ? '#fee2e2' : (isMeet ? '#eff6ff' : '#ecfdf5')),
-                        color: isCompleted ? '#15803d' : (isOverdue ? '#dc2626' : (isMeet ? '#2563eb' : '#059669')),
-                        border: `1px solid ${isCompleted ? '#bbf7d0' : (isOverdue ? '#fecaca' : (isMeet ? '#bfdbfe' : '#a7f3d0'))}`
+                        background: isCompleted ? '#dcfce7' : (isOverdue ? '#fee2e2' : (isMeet ? '#eff6ff' : (isRenewal ? '#fef3c7' : '#ecfdf5'))),
+                        color: isCompleted ? '#15803d' : (isOverdue ? '#dc2626' : (isMeet ? '#2563eb' : (isRenewal ? '#d97706' : '#059669'))),
+                        border: `1px solid ${isCompleted ? '#bbf7d0' : (isOverdue ? '#fecaca' : (isMeet ? '#bfdbfe' : (isRenewal ? '#fde68a' : '#a7f3d0')))}`
                       }}>
-                        {isMeet ? <Video size={12} /> : <PhoneCall size={12} />}
+                        {isMeet ? <Video size={12} /> : isRenewal ? <ShieldCheck size={12} /> : <PhoneCall size={12} />}
                         <span className="crm-agenda-time-text">{dtFormatted.label}</span>
                       </div>
 
@@ -669,90 +857,386 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                       ) : null}
                     </div>
 
-                    {/* Right: Quick Reach 1-Tap Action Bar (Call, Meet, WhatsApp, G-Cal) */}
-                    <div className="crm-agenda-quick-reach">
-                      {/* Phone Call Button */}
-                      {item.clientPhone && (
+                    {/* Right: Primary 1-Click Action + 3-Dots More Options Menu */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      
+                      {/* 1. Primary Action CTA Button */}
+                      {isCompleted ? (
+                        <span className="crm-agenda-done-tag">
+                          <CheckCircle2 size={13} /> Done
+                        </span>
+                      ) : isMeet ? (
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {item.googleMeetUrl && (
+                            <a
+                              href={item.googleMeetUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="crm-agenda-cta-btn cta-meet"
+                              style={{ textDecoration: 'none' }}
+                              title="Join Google Meet Room"
+                            >
+                              <Video size={13} /> Join Meet
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMeetingOutcomeModal(item);
+                              setOutcomeForm({
+                                outcomeTag: 'INTERESTED',
+                                notes: ''
+                              });
+                            }}
+                            className="crm-agenda-cta-btn cta-complete"
+                          >
+                            <CheckCircle2 size={13} /> Mark Completed
+                          </button>
+                        </div>
+                      ) : (
                         <button
                           type="button"
                           onClick={() => handleOpenCallModal(item)}
-                          className="crm-agenda-circle-btn btn-phone"
-                          title={`Log Call with ${item.clientName} (${item.clientPhone})`}
+                          className="crm-agenda-cta-btn cta-complete"
+                          title="Call client and log outcome"
                         >
-                          <Phone size={13} />
-                          <span className="crm-btn-label-desktop">Call</span>
+                          <PhoneCall size={13} /> Call & Log
                         </button>
                       )}
 
-                      {/* WhatsApp 1-Tap Consultation / Meet Invite */}
-                      {item.clientPhone && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (isMeet) {
-                              openWhatsAppWithInvite({
-                                phoneNumber: item.clientPhone,
-                                clientName: item.clientName,
-                                title: item.title,
-                                topic: item.purpose || item.insuranceType,
-                                datetime: item.datetime,
-                                durationMinutes: 30,
-                                googleMeetUrl: item.googleMeetUrl,
-                                advisorName: item.advisorName
-                              });
-                            } else {
-                              openWhatsApp(item.clientPhone, item.clientName);
-                            }
-                          }}
-                          className="crm-agenda-circle-btn btn-whatsapp"
-                          title={isMeet ? "Send WhatsApp Consultation Invite" : "Chat on WhatsApp"}
-                        >
-                          <WhatsAppIcon size={13} color="#16a34a" />
-                          <span className="crm-btn-label-desktop">WhatsApp</span>
-                        </button>
-                      )}
+                      {/* 2. Unified 3-Dots (More Options) Dropdown Menu */}
+                      <ActionDropdown
+                        menuWidth="235px"
+                        trigger={({ isOpen }) => (
+                          <button
+                            type="button"
+                            className="crm-agenda-circle-btn"
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '8px',
+                              border: '1px solid #cbd5e1',
+                              background: isOpen ? '#f1f5f9' : '#ffffff',
+                              color: '#334155',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              padding: 0
+                            }}
+                            title="More Actions"
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+                        )}
+                      >
+                        {({ close }) => (
+                          <>
+                            {/* SECTION 1: COMMUNICATION & CONFERENCES */}
+                            <div style={{ padding: '4px 8px 2px 8px', fontSize: '0.66rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              Reach & Connect
+                            </div>
 
-                      {/* Google Meet Direct Join */}
-                      {isMeet && item.googleMeetUrl && (
-                        <a
-                          href={item.googleMeetUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="crm-agenda-circle-btn btn-meet"
-                          title="Join Google Meet Room"
-                        >
-                          <Video size={13} />
-                          <span className="crm-btn-label-desktop">Join Meet</span>
-                        </a>
-                      )}
+                            {/* Option: Chat on WhatsApp */}
+                            {item.clientPhone && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  close();
+                                  if (isMeet) {
+                                    openWhatsAppWithInvite({
+                                      phoneNumber: item.clientPhone,
+                                      clientName: item.clientName,
+                                      title: item.title,
+                                      topic: item.purpose || item.insuranceType,
+                                      datetime: item.datetime,
+                                      durationMinutes: 30,
+                                      googleMeetUrl: item.googleMeetUrl,
+                                      advisorName: item.advisorName
+                                    });
+                                  } else {
+                                    openWhatsApp(item.clientPhone, item.clientName);
+                                  }
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 10px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#16a34a',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  borderRadius: '6px',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f0fdf4'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <WhatsAppIcon size={14} color="#16a34a" /> WhatsApp Message
+                              </button>
+                            )}
 
-                      {/* Google Calendar 1-Tap Sync */}
-                      {isMeet && (
-                        <a
-                          href={generateGoogleCalendarUrl({
-                            title: item.title || `Consultation with ${item.clientName}`,
-                            description: `Aadhiraksha Insurance Consultation with ${item.clientName}.\nMeet Link: ${item.googleMeetUrl || 'Online'}\nTopic: ${item.purpose || item.insuranceType || ''}`,
-                            location: item.googleMeetUrl || 'Online / Google Meet',
-                            startTime: item.datetime,
-                            endTime: new Date(item.datetime.getTime() + 30 * 60000)
-                          })}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="crm-agenda-circle-btn btn-gcal"
-                          title="Add to Google Calendar"
-                        >
-                          <Calendar size={13} />
-                          <span className="crm-btn-label-desktop">G-Cal</span>
-                        </a>
-                      )}
+                            {/* Option: Schedule / Book Consultation (for Calls & Renewals) */}
+                            {!isMeet && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  close();
+                                  if (onOpenMeetingModal) {
+                                    onOpenMeetingModal({
+                                      id: item.clientId,
+                                      fullName: item.clientName,
+                                      phoneNumber: item.clientPhone,
+                                      insuranceType: item.insuranceType
+                                    });
+                                  }
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 10px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#2563eb',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  borderRadius: '6px',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#eff6ff'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <Calendar size={14} /> Schedule Meeting
+                              </button>
+                            )}
+
+                            {/* Option: Add to Google Calendar (for Meetings) */}
+                            {isMeet && (
+                              <a
+                                href={generateGoogleCalendarUrl({
+                                  title: item.title || `Consultation with ${item.clientName}`,
+                                  description: `Aadhiraksha Insurance Consultation with ${item.clientName}.\nMeet Link: ${item.googleMeetUrl || 'Online'}\nTopic: ${item.purpose || item.insuranceType || ''}`,
+                                  location: item.googleMeetUrl || 'Online / Google Meet',
+                                  startTime: item.datetime,
+                                  endTime: new Date(item.datetime.getTime() + 30 * 60000)
+                                })}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={close}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 10px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#475569',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  borderRadius: '6px',
+                                  textAlign: 'left',
+                                  textDecoration: 'none',
+                                  boxSizing: 'border-box'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <Calendar size={14} color="#0284c7" /> Add to G-Cal
+                              </a>
+                            )}
+
+                            <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }} />
+
+                            {/* SECTION 2: TASK & WORKFLOW MANAGEMENT */}
+                            <div style={{ padding: '4px 8px 2px 8px', fontSize: '0.66rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              Task Actions
+                            </div>
+
+                            {/* Option: Quick Reschedule */}
+                            {!isCompleted && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  close();
+                                  const tomorrow = new Date();
+                                  tomorrow.setDate(tomorrow.getDate() + 1);
+                                  setRescheduleDate(tomorrow.toISOString().slice(0, 10));
+                                  setRescheduleTime('11:00');
+                                  setQuickRescheduleTask(item);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 10px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#0f766e',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  borderRadius: '6px',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f0fdfa'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <CalendarClock size={14} color="#0d9488" /> Reschedule Task
+                              </button>
+                            )}
+
+                            {/* Option: Reassign Advisor (for Managers/Admins) */}
+                            {canReassign && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  close();
+                                  setReassignTask(item);
+                                  setTargetAdvisorId(item.advisorId ? String(item.advisorId) : '');
+                                  setReassignReason('');
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 10px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#7c3aed',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  borderRadius: '6px',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f5f3ff'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <UserCheck size={14} /> Reassign Advisor
+                              </button>
+                            )}
+
+                            {/* Option: Cancel / Dismiss Task */}
+                            {!isCompleted && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  close();
+                                  handleCancelTask(item);
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 10px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#dc2626',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  borderRadius: '6px',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <Ban size={14} color="#dc2626" /> Dismiss / Cancel Task
+                              </button>
+                            )}
+
+                            <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }} />
+
+                            {/* SECTION 3: CLIENT DOSSIER & QUOTATIONS */}
+                            <div style={{ padding: '4px 8px 2px 8px', fontSize: '0.66rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              Client Dossier
+                            </div>
+
+                            {/* Option: Create Proposal / Quote */}
+                            {onNavigateView && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  close();
+                                  onNavigateView('proposals');
+                                }}
+                                style={{
+                                  width: '100%',
+                                  padding: '7px 10px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#0284c7',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  borderRadius: '6px',
+                                  textAlign: 'left'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#f0f9ff'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <FileSpreadsheet size={14} color="#0284c7" /> Generate Quote / Proposal
+                              </button>
+                            )}
+
+                            {/* Option: Open Full Client 360 Dossier */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                close();
+                                if (onOpenClient360) {
+                                  onOpenClient360({
+                                    id: item.clientId,
+                                    fullName: item.clientName,
+                                    phoneNumber: item.clientPhone
+                                  });
+                                }
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '7px 10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                border: 'none',
+                                background: 'transparent',
+                                color: '#0f2b48',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                borderRadius: '6px',
+                                textAlign: 'left'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <User size={14} color="#0f2b48" /> View Client 360 &rarr;
+                            </button>
+                          </>
+                        )}
+                      </ActionDropdown>
                     </div>
                   </div>
 
                   {/* ======================================================== */}
-                  {/* TIER 2: Title / Purpose / Advisor & Workflow CTAs       */}
+                  {/* TIER 2: Title / Purpose / Advisor Notes                  */}
                   {/* ======================================================== */}
-                  <div className="crm-agenda-tier2">
-                    {/* Left: Consultation Title & Purpose Note */}
+                  <div className="crm-agenda-tier2" style={{ marginTop: '0.35rem' }}>
                     <div className="crm-agenda-notes-group">
                       <span className="crm-agenda-item-title">{item.title}</span>
                       
@@ -767,81 +1251,6 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                           • {item.outcomeNotes ? `Outcome: ${item.outcomeNotes}` : (item.purpose || item.notes)}
                         </span>
                       )}
-                    </div>
-
-                    {/* Right: Primary Workflow Actions (Mark Completed, Reassign, Client 360) */}
-                    <div className="crm-agenda-workflow-actions">
-                      {/* Mark Completed (for Meetings) */}
-                      {isMeet && (
-                        isCompleted ? (
-                          <span className="crm-agenda-done-tag">
-                            <CheckCircle2 size={12} /> Done
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMeetingOutcomeModal(item);
-                              setOutcomeForm({
-                                outcomeTag: 'INTERESTED',
-                                notes: ''
-                              });
-                            }}
-                            className="crm-agenda-cta-btn cta-complete"
-                          >
-                            <CheckCircle2 size={13} /> Mark Completed
-                          </button>
-                        )
-                      )}
-
-                      {/* Log Call & Outcome (for Calls) */}
-                      {!isMeet && !isCompleted && (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenCallModal(item)}
-                          className="crm-agenda-cta-btn cta-complete"
-                        >
-                          <PhoneCall size={13} /> Call & Log
-                        </button>
-                      )}
-
-                      {/* Reassign (for Managers on Overdue) */}
-                      {canReassign && isOverdue && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setReassignTask(item);
-                            setTargetAdvisorId(item.advisorId ? String(item.advisorId) : '');
-                            setReassignReason('');
-                          }}
-                          className="crm-agenda-cta-btn cta-reassign"
-                          title="Reassign to another Advisor"
-                        >
-                          <UserCheck size={13} /> Reassign
-                        </button>
-                      )}
-
-                      {/* Schedule Consultation (for Calls) */}
-                      {!isMeet && (
-                        <button
-                          type="button"
-                          onClick={() => onOpenMeetingModal && onOpenMeetingModal({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone, insuranceType: item.insuranceType })}
-                          className="crm-agenda-cta-btn cta-meet"
-                          title="Schedule Google Meet Advisory"
-                        >
-                          <Calendar size={13} /> Meet
-                        </button>
-                      )}
-
-                      {/* Client 360 Deep-Dive */}
-                      <button
-                        type="button"
-                        onClick={() => onOpenClient360 && onOpenClient360({ id: item.clientId, fullName: item.clientName, phoneNumber: item.clientPhone })}
-                        className="crm-agenda-cta-btn cta-client360"
-                        title="View Full Client 360 Dossier"
-                      >
-                        Client 360 &rarr;
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -1335,6 +1744,215 @@ export default function DailyCallAgendaView({ onOpenClient360, onOpenMeetingModa
                 >
                   {submitting ? <RefreshCw size={15} className="animate-spin" /> : <Check size={16} />}
                   Save & Complete Task
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 5b. Quick Reschedule Task Modal */}
+      {quickRescheduleTask && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '16px',
+            maxWidth: '460px',
+            width: '100%',
+            overflow: 'hidden',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            border: '1px solid #e2e8f0'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '16px 20px',
+              borderBottom: '1px solid #f1f5f9',
+              background: '#f8fafc'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CalendarClock size={20} color="#2563eb" />
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#1e293b' }}>
+                  Reschedule Task
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQuickRescheduleTask(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#64748b',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickRescheduleSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ fontSize: '0.86rem', color: '#64748b', background: '#f0fdf4', padding: '10px 12px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                Rescheduling scheduled task for <strong style={{ color: '#166534' }}>{quickRescheduleTask.clientName || 'Client'}</strong>
+              </div>
+
+              {/* Quick Preset Chips */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
+                  Quick Presets
+                </label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + 1);
+                      setRescheduleDate(d.toISOString().split('T')[0]);
+                    }}
+                    style={{
+                      padding: '5px 10px',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      background: '#f8fafc',
+                      color: '#334155',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Tomorrow
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + 3);
+                      setRescheduleDate(d.toISOString().split('T')[0]);
+                    }}
+                    style={{
+                      padding: '5px 10px',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      background: '#f8fafc',
+                      color: '#334155',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    +3 Days
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + 7);
+                      setRescheduleDate(d.toISOString().split('T')[0]);
+                    }}
+                    style={{
+                      padding: '5px 10px',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      background: '#f8fafc',
+                      color: '#334155',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Next Week (+7d)
+                  </button>
+                </div>
+              </div>
+
+              {/* Date & Time Inputs */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    New Date *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={rescheduleDate}
+                    onChange={(e) => setRescheduleDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.86rem',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    New Time
+                  </label>
+                  <input
+                    type="time"
+                    value={rescheduleTime}
+                    onChange={(e) => setRescheduleTime(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.86rem',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setQuickRescheduleTask(null)}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#475569',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!rescheduleDate}
+                  style={{
+                    flex: 2,
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    cursor: !rescheduleDate ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px -2px rgba(37, 99, 235, 0.3)'
+                  }}
+                >
+                  Confirm Reschedule
                 </button>
               </div>
             </form>

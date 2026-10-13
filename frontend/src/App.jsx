@@ -11,13 +11,16 @@ import MotorInsurance from './pages/MotorInsurance';
 import TermLifeInsurance from './pages/TermLifeInsurance';
 import BusinessInsurance from './pages/BusinessInsurance';
 import TravelInsurance from './pages/TravelInsurance';
-import RenewalPort from './pages/RenewalPort';
+import RenewPolicy from './pages/RenewPolicy';
+import PortPolicy from './pages/PortPolicy';
 import ClaimSupport from './pages/ClaimSupport';
 import NetworkHospitals from './pages/NetworkHospitals';
 import BecomePOSP from './pages/BecomePOSP';
 import Loans from './pages/Loans';
 import About from './pages/About';
 import PartnerDetail from './pages/PartnerDetail';
+import BlogListing from './pages/BlogListing';
+import BlogPostDetail from './pages/BlogPostDetail';
 import LegalCompliance from './pages/LegalCompliance';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
@@ -104,7 +107,8 @@ export default function App() {
             <Route path="/insurance/travel" element={<TravelInsurance />} />
 
             {/* Unified Support & Operational Desks */}
-            <Route path="/renewal-port" element={<RenewalPort />} />
+            <Route path="/renew-policy" element={<RenewPolicy />} />
+            <Route path="/port-policy" element={<PortPolicy />} />
             <Route path="/claim-support" element={<ClaimSupport />} />
             <Route path="/network-hospitals" element={<NetworkHospitals />} />
             <Route path="/become-posp" element={<BecomePOSP />} />
@@ -112,6 +116,9 @@ export default function App() {
             <Route path="/about" element={<About />} />
             <Route path="/about-us" element={<About />} />
             <Route path="/partners/:slug" element={<PartnerDetail />} />
+            <Route path="/blog" element={<BlogListing />} />
+            <Route path="/blog/:slug" element={<BlogPostDetail />} />
+            <Route path="/guides" element={<BlogListing />} />
 
             {/* Legal, Compliance & IRDAI Regulatory Disclosures */}
             <Route path="/privacy-policy" element={<LegalCompliance />} />

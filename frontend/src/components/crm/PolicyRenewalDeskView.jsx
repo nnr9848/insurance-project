@@ -27,6 +27,7 @@ import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { formatWhatsAppNumber } from '../../utils/crmDeduplication';
 import WhatsAppIcon from '../common/WhatsAppIcon';
+import InsurerLogoBadge from '../common/InsurerLogoBadge';
 import { CrmTablePaginationBar, CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
 export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingModal }) {
@@ -453,8 +454,13 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
                       {/* 2. Insurance Vertical & Existing Insurer */}
                       <td style={{ padding: '0.85rem 1rem' }}>
                         <div style={{ fontWeight: 700, color: '#1e293b' }}>{r.insuranceType}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
-                          Current: <strong>{r.existingInsurer}</strong>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <span style={{ fontSize: '0.7rem' }}>Current:</span>
+                          {r.existingInsurer ? (
+                            <InsurerLogoBadge name={r.existingInsurer} size="xs" />
+                          ) : (
+                            <span style={{ color: '#94a3b8' }}>—</span>
+                          )}
                         </div>
                       </td>
 
@@ -632,7 +638,13 @@ export default function PolicyRenewalDeskView({ onOpenClient360, onOpenMeetingMo
                     <div>
                       <div style={{ color: '#64748b', fontSize: '0.7rem' }}>Insurance & Insurer</div>
                       <div style={{ fontWeight: 700, color: '#0f2b48' }}>{r.insuranceType}</div>
-                      <div style={{ color: '#475569', fontSize: '0.72rem' }}>{r.existingInsurer}</div>
+                      <div style={{ marginTop: '3px' }}>
+                        {r.existingInsurer ? (
+                          <InsurerLogoBadge name={r.existingInsurer} size="xs" />
+                        ) : (
+                          <span style={{ color: '#94a3b8', fontSize: '0.72rem' }}>—</span>
+                        )}
+                      </div>
                     </div>
 
                     <div>

@@ -44,6 +44,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { formatWhatsAppNumber, calculateCustomerTouchpoints } from '../../utils/crmDeduplication';
 import WhatsAppIcon from '../common/WhatsAppIcon';
+import InsurerLogoBadge from '../common/InsurerLogoBadge';
 import ScheduleActivityModal from './ScheduleActivityModal';
 
 export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: propSetQuotes, onOpenClient360, onOpenCallModal, onOpenMeetingModal }) {
@@ -1385,6 +1386,11 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
                                       </span>
                                     );
                                   })()}
+
+                                  {/* Insurer Logo Badge if existingInsurer is recorded */}
+                                  {lead.existingInsurer && (
+                                    <InsurerLogoBadge name={lead.existingInsurer} size="xs" />
+                                  )}
                                 </div>
 
                                 {/* Row 2: Multi-Policy Ingestion / Enquiries Status Badge */}
@@ -1481,7 +1487,7 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
                           })()}
                         </td>
 
-                        {/* Coverage & Premium */}
+                        {/* Coverage, Premium & Renewal Date */}
                         <td className="crm-table-td">
                           {isEditing ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1490,15 +1496,24 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
                                 placeholder="Sum: ₹10 Lakhs"
                                 value={editFormData.sumInsured || ''}
                                 onChange={(e) => setEditFormData({ ...editFormData, sumInsured: e.target.value })}
-                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.78rem', width: '100%' }}
+                                style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid var(--accent-emerald)', fontSize: '0.76rem', width: '100%' }}
                               />
                               <input
                                 type="number"
                                 placeholder="Premium: ₹15,000"
                                 value={editFormData.estimatedPremium || ''}
                                 onChange={(e) => setEditFormData({ ...editFormData, estimatedPremium: e.target.value })}
-                                style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.74rem', width: '100%' }}
+                                style={{ padding: '3px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.74rem', width: '100%' }}
                               />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                <label style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 700 }}>Exp:</label>
+                                <input
+                                  type="date"
+                                  value={editFormData.policyExpiryDate || ''}
+                                  onChange={(e) => setEditFormData({ ...editFormData, policyExpiryDate: e.target.value })}
+                                  style={{ padding: '2px 4px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.7rem', width: '100%' }}
+                                />
+                              </div>
                             </div>
                           ) : (
                             <div>
@@ -1506,8 +1521,54 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
                                 {lead.sumInsured || (lead.notes?.match(/₹[\d,]+(\s*Lakhs|\s*Crore|\s*Cr)?/)?.[0] ? `${lead.notes.match(/₹[\d,]+(\s*Lakhs|\s*Crore|\s*Cr)?/)[0]} (Desired)` : 'Quote Pending')}
                               </div>
                               <div style={{ fontSize: '0.74rem', color: lead.estimatedPremium ? '#059669' : '#64748b', fontWeight: lead.estimatedPremium ? 700 : 500 }}>
-                                {lead.estimatedPremium ? `Est. ₹${Number(lead.estimatedPremium).toLocaleString()}` : (lead.policyExpiryDate ? `Exp: ${lead.policyExpiryDate}` : 'Pending Proposal')}
+                                {lead.estimatedPremium ? `Est. ₹${Number(lead.estimatedPremium).toLocaleString()}` : 'Premium TBD'}
                               </div>
+                              {/* Policy Expiry / Renewal Date SLA Pill */}
+                              {(() => {
+                                const expiry = lead.policyExpiryDate;
+                                if (!expiry) return null;
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const expDate = new Date(expiry);
+                                expDate.setHours(0, 0, 0, 0);
+                                const daysLeft = Math.round((expDate - today) / (1000 * 60 * 60 * 24));
+                                const isExpired = daysLeft < 0;
+                                const isUrgent = daysLeft >= 0 && daysLeft <= 30;
+
+                                const isIssued = lead.stage === 'POLICY_ISSUED';
+                                const isRenewalOrPort = lead.policyType === 'RENEWAL' || lead.policyType === 'PORTABILITY';
+                                const formattedDate = new Date(expiry).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+
+                                let label = '';
+                                if (isIssued) {
+                                  label = isExpired ? `🔴 Lapsed ${Math.abs(daysLeft)}d ago` : isUrgent ? `⚠️ Renews in ${daysLeft}d` : `📅 Renews ${formattedDate}`;
+                                } else if (isRenewalOrPort) {
+                                  label = isExpired ? `⚠️ Expired ${Math.abs(daysLeft)}d ago` : isUrgent ? `⏳ Old Pol Exp in ${daysLeft}d` : `⏳ Old Exp ${formattedDate}`;
+                                } else {
+                                  label = isExpired ? `Passed ${Math.abs(daysLeft)}d ago` : isUrgent ? `🎯 Target ${daysLeft}d` : `🎯 Target ${formattedDate}`;
+                                }
+
+                                return (
+                                  <div 
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px',
+                                      marginTop: '3px',
+                                      padding: '1px 5px',
+                                      borderRadius: '4px',
+                                      fontSize: '0.66rem',
+                                      fontWeight: 700,
+                                      background: isExpired ? '#fee2e2' : isUrgent ? '#fef3c7' : '#f0fdf4',
+                                      color: isExpired ? '#dc2626' : isUrgent ? '#b45309' : '#15803d',
+                                      border: `1px solid ${isExpired ? '#fca5a5' : isUrgent ? '#fde68a' : '#bbf7d0'}`
+                                    }}
+                                    title={isIssued ? `Active Policy Expiry: ${expiry}` : `Lead Target/Existing Expiry: ${expiry}`}
+                                  >
+                                    <span>{label}</span>
+                                  </div>
+                                );
+                              })()}
                             </div>
                           )}
                         </td>

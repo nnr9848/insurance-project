@@ -122,6 +122,13 @@ public class CrmClientController {
         return ResponseEntity.ok(crmClientService.getUpcomingMeetings(user));
     }
 
+    @GetMapping("/meetings/client/{clientId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @Operation(summary = "Get meeting history for a specific client")
+    public ResponseEntity<List<MeetingDto.MeetingResponse>> getClientMeetings(@PathVariable Long clientId) {
+        return ResponseEntity.ok(crmClientService.getMeetingsForClient(clientId));
+    }
+
     @PatchMapping("/meetings/{meetingId}/outcome")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
     @Operation(summary = "Log outcome for a meeting (Completed, Rescheduled, Cancelled)")
@@ -144,9 +151,16 @@ public class CrmClientController {
 
     @GetMapping("/followups/due-today")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
-    @Operation(summary = "Get follow-ups scheduled for today")
-    public ResponseEntity<List<FollowUpDto.FollowUpResponse>> getDueTodayFollowUps(Authentication auth) {
+    @Operation(summary = "Get follow-ups scheduled for today or a specific date")
+    public ResponseEntity<List<FollowUpDto.FollowUpResponse>> getDueTodayFollowUps(
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date,
+            Authentication auth) {
         User user = getAuthenticatedUser(auth);
+        if (date != null) {
+            java.time.LocalDateTime start = date.atStartOfDay();
+            java.time.LocalDateTime end = date.atTime(java.time.LocalTime.MAX);
+            return ResponseEntity.ok(crmClientService.getFollowUpsBetween(start, end, user));
+        }
         return ResponseEntity.ok(crmClientService.getDueTodayFollowUps(user));
     }
 

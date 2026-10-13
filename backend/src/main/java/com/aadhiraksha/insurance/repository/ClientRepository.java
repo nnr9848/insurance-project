@@ -32,7 +32,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     @Query("SELECT c FROM Client c WHERE c.manager.id = :managerId AND c.stage = :stage ORDER BY c.updatedAt DESC")
     List<Client> findByManagerAndStage(@Param("managerId") Long managerId, @Param("stage") String stage);
 
-    @Query("SELECT c FROM Client c WHERE c.policyExpiryDate BETWEEN :startDate AND :endDate ORDER BY c.policyExpiryDate ASC")
+    @Query("SELECT c FROM Client c WHERE c.policyExpiryDate BETWEEN :startDate AND :endDate AND (c.stage = 'POLICY_ISSUED' OR c.policyType = 'RENEWAL') ORDER BY c.policyExpiryDate ASC")
     List<Client> findExpiringPolicies(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
     long countByStage(String stage);

@@ -59,13 +59,13 @@ export const AuthProvider = ({ children }) => {
   const isStaff = roles.includes('ROLE_STAFF');
   const isClient = roles.includes('ROLE_USER');
 
-  // Capability permissions
+  // Capability permissions: Tiered user provisioning standards
   const canManageUsers = isSuperAdmin || isManager;
-  const canCreateUsers = isSuperAdmin;
+  const canCreateUsers = isSuperAdmin || isManager || isAdvisor;
   const canCreateAdmins = isSuperAdmin;
   const canCreateManagers = isSuperAdmin;
-  const canCreateAdvisors = isSuperAdmin;
-  const canCreatePosp = isSuperAdmin;
+  const canCreateAdvisors = isSuperAdmin || isManager;
+  const canCreatePosp = isSuperAdmin || isManager || isAdvisor;
   const canAccessCRM = isSuperAdmin || isManager || isAdvisor || isStaff || isPospAgent;
 
   return (

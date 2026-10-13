@@ -57,7 +57,9 @@ import {
   Building,
   Star,
   Cpu,
-  Camera
+  Camera,
+  ArrowRightLeft,
+  CalendarDays
 } from 'lucide-react';
 import { portalService, crmService } from '../services/api';
 import UserManagementView from '../components/crm/UserManagementView';
@@ -65,6 +67,7 @@ import ClientDataSheetView from '../components/crm/ClientDataSheetView';
 import DailyCallAgendaView from '../components/crm/DailyCallAgendaView';
 import SalesPipelineView from '../components/crm/SalesPipelineView';
 import MeetingCalendarView from '../components/crm/MeetingCalendarView';
+import WorkScheduleView from '../components/crm/WorkScheduleView';
 import Client360Drawer from '../components/crm/Client360Drawer';
 import UserProfileModal from '../components/crm/UserProfileModal';
 
@@ -73,6 +76,7 @@ import ManagerDashboardOverview from '../components/crm/ManagerDashboardOverview
 import SuperAdminDashboardOverview from '../components/crm/SuperAdminDashboardOverview';
 import AdvisorDashboardOverview from '../components/crm/AdvisorDashboardOverview';
 import PolicyRenewalDeskView from '../components/crm/PolicyRenewalDeskView';
+import PolicyPortingDeskView from '../components/crm/PolicyPortingDeskView';
 import AuditTrailView from '../components/crm/AuditTrailView';
 import QuotationManagementView from '../components/crm/QuotationManagementView';
 import DocumentLockerView from '../components/crm/DocumentLockerView';
@@ -80,6 +84,7 @@ import BusinessProfileSettingsView from '../components/crm/BusinessProfileSettin
 import GalleryManagerView from '../components/crm/GalleryManagerView';
 import CompanyPagesManagerView from '../components/crm/CompanyPagesManagerView';
 import IntegrationsSettingsView from '../components/crm/IntegrationsSettingsView';
+import ActivityLogView from '../components/crm/ActivityLogView';
 import CallHistoryView from '../components/crm/CallHistoryView';
 import ManagerApprovalsView from '../components/crm/ManagerApprovalsView';
 import LeadInquiriesView from '../components/crm/LeadInquiriesView';
@@ -89,6 +94,7 @@ import NetworkHospitalsView from '../components/crm/NetworkHospitalsView';
 import InsurancePartnersManagementView from '../components/crm/InsurancePartnersManagementView';
 import CustomerReviewsAdminView from '../components/crm/CustomerReviewsAdminView';
 import PospPartnerPortalView from '../components/crm/PospPartnerPortalView';
+import BlogManagementView from '../components/crm/BlogManagementView';
 
 export default function AdminDashboard() {
   const { 
@@ -194,17 +200,17 @@ export default function AdminDashboard() {
         };
       case 'agenda':
         return {
-          title: 'Daily Work Agenda',
+          title: 'Work Schedule & Tasks',
           category: 'CRM Workspace',
-          subtitle: 'Unified daily schedule: scheduled Google Meets, client callbacks, and overdue task recovery.',
-          icon: <PhoneCall size={18} color="#ea580c" />
+          subtitle: 'Unified execution hub: today\'s calls, advisory consultations, follow-ups, and calendar planner.',
+          icon: <CalendarDays size={18} color="#ea580c" />
         };
       case 'calls':
         return {
-          title: 'Call History & Telephony Archive',
+          title: 'Activity Log & Omni-Channel Feed',
           category: 'CRM Workspace',
-          subtitle: 'Audit logs of all client calls, outcomes, talk time duration, and advisor discussions.',
-          icon: <PhoneCall size={18} color="#2563eb" />
+          subtitle: 'Unified chronological timeline of phone calls, Google Meet consultations, and client touchpoints.',
+          icon: <Clock size={18} color="#2563eb" />
         };
       case 'pipeline':
         return {
@@ -215,9 +221,9 @@ export default function AdminDashboard() {
         };
       case 'meetings':
         return {
-          title: 'Meeting Calendar',
+          title: 'Work Schedule & Calendar',
           category: 'CRM Workspace',
-          subtitle: 'Synchronized schedule of advisory video consultations and in-person meetings.',
+          subtitle: 'Synchronized schedule of advisory video consultations, tasks, and in-person meetings.',
           icon: <Calendar size={18} color="#7c3aed" />
         };
       case 'renewals':
@@ -226,6 +232,13 @@ export default function AdminDashboard() {
           category: 'CRM Workspace',
           subtitle: 'Automated milestone tracking, NCB protection, and 1-tap WhatsApp renewal dispatch.',
           icon: <ShieldCheck size={18} color="#16a34a" />
+        };
+      case 'porting':
+        return {
+          title: 'Policy Porting Desk',
+          category: 'CRM Workspace',
+          subtitle: 'Manage competitor switch requests under 45-day IRDAI statutory portability rules with 100% waiting period retention.',
+          icon: <ArrowRightLeft size={18} color="#7c3aed" />
         };
       case 'proposals':
         return {
@@ -479,11 +492,17 @@ export default function AdminDashboard() {
     { id: 'enquiries', label: 'Enquiries', icon: <Briefcase size={19} />, count: quotes.length, badgeColor: '#16a34a' },
     { id: 'clients', label: 'Client Data Sheet', icon: <FileText size={19} />, count: leads.length, badgeColor: '#0284c7' },
     { id: 'pipeline', label: 'Sales Pipeline', icon: <TrendingUp size={19} />, count: null },
-    { id: 'agenda', label: 'Daily Work Agenda', icon: <PhoneCall size={19} />, count: dueFollowUps.length, badgeColor: '#ea580c' },
-    { id: 'calls', label: 'Call History Log', icon: <PhoneCall size={19} />, count: null },
-    { id: 'meetings', label: 'Meeting Calendar', icon: <Calendar size={19} />, count: null },
+    { id: 'agenda', label: 'Work Schedule', icon: <CalendarDays size={19} />, count: dueFollowUps.length, badgeColor: '#ea580c' },
+    { id: 'calls', label: 'Activity Log', icon: <Clock size={19} />, count: null },
     { id: 'proposals', label: 'Quotes & Proposals', icon: <FileSpreadsheet size={19} />, count: null },
     { id: 'renewals', label: 'Policy Renewal Desk', icon: <ShieldCheck size={19} />, count: null },
+    { 
+      id: 'porting', 
+      label: 'Policy Porting Desk', 
+      icon: <ArrowRightLeft size={19} />, 
+      count: quotes.filter(q => (q.categorySlug || '').toLowerCase().includes('port') && (q.status === 'NEW' || !q.status)).length || null, 
+      badgeColor: '#7c3aed' 
+    },
     { 
       id: 'claims', 
       label: 'Claims Desk', 
@@ -509,6 +528,7 @@ export default function AdminDashboard() {
     ] : []),
     { id: 'reviews', label: 'Customer Reviews', icon: <Star size={19} />, count: null },
     ...((isSuperAdmin || isManager) ? [
+      { id: 'blogs', label: 'Blog & SEO Articles', icon: <FileText size={19} />, count: null },
       { id: 'profile', label: 'Company Profile & Branding', icon: <Building size={19} />, count: null },
       { id: 'pages', label: 'Company Website Pages', icon: <Globe size={19} />, count: null },
       { id: 'gallery', label: 'Corporate Media & Albums', icon: <Camera size={19} />, count: null },
@@ -1392,22 +1412,26 @@ export default function AdminDashboard() {
             )
           )}
 
-          {/* VIEW: DAILY CALL AGENDA */}
-          {activeView === 'agenda' && (
-            <DailyCallAgendaView 
+          {/* VIEW: WORK SCHEDULE (UNIFIED DAILY AGENDA & CALENDAR PLANNER) */}
+          {(activeView === 'agenda' || activeView === 'meetings') && (
+            <WorkScheduleView 
+              initialSubMode={activeView === 'meetings' ? 'calendar' : 'agenda'}
+              preselectedMeetingClient={preselectedMeetingClient}
+              onClearPreselectedClient={() => setPreselectedMeetingClient(null)}
               onOpenClient360={(lead) => setSelectedClient360(lead)}
-              onOpenMeetingModal={(lead) => {
-                setPreselectedMeetingClient(lead);
-                handleNavigateView('meetings');
-              }}
               onNavigateView={handleNavigateView}
             />
           )}
 
-          {/* VIEW: CALL HISTORY ARCHIVE */}
+          {/* VIEW: OMNI-CHANNEL ACTIVITY LOG */}
           {activeView === 'calls' && (
-            <CallHistoryView 
+            <ActivityLogView 
               onOpenClient360={(client) => setSelectedClient360(client)}
+              onOpenMeetingModal={(client) => {
+                setPreselectedMeetingClient(client);
+                handleNavigateView('meetings');
+              }}
+              onNavigateView={handleNavigateView}
             />
           )}
 
@@ -1423,16 +1447,6 @@ export default function AdminDashboard() {
             />
           )}
 
-          {/* VIEW: MEETING CALENDAR */}
-          {activeView === 'meetings' && (
-            <MeetingCalendarView 
-              preselectedClient={preselectedMeetingClient}
-              onCloseModal={() => setPreselectedMeetingClient(null)}
-              onOpenClient360={(client) => setSelectedClient360(client)}
-              onOpenCallModal={() => handleNavigateView('agenda')}
-            />
-          )}
-
           {/* VIEW: POLICY RENEWAL DESK */}
           {activeView === 'renewals' && (
             <PolicyRenewalDeskView 
@@ -1441,6 +1455,15 @@ export default function AdminDashboard() {
                 setPreselectedMeetingClient(client);
                 handleNavigateView('meetings');
               }}
+            />
+          )}
+
+          {/* VIEW: POLICY PORTING DESK */}
+          {activeView === 'porting' && (
+            <PolicyPortingDeskView 
+              quotes={quotes}
+              onOpenClient360={(client) => setSelectedClient360(client)}
+              onRefreshQuotes={loadData}
             />
           )}
 
@@ -1492,7 +1515,8 @@ export default function AdminDashboard() {
           {activeView === 'posp' && (
             <PospApplicationsView 
               pospList={pospList} 
-              onUpdateStatus={handleUpdatePOSP} 
+              onUpdateStatus={handleUpdatePOSP}
+              onRefresh={loadAdminData}
             />
           )}
 
@@ -1518,6 +1542,11 @@ export default function AdminDashboard() {
           {/* VIEW: INSURANCE PARTNERS & REDIRECTIONS (Strictly Super Admin & Manager only) */}
           {activeView === 'partners' && (isSuperAdmin || isManager) && (
             <InsurancePartnersManagementView />
+          )}
+
+          {/* VIEW: BLOG & SEO ARTICLES HUB */}
+          {activeView === 'blogs' && (isSuperAdmin || isManager) && (
+            <BlogManagementView />
           )}
 
           {/* VIEW: COMPANY PROFILE & BRANDING SETTINGS */}

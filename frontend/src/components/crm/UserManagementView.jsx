@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import ActionDropdown from '../common/ActionDropdown';
 import { CrmTablePaginationBar, CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
 export default function UserManagementView() {
@@ -35,8 +36,10 @@ export default function UserManagementView() {
     user: authUser, 
     isSuperAdmin, 
     isManager, 
+    canCreateUsers,
     canCreateAdmins, 
-    canCreateManagers 
+    canCreateManagers,
+    canCreatePosp
   } = useAuth();
   
   const [users, setUsers] = useState([]);
@@ -47,7 +50,6 @@ export default function UserManagementView() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
-  const [activeActionMenuId, setActiveActionMenuId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => {
     const saved = localStorage.getItem('user_management_page_size');
@@ -127,14 +129,6 @@ export default function UserManagementView() {
 
   useEffect(() => {
     loadData();
-
-    const handleOutsideClick = (e) => {
-      if (!e.target.closest('.user-action-menu-container')) {
-        setActiveActionMenuId(null);
-      }
-    };
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
   const handleToggleUserStatus = async (user) => {
@@ -458,13 +452,22 @@ export default function UserManagementView() {
           </p>
         </div>
 
-        {isSuperAdmin && (
+        {canCreateUsers && (
           <button
             onClick={async () => {
               try {
                 const freshRoles = await crmService.getAssignableRoles();
                 if (freshRoles && freshRoles.length > 0) {
                   setAssignableRoles(freshRoles);
+                  // Auto-select first available role for non-superadmins
+                  if (!isSuperAdmin) {
+                    setCreateUserForm(prev => ({
+                      ...prev,
+                      role: freshRoles[0]?.code || 'ROLE_POSP_AGENT',
+                      designation: freshRoles[0]?.code === 'ROLE_POSP_AGENT' ? 'POSP Agent Partner' : 'Insurance Advisor',
+                      department: freshRoles[0]?.code === 'ROLE_POSP_AGENT' ? 'POSP Partner Distribution' : (departments[0]?.name || 'Retail Sales (Health, Life & Motor)')
+                    }));
+                  }
                 }
               } catch (err) {
                 console.warn('Using existing assignable roles catalog', err);
@@ -479,7 +482,7 @@ export default function UserManagementView() {
               fontSize: '0.88rem'
             }}
           >
-            <UserPlus size={17} /> Add New Employee / Manager
+            <UserPlus size={17} /> {isSuperAdmin ? 'Add New Employee / Manager' : isManager ? 'Onboard Team Advisor / Agent' : 'Onboard POSP Agent'}
           </button>
         )}
       </div>
@@ -736,26 +739,25 @@ export default function UserManagementView() {
                       {/* Actions (3-Dot Overflow Menu - Industry Standard UX) */}
                       <td className="crm-table-td" style={{ textAlign: 'right', position: 'relative' }}>
                         {canActOnUser ? (
-                          <div className="user-action-menu-container" style={{ display: 'inline-block', position: 'relative' }}>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveActionMenuId(activeActionMenuId === u.id ? null : u.id);
-                              }}
-                              title="Actions"
-                              className="crm-modal-close-btn"
-                              style={{ padding: '6px' }}
-                            >
-                              <MoreVertical size={16} />
-                            </button>
-
-                            {activeActionMenuId === u.id && (
-                              <div className="crm-popover-card" style={{ width: '200px', right: 0, top: 'calc(100% + 4px)' }}>
+                          <ActionDropdown
+                            menuWidth="205px"
+                            trigger={({ isOpen }) => (
+                              <button
+                                type="button"
+                                title="Actions"
+                                className="crm-modal-close-btn"
+                                style={{ padding: '6px', background: isOpen ? '#f1f5f9' : 'transparent' }}
+                              >
+                                <MoreVertical size={16} />
+                              </button>
+                            )}
+                          >
+                            {({ close }) => (
+                              <>
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setActiveActionMenuId(null);
+                                    close();
                                     openEditModal(u);
                                   }}
                                   className="crm-popover-btn"
@@ -766,7 +768,7 @@ export default function UserManagementView() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setActiveActionMenuId(null);
+                                    close();
                                     openResetModal(u);
                                   }}
                                   className="crm-popover-btn"
@@ -777,7 +779,7 @@ export default function UserManagementView() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setActiveActionMenuId(null);
+                                    close();
                                     openMailboxModal(u);
                                   }}
                                   className="crm-popover-btn"
@@ -790,7 +792,7 @@ export default function UserManagementView() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setActiveActionMenuId(null);
+                                    close();
                                     handleToggleUserStatus(u);
                                   }}
                                   className="crm-popover-btn danger"
@@ -805,9 +807,9 @@ export default function UserManagementView() {
                                     </>
                                   )}
                                 </button>
-                              </div>
+                              </>
                             )}
-                          </div>
+                          </ActionDropdown>
                         ) : (
                           <span style={{ fontSize: '0.75rem', color: 'var(--crm-text-muted)', fontStyle: 'italic' }}>
                             Read-only
@@ -999,27 +1001,41 @@ export default function UserManagementView() {
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Assign to Manager
+                    Reporting Manager
                   </label>
-                  <select
-                    value={createUserForm.managerId}
-                    onChange={(e) => setCreateUserForm({ ...createUserForm, managerId: e.target.value })}
-                    disabled={createUserForm.role === 'ROLE_SUPER_ADMIN'}
-                    style={{ 
-                      width: '100%', 
-                      padding: '9px 12px', 
-                      borderRadius: '8px', 
-                      border: '1px solid #cbd5e1', 
-                      fontSize: '0.88rem', 
-                      background: createUserForm.role === 'ROLE_SUPER_ADMIN' ? '#f1f5f9' : '#ffffff',
-                      cursor: createUserForm.role === 'ROLE_SUPER_ADMIN' ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    <option value="">Direct / None</option>
-                    {managers.map(m => (
-                      <option key={m.id} value={m.id}>{m.fullName} ({m.email})</option>
-                    ))}
-                  </select>
+                  {!isSuperAdmin ? (
+                    <div style={{
+                      padding: '9px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.88rem',
+                      background: '#f8fafc',
+                      color: '#0f2b48',
+                      fontWeight: 600
+                    }}>
+                      {authUser?.fullName || 'You (Current User)'} (Auto-Assigned)
+                    </div>
+                  ) : (
+                    <select
+                      value={createUserForm.managerId}
+                      onChange={(e) => setCreateUserForm({ ...createUserForm, managerId: e.target.value })}
+                      disabled={createUserForm.role === 'ROLE_SUPER_ADMIN'}
+                      style={{ 
+                        width: '100%', 
+                        padding: '9px 12px', 
+                        borderRadius: '8px', 
+                        border: '1px solid #cbd5e1', 
+                        fontSize: '0.88rem', 
+                        background: createUserForm.role === 'ROLE_SUPER_ADMIN' ? '#f1f5f9' : '#ffffff',
+                        cursor: createUserForm.role === 'ROLE_SUPER_ADMIN' ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      <option value="">Direct / None</option>
+                      {managers.map(m => (
+                        <option key={m.id} value={m.id}>{m.fullName} ({m.email})</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 

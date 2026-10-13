@@ -2,26 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { 
   RefreshCw, 
-  ArrowRightLeft, 
   ShieldCheck, 
   CheckCircle2, 
-  Send, 
-  AlertTriangle,
-  Clock,
-  Sparkles,
-  Award,
-  ArrowRight,
-  Percent,
-  FileCheck
+  Clock, 
+  Sparkles, 
+  Award, 
+  ArrowRight, 
+  Percent, 
+  FileCheck 
 } from 'lucide-react';
 import { portalService } from '../services/api';
 
-export default function RenewalPort() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const actionParam = searchParams.get('action');
+export default function RenewPolicy() {
+  const [searchParams] = useSearchParams();
   const typeParam = searchParams.get('type');
 
-  const [activeTab, setActiveTab] = useState(actionParam === 'port' ? 'port' : 'renew');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -35,9 +30,6 @@ export default function RenewalPort() {
   });
 
   useEffect(() => {
-    if (actionParam) {
-      setActiveTab(actionParam === 'port' ? 'port' : 'renew');
-    }
     if (typeParam) {
       const typeMap = {
         health: 'Health Insurance',
@@ -51,25 +43,20 @@ export default function RenewalPort() {
         setFormData(prev => ({ ...prev, policyType: typeMap[typeParam] }));
       }
     }
-  }, [actionParam, typeParam]);
-
-  const handleTabSwitch = (tab) => {
-    setActiveTab(tab);
-    setSearchParams({ action: tab, type: typeParam || 'health' });
-  };
+  }, [typeParam]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       await portalService.submitQuote({
-        categorySlug: activeTab === 'port' ? 'policy-porting' : 'policy-renewal',
+        categorySlug: 'policy-renewal',
         fullName: formData.fullName,
         phoneNumber: formData.phoneNumber,
         email: formData.email,
         city: formData.currentInsurer,
         planDetails: JSON.stringify({
-          action: activeTab,
+          action: 'renew',
           policyType: formData.policyType,
           currentInsurer: formData.currentInsurer,
           policyNumber: formData.policyNumber,
@@ -78,7 +65,7 @@ export default function RenewalPort() {
       });
       setSubmitted(true);
     } catch (err) {
-      alert('Error submitting request. Please try again.');
+      alert('Error submitting renewal request. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -87,7 +74,7 @@ export default function RenewalPort() {
   return (
     <div style={{ background: '#f8fafc', minHeight: '100vh', color: '#0f2b48' }}>
       
-      {/* 1. HERO SECTION (Split Hero Banner matching Health / Motor standard) */}
+      {/* 1. HERO SECTION (Instant Policy Renewal Funnel) */}
       <section className="product-funnel-hero">
         {/* Subtle Green/Emerald Orb */}
         <div style={{
@@ -104,7 +91,7 @@ export default function RenewalPort() {
         <div className="container">
           <div className="funnel-hero-grid">
             
-            {/* Left Column: Value Prop & Continuity Guarantees */}
+            {/* Left Column: Renewal Value Prop */}
             <div className="funnel-hero-intro">
               <div style={{
                 display: 'inline-flex',
@@ -119,7 +106,7 @@ export default function RenewalPort() {
                 color: '#34d399',
                 marginBottom: '1.25rem'
               }}>
-                <Sparkles size={15} /> 100% Policy Continuity & No Claim Bonus Protection
+                <Sparkles size={15} /> Instant Policy Renewal Across 30+ Insurers
               </div>
 
               <h1 style={{
@@ -129,8 +116,8 @@ export default function RenewalPort() {
                 margin: '0 0 1rem 0',
                 color: '#ffffff'
               }}>
-                Renew or Port Policy <br />
-                <span style={{ color: '#34d399' }}>Zero Loss of Waiting Periods</span>
+                Instant Policy Renewal <br />
+                <span style={{ color: '#34d399' }}>Zero Break-in Coverage Gap</span>
               </h1>
 
               <p style={{
@@ -140,46 +127,45 @@ export default function RenewalPort() {
                 maxWidth: '520px',
                 margin: '0 0 1.75rem 0'
               }}>
-                Never let your insurance coverage lapse. Renew instantly across all major insurers, or port your policy seamlessly to Aadhiraksha with 100% accumulated pre-existing waiting period retention.
+                Never let your insurance coverage lapse. Renew instantly across all major underwriters with automated NCB retention, loyalty discounts, and digital policy copy delivery in minutes.
               </p>
 
-              {/* Trust Badges & Underwriters below form on mobile */}
+              {/* Trust Badges */}
               <div className="funnel-hero-trust-col">
                 <div className="funnel-trust-grid">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.06)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <ShieldCheck size={22} color="#34d399" />
+                    <RefreshCw size={22} color="#34d399" />
                     <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>Full Continuity</div>
-                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Transfer waiting period credit</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>Instant Renewal</div>
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Digital copy in minutes</div>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.06)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
                     <Percent size={22} color="#fbbf24" />
                     <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>Up to 50% NCB Transfer</div>
-                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Retain motor & health bonus</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>NCB Protection</div>
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Up to 50% discount retained</div>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.06)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <Clock size={22} color="#60a5fa" />
+                    <ShieldCheck size={22} color="#60a5fa" />
                     <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>Instant Renewal</div>
-                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Digital copy in 2 minutes</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>Continuous Shield</div>
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Zero lapse in claims eligibility</div>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.06)', padding: '10px 14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
                     <FileCheck size={22} color="#a78bfa" />
                     <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>Zero Paperwork</div>
-                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Direct insurer verification</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>Quick Verification</div>
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Direct underwriter sync</div>
                     </div>
                   </div>
                 </div>
 
-                {/* Insurers Strip */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#94a3b8', fontSize: '0.8rem', flexWrap: 'wrap', marginTop: '1.5rem' }}>
                   <span>Empanelled Insurers:</span>
                   <span style={{ color: '#ffffff', fontWeight: 700 }}>Star Health • Care • HDFC ERGO • ICICI Lombard • TATA AIG • Niva Bupa</span>
@@ -187,7 +173,7 @@ export default function RenewalPort() {
               </div>
             </div>
 
-            {/* Right Column: High-Conversion Lead Card */}
+            {/* Right Column: Renewal Form Card */}
             <div className="funnel-hero-card-col">
               <div className="funnel-card-container">
                 
@@ -207,13 +193,13 @@ export default function RenewalPort() {
                       <CheckCircle2 size={36} />
                     </div>
                     <h3 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0 0 0.5rem 0', color: '#0f2b48' }}>
-                      {activeTab === 'renew' ? 'Renewal Request Registered!' : 'Porting Request Initiated!'}
+                      Renewal Request Registered!
                     </h3>
                     <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.5, margin: '0 0 1.5rem 0' }}>
-                      Thank you <strong>{formData.fullName}</strong>. Our policy operations executive will verify your <strong>{formData.currentInsurer}</strong> policy and contact you at <strong>{formData.phoneNumber}</strong>.
+                      Thank you <strong>{formData.fullName}</strong>. Our policy renewal desk will verify your <strong>{formData.currentInsurer}</strong> policy and coordinate your instant renewal quote at <strong>{formData.phoneNumber}</strong>.
                     </p>
                     <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '0.85rem', color: '#059669', fontWeight: 700 }}>
-                      📋 Policy continuity reference created for {formData.policyType}
+                      📋 Renewal quote request created for {formData.policyType}
                     </div>
                     <button
                       onClick={() => setSubmitted(false)}
@@ -228,76 +214,27 @@ export default function RenewalPort() {
                         cursor: 'pointer'
                       }}
                     >
-                      Submit Another Policy
+                      Renew Another Policy
                     </button>
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit}>
                     
-                    {/* Action Tabs */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleTabSwitch('renew')}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          padding: '10px 8px',
-                          borderRadius: '10px',
-                          border: `1.5px solid ${activeTab === 'renew' ? '#059669' : '#e2e8f0'}`,
-                          background: activeTab === 'renew' ? '#ecfdf5' : '#ffffff',
-                          color: activeTab === 'renew' ? '#059669' : '#64748b',
-                          fontWeight: activeTab === 'renew' ? 800 : 600,
-                          fontSize: '0.85rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <RefreshCw size={16} /> Instant Renewal
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleTabSwitch('port')}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          padding: '10px 8px',
-                          borderRadius: '10px',
-                          border: `1.5px solid ${activeTab === 'port' ? '#059669' : '#e2e8f0'}`,
-                          background: activeTab === 'port' ? '#ecfdf5' : '#ffffff',
-                          color: activeTab === 'port' ? '#059669' : '#64748b',
-                          fontWeight: activeTab === 'port' ? 800 : 600,
-                          fontSize: '0.85rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <ArrowRightLeft size={16} /> Port Policy
-                      </button>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      background: '#ecfdf5',
+                      border: '1.5px solid #a7f3d0',
+                      color: '#059669',
+                      fontWeight: 800,
+                      fontSize: '0.9rem',
+                      marginBottom: '1.25rem'
+                    }}>
+                      <RefreshCw size={18} /> Policy Renewal Desk
                     </div>
-
-                    {activeTab === 'port' && (
-                      <div style={{
-                        background: '#fffbeb',
-                        border: '1px solid #fde68a',
-                        padding: '0.75rem 0.85rem',
-                        borderRadius: '10px',
-                        marginBottom: '1rem',
-                        display: 'flex',
-                        gap: '0.5rem',
-                        fontSize: '0.78rem',
-                        color: '#92400e',
-                        lineHeight: 1.4
-                      }}>
-                        <AlertTriangle size={18} style={{ flexShrink: 0, color: '#d97706' }} />
-                        <div>
-                          <strong>IRDAI Porting Guidelines:</strong> Health policy porting requests should be initiated at least 45 days prior to expiry to retain full waiting period credits.
-                        </div>
-                      </div>
-                    )}
 
                     {/* Step A: Personal Contact */}
                     <div style={{ marginBottom: '1rem' }}>
@@ -399,7 +336,7 @@ export default function RenewalPort() {
 
                       <div>
                         <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>
-                          Current Insurer *
+                          Current Insurer Name *
                         </label>
                         <input
                           type="text"
@@ -409,7 +346,7 @@ export default function RenewalPort() {
                           onChange={(e) => setFormData({ ...formData, currentInsurer: e.target.value })}
                           style={{
                             width: '100%',
-                            padding: '9px 10px',
+                            padding: '9px 12px',
                             borderRadius: '8px',
                             border: '1.5px solid #cbd5e1',
                             fontSize: '0.85rem',
@@ -426,12 +363,12 @@ export default function RenewalPort() {
                         </label>
                         <input
                           type="text"
-                          placeholder="e.g. POL-98231024"
+                          placeholder="e.g. P/123456/01/2025"
                           value={formData.policyNumber}
                           onChange={(e) => setFormData({ ...formData, policyNumber: e.target.value })}
                           style={{
                             width: '100%',
-                            padding: '9px 10px',
+                            padding: '9px 12px',
                             borderRadius: '8px',
                             border: '1.5px solid #cbd5e1',
                             fontSize: '0.85rem',
@@ -442,15 +379,16 @@ export default function RenewalPort() {
 
                       <div>
                         <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.4rem' }}>
-                          Expiry / Due Date
+                          Expiry / Renewal Due Date *
                         </label>
                         <input
                           type="date"
+                          required
                           value={formData.expiryDate}
                           onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
                           style={{
                             width: '100%',
-                            padding: '9px 10px',
+                            padding: '9px 12px',
                             borderRadius: '8px',
                             border: '1.5px solid #cbd5e1',
                             fontSize: '0.85rem',
@@ -465,32 +403,23 @@ export default function RenewalPort() {
                       disabled={loading}
                       style={{
                         width: '100%',
+                        padding: '12px',
                         background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
                         color: '#ffffff',
                         border: 'none',
-                        padding: '12px 18px',
                         borderRadius: '10px',
-                        fontSize: '1rem',
+                        fontSize: '0.95rem',
                         fontWeight: 800,
                         cursor: loading ? 'not-allowed' : 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '8px',
-                        boxShadow: '0 4px 14px rgba(5, 150, 105, 0.3)',
-                        transition: 'all 0.15s ease'
+                        boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)'
                       }}
                     >
-                      {loading ? 'Processing...' : (
-                        <>
-                          {activeTab === 'renew' ? 'Request Instant Renewal Quote' : 'Initiate Porting Verification'} <ArrowRight size={18} />
-                        </>
-                      )}
+                      {loading ? 'Processing Renewal...' : 'Request Instant Renewal Quote'} <ArrowRight size={18} />
                     </button>
-
-                    <div style={{ textAlign: 'center', marginTop: '0.75rem', fontSize: '0.72rem', color: '#64748b' }}>
-                      🔒 Direct insurer verification with zero loss of accumulated benefits.
-                    </div>
                   </form>
                 )}
 
@@ -501,7 +430,7 @@ export default function RenewalPort() {
         </div>
       </section>
 
-      {/* 2. WHY RENEW & PORT WITH AADHIRAKSHA */}
+      {/* 2. WHY RENEW WITH AADHIRAKSHA */}
       <section style={{ padding: '4rem 0', background: '#ffffff' }}>
         <div className="container">
           
@@ -510,10 +439,10 @@ export default function RenewalPort() {
               Seamless Continuity
             </span>
             <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#0f2b48', margin: '0.5rem 0' }}>
-              Why Renew or Port with Aadhiraksha?
+              Why Renew with Aadhiraksha?
             </h2>
             <p style={{ color: '#64748b', fontSize: '0.98rem' }}>
-              We protect your hard-earned waiting period credits and secure the highest loyalty renewal discounts.
+              We protect your hard-earned No Claim Bonus (NCB) and secure the highest loyalty renewal discounts.
             </p>
           </div>
 
@@ -524,23 +453,23 @@ export default function RenewalPort() {
           }}>
             {[
               {
-                title: 'Waiting Period Continuity Protection',
-                desc: 'When porting health insurance, all waiting periods served with your existing insurer for pre-existing diseases are carried forward 100%.',
-                icon: <ShieldCheck size={26} color="#059669" />
+                title: 'No Claim Bonus (NCB) Protection',
+                desc: 'Retain up to 50% earned NCB discounts on your motor and health policies with complete continuity verification.',
+                icon: <Percent size={26} color="#059669" />
               },
               {
-                title: 'No Claim Bonus (NCB) Retention',
-                desc: 'Retain up to 50% earned NCB discounts on your motor and health policies when transferring between providers.',
-                icon: <Percent size={26} color="#d97706" />
+                title: 'Zero Break-in Coverage Gap',
+                desc: 'Instant policy renewal before expiry prevents costly vehicle inspections and health pre-policy medical checkups.',
+                icon: <ShieldCheck size={26} color="#0284c7" />
               },
               {
                 title: 'Single-Window Escalation Support',
-                desc: 'Avoid call center hold queues. Our dedicated policy retention desk directly coordinates renewals and porting with underwriting teams.',
-                icon: <Award size={26} color="#0284c7" />
+                desc: 'Avoid call center hold queues. Our dedicated policy renewal desk directly coordinates with underwriting desks.',
+                icon: <Award size={26} color="#d97706" />
               },
               {
-                title: 'Grace Period Renewal Reminders',
-                desc: 'Receive automated multi-channel WhatsApp and SMS alerts well ahead of expiry to ensure zero lapse in critical coverage.',
+                title: 'Automated Grace Period Alerts',
+                desc: 'Receive multi-channel WhatsApp and SMS alerts well ahead of expiry to ensure you never miss critical renewal deadlines.',
                 icon: <Clock size={26} color="#8b5cf6" />
               }
             ].map((item, idx) => (

@@ -22,8 +22,10 @@ import {
   FolderOpen,
   GripVertical,
   RotateCcw,
-  FileText
+  FileText,
+  MoreVertical
 } from 'lucide-react';
+import ActionDropdown from '../common/ActionDropdown';
 import { portalService } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
 import { 
@@ -716,61 +718,96 @@ export default function InsurancePartnersManagementView() {
                         </button>
                       </td>
 
-                      <td style={{ padding: '1rem 1.25rem', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <a
-                            href={`/partners/${partner.slug || partner.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="View Public Brochure Page"
-                            style={{
-                              padding: '0.35rem 0.55rem',
-                              borderRadius: '6px',
-                              background: partner.brochureUrl ? '#f0fdf4' : '#f8fafc',
-                              color: partner.brochureUrl ? '#16a34a' : '#64748b',
-                              border: `1px solid ${partner.brochureUrl ? '#bbf7d0' : '#e2e8f0'}`,
-                              display: 'flex',
-                              alignItems: 'center',
-                              textDecoration: 'none'
-                            }}
-                          >
-                            <FileText size={14} />
-                          </a>
+                      <td style={{ padding: '0.75rem 1.25rem', textAlign: 'right' }}>
+                        <ActionDropdown
+                          menuWidth="220px"
+                          trigger={({ isOpen }) => (
+                            <button
+                              type="button"
+                              title="Partner Actions"
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '8px',
+                                border: '1px solid #e2e8f0',
+                                background: isOpen ? '#f1f5f9' : '#ffffff',
+                                color: '#475569',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                              onMouseLeave={(e) => { if (!isOpen) { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; } }}
+                            >
+                              <MoreVertical size={16} />
+                            </button>
+                          )}
+                        >
+                          {({ close }) => (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  close();
+                                  handleOpenEdit(partner);
+                                }}
+                                className="crm-popover-btn"
+                              >
+                                <Edit3 size={14} color="#2563eb" /> Edit Configuration
+                              </button>
 
-                          <button
-                            onClick={() => handleOpenEdit(partner)}
-                            title="Edit Configuration"
-                            style={{
-                              padding: '0.35rem 0.55rem',
-                              borderRadius: '6px',
-                              background: '#eff6ff',
-                              color: '#2563eb',
-                              border: '1px solid #bfdbfe',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center'
-                            }}
-                          >
-                            <Edit3 size={14} />
-                          </button>
+                              <a
+                                href={`/partners/${partner.slug || partner.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => close()}
+                                className="crm-popover-btn"
+                                style={{ textDecoration: 'none', color: 'inherit' }}
+                              >
+                                <FileText size={14} color="#16a34a" /> View Public Brochure
+                              </a>
 
-                          <button
-                            onClick={() => handleDeletePartner(partner)}
-                            title="Delete Partner"
-                            style={{
-                              padding: '0.35rem 0.55rem',
-                              borderRadius: '6px',
-                              background: '#fef2f2',
-                              color: '#dc2626',
-                              border: '1px solid #fecaca',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center'
-                            }}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                              {partner.websiteUrl && (
+                                <a
+                                  href={partner.websiteUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => close()}
+                                  className="crm-popover-btn"
+                                  style={{ textDecoration: 'none', color: 'inherit' }}
+                                >
+                                  <ExternalLink size={14} color="#0284c7" /> Open Portal Website
+                                </a>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  close();
+                                  handleToggleStatus(partner);
+                                }}
+                                className="crm-popover-btn"
+                              >
+                                <RefreshCw size={14} color="#64748b" /> {partner.isActive ? 'Hide from Website' : 'Publish to Website'}
+                              </button>
+
+                              <div style={{ height: '1px', background: 'var(--crm-border-subtle, #f1f5f9)', margin: '4px 0' }} />
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  close();
+                                  handleDeletePartner(partner);
+                                }}
+                                className="crm-popover-btn danger"
+                              >
+                                <Trash2 size={14} color="#dc2626" /> Delete Partner
+                              </button>
+                            </>
+                          )}
+                        </ActionDropdown>
                       </td>
                     </tr>
                   );

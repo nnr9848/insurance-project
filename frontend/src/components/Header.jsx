@@ -22,7 +22,8 @@ import {
   X,
   Menu,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  ArrowRightLeft
 } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import { useBusinessProfile } from '../context/BusinessProfileContext';
@@ -412,63 +413,23 @@ export default function Header() {
               )}
             </div>
 
-            {/* 2. RENEWAL / PORT POLICY Dropdown */}
-            <div 
-              style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center' }}
-              onMouseEnter={() => handleMouseEnter('renewal')}
-              onMouseLeave={handleMouseLeave}
+            {/* 2. RENEW POLICY */}
+            <Link
+              to="/renew-policy"
+              className={`nav-item ${location.pathname.startsWith('/renew-policy') ? 'active' : ''}`}
+              style={{ height: '38px', textDecoration: 'none', display: 'flex', alignItems: 'center' }}
             >
-              <button
-                onClick={() => toggleDropdown('renewal')}
-                className={`nav-item ${location.pathname.startsWith('/renewal-port') ? 'active' : ''}`}
-                style={{ height: '38px' }}
-              >
-                RENEWAL / PORT POLICY <ChevronDown size={14} style={{ transform: activeDropdown === 'renewal' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-              </button>
+              RENEW POLICY
+            </Link>
 
-              {activeDropdown === 'renewal' && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: '0',
-                  width: '260px',
-                  background: '#ffffff',
-                  borderRadius: '16px',
-                  border: '1px solid var(--border-subtle)',
-                  boxShadow: 'var(--shadow-xl)',
-                  padding: '8px',
-                  zIndex: 1100,
-                  animation: 'dropdownFadeIn 0.15s ease-out'
-                }}>
-                  {[
-                    { title: 'Health Insurance Renewal', link: '/renewal-port?action=renew&type=health' },
-                    { title: 'Motor / Car Renewal', link: '/renewal-port?action=renew&type=motor' },
-                    { title: 'Two Wheeler Renewal', link: '/renewal-port?action=renew&type=two_wheeler' },
-                    { title: 'Port Existing Policy', link: '/renewal-port?action=port&type=health' }
-                  ].map((item, idx) => (
-                    <Link
-                      key={idx}
-                      to={item.link}
-                      onClick={() => setActiveDropdown(null)}
-                      style={{
-                        display: 'block',
-                        padding: '9px 12px',
-                        borderRadius: '8px',
-                        fontSize: '0.85rem',
-                        fontWeight: 600,
-                        color: 'var(--primary-navy)',
-                        textDecoration: 'none',
-                        transition: 'background 0.15s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      {item.title}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* 3. PORT POLICY (SWITCH INSURER) */}
+            <Link
+              to="/port-policy"
+              className={`nav-item ${location.pathname.startsWith('/port-policy') ? 'active' : ''}`}
+              style={{ height: '38px', textDecoration: 'none', display: 'flex', alignItems: 'center', color: '#7c3aed' }}
+            >
+              PORT POLICY
+            </Link>
 
             {/* 3. CLAIM SUPPORT Dropdown */}
             <div 
@@ -555,7 +516,16 @@ export default function Header() {
               LOANS
             </NavLink>
 
-            {/* 7. ABOUT US Direct Link */}
+            {/* 7. BLOG & GUIDES Direct Link (High-Intent SEO Hub) */}
+            <NavLink
+              to="/blog"
+              className={({ isActive }) => `nav-item ${isActive || location.pathname.startsWith('/blog') ? 'active' : ''}`}
+              style={{ height: '38px' }}
+            >
+              BLOG & GUIDES
+            </NavLink>
+
+            {/* 8. ABOUT US Direct Link */}
             <NavLink
               to="/about"
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
@@ -810,10 +780,9 @@ export default function Header() {
                 background: '#ffffff'
               }}>
                 {[
-                  { title: 'Health Insurance Renewal', icon: <HeartPulse size={16} color="#0f2b48" />, link: '/renewal-port?action=renew&type=health' },
-                  { title: 'Motor / Car Renewal', icon: <Car size={16} color="#0f2b48" />, link: '/renewal-port?action=renew&type=motor' },
-                  { title: 'Two Wheeler Renewal', icon: <Bike size={16} color="#0f2b48" />, link: '/renewal-port?action=renew&type=two_wheeler' },
-                  { title: 'Port Existing Policy to Us', icon: <FileCheck size={16} color="#0f2b48" />, link: '/renewal-port?action=port&type=health' }
+                  { title: 'Health Insurance Renewal', icon: <HeartPulse size={16} color="#0f2b48" />, link: '/renew-policy?type=health' },
+                  { title: 'Motor / Car Renewal', icon: <Car size={16} color="#0f2b48" />, link: '/renew-policy?type=motor' },
+                  { title: 'Two Wheeler Renewal', icon: <Bike size={16} color="#0f2b48" />, link: '/renew-policy?type=two_wheeler' }
                 ].map((item, idx) => (
                   <Link
                     key={idx}
@@ -833,6 +802,42 @@ export default function Header() {
               </div>
             )}
           </div>
+
+          {/* Section 2B: Port Policy (Standalone Mobile Item) */}
+          <Link
+            to="/port-policy"
+            onClick={() => setIsMobileOpen(false)}
+            style={{
+              background: '#ffffff',
+              borderRadius: '14px',
+              border: '1px solid #ddd6fe',
+              padding: '12px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              textDecoration: 'none'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: '#f5f3ff',
+                border: '1px solid #ddd6fe',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <ArrowRightLeft size={18} color="#7c3aed" />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#7c3aed' }}>Port Existing Policy</div>
+                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Switch insurer with 0% waiting period loss</div>
+              </div>
+            </div>
+            <ChevronRight size={16} color="#7c3aed" />
+          </Link>
 
           {/* Section 3: Claim Support & Network */}
           <div style={{

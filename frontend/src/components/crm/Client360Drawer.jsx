@@ -49,6 +49,7 @@ import WhatsAppIcon from '../common/WhatsAppIcon';
 import ScheduleActivityModal from './ScheduleActivityModal';
 import ClientLifecyclePipeline from './common/ClientLifecyclePipeline';
 import WhatsAppComposeModal from './WhatsAppComposeModal';
+import InsurerLogoBadge from '../common/InsurerLogoBadge';
 
 export default function Client360Drawer({ client, onClose, onOpenCallModal, onOpenMeetingModal, onLeadUpdated }) {
   if (!client) return null;
@@ -69,6 +70,29 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   const [quickNoteText, setQuickNoteText] = useState('');
   const [isPostingNote, setIsPostingNote] = useState(false);
   const [copiedField, setCopiedField] = useState(null);
+
+  // Policy Expiry / Renewal Date Editing State
+  const [editingExpiry, setEditingExpiry] = useState(false);
+  const [tempExpiryDate, setTempExpiryDate] = useState(client.policyExpiryDate || '');
+  const [isSavingExpiry, setIsSavingExpiry] = useState(false);
+
+  const handleUpdateExpiryDate = async (newDate) => {
+    setIsSavingExpiry(true);
+    try {
+      const updated = await crmService.updateLead(currentClient.id, {
+        ...currentClient,
+        policyExpiryDate: newDate || null
+      });
+      setCurrentClient(prev => ({ ...prev, ...updated, policyExpiryDate: newDate }));
+      if (onLeadUpdated) onLeadUpdated({ ...currentClient, ...updated, policyExpiryDate: newDate });
+      setEditingExpiry(false);
+      loadClientAuditLogs(currentClient.id);
+    } catch (err) {
+      console.error('Failed to update policy expiry date:', err);
+    } finally {
+      setIsSavingExpiry(false);
+    }
+  };
 
   // Reassign Modal state
   const [showReassignModal, setShowReassignModal] = useState(false);
@@ -111,6 +135,22 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   // Live Call Logs State
   const [clientCalls, setClientCalls] = useState([]);
   const [loadingCalls, setLoadingCalls] = useState(false);
+
+  // Live Meetings State
+  const [clientMeetings, setClientMeetings] = useState([]);
+  const [loadingMeetings, setLoadingMeetings] = useState(false);
+
+  // In-Context Log Call Modal State
+  const [showLogCallModal, setShowLogCallModal] = useState(false);
+  const [isLoggingCall, setIsLoggingCall] = useState(false);
+  const [callLogForm, setCallLogForm] = useState({
+    callResult: 'INTERESTED',
+    callDurationSeconds: 120,
+    callNotes: '',
+    nextFollowUpDate: '',
+    nextFollowUpTime: '11:00',
+    updateStageTo: 'FOLLOWUP'
+  });
 
   // Live Multi-Product Opportunities & Cross-Entity Inquiries (Unified FSC Graph)
   const [clientOpportunities, setClientOpportunities] = useState([]);
@@ -182,9 +222,64 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
       loadClientQuotes(client.id);
       loadClientDocs(client.id);
       loadClientCalls(client.id);
+      loadClientMeetings(client.id);
       loadClientOpportunitiesAndInquiries(client);
     }
   }, [client]);
+
+  const loadClientMeetings = async (clientId) => {
+    setLoadingMeetings(true);
+    try {
+      const data = await crmService.getClientMeetings(clientId);
+      setClientMeetings(data || []);
+    } catch (err) {
+      console.warn('Could not load client meetings:', err);
+      setClientMeetings([]);
+    } finally {
+      setLoadingMeetings(false);
+    }
+  };
+
+  const handleInContextLogCall = async (e) => {
+    e.preventDefault();
+    if (!currentClient?.id) return;
+    setIsLoggingCall(true);
+    try {
+      const combinedDateTime = callLogForm.nextFollowUpDate 
+        ? `${callLogForm.nextFollowUpDate}T${callLogForm.nextFollowUpTime || '10:00'}:00` 
+        : null;
+
+      await crmService.logCall({
+        clientId: currentClient.id,
+        callResult: callLogForm.callResult,
+        callDurationSeconds: Number(callLogForm.callDurationSeconds) || 0,
+        callNotes: callLogForm.callNotes,
+        nextFollowUpDate: combinedDateTime,
+        updateStageTo: callLogForm.updateStageTo
+      });
+
+      toast.success('Call notes and follow-up logged successfully!');
+      setShowLogCallModal(false);
+      setCallLogForm({
+        callResult: 'INTERESTED',
+        callDurationSeconds: 120,
+        callNotes: '',
+        nextFollowUpDate: '',
+        nextFollowUpTime: '11:00',
+        updateStageTo: 'FOLLOWUP'
+      });
+
+      // Refresh call stream, audit trail, and notify parent
+      await loadClientCalls(currentClient.id);
+      loadClientAuditLogs(currentClient.id);
+      if (onLeadUpdated) onLeadUpdated();
+    } catch (err) {
+      console.error('Failed to log call:', err);
+      toast.error(err.response?.data?.message || 'Failed to log call disposition');
+    } finally {
+      setIsLoggingCall(false);
+    }
+  };
 
   const loadClientOpportunitiesAndInquiries = async (targetClient) => {
     setLoadingOpportunities(true);
@@ -645,6 +740,105 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                 <span>{1 + (Array.isArray(clientOpportunities) ? clientOpportunities.filter(o => !o?.isPrimary).length : 0) + (Array.isArray(linkedInquiries) ? linkedInquiries.length : 0)} Enquiries</span>
               </span>
 
+              {/* Policy Expiry / Renewal Date Interactive Widget */}
+              {(() => {
+                const expiry = currentClient.policyExpiryDate;
+                let daysLeft = null;
+                let isUrgent = false;
+                let isExpired = false;
+                if (expiry) {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const expDate = new Date(expiry);
+                  expDate.setHours(0, 0, 0, 0);
+                  daysLeft = Math.round((expDate - today) / (1000 * 60 * 60 * 24));
+                  isUrgent = daysLeft >= 0 && daysLeft <= 30;
+                  isExpired = daysLeft < 0;
+                }
+
+                if (editingExpiry) {
+                  return (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#ffffff', padding: '2px 6px', borderRadius: '6px', border: '1.5px solid var(--accent-emerald)' }}>
+                      <input
+                        type="date"
+                        value={tempExpiryDate}
+                        onChange={(e) => setTempExpiryDate(e.target.value)}
+                        style={{ border: 'none', fontSize: '0.72rem', outline: 'none', color: '#0f2b48', fontWeight: 600 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateExpiryDate(tempExpiryDate)}
+                        disabled={isSavingExpiry}
+                        style={{ background: 'var(--accent-emerald)', color: '#fff', border: 'none', borderRadius: '4px', padding: '2px 5px', fontSize: '0.68rem', cursor: 'pointer', fontWeight: 700 }}
+                      >
+                        {isSavingExpiry ? '...' : 'Save'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTempExpiryDate(currentClient.policyExpiryDate || '');
+                          setEditingExpiry(false);
+                        }}
+                        style={{ background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: '4px', padding: '2px 5px', fontSize: '0.68rem', cursor: 'pointer' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  );
+                }
+
+                const isIssued = currentClient.stage === 'POLICY_ISSUED';
+                const isRenewalOrPort = currentClient.policyType === 'RENEWAL' || currentClient.policyType === 'PORTABILITY';
+                const formattedDate = expiry ? new Date(expiry).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+
+                let labelText = '';
+                if (!expiry) {
+                  labelText = isIssued ? '+ Add Renewal Date' : '+ Add Target Date';
+                } else if (isIssued) {
+                  // Active policy issued by agency
+                  if (isExpired) labelText = `🔴 Lapsed (${Math.abs(daysLeft)}d ago)`;
+                  else if (isUrgent) labelText = `⚠️ Renews in ${daysLeft}d`;
+                  else labelText = `📅 Renews: ${formattedDate}`;
+                } else if (isRenewalOrPort) {
+                  // Pre-issuance lead: current policy with previous insurer is expiring
+                  if (isExpired) labelText = `⚠️ Existing Pol Expired (${Math.abs(daysLeft)}d ago)`;
+                  else if (isUrgent) labelText = `⏳ Old Pol Expires in ${daysLeft}d`;
+                  else labelText = `⏳ Old Pol Exp: ${formattedDate}`;
+                } else {
+                  // Fresh Lead / Pipeline target decision date
+                  if (isExpired) labelText = `Deadline Passed (${Math.abs(daysLeft)}d ago)`;
+                  else if (isUrgent) labelText = `🎯 Target in ${daysLeft}d`;
+                  else labelText = `🎯 Target: ${formattedDate}`;
+                }
+
+                return (
+                  <span
+                    onClick={() => {
+                      setTempExpiryDate(currentClient.policyExpiryDate || '');
+                      setEditingExpiry(true);
+                    }}
+                    style={{
+                      fontSize: '0.72rem',
+                      background: isExpired ? '#fee2e2' : isUrgent ? '#fef3c7' : expiry ? '#f0fdf4' : '#f8fafc',
+                      color: isExpired ? '#dc2626' : isUrgent ? '#b45309' : expiry ? '#15803d' : '#64748b',
+                      border: `1px solid ${isExpired ? '#fca5a5' : isUrgent ? '#fde68a' : expiry ? '#bbf7d0' : '#e2e8f0'}`,
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      cursor: 'pointer'
+                    }}
+                    title={isIssued ? "Active Policy Renewal Schedule" : "Prospect Policy Expiry / Target Deadline (Click to edit)"}
+                  >
+                    <Calendar size={11} />
+                    <span>{labelText}</span>
+                    <Edit3 size={10} style={{ opacity: 0.6 }} />
+                  </span>
+                );
+              })()}
+
               {currentClient.phoneNumber && (
                 <button
                   type="button"
@@ -751,8 +945,8 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
           <button
             type="button"
             className="crm-drawer-reach-btn call"
-            onClick={() => onOpenCallModal ? onOpenCallModal({ clientId: client.id, clientName: client.fullName, clientPhone: client.phoneNumber, insuranceType: client.insuranceType }) : setScheduleModalState({ isOpen: true, initialType: 'CALL' })}
-            title="Start outbound call and log disposition"
+            onClick={() => setShowLogCallModal(true)}
+            title="Log call notes and disposition for this client directly in-context"
           >
             <Phone size={14} />
             <span>Call & Log</span>
@@ -795,7 +989,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
         <div className="crm-client360-tabs-nav">
           {[
             { id: 'overview', label: 'Overview', count: null },
-            { id: 'calls', label: 'Calls', count: clientCalls.length },
+            { id: 'calls', label: 'Activities', count: (clientCalls.length + clientMeetings.length) },
             { id: 'quotes', label: 'Quotations', count: clientQuotes.length },
             { id: 'documents', label: 'Documents', count: clientDocs.length },
             { id: 'timeline', label: 'Timeline & Audit', count: auditLogs.length }
@@ -1225,11 +1419,22 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                               </button>
                             </div>
 
+                            {/* Insurer Brand Badge */}
+                            {(item.isPrimary ? currentClient.existingInsurer : (item.specsObj?.currentInsurer || item.specsObj?.insurerName)) && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '2px 0' }}>
+                                <InsurerLogoBadge
+                                  name={item.isPrimary ? currentClient.existingInsurer : (item.specsObj?.currentInsurer || item.specsObj?.insurerName)}
+                                  size="xs"
+                                  subtext={item.isPrimary && currentClient.existingPolicyNumber ? `Pol #: ${currentClient.existingPolicyNumber}` : null}
+                                />
+                              </div>
+                            )}
+
                             {/* Row 2: Clean Specs Tags (deduplicated, concise) */}
                             {item.specsObj ? (
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                                 {Object.entries(item.specsObj)
-                                  .filter(([k]) => !['coverageAmount', 'coverage', 'category', 'stage'].includes(k.toLowerCase()))
+                                  .filter(([k]) => !['coverageAmount', 'coverage', 'category', 'stage', 'currentInsurer', 'insurerName', 'policyNumber'].includes(k.toLowerCase()))
                                   .map(([k, v]) => (
                                     <span
                                       key={k}
@@ -1252,7 +1457,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                               <div style={{ fontSize: '0.72rem', color: '#475569' }}>
                                 <strong style={{ color: '#0f2b48' }}>Specs:</strong> {item.specs}
                               </div>
-                            ) : item.notes ? (
+                            ) : item.notes && !item.notes.startsWith('Existing Insurer:') ? (
                               <div style={{ fontSize: '0.72rem', color: '#64748b', fontStyle: 'italic' }}>
                                 {item.notes}
                               </div>
@@ -1295,16 +1500,21 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
             </div>
           )}
 
-          {/* TAB: CALL HISTORY LOGS */}
+          {/* TAB: ACTIVITIES (CALL LOGS & MEETINGS) */}
           {activeTab === 'calls' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f2b48', textTransform: 'uppercase' }}>
-                  Call Logs & Dispositions ({clientCalls.length})
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                <div>
+                  <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#0f2b48', textTransform: 'uppercase' }}>
+                    Activities & Communications
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                    {clientCalls.length} Call Logs • {clientMeetings.length} Meetings
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button
-                    onClick={() => onOpenCallModal && onOpenCallModal(currentClient)}
+                    onClick={() => setShowLogCallModal(true)}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -1313,17 +1523,38 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                       color: '#ffffff',
                       border: 'none',
                       borderRadius: '6px',
-                      padding: '4px 10px',
+                      padding: '5px 11px',
                       fontSize: '0.74rem',
                       cursor: 'pointer',
                       fontWeight: 700
                     }}
                   >
-                    <Phone size={12} /> Log New Call
+                    <Phone size={12} /> Log Call
                   </button>
                   <button
-                    onClick={() => loadClientCalls(currentClient.id)}
-                    disabled={loadingCalls}
+                    onClick={() => setScheduleModalState({ isOpen: true, initialType: 'MEETING' })}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: '#4338ca',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '5px 11px',
+                      fontSize: '0.74rem',
+                      cursor: 'pointer',
+                      fontWeight: 700
+                    }}
+                  >
+                    <Calendar size={12} /> Schedule Meet
+                  </button>
+                  <button
+                    onClick={() => {
+                      loadClientCalls(currentClient.id);
+                      loadClientMeetings(currentClient.id);
+                    }}
+                    disabled={loadingCalls || loadingMeetings}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -1331,83 +1562,189 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                       background: '#f1f5f9',
                       border: '1px solid #cbd5e1',
                       borderRadius: '6px',
-                      padding: '4px 8px',
+                      padding: '5px 8px',
                       fontSize: '0.74rem',
                       color: '#475569',
                       cursor: 'pointer',
                       fontWeight: 600
                     }}
                   >
-                    <RefreshCw size={12} className={loadingCalls ? 'animate-spin' : ''} /> Refresh
+                    <RefreshCw size={12} className={(loadingCalls || loadingMeetings) ? 'animate-spin' : ''} />
                   </button>
                 </div>
               </div>
 
-              {loadingCalls ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
-                  <div style={{ width: '24px', height: '24px', border: '2px solid #cbd5e1', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 8px auto' }} />
-                  <span style={{ fontSize: '0.8rem' }}>Loading call interactions...</span>
+              {/* SECTION 1: MEETINGS & CONSULTATIONS */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#4338ca', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Calendar size={13} /> Scheduled Meetings & Consultations ({clientMeetings.length})
+                  </span>
                 </div>
-              ) : clientCalls.length === 0 ? (
-                <div style={{ background: '#ffffff', borderRadius: '12px', padding: '1.5rem', textAlign: 'center', border: '1px solid #e2e8f0', color: '#94a3b8' }}>
-                  <PhoneCall size={32} color="#cbd5e1" style={{ margin: '0 auto 8px auto' }} />
-                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#475569' }}>No calls logged for this client yet</div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>Click "Log New Call" above to record an advisor interaction.</div>
-                </div>
-              ) : (
-                clientCalls.map(c => {
-                  const isPositive = c.callResult === 'INTERESTED' || c.callResult === 'QUOTE_REQUESTED' || c.callResult === 'CONVERTED';
-                  const isNotAnswered = c.callResult === 'NOT_ANSWERED' || c.callResult === 'WRONG_NUMBER';
 
-                  let badgeColor = isPositive ? '#15803d' : isNotAnswered ? '#dc2626' : '#0284c7';
-                  let badgeBg = isPositive ? '#dcfce7' : isNotAnswered ? '#fee2e2' : '#e0f2fe';
-
-                  return (
-                    <div
-                      key={c.id}
-                      style={{
-                        background: '#ffffff',
-                        borderRadius: '12px',
-                        padding: '1rem',
-                        border: '1px solid #e2e8f0',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '6px'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{
-                          fontSize: '0.72rem',
-                          fontWeight: 800,
-                          color: badgeColor,
-                          background: badgeBg,
-                          padding: '2px 8px',
-                          borderRadius: '6px'
-                        }}>
-                          {c.callResult.replace('_', ' ')}
-                        </span>
-                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                          {c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                {loadingMeetings ? (
+                  <div style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.78rem' }}>
+                    Loading meetings...
+                  </div>
+                ) : clientMeetings.length === 0 ? (
+                  <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '1rem', textAlign: 'center', border: '1px dashed #cbd5e1', color: '#94a3b8', fontSize: '0.75rem' }}>
+                    No consultation meetings scheduled. Click "Schedule Meet" above.
+                  </div>
+                ) : (
+                  clientMeetings.map(m => {
+                    const isUpcoming = new Date(m.meetingDatetime) >= new Date();
+                    return (
+                      <div
+                        key={m.id}
+                        style={{
+                          background: '#ffffff',
+                          borderRadius: '10px',
+                          padding: '0.85rem',
+                          border: isUpcoming ? '1px solid #c7d2fe' : '1px solid #e2e8f0',
+                          borderLeft: isUpcoming ? '4px solid #4338ca' : '4px solid #94a3b8',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f2b48' }}>{m.title}</div>
+                            <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                              {m.product} • {m.meetingType === 'GOOGLE_MEET' ? '🌐 Google Meet' : '🏢 In-Person'}
+                            </div>
+                          </div>
+                          <span style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            background: m.status === 'COMPLETED' ? '#dcfce7' : isUpcoming ? '#e0e7ff' : '#f1f5f9',
+                            color: m.status === 'COMPLETED' ? '#166534' : isUpcoming ? '#3730a3' : '#475569'
+                          }}>
+                            {m.status || (isUpcoming ? 'UPCOMING' : 'PAST')}
+                          </span>
                         </div>
-                      </div>
 
-                      <div style={{ fontSize: '0.82rem', color: '#334155', lineHeight: 1.4, margin: '2px 0' }}>
-                        {c.callNotes || 'No notes provided.'}
-                      </div>
+                        <div style={{ fontSize: '0.75rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontWeight: 600 }}>
+                            📅 {new Date(m.meetingDatetime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          {m.advisorName && <span>Advisor: <strong>{m.advisorName}</strong></span>}
+                        </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.74rem', color: '#64748b', background: '#f8fafc', padding: '6px 8px', borderRadius: '6px' }}>
-                        <div>Duration: <strong>{c.callDurationSeconds ? `${Math.floor(c.callDurationSeconds / 60)}m ${c.callDurationSeconds % 60}s` : '0s'}</strong></div>
-                        <div>Advisor: <strong>{c.advisorName}</strong></div>
-                        {c.nextFollowUpDate && (
-                          <div style={{ color: '#0284c7' }}>
-                            Next: <strong>{new Date(c.nextFollowUpDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</strong>
+                        {m.googleMeetUrl && (
+                          <div style={{ marginTop: '2px' }}>
+                            <a
+                              href={m.googleMeetUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '0.74rem',
+                                color: '#2563eb',
+                                textDecoration: 'none',
+                                fontWeight: 700
+                              }}
+                            >
+                              <ExternalLink size={12} /> Join Google Meet
+                            </a>
+                          </div>
+                        )}
+
+                        {m.notes && (
+                          <div style={{ fontSize: '0.76rem', color: '#334155', background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', marginTop: '2px' }}>
+                            <strong>Agenda:</strong> {m.notes}
+                          </div>
+                        )}
+
+                        {m.outcomeNotes && (
+                          <div style={{ fontSize: '0.76rem', color: '#065f46', background: '#ecfdf5', padding: '6px 8px', borderRadius: '6px', border: '1px solid #a7f3d0' }}>
+                            <strong>Outcome:</strong> {m.outcomeNotes}
                           </div>
                         )}
                       </div>
-                    </div>
-                  );
-                })
-              )}
+                    );
+                  })
+                )}
+              </div>
+
+              {/* SECTION 2: TELEPHONY CALL LOGS */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#0f2b48', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Phone size={13} /> Call History & Dispositions ({clientCalls.length})
+                  </span>
+                </div>
+
+                {loadingCalls ? (
+                  <div style={{ padding: '1.5rem', textAlign: 'center', color: '#94a3b8' }}>
+                    <div style={{ width: '20px', height: '20px', border: '2px solid #cbd5e1', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 6px auto' }} />
+                    <span style={{ fontSize: '0.78rem' }}>Loading call interactions...</span>
+                  </div>
+                ) : clientCalls.length === 0 ? (
+                  <div style={{ background: '#ffffff', borderRadius: '10px', padding: '1.25rem', textAlign: 'center', border: '1px solid #e2e8f0', color: '#94a3b8' }}>
+                    <PhoneCall size={28} color="#cbd5e1" style={{ margin: '0 auto 6px auto' }} />
+                    <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#475569' }}>No calls logged for this client yet</div>
+                    <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '2px' }}>Click "Log Call" above to record notes & disposition.</div>
+                  </div>
+                ) : (
+                  clientCalls.map(c => {
+                    const isPositive = c.callResult === 'INTERESTED' || c.callResult === 'QUOTE_REQUESTED' || c.callResult === 'CONVERTED';
+                    const isNotAnswered = c.callResult === 'NOT_ANSWERED' || c.callResult === 'WRONG_NUMBER';
+
+                    let badgeColor = isPositive ? '#15803d' : isNotAnswered ? '#dc2626' : '#0284c7';
+                    let badgeBg = isPositive ? '#dcfce7' : isNotAnswered ? '#fee2e2' : '#e0f2fe';
+
+                    return (
+                      <div
+                        key={c.id}
+                        style={{
+                          background: '#ffffff',
+                          borderRadius: '10px',
+                          padding: '0.85rem 1rem',
+                          border: '1px solid #e2e8f0',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            color: badgeColor,
+                            background: badgeBg,
+                            padding: '2px 8px',
+                            borderRadius: '6px'
+                          }}>
+                            {c.callResult.replace(/_/g, ' ')}
+                          </span>
+                          <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                            {c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                          </div>
+                        </div>
+
+                        <div style={{ fontSize: '0.82rem', color: '#334155', lineHeight: 1.4, margin: '2px 0' }}>
+                          {c.callNotes || 'No notes provided.'}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.74rem', color: '#64748b', background: '#f8fafc', padding: '6px 8px', borderRadius: '6px' }}>
+                          <div>Duration: <strong>{c.callDurationSeconds ? `${Math.floor(c.callDurationSeconds / 60)}m ${c.callDurationSeconds % 60}s` : '0s'}</strong></div>
+                          <div>Advisor: <strong>{c.advisorName}</strong></div>
+                          {c.nextFollowUpDate && (
+                            <div style={{ color: '#0284c7' }}>
+                              Next: <strong>{new Date(c.nextFollowUpDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</strong>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           )}
 
@@ -3064,6 +3401,268 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
           advisorName={user?.name || user?.fullName || 'Advisor'}
           onMessageSent={handleWhatsAppSent}
         />
+      )}
+
+      {/* In-Context Call Disposition Logging Modal (No redirect, zero context loss) */}
+      {showLogCallModal && (
+        <div
+          className="crm-modal-backdrop"
+          onClick={() => !isLoggingCall && setShowLogCallModal(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+        >
+          <div
+            className="crm-modal-card"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '540px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '92vh',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid #e2e8f0',
+              background: '#f8fafc'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  background: '#091726',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Phone size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f2b48' }}>
+                    Log Call Disposition
+                  </h3>
+                  <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '1px' }}>
+                    {currentClient?.fullName} • {currentClient?.phoneNumber}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !isLoggingCall && setShowLogCallModal(false)}
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  color: '#64748b',
+                  borderRadius: '8px',
+                  padding: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleInContextLogCall} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
+              {/* Call Result Outcome */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                  Call Disposition Result *
+                </label>
+                <select
+                  value={callLogForm.callResult}
+                  onChange={(e) => setCallLogForm({ ...callLogForm, callResult: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    fontWeight: 600,
+                    background: '#ffffff',
+                    color: '#0f2b48'
+                  }}
+                >
+                  <option value="INTERESTED">✅ Call Answered - Interested</option>
+                  <option value="QUOTE_REQUESTED">📋 Call Answered - Requesting Quotation</option>
+                  <option value="CALL_BACK">⏳ Call Answered - Call Back Later</option>
+                  <option value="MEETING_REQUESTED">📅 Call Answered - Schedule Meeting</option>
+                  <option value="DOCS_REQUESTED">📁 Call Answered - Collecting KYC / Docs</option>
+                  <option value="CONVERTED">🎉 Call Answered - Converted to Sale</option>
+                  <option value="NOT_INTERESTED">❌ Call Answered - Not Interested</option>
+                  <option value="NOT_ANSWERED">📞 Call Not Answered / Ringing</option>
+                  <option value="BUSY">📴 Line Busy / Rejected</option>
+                  <option value="WRONG_NUMBER">🚫 Wrong / Invalid Number</option>
+                  <option value="LOST">⛔ Lost Lead</option>
+                </select>
+              </div>
+
+              {/* Call Duration Quick Selector */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                  Approximate Duration
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {[
+                    { label: '30s', sec: 30 },
+                    { label: '1 min', sec: 60 },
+                    { label: '2 mins', sec: 120 },
+                    { label: '5 mins', sec: 300 },
+                    { label: '10 mins', sec: 600 }
+                  ].map(dur => (
+                    <button
+                      key={dur.sec}
+                      type="button"
+                      onClick={() => setCallLogForm({ ...callLogForm, callDurationSeconds: dur.sec })}
+                      style={{
+                        flex: 1,
+                        padding: '6px 8px',
+                        borderRadius: '6px',
+                        border: callLogForm.callDurationSeconds === dur.sec ? '1.5px solid #0f2b48' : '1px solid #cbd5e1',
+                        background: callLogForm.callDurationSeconds === dur.sec ? '#0f2b48' : '#f8fafc',
+                        color: callLogForm.callDurationSeconds === dur.sec ? '#ffffff' : '#475569',
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {dur.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Call Discussion Notes */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                  Discussion Notes & Customer Feedback *
+                </label>
+                <textarea
+                  rows="3"
+                  required
+                  placeholder="e.g. Explained policy benefits, waiting period continuity, and deductible options. Client is interested in Star Health Optima ₹10L."
+                  value={callLogForm.callNotes}
+                  onChange={(e) => setCallLogForm({ ...callLogForm, callNotes: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    boxSizing: 'border-box',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              {/* Next Follow-up Scheduler */}
+              <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f2b48', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Calendar size={13} color="#2563eb" /> Schedule Next Callback / Follow-up
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', marginBottom: '3px' }}>
+                      Follow-up Date
+                    </label>
+                    <input
+                      type="date"
+                      value={callLogForm.nextFollowUpDate}
+                      onChange={(e) => setCallLogForm({ ...callLogForm, nextFollowUpDate: e.target.value })}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: '7px', border: '1px solid #cbd5e1', fontSize: '0.82rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', marginBottom: '3px' }}>
+                      Follow-up Time
+                    </label>
+                    <input
+                      type="time"
+                      value={callLogForm.nextFollowUpTime}
+                      onChange={(e) => setCallLogForm({ ...callLogForm, nextFollowUpTime: e.target.value })}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: '7px', border: '1px solid #cbd5e1', fontSize: '0.82rem', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowLogCallModal(false)}
+                  disabled={isLoggingCall}
+                  style={{
+                    flex: 1,
+                    padding: '9px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#475569',
+                    fontSize: '0.84rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoggingCall || !callLogForm.callNotes.trim()}
+                  style={{
+                    flex: 2,
+                    padding: '9px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'var(--accent-emerald)',
+                    color: '#ffffff',
+                    fontSize: '0.84rem',
+                    fontWeight: 700,
+                    cursor: isLoggingCall || !callLogForm.callNotes.trim() ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  {isLoggingCall ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Saving Call...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={14} />
+                      <span>Save Call Disposition</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
     </div>

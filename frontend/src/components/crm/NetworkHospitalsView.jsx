@@ -7,10 +7,19 @@ import {
   CheckCircle2, 
   Download, 
   AlertCircle, 
-  X 
+  X,
+  Edit3,
+  Trash2,
+  Phone,
+  MapPin,
+  ExternalLink,
+  MoreVertical,
+  RefreshCw
 } from 'lucide-react';
+import ActionDropdown from '../common/ActionDropdown';
 import { portalService } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import { getHospitalPhoto, getHospitalBrandMeta } from '../../utils/hospitalAssetCatalog';
 
 export default function NetworkHospitalsView({
   hospitals = [],
@@ -24,6 +33,7 @@ export default function NetworkHospitalsView({
   // Modals state
   const [showAddHospitalModal, setShowAddHospitalModal] = useState(false);
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
+  const [editingHospital, setEditingHospital] = useState(null);
 
   // New Hospital Form
   const [newHospital, setNewHospital] = useState({
@@ -33,6 +43,8 @@ export default function NetworkHospitalsView({
     address: '',
     pincode: '',
     contactNumber: '',
+    secondaryPhone: '',
+    photoUrl: '',
     specialties: '',
     cashlessAvailable: true
   });
@@ -58,6 +70,8 @@ export default function NetworkHospitalsView({
         address: '',
         pincode: '',
         contactNumber: '',
+        secondaryPhone: '',
+        photoUrl: '',
         specialties: '',
         cashlessAvailable: true
       });
@@ -84,6 +98,25 @@ export default function NetworkHospitalsView({
     } catch (err) {
       console.error('Error toggling hospital status', err);
       toast.error('Failed to update hospital status: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleUpdateHospital = async (e) => {
+    e.preventDefault();
+    if (!editingHospital) return;
+    setIsSubmitting(true);
+    try {
+      const updated = await portalService.updateHospital(editingHospital.id, editingHospital);
+      setHospitals((prev) =>
+        prev.map((h) => (h.id === updated.id ? updated : h))
+      );
+      setEditingHospital(null);
+      toast.success(`Hospital "${updated.hospitalName}" updated successfully!`);
+    } catch (err) {
+      console.error('Error updating hospital', err);
+      toast.error('Failed to update hospital: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -264,7 +297,7 @@ export default function NetworkHospitalsView({
               <th style={{ padding: '1rem' }}>Hospital Name & Status</th>
               <th style={{ padding: '1rem' }}>State & City</th>
               <th style={{ padding: '1rem' }}>Complete Address</th>
-              <th style={{ padding: '1rem' }}>Contact Number</th>
+              <th style={{ padding: '1rem' }}>Phone Lines</th>
               <th style={{ padding: '1rem' }}>Specialties</th>
               {!readOnly && <th style={{ padding: '1rem', textAlign: 'center' }}>Actions</th>}
             </tr>
@@ -284,79 +317,209 @@ export default function NetworkHospitalsView({
                 </td>
               </tr>
             ) : (
-              filteredHospitals.map((hosp) => (
+              filteredHospitals.map((hosp) => {
+                const photoUrl = getHospitalPhoto(hosp);
+                const brandMeta = getHospitalBrandMeta(hosp);
+                return (
                 <tr key={hosp.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '1rem' }}>
-                    <div style={{ fontWeight: 700, color: '#091726' }}>{hosp.hospitalName}</div>
-                    {hosp.cashlessAvailable ? (
-                      <span style={{
-                        background: '#dcfce7',
-                        color: '#15803d',
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.2rem',
-                        marginTop: '0.2rem'
-                      }}>
-                        <CheckCircle2 size={11} /> Cashless Empanelled
-                      </span>
-                    ) : (
-                      <span style={{
-                        background: '#fee2e2',
-                        color: '#b91c1c',
-                        padding: '0.15rem 0.5rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        marginTop: '0.2rem'
-                      }}>
-                        Reimbursement Only
-                      </span>
-                    )}
+                  <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <img
+                        src={photoUrl}
+                        alt={hosp.hospitalName}
+                        style={{
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '8px',
+                          objectFit: 'cover',
+                          border: '1.5px solid #e2e8f0',
+                          flexShrink: 0,
+                          background: '#f8fafc'
+                        }}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=120&h=120&q=80';
+                        }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#091726', fontSize: '0.9rem', lineHeight: 1.3 }}>
+                          {hosp.hospitalName}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                          {hosp.cashlessAvailable ? (
+                            <span style={{
+                              background: '#dcfce7',
+                              color: '#15803d',
+                              padding: '0.12rem 0.45rem',
+                              borderRadius: '9999px',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.2rem'
+                            }}>
+                              <CheckCircle2 size={11} /> Cashless
+                            </span>
+                          ) : (
+                            <span style={{
+                              background: '#fee2e2',
+                              color: '#b91c1c',
+                              padding: '0.12rem 0.45rem',
+                              borderRadius: '9999px',
+                              fontSize: '0.68rem',
+                              fontWeight: 700
+                            }}>
+                              Reimbursement
+                            </span>
+                          )}
+                          <span style={{
+                            background: '#f1f5f9',
+                            color: brandMeta.brandColor,
+                            padding: '0.12rem 0.45rem',
+                            borderRadius: '4px',
+                            fontSize: '0.68rem',
+                            fontWeight: 700
+                          }}>
+                            {brandMeta.badgeText}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </td>
-                  <td style={{ padding: '1rem' }}>
+                  <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
                     <span style={{ fontWeight: 600 }}>{hosp.city}</span>
                     <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{hosp.state}</div>
                   </td>
-                  <td style={{ padding: '1rem', fontSize: '0.82rem', color: '#475569', maxWidth: '240px' }}>
+                  <td style={{ padding: '1rem', verticalAlign: 'middle', fontSize: '0.82rem', color: '#475569', maxWidth: '240px' }}>
                     {hosp.address} {hosp.pincode && ` - ${hosp.pincode}`}
                   </td>
-                  <td style={{ padding: '1rem' }}>
-                    <a href={`tel:${hosp.contactNumber}`} style={{ color: '#091726', fontWeight: 600, fontSize: '0.85rem' }}>
-                      {hosp.contactNumber || '-'}
-                    </a>
+                  <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
+                    {/* Primary Phone (Public) */}
+                    <div style={{ marginBottom: hosp.secondaryPhone ? '0.35rem' : '0' }}>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                        Primary / Helpdesk
+                      </div>
+                      <a href={`tel:${hosp.contactNumber}`} style={{ color: '#091726', fontWeight: 700, fontSize: '0.85rem', textDecoration: 'none' }}>
+                        {hosp.contactNumber || '-'}
+                      </a>
+                    </div>
+
+                    {/* Secondary / Emergency Phone (Dashboard Only) */}
+                    {hosp.secondaryPhone && (
+                      <div style={{
+                        background: '#fef2f2',
+                        border: '1px solid #fee2e2',
+                        padding: '3px 6px',
+                        borderRadius: '6px',
+                        display: 'inline-block'
+                      }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#dc2626', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <span>🚨</span> EMERGENCY 24/7
+                        </div>
+                        <a href={`tel:${hosp.secondaryPhone}`} style={{ color: '#b91c1c', fontWeight: 700, fontSize: '0.82rem', textDecoration: 'none' }}>
+                          {hosp.secondaryPhone}
+                        </a>
+                      </div>
+                    )}
                   </td>
-                  <td style={{ padding: '1rem', fontSize: '0.78rem', color: '#64748b', maxWidth: '200px' }}>
+                  <td style={{ padding: '1rem', verticalAlign: 'middle', fontSize: '0.78rem', color: '#64748b', maxWidth: '180px' }}>
                     {hosp.specialties || '-'}
                   </td>
                   {!readOnly && (
-                    <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      <button
-                        onClick={() => handleToggleHospitalStatus(hosp.id, hosp.hospitalName, hosp.isActive !== false)}
-                        title={hosp.isActive !== false ? "Soft-deactivate hospital" : "Restore hospital"}
-                        style={{
-                          background: hosp.isActive !== false ? '#fee2e2' : '#ecfdf5',
-                          color: hosp.isActive !== false ? '#dc2626' : '#059669',
-                          border: 'none',
-                          padding: '0.4rem 0.65rem',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          fontSize: '0.75rem',
-                          fontWeight: 700
-                        }}
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', verticalAlign: 'middle' }}>
+                      <ActionDropdown
+                        menuWidth="240px"
+                        trigger={({ isOpen }) => (
+                          <button
+                            type="button"
+                            title="Hospital Actions"
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '8px',
+                              border: '1px solid #e2e8f0',
+                              background: isOpen ? '#f1f5f9' : '#ffffff',
+                              color: '#475569',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                            onMouseLeave={(e) => { if (!isOpen) { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; } }}
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+                        )}
                       >
-                        {hosp.isActive !== false ? 'Deactivate' : 'Restore'}
-                      </button>
+                        {({ close }) => (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                close();
+                                setEditingHospital({ ...hosp });
+                              }}
+                              className="crm-popover-btn"
+                            >
+                              <Edit3 size={14} color="#2563eb" /> Edit Hospital Details
+                            </button>
+
+                            {hosp.contactNumber && (
+                              <a
+                                href={`tel:${hosp.contactNumber}`}
+                                onClick={() => close()}
+                                className="crm-popover-btn"
+                                style={{ textDecoration: 'none', color: 'inherit' }}
+                              >
+                                <Phone size={14} color="#059669" /> Call Primary Desk ({hosp.contactNumber})
+                              </a>
+                            )}
+
+                            {hosp.secondaryPhone && (
+                              <a
+                                href={`tel:${hosp.secondaryPhone}`}
+                                onClick={() => close()}
+                                className="crm-popover-btn"
+                                style={{ textDecoration: 'none', color: '#dc2626', fontWeight: 600 }}
+                              >
+                                <Phone size={14} color="#dc2626" /> Call Emergency Desk ({hosp.secondaryPhone})
+                              </a>
+                            )}
+
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${hosp.hospitalName}, ${hosp.address}, ${hosp.city}`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => close()}
+                              className="crm-popover-btn"
+                              style={{ textDecoration: 'none', color: 'inherit' }}
+                            >
+                              <MapPin size={14} color="#0284c7" /> Open in Google Maps
+                            </a>
+
+                            <div style={{ height: '1px', background: 'var(--crm-border-subtle, #f1f5f9)', margin: '4px 0' }} />
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                close();
+                                handleToggleHospitalStatus(hosp.id, hosp.hospitalName, hosp.isActive !== false);
+                              }}
+                              className={`crm-popover-btn ${hosp.isActive !== false ? 'danger' : ''}`}
+                            >
+                              <RefreshCw size={14} color={hosp.isActive !== false ? '#dc2626' : '#059669'} /> 
+                              {hosp.isActive !== false ? 'Deactivate from Network' : 'Restore to Active Network'}
+                            </button>
+                          </>
+                        )}
+                      </ActionDropdown>
                     </td>
                   )}
                 </tr>
-              ))
+              );
+              })
             )}
           </tbody>
         </table>
@@ -452,6 +615,17 @@ export default function NetworkHospitalsView({
                 />
               </div>
 
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Hospital Photo / Logo URL (Optional)</label>
+                <input
+                  type="url"
+                  placeholder="e.g. https://images.unsplash.com/... (Leave empty for auto-brand logo)"
+                  className="form-input"
+                  value={newHospital.photoUrl || ''}
+                  onChange={(e) => setNewHospital({ ...newHospital, photoUrl: e.target.value })}
+                />
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
                   <label className="form-label">Pincode</label>
@@ -465,7 +639,7 @@ export default function NetworkHospitalsView({
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Contact / Emergency Phone</label>
+                  <label className="form-label">Primary Contact / Helpdesk (Public)</label>
                   <input
                     type="text"
                     placeholder="e.g. +91 80 2630 4050"
@@ -474,6 +648,22 @@ export default function NetworkHospitalsView({
                     onChange={(e) => setNewHospital({ ...newHospital, contactNumber: e.target.value })}
                   />
                 </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>🚨 Emergency / 24x7 TPA Desk</span>
+                  <span style={{ fontSize: '0.7rem', color: '#dc2626', background: '#fef2f2', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                    Internal CRM Only
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. +91 80 2630 4099 (Confidential, hidden from general public)"
+                  className="form-input"
+                  value={newHospital.secondaryPhone || ''}
+                  onChange={(e) => setNewHospital({ ...newHospital, secondaryPhone: e.target.value })}
+                />
               </div>
 
               <div className="form-group">
@@ -657,6 +847,210 @@ export default function NetworkHospitalsView({
                 {isSubmitting ? 'Uploading Data...' : `Import ${bulkParsedData.length} Records`}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Edit Hospital Details */}
+      {editingHospital && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1050,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '560px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            padding: '2rem',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Edit3 size={20} color="#2563eb" />
+                <h2 style={{ fontSize: '1.25rem', color: '#091726', margin: 0, fontWeight: 800 }}>Edit Network Hospital</h2>
+              </div>
+              <button 
+                onClick={() => setEditingHospital(null)}
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateHospital}>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Hospital Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="form-input"
+                  value={editingHospital.hospitalName}
+                  onChange={(e) => setEditingHospital({ ...editingHospital, hospitalName: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    State *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="form-input"
+                    value={editingHospital.state}
+                    onChange={(e) => setEditingHospital({ ...editingHospital, state: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    City / District *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="form-input"
+                    value={editingHospital.city}
+                    onChange={(e) => setEditingHospital({ ...editingHospital, city: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Complete Street Address *
+                </label>
+                <textarea
+                  required
+                  rows={2}
+                  className="form-input"
+                  value={editingHospital.address}
+                  onChange={(e) => setEditingHospital({ ...editingHospital, address: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Hospital Photo / Logo URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  placeholder="e.g. https://images.unsplash.com/... (Leave empty for auto-brand logo)"
+                  className="form-input"
+                  value={editingHospital.photoUrl || ''}
+                  onChange={(e) => setEditingHospital({ ...editingHospital, photoUrl: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Pincode
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editingHospital.pincode || ''}
+                    onChange={(e) => setEditingHospital({ ...editingHospital, pincode: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Primary Contact / Helpdesk (Public)
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editingHospital.contactNumber || ''}
+                    onChange={(e) => setEditingHospital({ ...editingHospital, contactNumber: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  <span>🚨 Emergency / 24x7 TPA Desk</span>
+                  <span style={{ fontSize: '0.7rem', color: '#dc2626', background: '#fef2f2', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                    Internal CRM Only
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. +91 80 2630 4099 (Confidential, hidden from general public)"
+                  className="form-input"
+                  value={editingHospital.secondaryPhone || ''}
+                  onChange={(e) => setEditingHospital({ ...editingHospital, secondaryPhone: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label className="form-label" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Specialties (Comma Separated)
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingHospital.specialties || ''}
+                  onChange={(e) => setEditingHospital({ ...editingHospital, specialties: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  type="checkbox"
+                  id="editCashlessAvailable"
+                  checked={editingHospital.cashlessAvailable !== false}
+                  onChange={(e) => setEditingHospital({ ...editingHospital, cashlessAvailable: e.target.checked })}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                <label htmlFor="editCashlessAvailable" style={{ fontSize: '0.85rem', color: '#091726', fontWeight: 600, cursor: 'pointer' }}>
+                  Empanelled for 100% Cashless Hospitalization Facility
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingHospital(null)}
+                  style={{ padding: '0.6rem 1.25rem', background: '#f1f5f9', border: 'none', borderRadius: '8px', fontWeight: 600, color: '#64748b', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  style={{ padding: '0.6rem 1.5rem', background: '#2563eb', border: 'none', borderRadius: '8px', fontWeight: 700, color: '#fff', cursor: 'pointer' }}
+                >
+                  {isSubmitting ? 'Saving Changes...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

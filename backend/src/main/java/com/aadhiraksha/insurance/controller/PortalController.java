@@ -74,14 +74,17 @@ public class PortalController {
 
     // Hospitals
     @GetMapping("/hospitals")
-    @Operation(summary = "Search network hospitals by city and specialty query")
+    @Operation(summary = "Search network hospitals by city and specialty query (Public view: sanitized contact)")
     public ResponseEntity<List<NetworkHospital>> searchHospitals(
             @RequestParam(required = false) String city,
             @RequestParam(required = false) String query) {
-        return ResponseEntity.ok(hospitalRepository.searchHospitals(
+        List<NetworkHospital> list = hospitalRepository.searchHospitals(
                 (city != null && !city.isBlank()) ? city : null,
                 (query != null && !query.isBlank()) ? query : null
-        ));
+        );
+        // Defense-in-depth: Ensure secondaryPhone (internal emergency contact) is never leaked on public portal
+        list.forEach(h -> h.setSecondaryPhone(null));
+        return ResponseEntity.ok(list);
     }
 
     @GetMapping("/hospitals/cities")
@@ -471,6 +474,35 @@ public class PortalController {
         List<NetworkHospital> saved = hospitalRepository.saveAll(hospitals);
         User user = (auth != null && auth.getName() != null) ? userRepository.findByEmail(auth.getName()).orElse(null) : null;
         auditService.logAction("NETWORK_HOSPITAL", 0L, "CREATE", "BULK_IMPORT", null, "Bulk imported " + saved.size() + " hospitals", user, null);
+        return ResponseEntity.ok(saved);
+    }
+
+    @PutMapping("/admin/hospitals/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Update network hospital details (Super Admin / Manager only)")
+    public ResponseEntity<NetworkHospital> updateHospital(
+            @PathVariable Long id,
+            @Valid @RequestBody NetworkHospital updatedData,
+            org.springframework.security.core.Authentication auth) {
+        NetworkHospital existing = hospitalRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Hospital not found with ID: " + id));
+
+        existing.setHospitalName(updatedData.getHospitalName());
+        existing.setAddress(updatedData.getAddress());
+        existing.setCity(updatedData.getCity());
+        existing.setState(updatedData.getState());
+        existing.setPincode(updatedData.getPincode());
+        existing.setContactNumber(updatedData.getContactNumber());
+        existing.setSecondaryPhone(updatedData.getSecondaryPhone());
+        existing.setPhotoUrl(updatedData.getPhotoUrl());
+        existing.setSpecialties(updatedData.getSpecialties());
+        if (updatedData.getCashlessAvailable() != null) {
+            existing.setCashlessAvailable(updatedData.getCashlessAvailable());
+        }
+
+        NetworkHospital saved = hospitalRepository.save(existing);
+        User user = (auth != null && auth.getName() != null) ? userRepository.findByEmail(auth.getName()).orElse(null) : null;
+        auditService.logAction("NETWORK_HOSPITAL", saved.getId(), "UPDATE", "ALL", null, "Updated hospital: " + saved.getHospitalName(), user, null);
         return ResponseEntity.ok(saved);
     }
 

@@ -137,6 +137,13 @@ public class CrmClientService {
     }
 
     @Transactional(readOnly = true)
+    public List<MeetingDto.MeetingResponse> getMeetingsForClient(Long clientId) {
+        return clientMeetingRepository.findByClientIdOrderByMeetingDatetimeDesc(clientId).stream()
+                .map(this::mapToMeetingResponse)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public ClientDto.ClientResponse getClientById(Long clientId, User user) {
         Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + clientId));
@@ -480,17 +487,21 @@ public class CrmClientService {
     public List<FollowUpDto.FollowUpResponse> getDueTodayFollowUps(User user) {
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
+        return getFollowUpsBetween(startOfDay, endOfDay, user);
+    }
 
+    @Transactional(readOnly = true)
+    public List<FollowUpDto.FollowUpResponse> getFollowUpsBetween(LocalDateTime start, LocalDateTime end, User user) {
         boolean isSuperAdmin = user == null || user.getRoles() == null || user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_SUPER_ADMIN") || r.getName().equals("ROLE_ADMIN"));
         boolean isManager = user != null && user.getRoles() != null && user.getRoles().stream().anyMatch(r -> r.getName().equals("ROLE_MANAGER"));
 
         List<FollowUpTask> tasks;
         if (isSuperAdmin) {
-            tasks = followUpTaskRepository.findAllDueToday(startOfDay, endOfDay);
+            tasks = followUpTaskRepository.findAllTasksBetween(start, end);
         } else if (isManager) {
-            tasks = followUpTaskRepository.findDueTodayForManager(user.getId(), startOfDay, endOfDay);
+            tasks = followUpTaskRepository.findTasksForManagerBetween(user.getId(), start, end);
         } else {
-            tasks = followUpTaskRepository.findDueTodayForAdvisor(user.getId(), startOfDay, endOfDay);
+            tasks = followUpTaskRepository.findTasksForAdvisorBetween(user.getId(), start, end);
         }
 
         return tasks.stream().map(this::mapToFollowUpResponse).collect(Collectors.toList());

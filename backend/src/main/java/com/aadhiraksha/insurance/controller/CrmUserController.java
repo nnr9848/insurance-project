@@ -35,15 +35,15 @@ public class CrmUserController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
-    @Operation(summary = "Create a new user (Manager / Advisor) with temporary credentials (Super Admin only)")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @Operation(summary = "Create a new user/agent with temporary credentials (Super Admin creates staff, Managers create advisors/agents, Employees create agents)")
     public ResponseEntity<Map<String, Object>> createUser(@RequestBody CrmUserDto.CreateUserRequest request, Authentication auth) {
         User performedBy = getAuthenticatedUser(auth);
         return ResponseEntity.ok(crmUserService.createUser(request, performedBy));
     }
 
     @GetMapping("/roles")
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
     @Operation(summary = "Get list of assignable system roles loaded from database filtered by caller permissions")
     public ResponseEntity<List<CrmUserDto.RoleOption>> getAssignableRoles(Authentication auth) {
         User performedBy = getAuthenticatedUser(auth);

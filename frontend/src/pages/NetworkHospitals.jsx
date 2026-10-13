@@ -11,12 +11,20 @@ import {
   ShieldCheck,
   Clock,
   HeartPulse,
-  Award
+  Award,
+  AlertCircle,
+  MessageSquare
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { portalService } from '../services/api';
+import { useBusinessProfile } from '../context/BusinessProfileContext';
+import { getHospitalPhoto, getHospitalBrandMeta } from '../utils/hospitalAssetCatalog';
 
 export default function NetworkHospitals() {
+  const { businessProfile } = useBusinessProfile();
+  const helplinePhone = businessProfile?.primaryPhone || '+91 8367415156';
+  const rawHelpline = helplinePhone.replace(/[^0-9+]/g, '');
+
   const [hospitals, setHospitals] = useState([]);
   const [states, setStates] = useState([]);
   const [districts, setDistricts] = useState([]);
@@ -272,6 +280,110 @@ export default function NetworkHospitals() {
           </div>
         </div>
 
+        {/* 24/7 Cashless Admission & Emergency Concierge Banner */}
+        <div style={{
+          background: 'linear-gradient(135deg, #091726 0%, #0f2b48 100%)',
+          borderRadius: '16px',
+          padding: '1.25rem 1.5rem',
+          marginBottom: '1.75rem',
+          border: '1px solid rgba(239, 68, 68, 0.35)',
+          boxShadow: '0 8px 24px -4px rgba(220, 38, 38, 0.12)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1.25rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: '280px', flex: 1 }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '12px',
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <HeartPulse size={24} color="#ef4444" style={{ animation: 'pulse 1.8s infinite' }} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span style={{
+                  background: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '0.68rem',
+                  fontWeight: 900,
+                  letterSpacing: '0.5px',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                  textTransform: 'uppercase'
+                }}>
+                  Emergency Desk
+                </span>
+                <span style={{ color: '#34d399', fontSize: '0.75rem', fontWeight: 700 }}>
+                  ● 24/7 Live TPA Coordination
+                </span>
+              </div>
+              <h3 style={{ color: '#ffffff', fontSize: '1.05rem', fontWeight: 800, margin: '0.25rem 0 0.15rem 0' }}>
+                Facing Cashless Admission or Pre-Auth Delay?
+              </h3>
+              <p style={{ color: '#94a3b8', fontSize: '0.82rem', margin: 0, lineHeight: 1.4 }}>
+                Speak directly with Aadhiraksha’s Emergency Concierge team to expedite your hospital cashless approval.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <a
+              href={`tel:${rawHelpline}`}
+              style={{
+                background: '#dc2626',
+                color: '#ffffff',
+                padding: '11px 22px',
+                borderRadius: '10px',
+                fontWeight: 800,
+                fontSize: '0.92rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.55rem',
+                textDecoration: 'none',
+                boxShadow: '0 4px 14px rgba(220, 38, 38, 0.4)',
+                transition: 'all 0.2s ease',
+                whiteSpace: 'nowrap'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#b91c1c'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#dc2626'; }}
+            >
+              <Phone size={17} /> Call Emergency Helpline: {helplinePhone}
+            </a>
+
+            <Link
+              to="/claim-support"
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                padding: '11px 18px',
+                borderRadius: '10px',
+                fontWeight: 700,
+                fontSize: '0.86rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
+            >
+              Intimate Claim Online ➔
+            </Link>
+          </div>
+        </div>
+
         {/* Directory Results Container */}
         <div style={{
           background: '#ffffff',
@@ -313,7 +425,10 @@ export default function NetworkHospitals() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredHospitals.map((hosp, idx) => (
+                    {filteredHospitals.map((hosp, idx) => {
+                      const photoUrl = getHospitalPhoto(hosp);
+                      const brandMeta = getHospitalBrandMeta(hosp);
+                      return (
                       <tr 
                         key={hosp.id || idx} 
                         style={{ 
@@ -322,36 +437,67 @@ export default function NetworkHospitals() {
                           transition: 'background 0.15s'
                         }}
                       >
-                        <td style={{ padding: '1.25rem', verticalAlign: 'top' }}>
-                          <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.95rem' }}>
-                            {hosp.hospitalName}
+                        <td style={{ padding: '1.25rem', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                            <img
+                              src={photoUrl}
+                              alt={hosp.hospitalName}
+                              style={{
+                                width: '46px',
+                                height: '46px',
+                                borderRadius: '10px',
+                                objectFit: 'cover',
+                                border: '1.5px solid #e2e8f0',
+                                flexShrink: 0,
+                                background: '#f8fafc'
+                              }}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=120&h=120&q=80';
+                              }}
+                            />
+                            <div>
+                              <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.95rem', lineHeight: 1.3 }}>
+                                {hosp.hospitalName}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.3rem' }}>
+                                {hosp.cashlessAvailable && (
+                                  <span style={{
+                                    background: '#ecfdf5',
+                                    color: '#059669',
+                                    border: '1px solid #a7f3d0',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700,
+                                    padding: '0.12rem 0.45rem',
+                                    borderRadius: '9999px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.2rem'
+                                  }}>
+                                    <CheckCircle2 size={11} /> Instant Cashless
+                                  </span>
+                                )}
+                                <span style={{
+                                  background: '#f1f5f9',
+                                  color: brandMeta.brandColor,
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700,
+                                  padding: '0.12rem 0.45rem',
+                                  borderRadius: '6px'
+                                }}>
+                                  {brandMeta.badgeText}
+                                </span>
+                              </div>
+                              {hosp.specialties && (
+                                <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '0.3rem' }}>
+                                  {hosp.specialties}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          {hosp.cashlessAvailable && (
-                            <div style={{ marginTop: '0.35rem' }}>
-                              <span style={{
-                                background: '#ecfdf5',
-                                color: '#059669',
-                                border: '1px solid #a7f3d0',
-                                fontSize: '0.7rem',
-                                fontWeight: 700,
-                                padding: '0.15rem 0.5rem',
-                                borderRadius: '9999px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.25rem'
-                              }}>
-                                <CheckCircle2 size={12} /> Instant Cashless
-                              </span>
-                            </div>
-                          )}
-                          {hosp.specialties && (
-                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem' }}>
-                              {hosp.specialties}
-                            </div>
-                          )}
                         </td>
 
-                        <td style={{ padding: '1.25rem', verticalAlign: 'top' }}>
+                        <td style={{ padding: '1.25rem', verticalAlign: 'middle' }}>
                           <div style={{ fontWeight: 800, color: '#0f2b48' }}>{hosp.city}</div>
                           <span style={{
                             color: '#059669',
@@ -364,7 +510,7 @@ export default function NetworkHospitals() {
                           </span>
                         </td>
 
-                        <td style={{ padding: '1.25rem', verticalAlign: 'top', fontSize: '0.84rem', color: '#475569', maxWidth: '320px', lineHeight: 1.4 }}>
+                        <td style={{ padding: '1.25rem', verticalAlign: 'middle', fontSize: '0.84rem', color: '#475569', maxWidth: '300px', lineHeight: 1.4 }}>
                           {hosp.address} {hosp.pincode && `- ${hosp.pincode}`}
                           <div style={{ marginTop: '0.35rem' }}>
                             <a
@@ -378,7 +524,7 @@ export default function NetworkHospitals() {
                           </div>
                         </td>
 
-                        <td style={{ padding: '1.25rem', verticalAlign: 'top' }}>
+                        <td style={{ padding: '1.25rem', verticalAlign: 'middle' }}>
                           <a
                             href={`tel:${hosp.contactNumber || '+918367415156'}`}
                             style={{
@@ -389,22 +535,32 @@ export default function NetworkHospitals() {
                               alignItems: 'center',
                               gap: '0.4rem',
                               whiteSpace: 'nowrap',
-                              textDecoration: 'none'
+                              textDecoration: 'none',
+                              padding: '0.35rem 0.65rem',
+                              background: '#f8fafc',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '8px'
                             }}
                           >
-                            <Phone size={15} color="#059669" />
+                            <Phone size={14} color="#059669" />
                             {hosp.contactNumber || '+91 8367415156'}
                           </a>
+                          <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '0.25rem', fontWeight: 600 }}>
+                            General / Helpdesk
+                          </div>
                         </td>
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               </div>
 
               {/* Native Mobile Hospital Card Tiles */}
               <div className="hospital-mobile-cards">
-                {filteredHospitals.map((hosp, idx) => (
+                {filteredHospitals.map((hosp, idx) => {
+                  const photoUrl = getHospitalPhoto(hosp);
+                  return (
                   <div
                     key={hosp.id || idx}
                     style={{
@@ -415,16 +571,34 @@ export default function NetworkHospitals() {
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '0.65rem'
+                      gap: '0.75rem'
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                      <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f2b48', margin: '0 0 0.25rem 0', lineHeight: 1.3 }}>
-                          {hosp.hospitalName}
-                        </h3>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#059669' }}>
-                          {hosp.city}, {hosp.state}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
+                        <img
+                          src={photoUrl}
+                          alt={hosp.hospitalName}
+                          style={{
+                            width: '44px',
+                            height: '44px',
+                            borderRadius: '10px',
+                            objectFit: 'cover',
+                            border: '1px solid #e2e8f0',
+                            flexShrink: 0
+                          }}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=120&h=120&q=80';
+                          }}
+                        />
+                        <div>
+                          <h3 style={{ fontSize: '0.98rem', fontWeight: 800, color: '#0f2b48', margin: '0 0 0.15rem 0', lineHeight: 1.3 }}>
+                            {hosp.hospitalName}
+                          </h3>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#059669' }}>
+                            {hosp.city}, {hosp.state}
+                          </div>
                         </div>
                       </div>
 
@@ -502,12 +676,66 @@ export default function NetworkHospitals() {
                       </a>
                     </div>
                   </div>
-                ))}
+                );
+                })}
               </div>
             </>
           )}
         </div>
 
+      </div>
+
+      {/* Sticky Mobile Quick Emergency Bar */}
+      <div 
+        className="hospital-mobile-emergency-bar"
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: '#091726',
+          borderTop: '2px solid #ef4444',
+          padding: '10px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          zIndex: 990,
+          boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.25)'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            background: '#ef4444',
+            boxShadow: '0 0 8px #ef4444'
+          }} />
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#ffffff' }}>24/7 Cashless Emergency</div>
+            <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Instant TPA Desk Support</div>
+          </div>
+        </div>
+
+        <a
+          href={`tel:${rawHelpline}`}
+          style={{
+            background: '#dc2626',
+            color: '#ffffff',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            fontWeight: 800,
+            fontSize: '0.82rem',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            textDecoration: 'none',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <Phone size={14} /> Call Helpline
+        </a>
       </div>
 
     </div>

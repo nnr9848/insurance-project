@@ -37,6 +37,12 @@ public class NetworkHospital {
     @Column(name = "contact_number", length = 30)
     private String contactNumber;
 
+    @Column(name = "secondary_phone", length = 30)
+    private String secondaryPhone;
+
+    @Column(name = "photo_url", length = 500)
+    private String photoUrl;
+
     @Builder.Default
     @Column(name = "cashless_available")
     private Boolean cashlessAvailable = true;

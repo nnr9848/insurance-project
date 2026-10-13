@@ -184,9 +184,12 @@ export default function Footer() {
               <ul className="footer-clean-links">
                 <li><Link to="/insurance/health">Health & Critical Illness Cover</Link></li>
                 <li><Link to="/insurance/motor">Motor & Zero-Dep Protection</Link></li>
+                <li><Link to="/renew-policy" className="highlight-link">🔄 Instant Policy Renewal</Link></li>
+                <li><Link to="/port-policy" style={{ color: '#c4b5fd', fontWeight: 700 }}>⚡ Port Policy (Switch Insurer)</Link></li>
                 <li><Link to="/claim-support?tab=file" className="highlight-link">⚡ Instant Claim Intimation</Link></li>
                 <li><Link to="/network-hospitals">Cashless Hospital Network (10,000+)</Link></li>
-                <li><Link to="/about" className="highlight-link">About Us & Leadership Gallery</Link></li>
+                <li><Link to="/blog" style={{ color: '#38bdf8', fontWeight: 700 }}>📚 Insurance Knowledge & Blog Hub</Link></li>
+                <li><Link to="/about">About Us & Leadership Story</Link></li>
                 <li><Link to="/become-posp">Become a Certified POSP Agent</Link></li>
               </ul>
             </div>

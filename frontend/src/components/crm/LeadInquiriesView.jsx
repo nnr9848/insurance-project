@@ -25,7 +25,9 @@ import {
   Eye,
   Clock,
   User,
-  UserPlus
+  UserPlus,
+  ArrowRightLeft,
+  RefreshCw
 } from 'lucide-react';
 import { portalService, crmService } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
@@ -37,6 +39,7 @@ import {
   findMatchingClient, 
   calculateCustomerTouchpoints 
 } from '../../utils/crmDeduplication';
+import { CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
 export default function LeadInquiriesView({
   quotes = [],
@@ -390,6 +393,12 @@ export default function LeadInquiriesView({
   // Category Badge Visuals
   const getLeadCategoryBadge = (slug) => {
     const s = slug ? slug.toLowerCase() : '';
+    if (s.includes('port')) {
+      return { label: 'Policy Porting', icon: <ArrowRightLeft size={12} />, bg: '#f5f3ff', color: '#7c3aed', border: '#ddd6fe' };
+    }
+    if (s.includes('renew')) {
+      return { label: 'Policy Renewal', icon: <RefreshCw size={12} />, bg: '#ecfdf5', color: '#059669', border: '#a7f3d0' };
+    }
     if (s.includes('health')) {
       return { label: 'Health Insurance', icon: <Heart size={12} />, bg: '#ecfdf5', color: '#059669', border: '#a7f3d0' };
     }
@@ -412,7 +421,17 @@ export default function LeadInquiriesView({
   };
 
   return (
-    <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ 
+      background: '#fff', 
+      borderRadius: '16px', 
+      border: '1px solid #e2e8f0', 
+      overflow: 'hidden', 
+      boxShadow: '0 1px 3px rgba(0,0,0,0.05)', 
+      display: 'flex', 
+      flexDirection: 'column',
+      height: 'calc(100vh - 120px)',
+      maxHeight: 'calc(100vh - 120px)'
+    }}>
       {/* Quote Leads Toolbar & Search */}
       <div style={{ padding: '0.85rem 1.25rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         
@@ -554,6 +573,8 @@ export default function LeadInquiriesView({
               style={{ height: '36px', fontSize: '0.82rem', minWidth: '155px', width: 'auto', borderRadius: '10px' }}
             >
               <option value="">All Categories</option>
+              <option value="policy-porting">⚡ Policy Porting (Switch)</option>
+              <option value="policy-renewal">🔄 Policy Renewal</option>
               <option value="health-insurance">Health Insurance</option>
               <option value="motor-insurance">Vehicle Insurance</option>
               <option value="life-insurance">Term Life Shield</option>
@@ -583,10 +604,16 @@ export default function LeadInquiriesView({
             </select>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-main)', background: '#ffffff', border: '1px solid var(--border-subtle)', padding: '4px 10px', borderRadius: '20px' }}>
               {sortedQuotes.length} Enquiries
             </span>
+            <CrmTopMiniPager
+              currentPage={quoteCurrentPage}
+              totalPages={totalPages}
+              totalItems={totalRecords}
+              onPageChange={setQuoteCurrentPage}
+            />
           </div>
         </div>
 
@@ -594,6 +621,8 @@ export default function LeadInquiriesView({
         <div className="crm-mobile-pill-filter-rail">
           {[
             { label: 'All', value: '' },
+            { label: '⚡ Porting', value: 'policy-porting' },
+            { label: '🔄 Renewal', value: 'policy-renewal' },
             { label: 'Health', value: 'health-insurance' },
             { label: 'Vehicle', value: 'motor-insurance' },
             { label: 'Life', value: 'life-insurance' },
@@ -617,9 +646,9 @@ export default function LeadInquiriesView({
       </div>
 
       {/* DESKTOP TABLE VIEW (>= 768px) */}
-      <div className="crm-desktop-table-container" style={{ overflowX: 'auto' }}>
+      <div className="crm-desktop-table-container crm-table-scroll-container" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.86rem' }}>
-          <thead>
+          <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
             <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               <th 
                 style={{ padding: '0.85rem 1.15rem', fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none', minWidth: '135px' }}
@@ -2074,6 +2103,8 @@ export default function LeadInquiriesView({
                   style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--border-subtle)', fontSize: '0.84rem', fontWeight: 600, background: 'var(--bg-card)', color: 'var(--text-main)' }}
                 >
                   <option value="">All Categories ({quotes.length})</option>
+                  <option value="policy-porting">⚡ Policy Porting (Switch)</option>
+                  <option value="policy-renewal">🔄 Policy Renewal</option>
                   <option value="health-insurance">Health Insurance</option>
                   <option value="motor-insurance">Vehicle Insurance</option>
                   <option value="life-insurance">Term Life Shield</option>

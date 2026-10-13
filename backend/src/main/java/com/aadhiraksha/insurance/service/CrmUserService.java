@@ -32,6 +32,7 @@ public class CrmUserService {
     private final DepartmentRepository departmentRepository;
     private final DesignationRepository designationRepository;
     private final StaffProfileRepository staffProfileRepository;
+    private final com.aadhiraksha.insurance.repository.AgentProfileRepository agentProfileRepository;
     private final ClientRepository clientRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
@@ -81,13 +82,42 @@ public class CrmUserService {
 
         String targetRoleName = request.getRole() != null ? request.getRole() : "ROLE_ADVISOR";
 
-        // RBAC Boundary: Only Super Admins / Admins can create staff/users on the platform
+        // RBAC Boundary: Tiered hierarchical user creation
+        User manager = null;
         if (performedBy != null) {
             boolean isCallerSuperAdmin = performedBy.getRoles().stream()
                     .anyMatch(r -> "ROLE_SUPER_ADMIN".equals(r.getName()) || "ROLE_ADMIN".equals(r.getName()));
+            boolean isCallerManager = performedBy.getRoles().stream()
+                    .anyMatch(r -> "ROLE_MANAGER".equals(r.getName()));
+            boolean isCallerEmployee = performedBy.getRoles().stream()
+                    .anyMatch(r -> "ROLE_ADVISOR".equals(r.getName()) || "ROLE_STAFF".equals(r.getName()));
 
-            if (!isCallerSuperAdmin) {
-                throw new IllegalArgumentException("Access Denied: Only Super Administrators have permission to create and provision new platform users.");
+            if (isCallerSuperAdmin) {
+                // Super Admin can create any role and assign any manager
+                if (request.getManagerId() != null) {
+                    manager = userRepository.findById(request.getManagerId())
+                            .orElseThrow(() -> new IllegalArgumentException("Manager with ID " + request.getManagerId() + " not found."));
+                }
+            } else if (isCallerManager) {
+                // Managers can add POSP Agents or Advisors under their own branch
+                if (!"ROLE_POSP_AGENT".equals(targetRoleName) && !"ROLE_ADVISOR".equals(targetRoleName)) {
+                    throw new IllegalArgumentException("Access Denied: Managers can only onboard POSP Agents or Advisors.");
+                }
+                manager = performedBy;
+            } else if (isCallerEmployee) {
+                // Employees / Advisors can strictly onboard POSP Agents under their sponsorship
+                if (!"ROLE_POSP_AGENT".equals(targetRoleName)) {
+                    throw new IllegalArgumentException("Access Denied: Employees can only onboard external POSP Agent partners.");
+                }
+                manager = performedBy;
+            } else {
+                throw new IllegalArgumentException("Access Denied: Insufficient permissions to provision users.");
+            }
+        } else {
+            // Unauthenticated context fallback (or system tests)
+            if (request.getManagerId() != null) {
+                manager = userRepository.findById(request.getManagerId())
+                        .orElseThrow(() -> new IllegalArgumentException("Manager with ID " + request.getManagerId() + " not found."));
             }
         }
 
@@ -108,20 +138,14 @@ public class CrmUserService {
             employeeCode = employeeCode.trim().toUpperCase();
         }
 
-        User manager = null;
-        if (request.getManagerId() != null) {
-            manager = userRepository.findById(request.getManagerId())
-                    .orElseThrow(() -> new IllegalArgumentException("Manager with ID " + request.getManagerId() + " not found."));
-        }
-
         User user = User.builder()
                 .employeeCode(employeeCode)
                 .fullName(request.getFullName())
                 .email(request.getEmail())
                 .phoneNumber(request.getPhoneNumber())
                 .password(passwordEncoder.encode(rawPassword))
-                .designation(request.getDesignation())
-                .department(request.getDepartment() != null ? request.getDepartment() : "Retail Sales (Health, Life & Motor)")
+                .designation(request.getDesignation() != null ? request.getDesignation() : ("ROLE_POSP_AGENT".equals(targetRoleName) ? "POSP Agent Partner" : "Insurance Advisor"))
+                .department(request.getDepartment() != null ? request.getDepartment() : ("ROLE_POSP_AGENT".equals(targetRoleName) ? "POSP Partner Distribution" : "Retail Sales (Health, Life & Motor)"))
                 .manager(manager)
                 .isActive(true)
                 .mustChangePassword(true)
@@ -129,6 +153,23 @@ public class CrmUserService {
                 .build();
 
         User savedUser = userRepository.save(user);
+
+        // If target is POSP Agent, automatically create AgentProfile record
+        if ("ROLE_POSP_AGENT".equals(targetRoleName)) {
+            com.aadhiraksha.insurance.model.AgentProfile agentProfile = com.aadhiraksha.insurance.model.AgentProfile.builder()
+                    .user(savedUser)
+                    .panNumber("PENDING-" + savedUser.getId())
+                    .city("Hyderabad")
+                    .state("Telangana")
+                    .status("APPROVED")
+                    .experienceYears(1)
+                    .trainingCompleted(true)
+                    .examScorePercentage(85)
+                    .defaultCommissionRate(new java.math.BigDecimal("15.00"))
+                    .approvedAt(java.time.LocalDateTime.now())
+                    .build();
+            agentProfileRepository.save(agentProfile);
+        }
 
         // Resolve relational Department and Designation entities for StaffProfile
         Department department = null;
@@ -148,14 +189,14 @@ public class CrmUserService {
                 .reportingManager(manager)
                 .department(department)
                 .designation(designation)
-                .departmentName(request.getDepartment() != null ? request.getDepartment() : (department != null ? department.getName() : "Retail Sales (Health, Life & Motor)"))
-                .designationName(request.getDesignation() != null ? request.getDesignation() : (designation != null ? designation.getName() : "Insurance Advisor"))
+                .departmentName(request.getDepartment() != null ? request.getDepartment() : (department != null ? department.getName() : ("ROLE_POSP_AGENT".equals(targetRoleName) ? "POSP Partner Distribution" : "Retail Sales (Health, Life & Motor)")))
+                .designationName(request.getDesignation() != null ? request.getDesignation() : (designation != null ? designation.getName() : ("ROLE_POSP_AGENT".equals(targetRoleName) ? "POSP Agent Partner" : "Insurance Advisor")))
                 .mustChangePassword(true)
                 .build();
         staffProfileRepository.save(staffProfile);
 
         auditService.logAction("USER", savedUser.getId(), "CREATE", "ALL", null,
-                "Created user " + savedUser.getFullName() + " with role " + targetRole.getName(), performedBy, null);
+                "Created user " + savedUser.getFullName() + " with role " + targetRole.getName() + " by " + (performedBy != null ? performedBy.getFullName() : "SYSTEM"), performedBy, null);
 
         Map<String, Object> result = new HashMap<>();
         result.put("temporaryPassword", rawPassword);
@@ -334,6 +375,10 @@ public class CrmUserService {
         List<Role> allRoles = roleRepository.findAll();
         boolean isCallerSuperAdmin = caller == null || caller.getRoles().stream()
                 .anyMatch(r -> "ROLE_SUPER_ADMIN".equals(r.getName()) || "ROLE_ADMIN".equals(r.getName()));
+        boolean isCallerManager = caller != null && caller.getRoles().stream()
+                .anyMatch(r -> "ROLE_MANAGER".equals(r.getName()));
+        boolean isCallerAdvisor = caller != null && caller.getRoles().stream()
+                .anyMatch(r -> "ROLE_ADVISOR".equals(r.getName()) || "ROLE_STAFF".equals(r.getName()));
 
         List<CrmUserDto.RoleOption> roleOptions = new ArrayList<>();
 
@@ -342,9 +387,19 @@ public class CrmUserService {
             // Skip general customer role
             if ("ROLE_USER".equals(roleName)) continue;
 
-            // If caller is Branch Manager, they can only create/manage Advisors and POSP Agents
+            // Tiered role filtering:
             if (!isCallerSuperAdmin) {
-                if ("ROLE_SUPER_ADMIN".equals(roleName) || "ROLE_ADMIN".equals(roleName) || "ROLE_MANAGER".equals(roleName)) {
+                if (isCallerManager) {
+                    // Managers can onboard Advisors and POSP Agents
+                    if (!"ROLE_ADVISOR".equals(roleName) && !"ROLE_POSP_AGENT".equals(roleName)) {
+                        continue;
+                    }
+                } else if (isCallerAdvisor) {
+                    // Employees/Advisors can strictly onboard POSP Agent partners
+                    if (!"ROLE_POSP_AGENT".equals(roleName)) {
+                        continue;
+                    }
+                } else {
                     continue;
                 }
             }

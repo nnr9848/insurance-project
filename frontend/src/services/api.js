@@ -154,8 +154,10 @@ export const crmService = {
     const res = await api.get(`/crm/calls/client/${clientId}`);
     return res.data;
   },
-  getDueTodayFollowUps: async () => {
-    const res = await api.get('/crm/followups/due-today');
+  getDueTodayFollowUps: async (dateStr) => {
+    const res = await api.get('/crm/followups/due-today', {
+      params: dateStr ? { date: dateStr } : {}
+    });
     return res.data;
   },
   getOverdueFollowUps: async () => {
@@ -178,6 +180,10 @@ export const crmService = {
   },
   getUpcomingMeetings: async () => {
     const res = await api.get('/crm/meetings/upcoming');
+    return res.data;
+  },
+  getClientMeetings: async (clientId) => {
+    const res = await api.get(`/crm/meetings/client/${clientId}`);
     return res.data;
   },
   updateMeetingOutcome: async (meetingId, outcomeData) => {
@@ -381,6 +387,10 @@ export const portalService = {
     const res = await api.post('/admin/hospitals', data);
     return res.data;
   },
+  updateHospital: async (id, data) => {
+    const res = await api.put(`/admin/hospitals/${id}`, data);
+    return res.data;
+  },
   createHospitalsBulk: async (list) => {
     const res = await api.post('/admin/hospitals/bulk', list);
     return res.data;
@@ -577,6 +587,50 @@ export const customerService = {
   },
   changePassword: async (data) => {
     const res = await api.post('/customer/change-password', data);
+    return res.data;
+  }
+};
+
+export const blogService = {
+  // Public
+  getPublishedBlogs: async (category, search) => {
+    const params = {};
+    if (category) params.category = category;
+    if (search) params.search = search;
+    const res = await api.get('/blogs', { params });
+    return res.data;
+  },
+  getCategories: async () => {
+    const res = await api.get('/blogs/categories');
+    return res.data;
+  },
+  getBlogBySlug: async (slug) => {
+    const res = await api.get(`/blogs/${slug}`);
+    return res.data;
+  },
+
+  // Admin CRM
+  getAdminBlogs: async (category, search) => {
+    const params = {};
+    if (category) params.category = category;
+    if (search) params.search = search;
+    const res = await api.get('/admin/blogs', { params });
+    return res.data;
+  },
+  createBlog: async (data) => {
+    const res = await api.post('/admin/blogs', data);
+    return res.data;
+  },
+  updateBlog: async (id, data) => {
+    const res = await api.put(`/admin/blogs/${id}`, data);
+    return res.data;
+  },
+  togglePublishStatus: async (id) => {
+    const res = await api.post(`/admin/blogs/${id}/toggle-publish`);
+    return res.data;
+  },
+  deleteBlog: async (id) => {
+    const res = await api.delete(`/admin/blogs/${id}`);
     return res.data;
   }
 };

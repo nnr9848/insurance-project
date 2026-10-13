@@ -27,10 +27,12 @@ import {
   Eye,
   Edit3,
   Printer,
-  Copy
+  Copy,
+  MoreVertical
 } from 'lucide-react';
-import { crmService } from '../../services/api';
+import ActionDropdown from '../common/ActionDropdown';
 import WhatsAppIcon from '../common/WhatsAppIcon';
+import InsurerLogoBadge from '../common/InsurerLogoBadge';
 import { CrmTablePaginationBar, CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
 const INSURERS = [
@@ -764,8 +766,11 @@ export default function QuotationManagementView({ onOpenClient360 }) {
 
                         {/* Insurer & Plan */}
                         <td style={{ padding: '12px 16px' }}>
-                          <div style={{ fontWeight: 700, color: '#0f2b48' }}>{q.insurerName}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{q.planName} • {q.planVariant || 'Standard'}</div>
+                          <InsurerLogoBadge
+                            name={q.insurerName}
+                            size="sm"
+                            subtext={`${q.planName || 'Standard'} • ${q.planVariant || 'Comprehensive'}`}
+                          />
                         </td>
 
                         {/* Sum Insured */}
@@ -800,78 +805,85 @@ export default function QuotationManagementView({ onOpenClient360 }) {
 
                         {/* Actions */}
                         <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                            <button
-                              onClick={() => setViewingQuote(q)}
-                              title="View Quotation Summary Sheet"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                background: '#f0fdf4',
-                                color: '#15803d',
-                                border: '1px solid #bbf7d0',
-                                padding: '5px 8px',
-                                borderRadius: '6px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <Eye size={13} color="#15803d" /> View
-                            </button>
-
-                            <button
-                              onClick={() => handleOpenEdit(q)}
-                              title="Edit / Revise Quotation"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                background: '#f8fafc',
-                                color: '#0284c7',
-                                border: '1px solid #cbd5e1',
-                                padding: '5px 8px',
-                                borderRadius: '6px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <Edit3 size={13} color="#0284c7" /> Edit
-                            </button>
-
-                            <button
-                              onClick={() => handleSendQuote(q)}
-                              title="Dispatch via WhatsApp"
-                              className="crm-btn-whatsapp-outline"
-                            >
-                              <WhatsAppIcon size={13} color="currentColor" />
-                              <span>Dispatch</span>
-                            </button>
-
-                            {q.status !== 'ACCEPTED' && (
+                          <ActionDropdown
+                            menuWidth="225px"
+                            trigger={({ isOpen }) => (
                               <button
-                                onClick={() => handleStatusChange(q.id, 'ACCEPTED')}
-                                title="Mark Accepted"
+                                type="button"
+                                title="Quotation Actions"
                                 style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '8px',
+                                  border: '1px solid #e2e8f0',
+                                  background: isOpen ? '#f1f5f9' : '#ffffff',
+                                  color: '#475569',
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  gap: '4px',
-                                  background: '#f8fafc',
-                                  color: '#0f2b48',
-                                  border: '1px solid #e2e8f0',
-                                  padding: '5px 8px',
-                                  borderRadius: '6px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 700,
-                                  cursor: 'pointer'
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
                                 }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                                onMouseLeave={(e) => { if (!isOpen) { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; } }}
                               >
-                                <Check size={12} color="#16a34a" /> Accept
+                                <MoreVertical size={16} />
                               </button>
                             )}
-                          </div>
+                          >
+                            {({ close }) => (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    close();
+                                    setViewingQuote(q);
+                                  }}
+                                  className="crm-popover-btn"
+                                >
+                                  <Eye size={14} color="#15803d" /> View Summary Sheet
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    close();
+                                    handleOpenEdit(q);
+                                  }}
+                                  className="crm-popover-btn"
+                                >
+                                  <Edit3 size={14} color="#0284c7" /> Edit / Revise Quotation
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    close();
+                                    handleSendQuote(q);
+                                  }}
+                                  className="crm-popover-btn"
+                                >
+                                  <WhatsAppIcon size={14} color="#16a34a" /> Dispatch via WhatsApp
+                                </button>
+
+                                {q.status !== 'ACCEPTED' && (
+                                  <>
+                                    <div style={{ height: '1px', background: 'var(--crm-border-subtle, #f1f5f9)', margin: '4px 0' }} />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        close();
+                                        handleStatusChange(q.id, 'ACCEPTED');
+                                      }}
+                                      className="crm-popover-btn"
+                                    >
+                                      <Check size={14} color="#16a34a" /> Mark Client Accepted
+                                    </button>
+                                  </>
+                                )}
+                              </>
+                            )}
+                          </ActionDropdown>
                         </td>
 
                       </tr>

@@ -976,7 +976,7 @@ export default function CustomerPortal() {
 
                         <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
                           <a
-                            href="/renewal-port"
+                            href="/renew-policy"
                             style={{
                               flex: 1,
                               textAlign: 'center',

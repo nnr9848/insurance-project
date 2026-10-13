@@ -4101,6 +4101,10 @@ h1, h2, h3, h4, h5, h6 {
   display: none;
 }
 
+.hospital-mobile-emergency-bar {
+  display: none !important;
+}
+
 @media (max-width: 768px) {
   .hospital-desktop-table {
     display: none;
@@ -4110,6 +4114,9 @@ h1, h2, h3, h4, h5, h6 {
     flex-direction: column;
     gap: 0.85rem;
     padding: 0.85rem;
+  }
+  .hospital-mobile-emergency-bar {
+    display: flex !important;
   }
 }
 

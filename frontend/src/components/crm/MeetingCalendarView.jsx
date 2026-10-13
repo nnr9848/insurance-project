@@ -38,7 +38,7 @@ const WhatsAppIcon = ({ size = 16, color = '#25D366' }) => (
   </svg>
 );
 
-export default function MeetingCalendarView({ preselectedClient, onCloseModal, onOpenClient360, onOpenCallModal }) {
+export default function MeetingCalendarView({ preselectedClient, onCloseModal, onOpenClient360, onOpenCallModal, onNavigateView }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarView, setCalendarView] = useState('month'); // 'month' | 'week' | 'day' | 'agenda'
   const [eventTypeFilter, setEventTypeFilter] = useState('ALL'); // 'ALL' | 'MEETING' | 'FOLLOWUP' | 'RENEWAL'
@@ -984,7 +984,7 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal, o
                   justifyContent: 'center',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                 }}>
-                  {selectedEvent.type === 'MEETING' ? <Video size={22} /> : (selectedEvent.type === 'FOLLOWUP' ? <Phone size={22} /> : <Calendar size={22} />)}
+                  {selectedEvent.type === 'MEETING' ? <Video size={22} /> : (selectedEvent.type === 'FOLLOWUP' ? <Phone size={22} /> : <CalendarIcon size={22} />)}
                 </div>
                 <div>
                   <span style={{
@@ -1064,13 +1064,46 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal, o
 
               {/* Action Buttons */}
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                {/* 1. Direct Completion / Log Outcome Action */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const evt = selectedEvent;
+                    setSelectedEvent(null);
+                    if (evt.type === 'MEETING') {
+                      if (onOpenCallModal) {
+                        onOpenCallModal(evt);
+                      }
+                    } else if (onOpenCallModal) {
+                      onOpenCallModal(evt);
+                    }
+                  }}
+                  style={{
+                    flex: '1 1 auto',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    background: selectedEvent.type === 'MEETING' ? '#059669' : '#2563eb',
+                    color: '#ffffff',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                  title="Log outcome and complete this scheduled item"
+                >
+                  <CheckCircle2 size={16} /> {selectedEvent.type === 'MEETING' ? 'Mark Completed' : 'Call & Log Outcome'}
+                </button>
+
                 {selectedEvent.googleMeetUrl && (
                   <a
                     href={selectedEvent.googleMeetUrl}
                     target="_blank"
                     rel="noreferrer"
                     style={{
-                      flex: '1 1 auto',
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1084,7 +1117,7 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal, o
                       textDecoration: 'none'
                     }}
                   >
-                    <Video size={16} /> Join Google Meet
+                    <Video size={16} /> Join Meet
                   </a>
                 )}
 
@@ -1290,7 +1323,7 @@ export default function MeetingCalendarView({ preselectedClient, onCloseModal, o
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}>
-                      {evt.type === 'MEETING' ? <Video size={18} /> : (evt.type === 'FOLLOWUP' ? <Phone size={18} /> : <Calendar size={18} />)}
+                      {evt.type === 'MEETING' ? <Video size={18} /> : (evt.type === 'FOLLOWUP' ? <Phone size={18} /> : <CalendarIcon size={18} />)}
                     </div>
                     <div>
                       <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.9rem' }}>

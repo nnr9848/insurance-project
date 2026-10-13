@@ -18,8 +18,10 @@ import {
   Plus,
   Send,
   AlertCircle,
-  X
+  X,
+  MoreVertical
 } from 'lucide-react';
+import ActionDropdown from '../common/ActionDropdown';
 import { crmService } from '../../services/api';
 import { CrmTablePaginationBar, CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
@@ -594,41 +596,86 @@ export default function DocumentLockerView({ onOpenClient360 }) {
 
                       {/* Actions */}
                       <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <button
-                            onClick={() => setVerifyDoc(d)}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              background: '#eff6ff',
-                              color: '#1d4ed8',
-                              border: '1px solid #bfdbfe',
-                              padding: '5px 8px',
-                              borderRadius: '6px',
-                              fontSize: '0.74rem',
-                              fontWeight: 700,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <ShieldCheck size={13} /> Verify
-                          </button>
+                        <ActionDropdown
+                          menuWidth="220px"
+                          trigger={({ isOpen }) => (
+                            <button
+                              type="button"
+                              title="Document Actions"
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '8px',
+                                border: '1px solid #e2e8f0',
+                                background: isOpen ? '#f1f5f9' : '#ffffff',
+                                color: '#475569',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                              onMouseLeave={(e) => { if (!isOpen) { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; } }}
+                            >
+                              <MoreVertical size={16} />
+                            </button>
+                          )}
+                        >
+                          {({ close }) => (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  close();
+                                  setVerifyDoc(d);
+                                }}
+                                className="crm-popover-btn"
+                              >
+                                <ShieldCheck size={14} color="#1d4ed8" /> Audit & Verify Document
+                              </button>
 
-                          <button
-                            onClick={() => handleDelete(d.id)}
-                            style={{
-                              background: '#fef2f2',
-                              color: '#dc2626',
-                              border: '1px solid #fecaca',
-                              padding: '5px 8px',
-                              borderRadius: '6px',
-                              cursor: 'pointer'
-                            }}
-                            title="Delete Document"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
+                              {d.documentUrl && (
+                                <a
+                                  href={d.documentUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => close()}
+                                  className="crm-popover-btn"
+                                  style={{ textDecoration: 'none', color: 'inherit' }}
+                                >
+                                  <ExternalLink size={14} color="#0284c7" /> Open / Download File
+                                </a>
+                              )}
+
+                              {d.clientId && onOpenClient360 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    close();
+                                    onOpenClient360(d.clientId);
+                                  }}
+                                  className="crm-popover-btn"
+                                >
+                                  <Eye size={14} color="#059669" /> View Client 360 Profile
+                                </button>
+                              )}
+
+                              <div style={{ height: '1px', background: 'var(--crm-border-subtle, #f1f5f9)', margin: '4px 0' }} />
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  close();
+                                  handleDelete(d.id);
+                                }}
+                                className="crm-popover-btn danger"
+                              >
+                                <Trash2 size={14} color="#dc2626" /> Delete Document
+                              </button>
+                            </>
+                          )}
+                        </ActionDropdown>
                       </td>
 
                     </tr>
