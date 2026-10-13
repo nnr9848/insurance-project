@@ -415,24 +415,55 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px', flexShrink: 0 }}>
           {(isSuperAdmin || isManager) && (
             <>
+              {/* Primary Action Button (Top) */}
+              <button
+                onClick={openCreateModal}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  background: '#059669',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '0.84rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)',
+                  width: '100%',
+                  whiteSpace: 'nowrap',
+                  transition: 'background 0.15s ease'
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#047857')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#059669')}
+              >
+                <Plus size={15} /> Create New Contest / Sprint
+              </button>
+
+              {/* Secondary Audit Action Button (Bottom) */}
               <button
                 onClick={handleOpenBroadcastHistory}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
                   gap: '6px',
                   background: '#ffffff',
                   color: '#0f2b48',
                   border: '1px solid #cbd5e1',
-                  padding: '9px 16px',
+                  padding: '6px 14px',
                   borderRadius: '8px',
-                  fontSize: '0.85rem',
+                  fontSize: '0.78rem',
                   fontWeight: 700,
                   cursor: 'pointer',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                  width: '100%',
+                  whiteSpace: 'nowrap',
                   transition: 'all 0.15s ease'
                 }}
                 onMouseEnter={(e) => {
@@ -444,27 +475,7 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                   e.currentTarget.style.borderColor = '#cbd5e1';
                 }}
               >
-                <History size={16} color="#047857" /> Broadcast History
-              </button>
-
-              <button
-                onClick={openCreateModal}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: '#059669',
-                  color: '#ffffff',
-                  border: 'none',
-                  padding: '9px 18px',
-                  borderRadius: '8px',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)'
-                }}
-              >
-                <Plus size={16} /> Create New Contest / Sprint
+                <History size={14} color="#047857" /> Broadcast History Log
               </button>
             </>
           )}
