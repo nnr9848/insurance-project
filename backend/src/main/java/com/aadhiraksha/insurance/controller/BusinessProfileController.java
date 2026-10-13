@@ -23,6 +23,7 @@ public class BusinessProfileController {
     private final com.aadhiraksha.insurance.service.FileStorageService fileStorageService;
     private final com.aadhiraksha.insurance.service.TwilioSmsService twilioSmsService;
     private final com.aadhiraksha.insurance.service.TwilioWhatsAppService twilioWhatsAppService;
+    private final com.aadhiraksha.insurance.repository.BroadcastCampaignLogRepository broadcastCampaignLogRepository;
 
     /**
      * Public endpoint: retrieve canonical company contact, hotline, and communication address
@@ -380,7 +381,8 @@ public class BusinessProfileController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
     @Operation(summary = "Broadcast Twilio WhatsApp Offer", description = "Broadcasts a promotional announcement or offer launch to phone numbers via Twilio WhatsApp")
     public ResponseEntity<java.util.Map<String, Object>> broadcastTwilioWhatsAppOffer(
-            @RequestBody java.util.Map<String, Object> requestBody) {
+            @RequestBody java.util.Map<String, Object> requestBody,
+            org.springframework.security.core.Authentication authentication) {
         
         String title = (String) requestBody.get("title");
         String message = (String) requestBody.get("message");
@@ -406,13 +408,37 @@ public class BusinessProfileController {
             ));
         }
 
+        String dispatcher = authentication != null ? authentication.getName() : "Administrator";
+
+        // 1. Dispatch through Twilio WhatsApp service
         twilioWhatsAppService.broadcastWhatsAppOffers(recipients, title.trim(), message.trim());
+
+        // 2. Persist audit log entry for enterprise traceability
+        com.aadhiraksha.insurance.model.BroadcastCampaignLog auditLog = com.aadhiraksha.insurance.model.BroadcastCampaignLog.builder()
+                .title(title.trim())
+                .message(message.trim())
+                .channel("TWILIO_WHATSAPP")
+                .recipientsCount(recipients.size())
+                .sentBy(dispatcher)
+                .status("COMPLETED")
+                .build();
+        broadcastCampaignLogRepository.save(auditLog);
 
         return ResponseEntity.ok(java.util.Map.of(
             "success", true,
             "message", String.format("Promotional broadcast '%s' initiated for %d recipient(s) via Twilio WhatsApp.", title, recipients.size()),
             "count", recipients.size()
         ));
+    }
+
+    /**
+     * Admin/Manager endpoint: Retrieve chronological broadcast audit history
+     */
+    @GetMapping("/admin/broadcasts/history")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @Operation(summary = "Get Broadcast Campaign History", description = "Chronological audit logs of outbound WhatsApp promotional broadcasts")
+    public ResponseEntity<java.util.List<com.aadhiraksha.insurance.model.BroadcastCampaignLog>> getBroadcastHistory() {
+        return ResponseEntity.ok(broadcastCampaignLogRepository.findAllByOrderByCreatedAtDesc());
     }
 
     /**

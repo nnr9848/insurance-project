@@ -25,7 +25,8 @@ import {
   Eye,
   Camera,
   LayoutGrid,
-  List
+  List,
+  History
 } from 'lucide-react';
 import { salesContestService, portalService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -48,6 +49,11 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
     setViewMode(mode);
     localStorage.setItem('sales_contests_view_mode', mode);
   };
+
+  // Broadcast History Drawer State
+  const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
+  const [broadcastHistory, setBroadcastHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
@@ -106,6 +112,23 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadBroadcastHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const data = await portalService.getBroadcastHistory();
+      setBroadcastHistory(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load broadcast history', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleOpenBroadcastHistory = () => {
+    setShowHistoryDrawer(true);
+    loadBroadcastHistory();
   };
 
   useEffect(() => {
@@ -392,27 +415,58 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           {(isSuperAdmin || isManager) && (
-            <button
-              onClick={openCreateModal}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: '#059669',
-                color: '#ffffff',
-                border: 'none',
-                padding: '9px 18px',
-                borderRadius: '8px',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)'
-              }}
-            >
-              <Plus size={16} /> Create New Contest / Sprint
-            </button>
+            <>
+              <button
+                onClick={handleOpenBroadcastHistory}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#ffffff',
+                  color: '#0f2b48',
+                  border: '1px solid #cbd5e1',
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f8fafc';
+                  e.currentTarget.style.borderColor = '#94a3b8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#ffffff';
+                  e.currentTarget.style.borderColor = '#cbd5e1';
+                }}
+              >
+                <History size={16} color="#047857" /> Broadcast History
+              </button>
+
+              <button
+                onClick={openCreateModal}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#059669',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '9px 18px',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)'
+                }}
+              >
+                <Plus size={16} /> Create New Contest / Sprint
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -1551,6 +1605,255 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
         isLoading={confirmModal.isLoading}
         entitySummary={confirmModal.entitySummary}
       />
+
+      {/* Broadcast History & Delivery Audit Drawer (Rule 10: Zero blur, clean dark overlay) */}
+      {showHistoryDrawer && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9998,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'none',
+            WebkitBackdropFilter: 'none',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            animation: 'fadeIn 0.15s ease-out'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowHistoryDrawer(false);
+          }}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              width: '100%',
+              maxWidth: '520px',
+              height: '100%',
+              boxShadow: '-10px 0 25px -5px rgba(0, 0, 0, 0.2)',
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'slideInRight 0.2s ease-out'
+            }}
+          >
+            {/* Drawer Header */}
+            <div
+              style={{
+                padding: '1.25rem 1.5rem',
+                borderBottom: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: '#f8fafc'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    background: '#dcfce7',
+                    color: '#047857',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <History size={18} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f2b48' }}>
+                    Broadcast History & Delivery Log
+                  </h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                    Audit trail of all outbound WhatsApp marketing dispatches
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowHistoryDrawer(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '6px',
+                  borderRadius: '6px'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Drawer Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem' }}>
+              {loadingHistory ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b', fontSize: '0.85rem' }}>
+                  Loading broadcast delivery records...
+                </div>
+              ) : broadcastHistory.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: 'center',
+                    padding: '3rem 1.5rem',
+                    background: '#f8fafc',
+                    borderRadius: '12px',
+                    border: '1px dashed #cbd5e1'
+                  }}
+                >
+                  <WhatsAppIcon size={32} color="#94a3b8" />
+                  <h4 style={{ margin: '10px 0 4px', fontSize: '0.92rem', color: '#334155', fontWeight: 800 }}>
+                    No Broadcasts Dispatched Yet
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
+                    When you broadcast a sales contest to POSP advisors via WhatsApp, the delivery records and recipient counts will be recorded here.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {broadcastHistory.map((log) => {
+                    const formattedDate = log.createdAt
+                      ? new Date(log.createdAt).toLocaleString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
+                      : 'Recently';
+
+                    return (
+                      <div
+                        key={log.id}
+                        style={{
+                          background: '#ffffff',
+                          borderRadius: '12px',
+                          border: '1px solid #e2e8f0',
+                          padding: '1rem',
+                          boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                          <div>
+                            <span
+                              style={{
+                                fontSize: '0.66rem',
+                                fontWeight: 800,
+                                textTransform: 'uppercase',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                background: '#dcfce7',
+                                color: '#047857',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <WhatsAppIcon size={11} color="#047857" />
+                              {log.channel === 'TWILIO_WHATSAPP' ? 'Twilio WhatsApp' : log.channel}
+                            </span>
+                            <h4 style={{ margin: '6px 0 0', fontSize: '0.92rem', fontWeight: 800, color: '#0f2b48' }}>
+                              {log.title}
+                            </h4>
+                          </div>
+
+                          <span
+                            style={{
+                              fontSize: '0.68rem',
+                              fontWeight: 800,
+                              padding: '2px 8px',
+                              borderRadius: '20px',
+                              background: '#ecfdf5',
+                              color: '#059669',
+                              border: '1px solid #a7f3d0'
+                            }}
+                          >
+                            ✓ {log.status || 'Dispatched'}
+                          </span>
+                        </div>
+
+                        {/* Message Preview */}
+                        <div
+                          style={{
+                            background: '#f8fafc',
+                            padding: '8px 10px',
+                            borderRadius: '8px',
+                            border: '1px solid #f1f5f9',
+                            fontSize: '0.78rem',
+                            color: '#334155',
+                            lineHeight: 1.45,
+                            whiteSpace: 'pre-wrap',
+                            maxHeight: '120px',
+                            overflowY: 'auto'
+                          }}
+                        >
+                          {log.message}
+                        </div>
+
+                        {/* Footer Metadata */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            fontSize: '0.72rem',
+                            color: '#64748b',
+                            paddingTop: '6px',
+                            borderTop: '1px solid #f1f5f9'
+                          }}
+                        >
+                          <span>
+                            Audience: <strong style={{ color: '#0f2b48' }}>{log.recipientsCount} Agents</strong>
+                          </span>
+                          <span>
+                            By: <strong>{log.sentBy || 'Admin'}</strong> • {formattedDate}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Drawer Footer */}
+            <div
+              style={{
+                padding: '1rem 1.5rem',
+                borderTop: '1px solid #e2e8f0',
+                background: '#f8fafc',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                Total Records: <strong>{broadcastHistory.length}</strong>
+              </span>
+              <button
+                onClick={() => setShowHistoryDrawer(false)}
+                style={{
+                  background: '#0f2b48',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '7px 16px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Close Log
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

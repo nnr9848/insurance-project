@@ -496,6 +496,10 @@ export const portalService = {
     const res = await api.post('/admin/broadcasts/whatsapp', payload);
     return res.data;
   },
+  getBroadcastHistory: async () => {
+    const res = await api.get('/admin/broadcasts/history');
+    return res.data;
+  },
   testTwilioSms: async (testPhone) => {
     const res = await api.post('/admin/settings/twilio/test', { testPhone });
     return res.data;
