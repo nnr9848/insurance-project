@@ -1,7 +1,8 @@
 services:
-  insurance_postgres:
-    container_name: aadhiraksha_insurance_db
+  # 1. PostgreSQL Database
+  postgres:
     image: postgres:16-alpine
+    container_name: aadhiraksha_insurance_db
     restart: unless-stopped
     ports:
       - "${DB_PORT:-5435}:5432"
@@ -13,10 +14,74 @@ services:
       - aadhiraksha_insurance_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-aadhiraksha_admin} -d ${DB_NAME:-insurance_db}"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - aadhiraksha_network
+
+  # 2. Spring Boot Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aadhiraksha_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-insurance_db}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-aadhiraksha_admin}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-aadhiraksha_secure_password}
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-*}"
+    volumes:
+      - aadhiraksha_document_uploads:/app/uploads
+    networks:
+      - aadhiraksha_network
+
+  # 3. React Frontend + Nginx Web Server (Exposed on safe Port 3001)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: aadhiraksha_frontend
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    networks:
+      - aadhiraksha_network
+
+  # 4. Lightweight Stalwart Mail Server (~50MB RAM single Rust binary)
+  mailserver:
+    image: stalwartlabs/stalwart:latest
+    container_name: aadhiraksha_mailserver
+    restart: unless-stopped
+    environment:
+      - STALWART_ADMIN_SECRET=${STALWART_ADMIN_SECRET:-AadhirakshaMailSecret2026!}
+      - STALWART_HOSTNAME=${STALWART_HOSTNAME:-mail.aadhirakshainsurance.com}
+    ports:
+      - "25:25"       # Inbound SMTP
+      - "587:587"     # Outbound Submission SMTP (TLS)
+      - "465:465"     # Outbound SMTPS
+      - "993:993"     # IMAP over TLS
+      - "8085:8080"   # Management REST API & Webmail (mapped to 8085 to avoid collision)
+    volumes:
+      - aadhiraksha_mail_data:/opt/stalwart-mail
+    networks:
+      - aadhiraksha_network
+
+networks:
+  aadhiraksha_network:
+    name: aadhiraksha_network
+    driver: bridge
 
 volumes:
   aadhiraksha_insurance_pgdata:
     name: aadhiraksha_insurance_pgdata
+  aadhiraksha_document_uploads:
+    name: aadhiraksha_document_uploads
+  aadhiraksha_mail_data:
+    name: aadhiraksha_mail_data
