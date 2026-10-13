@@ -60,7 +60,8 @@ import {
   Camera,
   ArrowRightLeft,
   CalendarDays,
-  Percent
+  Percent,
+  Trophy
 } from 'lucide-react';
 import { portalService, crmService } from '../services/api';
 import UserManagementView from '../components/crm/UserManagementView';
@@ -96,6 +97,7 @@ import InsurancePartnersManagementView from '../components/crm/InsurancePartners
 import CustomerReviewsAdminView from '../components/crm/CustomerReviewsAdminView';
 import PospPartnerPortalView from '../components/crm/PospPartnerPortalView';
 import BlogManagementView from '../components/crm/BlogManagementView';
+import SalesContestsManagerView from '../components/crm/SalesContestsManagerView';
 
 export default function AdminDashboard() {
   const { 
@@ -351,6 +353,18 @@ export default function AdminDashboard() {
           subtitle: 'Manage verified customer ratings, public testimonials, and resolve negative complaints before Google.',
           icon: <Star size={18} color="#f59e0b" fill="#f59e0b" />
         };
+      case 'contests':
+        return isPospAgent ? {
+          title: 'Sales Contests & Incentive Sprints',
+          category: 'Sales Enablement & Rewards',
+          subtitle: 'Monthly luxury trip sprints, higher commission boosters, and marketing flyers from top insurance companies.',
+          icon: <Trophy size={18} color="#f59e0b" />
+        } : {
+          title: 'Sales Contests & Trip Incentives Manager',
+          category: 'Sales Operations & Growth',
+          subtitle: 'Manage monthly incentive trips, partner commission sprints, marketing collateral flyers, and WhatsApp broadcasts to agents.',
+          icon: <Trophy size={18} color="#f59e0b" />
+        };
       default:
         return isPospAgent ? {
           title: 'POSP Partner Portal',
@@ -499,6 +513,7 @@ export default function AdminDashboard() {
   // Navigation Items
   const navItemsCRM = isPospAgent ? [
     { id: 'dashboard', label: 'Overview & Ledger', icon: <Award size={19} color="var(--accent-gold)" />, count: null },
+    { id: 'contests', label: 'Contests & Sprints', icon: <Trophy size={19} color="#f59e0b" />, count: null, badgeColor: '#f59e0b' },
     { id: 'clients', label: 'My Client Book', icon: <FileText size={19} />, count: leads.length, badgeColor: '#0284c7' },
     { id: 'posp-kyc', label: 'My KYC, Banking & ID', icon: <ShieldCheck size={19} />, count: null },
     { id: 'calculator', label: 'Commission Calculator', icon: <Percent size={19} />, count: null },
@@ -507,6 +522,7 @@ export default function AdminDashboard() {
   ] : [
     { id: 'dashboard', label: 'CRM Dashboard', icon: <LayoutDashboard size={19} />, count: null },
     { id: 'enquiries', label: 'Enquiries', icon: <Briefcase size={19} />, count: quotes.length, badgeColor: '#16a34a' },
+    { id: 'contests', label: 'Sales Contests & Trips', icon: <Trophy size={19} color="#f59e0b" />, count: null, badgeColor: '#f59e0b' },
     { id: 'clients', label: 'Client Data Sheet', icon: <FileText size={19} />, count: leads.length, badgeColor: '#0284c7' },
     { id: 'pipeline', label: 'Sales Pipeline', icon: <TrendingUp size={19} />, count: null },
     { id: 'agenda', label: 'Work Schedule', icon: <CalendarDays size={19} />, count: dueFollowUps.length, badgeColor: '#ea580c' },
@@ -1648,6 +1664,29 @@ export default function AdminDashboard() {
           {/* VIEW: CUSTOMER REVIEWS & GRIEVANCE INTERCEPTION */}
           {activeView === 'reviews' && (
             <CustomerReviewsAdminView />
+          )}
+
+          {/* VIEW: SALES CONTESTS & INCENTIVE SPRINTS */}
+          {activeView === 'contests' && (
+            isPospAgent ? (
+              <PospPartnerPortalView 
+                user={user}
+                initialTab="contests"
+                onOpenClient360={(client) => setSelectedClient360(client)}
+                onTabChange={(tab) => {
+                  const viewMap = {
+                    overview: 'dashboard',
+                    contests: 'contests',
+                    clients: 'clients',
+                    kyc: 'posp-kyc',
+                    calculator: 'calculator'
+                  };
+                  if (viewMap[tab]) handleNavigateView(viewMap[tab]);
+                }}
+              />
+            ) : (
+              <SalesContestsManagerView />
+            )
           )}
 
           {/* 3. MINIMALIST ENTERPRISE CRM FOOTER (Scrolls naturally at bottom, non-sticky) */}

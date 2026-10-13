@@ -39,7 +39,18 @@ const defaultBusinessProfile = {
   claimsPageSubheadline: 'File your cashless hospitalization or motor damage intimation in under 60 seconds with dedicated claim managers.',
   legalGrievanceOfficerName: 'Customer Care Head',
   legalGrievanceEmail: 'grievance@aadhirakshainsurance.com',
-  legalGrievancePhone: '+91 8367415156'
+  legalGrievancePhone: '+91 8367415156',
+  // Dynamic Why Choose Us Comparison Section
+  whyUsBadge: 'Why We Are Better',
+  whyUsTitle: 'Traditional Agents vs. Aadhiraksha InsurTech',
+  whyUsSubtitle: 'Experience complete transparency, real-time comparisons, and zero bias.',
+  whyUsTraditionalBadge: 'TRADITIONAL AGENT',
+  whyUsTraditionalTitle: 'Single-Brand Bias & Manual Delays',
+  whyUsTraditionalPointsJson: '["Only sells 1 company plans with high commissions","Heavy paper forms and 3-5 days policy delivery","Hard to compare hidden room rent and copay sub-limits","No claim assistance when admitted late at night","Forfeits your NCB bonus if you switch companies"]',
+  whyUsAadhirakshaBadge: 'AADHIRAKSHA INSURTECH',
+  whyUsAadhirakshaTitle: 'Unbiased Choice & Fast-Track Claims',
+  whyUsAadhirakshaRibbon: 'RECOMMENDED',
+  whyUsAadhirakshaPointsJson: '["Instant side-by-side comparison of 30+ top IRDAI insurers","100% digital KYC with policy on WhatsApp in 2 minutes","Zero room rent sub-limits & 100% restoration guarantee","Dedicated on-ground Claims Desk for 30-min cashless pre-auth","Seamless policy porting with accumulated waiting credits preserved"]'
 };
 
 const BusinessProfileContext = createContext({

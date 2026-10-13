@@ -694,5 +694,41 @@ export const blogService = {
   }
 };
 
+// Sales Contests, Monthly Trip Sprints & Sales Kit Service
+export const salesContestService = {
+  // Agent & Public
+  getActiveContests: async () => {
+    const res = await api.get('/contests/active');
+    return res.data;
+  },
+  // Admin & Manager
+  getAllContests: async () => {
+    const res = await api.get('/contests/admin/all');
+    return res.data;
+  },
+  createContest: async (data) => {
+    const res = await api.post('/contests/admin', data);
+    return res.data;
+  },
+  updateContest: async (id, data) => {
+    const res = await api.put(`/contests/admin/${id}`, data);
+    return res.data;
+  },
+  uploadAsset: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/contests/admin/upload-asset', formData, {
+      headers: {
+        'Content-Type': undefined
+      }
+    });
+    return res.data;
+  },
+  deleteContest: async (id) => {
+    const res = await api.delete(`/contests/admin/${id}`);
+    return res.data;
+  }
+};
+
 export default api;
 

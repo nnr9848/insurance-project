@@ -235,6 +235,47 @@ public class BusinessProfile {
     @Column(name = "legal_grievance_phone")
     private String legalGrievancePhone = "+91 8367415156";
 
+    // Dynamic Comparison / Why Choose Us Section
+    @Builder.Default
+    @Column(name = "why_us_badge", length = 100)
+    private String whyUsBadge = "Why We Are Better";
+
+    @Builder.Default
+    @Column(name = "why_us_title")
+    private String whyUsTitle = "Traditional Agents vs. Aadhiraksha InsurTech";
+
+    @Builder.Default
+    @Column(name = "why_us_subtitle", columnDefinition = "TEXT")
+    private String whyUsSubtitle = "Experience complete transparency, real-time comparisons, and zero bias.";
+
+    @Builder.Default
+    @Column(name = "why_us_traditional_badge", length = 100)
+    private String whyUsTraditionalBadge = "TRADITIONAL AGENT";
+
+    @Builder.Default
+    @Column(name = "why_us_traditional_title")
+    private String whyUsTraditionalTitle = "Single-Brand Bias & Manual Delays";
+
+    @Builder.Default
+    @Column(name = "why_us_traditional_points_json", columnDefinition = "TEXT")
+    private String whyUsTraditionalPointsJson = "[\"Only sells 1 company plans with high commissions\",\"Heavy paper forms and 3-5 days policy delivery\",\"Hard to compare hidden room rent and copay sub-limits\",\"No claim assistance when admitted late at night\",\"Forfeits your NCB bonus if you switch companies\"]";
+
+    @Builder.Default
+    @Column(name = "why_us_aadhiraksha_badge", length = 100)
+    private String whyUsAadhirakshaBadge = "AADHIRAKSHA INSURTECH";
+
+    @Builder.Default
+    @Column(name = "why_us_aadhiraksha_title")
+    private String whyUsAadhirakshaTitle = "Unbiased Choice & Fast-Track Claims";
+
+    @Builder.Default
+    @Column(name = "why_us_aadhiraksha_ribbon", length = 100)
+    private String whyUsAadhirakshaRibbon = "RECOMMENDED";
+
+    @Builder.Default
+    @Column(name = "why_us_aadhiraksha_points_json", columnDefinition = "TEXT")
+    private String whyUsAadhirakshaPointsJson = "[\"Instant side-by-side comparison of 30+ top IRDAI insurers\",\"100% digital KYC with policy on WhatsApp in 2 minutes\",\"Zero room rent sub-limits & 100% restoration guarantee\",\"Dedicated on-ground Claims Desk for 30-min cashless pre-auth\",\"Seamless policy porting with accumulated waiting credits preserved\"]";
+
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;

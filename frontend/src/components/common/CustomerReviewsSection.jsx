@@ -237,138 +237,247 @@ export default function CustomerReviewsSection() {
           </div>
         </div>
 
-        {/* Reviews Cards Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: '1.5rem',
-          marginTop: '1.5rem'
-        }}>
-          {reviews.slice(0, 6).map((rev) => (
-            <div
-              key={rev.id}
+        {/* Carousel Slider Controls & Cards */}
+        <div style={{ position: 'relative', marginTop: '1.5rem' }}>
+          
+          {/* Desktop Floating Navigation Arrows (Hidden on mobile via CSS) */}
+          <div className="reviews-desktop-nav-arrow" style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            position: 'absolute',
+            top: '50%',
+            left: '-18px',
+            right: '-18px',
+            transform: 'translateY(-50%)',
+            pointerEvents: 'none',
+            zIndex: 10
+          }}>
+            <button
+              onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
+              disabled={currentIndex === 0}
               style={{
+                pointerEvents: 'auto',
+                width: '42px',
+                height: '42px',
+                borderRadius: '50%',
                 background: '#ffffff',
-                borderRadius: '18px',
-                padding: '1.5rem',
-                border: '1px solid var(--border-subtle)',
-                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.04)',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.08)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.04)';
-              }}
-            >
-              <div>
-                {/* Header: Stars & Verified Badge */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', gap: '3px' }}>
-                    {[...Array(5)].map((_, i) => (
-                      <Star 
-                        key={i} 
-                        size={16} 
-                        fill={i < rev.rating ? '#f59e0b' : '#e2e8f0'} 
-                        color={i < rev.rating ? '#f59e0b' : '#e2e8f0'} 
-                      />
-                    ))}
-                  </div>
-                  
-                  {rev.isVerifiedBuyer && (
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      background: '#ecfdf5',
-                      color: '#059669',
-                      fontSize: '0.68rem',
-                      fontWeight: 800,
-                      padding: '3px 8px',
-                      borderRadius: '9999px',
-                      letterSpacing: '0.02em'
-                    }}>
-                      <CheckCircle2 size={12} /> Verified Client
-                    </span>
-                  )}
-                </div>
-
-                {/* Review Title */}
-                {rev.reviewTitle && (
-                  <h4 style={{
-                    fontSize: '1rem',
-                    fontWeight: 800,
-                    color: 'var(--primary-navy)',
-                    margin: '0 0 8px',
-                    lineHeight: 1.3
-                  }}>
-                    "{rev.reviewTitle}"
-                  </h4>
-                )}
-
-                {/* Review Content */}
-                <p style={{
-                  color: '#475569',
-                  fontSize: '0.88rem',
-                  lineHeight: 1.55,
-                  margin: '0 0 1.25rem'
-                }}>
-                  {rev.reviewText}
-                </p>
-              </div>
-
-              {/* Footer: User Details & Policy Tag */}
-              <div style={{
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 4px 14px rgba(15, 23, 42, 0.08)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                borderTop: '1px solid #f1f5f9',
-                paddingTop: '12px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                justifyContent: 'center',
+                cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
+                opacity: currentIndex === 0 ? 0.3 : 1,
+                color: 'var(--primary-navy)',
+                transition: 'all 0.2s ease'
+              }}
+              title="Previous Reviews"
+            >
+              <ChevronLeft size={20} />
+            </button>
+
+            <button
+              onClick={() => setCurrentIndex((prev) => Math.min(Math.max(0, reviews.length - 3), prev + 1))}
+              disabled={currentIndex >= Math.max(0, reviews.length - 3)}
+              style={{
+                pointerEvents: 'auto',
+                width: '42px',
+                height: '42px',
+                borderRadius: '50%',
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 4px 14px rgba(15, 23, 42, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: currentIndex >= Math.max(0, reviews.length - 3) ? 'not-allowed' : 'pointer',
+                opacity: currentIndex >= Math.max(0, reviews.length - 3) ? 0.3 : 1,
+                color: 'var(--primary-navy)',
+                transition: 'all 0.2s ease'
+              }}
+              title="Next Reviews"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
+          {/* Carousel Viewport (Native Touch Snap Rail on Mobile, Sliding Track on Desktop) */}
+          <div className="reviews-carousel-viewport" style={{ overflow: 'hidden', padding: '6px 2px 14px' }}>
+            <div 
+              className="reviews-carousel-track"
+              style={{
+                transform: `translateX(-${currentIndex * (100 / 3 + 1.25)}%)`
+              }}
+            >
+              {reviews.map((rev) => (
+                <div
+                  key={rev.id}
+                  className="review-slide-card"
+                  style={{
+                    background: '#ffffff',
+                    borderRadius: '16px',
+                    padding: '1.35rem 1.35rem',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    minHeight: '220px',
+                    transition: 'all 0.25s ease'
+                  }}
+                >
+                  <div>
+                    {/* Header: Stars & Verified Badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', gap: '2px' }}>
+                        {[...Array(5)].map((_, i) => (
+                          <Star 
+                            key={i} 
+                            size={14} 
+                            fill={i < rev.rating ? '#f59e0b' : '#e2e8f0'} 
+                            color={i < rev.rating ? '#f59e0b' : '#e2e8f0'} 
+                          />
+                        ))}
+                      </div>
+                      
+                      {rev.isVerifiedBuyer && (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          background: '#ecfdf5',
+                          color: '#059669',
+                          fontSize: '0.68rem',
+                          fontWeight: 800,
+                          padding: '2px 7px',
+                          borderRadius: '9999px',
+                          letterSpacing: '0.02em'
+                        }}>
+                          <CheckCircle2 size={11} /> Verified
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Review Title */}
+                    {rev.reviewTitle && (
+                      <h4 style={{
+                        fontSize: '0.94rem',
+                        fontWeight: 800,
+                        color: 'var(--primary-navy)',
+                        margin: '0 0 6px',
+                        lineHeight: 1.35,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 1,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}>
+                        "{rev.reviewTitle}"
+                      </h4>
+                    )}
+
+                    {/* Review Content (Clean 3-line clamp for high comfort) */}
+                    <p style={{
+                      color: '#475569',
+                      fontSize: '0.84rem',
+                      lineHeight: 1.5,
+                      margin: '0 0 1rem',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
+                    }} title={rev.reviewText}>
+                      {rev.reviewText}
+                    </p>
+                  </div>
+
+                  {/* Footer: User Details & Policy Tag */}
                   <div style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, var(--primary-navy), #1e3a8a)',
-                    color: 'var(--accent-gold)',
-                    fontWeight: 800,
-                    fontSize: '0.85rem',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'space-between',
+                    borderTop: '1px solid #f1f5f9',
+                    paddingTop: '10px'
                   }}>
-                    {rev.customerName?.charAt(0) || 'C'}
-                  </div>
-                  <div>
-                    <span style={{ display: 'block', fontSize: '0.86rem', fontWeight: 700, color: 'var(--primary-navy)' }}>
-                      {rev.customerName}
-                    </span>
-                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                      {rev.city || 'Verified Buyer'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, var(--primary-navy), #1e3a8a)',
+                        color: '#fbbf24',
+                        fontWeight: 800,
+                        fontSize: '0.78rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        {rev.customerName?.charAt(0) || 'C'}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <span style={{ 
+                          display: 'block', 
+                          fontSize: '0.82rem', 
+                          fontWeight: 700, 
+                          color: 'var(--primary-navy)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {rev.customerName}
+                        </span>
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                          {rev.city || 'Verified Buyer'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <span style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      color: '#334155',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      padding: '3px 7px',
+                      borderRadius: '6px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}>
+                      {rev.policyType}
                     </span>
                   </div>
                 </div>
-
-                <span style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  color: 'var(--primary-navy)',
-                  background: '#f1f5f9',
-                  padding: '4px 8px',
-                  borderRadius: '6px'
-                }}>
-                  {rev.policyType}
-                </span>
-              </div>
+              ))}
             </div>
-          ))}
+          </div>
+
+          {/* Pagination Indicators / Dots */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '6px',
+            marginTop: '0.75rem'
+          }}>
+            {Array.from({ length: Math.max(1, reviews.length - 2) }).map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentIndex(idx)}
+                style={{
+                  width: currentIndex === idx ? '22px' : '7px',
+                  height: '7px',
+                  borderRadius: '4px',
+                  background: currentIndex === idx ? 'var(--primary-navy)' : '#cbd5e1',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  transition: 'all 0.25s ease'
+                }}
+                title={`Slide ${idx + 1}`}
+              />
+            ))}
+          </div>
         </div>
 
       </div>

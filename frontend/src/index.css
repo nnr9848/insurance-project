@@ -5260,6 +5260,59 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* =========================================================
+   CUSTOMER REVIEWS CAROUSEL RESPONSIVE STANDARD
+   Desktop: 3-column slide window with floating arrows
+   Mobile: Horizontal Touch-Snap Rail (85% card width + peek)
+   ========================================================= */
+.reviews-carousel-track {
+  display: flex;
+  gap: 1.25rem;
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.review-slide-card {
+  flex: 0 0 calc((100% - 2.5rem) / 3);
+  min-width: 0;
+}
+
+@media (max-width: 1024px) {
+  .review-slide-card {
+    flex: 0 0 calc((100% - 1.25rem) / 2);
+  }
+}
+
+@media (max-width: 768px) {
+  .reviews-carousel-viewport {
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px !important;
+  }
+  .reviews-carousel-viewport::-webkit-scrollbar {
+    display: none;
+  }
+
+  .reviews-carousel-track {
+    display: flex !important;
+    transform: none !important;
+    gap: 1rem !important;
+    padding: 4px 1rem 12px !important;
+  }
+
+  .review-slide-card {
+    flex: 0 0 86% !important;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+
+  .reviews-desktop-nav-arrow {
+    display: none !important;
+  }
+}
+
+
 
 
 

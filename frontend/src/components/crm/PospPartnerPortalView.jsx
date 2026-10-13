@@ -33,13 +33,15 @@ import {
   Trash2,
   X,
   Edit3,
-  ChevronDown
+  ChevronDown,
+  Trophy
 } from 'lucide-react';
 import api, { pospService } from '../../services/api';
 import ActionDropdown from '../common/ActionDropdown';
 import { useToast } from '../../context/ToastContext';
 import { getStageBadge, STAGE_OPTIONS } from '../../utils/crmStageConstants';
 import InsurerLogoBadge from '../common/InsurerLogoBadge';
+import SalesContestsManagerView from './SalesContestsManagerView';
 
 export default function PospPartnerPortalView({ user, initialTab = 'overview', onTabChange, onOpenClient360 }) {
   const toast = useToast();
@@ -678,6 +680,11 @@ export default function PospPartnerPortalView({ user, initialTab = 'overview', o
 
         </div>
       </>
+      )}
+
+      {/* 2. TAB: SALES CONTESTS & INCENTIVE SPRINTS */}
+      {activeTab === 'contests' && (
+        <SalesContestsManagerView isAgentView={true} />
       )}
 
       {/* 5. TAB: CLIENT BOOK */}

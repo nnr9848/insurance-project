@@ -260,6 +260,38 @@ public class BusinessProfileController {
             profile.setTwilioWhatsappFromNumber(updateReq.getTwilioWhatsappFromNumber().trim());
         }
 
+        // Dynamic Why Choose Us Comparison Section
+        if (updateReq.getWhyUsBadge() != null) {
+            profile.setWhyUsBadge(updateReq.getWhyUsBadge().trim());
+        }
+        if (updateReq.getWhyUsTitle() != null) {
+            profile.setWhyUsTitle(updateReq.getWhyUsTitle().trim());
+        }
+        if (updateReq.getWhyUsSubtitle() != null) {
+            profile.setWhyUsSubtitle(updateReq.getWhyUsSubtitle().trim());
+        }
+        if (updateReq.getWhyUsTraditionalBadge() != null) {
+            profile.setWhyUsTraditionalBadge(updateReq.getWhyUsTraditionalBadge().trim());
+        }
+        if (updateReq.getWhyUsTraditionalTitle() != null) {
+            profile.setWhyUsTraditionalTitle(updateReq.getWhyUsTraditionalTitle().trim());
+        }
+        if (updateReq.getWhyUsTraditionalPointsJson() != null) {
+            profile.setWhyUsTraditionalPointsJson(updateReq.getWhyUsTraditionalPointsJson());
+        }
+        if (updateReq.getWhyUsAadhirakshaBadge() != null) {
+            profile.setWhyUsAadhirakshaBadge(updateReq.getWhyUsAadhirakshaBadge().trim());
+        }
+        if (updateReq.getWhyUsAadhirakshaTitle() != null) {
+            profile.setWhyUsAadhirakshaTitle(updateReq.getWhyUsAadhirakshaTitle().trim());
+        }
+        if (updateReq.getWhyUsAadhirakshaRibbon() != null) {
+            profile.setWhyUsAadhirakshaRibbon(updateReq.getWhyUsAadhirakshaRibbon().trim());
+        }
+        if (updateReq.getWhyUsAadhirakshaPointsJson() != null) {
+            profile.setWhyUsAadhirakshaPointsJson(updateReq.getWhyUsAadhirakshaPointsJson());
+        }
+
         profile.setUpdatedAt(LocalDateTime.now());
 
         BusinessProfile saved = repository.save(profile);
