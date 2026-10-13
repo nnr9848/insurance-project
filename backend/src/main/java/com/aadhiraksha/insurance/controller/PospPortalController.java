@@ -23,6 +23,8 @@ public class PospPortalController {
 
     private final PospService pospService;
     private final UserRepository userRepository;
+    private final com.aadhiraksha.insurance.service.FileStorageService fileStorageService;
+    private final com.aadhiraksha.insurance.service.CrmClientService crmClientService;
 
     private User getAuthenticatedUser(Authentication auth) {
         if (auth == null || auth.getName() == null) {
@@ -53,10 +55,59 @@ public class PospPortalController {
         return ResponseEntity.ok(pospService.getAgentClients(user.getId()));
     }
 
+    @PostMapping("/clients")
+    @PreAuthorize("hasAnyAuthority('ROLE_POSP_AGENT', 'ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    public ResponseEntity<Client> addClient(Authentication auth, @RequestBody Map<String, Object> payload) {
+        User user = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(pospService.addClient(user, payload));
+    }
+
+    @PatchMapping("/clients/{clientId}/stage")
+    @PreAuthorize("hasAnyAuthority('ROLE_POSP_AGENT', 'ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    public ResponseEntity<Client> updateClientStage(
+            Authentication auth,
+            @PathVariable Long clientId,
+            @RequestBody com.aadhiraksha.insurance.dto.ClientDto.UpdateStageRequest request) {
+        User user = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(crmClientService.updateClientStage(clientId, request, user));
+    }
+
     @PostMapping("/book")
     @PreAuthorize("hasAnyAuthority('ROLE_POSP_AGENT', 'ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
     public ResponseEntity<PospCommission> bookPolicy(Authentication auth, @RequestBody Map<String, Object> payload) {
         User user = getAuthenticatedUser(auth);
         return ResponseEntity.ok(pospService.bookPolicy(user, payload));
+    }
+
+    @PutMapping("/profile")
+    @PreAuthorize("hasAnyAuthority('ROLE_POSP_AGENT', 'ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    public ResponseEntity<com.aadhiraksha.insurance.model.AgentProfile> updateProfile(
+            Authentication auth,
+            @RequestBody Map<String, Object> payload) {
+        User user = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(pospService.updateAgentProfile(user, payload));
+    }
+
+    @PostMapping(value = "/upload-document", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyAuthority('ROLE_POSP_AGENT', 'ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    public ResponseEntity<Map<String, Object>> uploadDocument(
+            Authentication auth,
+            @RequestParam("docType") String docType,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        User user = getAuthenticatedUser(auth);
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("Uploaded file cannot be empty");
+        }
+        String fileName = fileStorageService.storeFile(file);
+        String fileUrl = "/api/crm/documents/view-file/" + fileName;
+        com.aadhiraksha.insurance.model.AgentProfile updated = pospService.uploadAgentDocument(user, docType, fileUrl);
+
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("docType", docType);
+        response.put("fileUrl", fileUrl);
+        response.put("fileName", fileName);
+        response.put("profile", updated);
+        response.put("message", "Document uploaded successfully. Ready for IRDAI compliance verification.");
+        return ResponseEntity.ok(response);
     }
 }

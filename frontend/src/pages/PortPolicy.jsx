@@ -14,6 +14,7 @@ import {
   Info
 } from 'lucide-react';
 import { portalService } from '../services/api';
+import GatedOtpModal from '../components/common/GatedOtpModal';
 
 export default function PortPolicy() {
   const [searchParams] = useSearchParams();
@@ -21,6 +22,7 @@ export default function PortPolicy() {
 
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
   const [showLifeAdvisory, setShowLifeAdvisory] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -55,8 +57,18 @@ export default function PortPolicy() {
     }
   }, [typeParam]);
 
-  const handleSubmit = async (e) => {
+  const handleInitialSubmit = (e) => {
     e.preventDefault();
+    const clean = (formData.phoneNumber || '').replace(/\D/g, '');
+    if (clean.length < 10) {
+      alert('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+    setShowOtpModal(true);
+  };
+
+  const handleOtpVerified = async (verificationToken) => {
+    setShowOtpModal(false);
     setLoading(true);
     try {
       await portalService.submitQuote({
@@ -65,6 +77,7 @@ export default function PortPolicy() {
         phoneNumber: formData.phoneNumber,
         email: formData.email,
         city: formData.currentInsurer,
+        verificationToken,
         planDetails: JSON.stringify({
           action: 'port',
           policyType: formData.policyType,
@@ -228,7 +241,7 @@ export default function PortPolicy() {
                     </button>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit}>
+                  <form onSubmit={handleInitialSubmit}>
                     
                     <div style={{
                       display: 'flex',
@@ -658,6 +671,15 @@ export default function PortPolicy() {
         </div>
       </section>
 
+      {/* Strict Gated OTP Verification Modal */}
+      <GatedOtpModal
+        isOpen={showOtpModal}
+        onClose={() => setShowOtpModal(false)}
+        phoneNumber={formData.phoneNumber}
+        leadName={formData.fullName || 'Policyholder'}
+        onVerified={handleOtpVerified}
+        purposeText="instant insurer porting evaluation"
+      />
     </div>
   );
 }

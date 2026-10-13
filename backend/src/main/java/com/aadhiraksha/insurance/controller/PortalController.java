@@ -34,6 +34,26 @@ public class PortalController {
     private final PasswordEncoder passwordEncoder;
     private final com.aadhiraksha.insurance.service.AuditService auditService;
     private final com.aadhiraksha.insurance.service.WhatsAppNotificationService whatsAppNotificationService;
+    private final com.aadhiraksha.insurance.service.FileStorageService fileStorageService;
+    private final com.aadhiraksha.insurance.service.OtpVerificationService otpVerificationService;
+
+    // Public OTP Verification Endpoints
+    @PostMapping("/portal/otp/send")
+    @Operation(summary = "Send 6-digit verification OTP to mobile number")
+    public ResponseEntity<Map<String, Object>> sendOtp(@RequestBody Map<String, String> body) {
+        String phoneNumber = body.get("phoneNumber");
+        String message = otpVerificationService.generateAndSendOtp(phoneNumber);
+        return ResponseEntity.ok(Map.of("success", true, "message", message));
+    }
+
+    @PostMapping("/portal/otp/verify")
+    @Operation(summary = "Verify OTP code and receive verificationToken")
+    public ResponseEntity<Map<String, Object>> verifyOtp(@RequestBody Map<String, String> body) {
+        String phoneNumber = body.get("phoneNumber");
+        String otp = body.get("otp");
+        String token = otpVerificationService.verifyOtp(phoneNumber, otp);
+        return ResponseEntity.ok(Map.of("success", true, "verificationToken", token));
+    }
 
     // Categories
     @GetMapping("/categories")
@@ -44,8 +64,14 @@ public class PortalController {
 
     // Quotes / Inquiries
     @PostMapping("/quotes")
-    @Operation(summary = "Submit a quote inquiry for any insurance/loan category")
+    @Operation(summary = "Submit a quote inquiry for any insurance/loan category (Strict OTP gated)")
     public ResponseEntity<QuoteInquiry> submitQuote(@Valid @RequestBody QuoteDto.InquiryRequest request) {
+        // Strict Gated OTP Enforcement (Zero-Trust Security)
+        if (!otpVerificationService.isTokenValid(request.getVerificationToken(), request.getPhoneNumber())) {
+            return ResponseEntity.badRequest().body(null);
+        }
+        otpVerificationService.consumeToken(request.getVerificationToken());
+
         QuoteInquiry inquiry = QuoteInquiry.builder()
                 .categorySlug(request.getCategorySlug())
                 .fullName(request.getFullName())
@@ -367,16 +393,72 @@ public class PortalController {
     @Operation(summary = "Update POSP application status (APPROVED / REJECTED)")
     public ResponseEntity<AgentProfile> updatePOSPStatus(
             @PathVariable Long id,
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, Object> body) {
         AgentProfile profile = agentProfileRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Agent profile not found"));
         
-        String newStatus = body.get("status");
-        if (newStatus != null) {
-            profile.setStatus(newStatus.toUpperCase());
+        Object statusObj = body.get("status");
+        if (statusObj != null && !statusObj.toString().isBlank()) {
+            String newStatus = statusObj.toString().toUpperCase();
+            profile.setStatus(newStatus);
             if ("APPROVED".equalsIgnoreCase(newStatus)) {
                 profile.setApprovedAt(java.time.LocalDateTime.now());
+                profile.setKycVerified(true);
+            } else if ("REJECTED".equalsIgnoreCase(newStatus)) {
+                profile.setKycVerified(false);
             }
+        }
+        if (body.containsKey("kycVerified") && body.get("kycVerified") != null) {
+            profile.setKycVerified(Boolean.valueOf(body.get("kycVerified").toString()));
+        }
+        if (body.containsKey("kycRejectionReason") && body.get("kycRejectionReason") != null) {
+            profile.setKycRejectionReason(body.get("kycRejectionReason").toString());
+        }
+        if (body.containsKey("photoUrl") && body.get("photoUrl") != null) profile.setPhotoUrl(body.get("photoUrl").toString());
+        if (body.containsKey("panDocUrl") && body.get("panDocUrl") != null) profile.setPanDocUrl(body.get("panDocUrl").toString());
+        if (body.containsKey("aadhaarDocUrl") && body.get("aadhaarDocUrl") != null) profile.setAadhaarDocUrl(body.get("aadhaarDocUrl").toString());
+        if (body.containsKey("educationCertificateUrl") && body.get("educationCertificateUrl") != null) profile.setEducationCertificateUrl(body.get("educationCertificateUrl").toString());
+        if (body.containsKey("cancelledChequeUrl") && body.get("cancelledChequeUrl") != null) profile.setCancelledChequeUrl(body.get("cancelledChequeUrl").toString());
+        if (body.containsKey("trainingCertificateUrl") && body.get("trainingCertificateUrl") != null) profile.setTrainingCertificateUrl(body.get("trainingCertificateUrl").toString());
+        if (body.containsKey("bankName") && body.get("bankName") != null) profile.setBankName(body.get("bankName").toString());
+        if (body.containsKey("bankAccountNumber") && body.get("bankAccountNumber") != null) profile.setBankAccountNumber(body.get("bankAccountNumber").toString());
+        if (body.containsKey("ifscCode") && body.get("ifscCode") != null) profile.setIfscCode(body.get("ifscCode").toString());
+
+        return ResponseEntity.ok(agentProfileRepository.save(profile));
+    }
+
+    @PostMapping(value = "/admin/posp-applications/{id}/upload-document", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload POSP KYC document or photo (Admin/Staff only)")
+    public ResponseEntity<AgentProfile> uploadPOSPDocument(
+            @PathVariable Long id,
+            @RequestParam("docType") String docType,
+            @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        AgentProfile profile = agentProfileRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Agent profile not found with ID: " + id));
+
+        String storedFileName = fileStorageService.storeFile(file, file.getOriginalFilename());
+        String fileUrl = "/api/crm/documents/view-file/" + storedFileName;
+        switch (docType.toUpperCase()) {
+            case "PHOTO":
+                profile.setPhotoUrl(fileUrl);
+                break;
+            case "PAN":
+                profile.setPanDocUrl(fileUrl);
+                break;
+            case "AADHAAR":
+                profile.setAadhaarDocUrl(fileUrl);
+                break;
+            case "EDUCATION":
+                profile.setEducationCertificateUrl(fileUrl);
+                break;
+            case "CHEQUE":
+                profile.setCancelledChequeUrl(fileUrl);
+                break;
+            case "TRAINING":
+                profile.setTrainingCertificateUrl(fileUrl);
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported POSP document type: " + docType);
         }
         return ResponseEntity.ok(agentProfileRepository.save(profile));
     }

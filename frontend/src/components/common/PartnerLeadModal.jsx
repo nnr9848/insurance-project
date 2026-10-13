@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { portalService } from '../../services/api';
 import { getStoredAttribution } from '../../utils/trafficAttribution';
+import GatedOtpModal from './GatedOtpModal';
 
 export default function PartnerLeadModal({ partner, onClose, logoSrc }) {
   const [formData, setFormData] = useState({
@@ -30,6 +31,7 @@ export default function PartnerLeadModal({ partner, onClose, logoSrc }) {
   });
 
   const [loading, setLoading] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const [countdown, setCountdown] = useState(3);
@@ -78,7 +80,7 @@ export default function PartnerLeadModal({ partner, onClose, logoSrc }) {
     if (errorMsg) setErrorMsg('');
   };
 
-  const handleSubmit = async (e) => {
+  const handleInitialSubmit = (e) => {
     e.preventDefault();
 
     // Indian 10-digit mobile validation
@@ -93,8 +95,15 @@ export default function PartnerLeadModal({ partner, onClose, logoSrc }) {
       return;
     }
 
+    setShowOtpModal(true);
+  };
+
+  const handleOtpVerified = async (verificationToken) => {
+    setShowOtpModal(false);
     setLoading(true);
     setErrorMsg('');
+
+    const cleanPhone = (formData.phoneNumber || '').replace(/\D/g, '');
 
     try {
       // 1. Retrieve marketing attribution (Google Ads, UTM Campaign, Referrer)
@@ -117,13 +126,14 @@ export default function PartnerLeadModal({ partner, onClose, logoSrc }) {
         action: 'PROCEEDED_TO_INSURER_SITE'
       });
 
-      // 2. Persist lead in CRM database
+      // 3. Persist verified lead in CRM database
       await portalService.submitQuote({
         categorySlug: partner.category || 'partner-referral',
         fullName: formData.fullName.trim(),
         phoneNumber: cleanPhone,
         email: formData.email?.trim() || null,
         city: formData.city?.trim() || 'Website Visitor',
+        verificationToken,
         planDetails: planDetailsPayload
       });
 
@@ -370,7 +380,7 @@ export default function PartnerLeadModal({ partner, onClose, logoSrc }) {
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <form onSubmit={handleInitialSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{
                 background: 'var(--bg-main, #f8fafc)',
                 padding: '0.75rem 1rem',
@@ -611,6 +621,16 @@ export default function PartnerLeadModal({ partner, onClose, logoSrc }) {
           )}
         </div>
       </div>
+
+      {/* Strict Gated OTP Verification Modal */}
+      <GatedOtpModal
+        isOpen={showOtpModal}
+        onClose={() => setShowOtpModal(false)}
+        phoneNumber={formData.phoneNumber}
+        leadName={formData.fullName || 'Customer'}
+        onVerified={handleOtpVerified}
+        purposeText={`instant redirection to ${partner?.name || 'insurer portal'}`}
+      />
     </div>
   );
 }

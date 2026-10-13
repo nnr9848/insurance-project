@@ -759,6 +759,51 @@ public class CrmClientService {
         return mapToOpportunityResponse(saved);
     }
 
+    @Transactional
+    public Client updateClientStage(Long clientId, ClientDto.UpdateStageRequest request, User performedBy) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + clientId));
+
+        // Strict RBAC / Tenancy Check: POSP agents can only update stages for clients assigned to them
+        boolean isPosp = performedBy != null && performedBy.getRoles() != null && 
+                performedBy.getRoles().stream().anyMatch(r -> "ROLE_POSP_AGENT".equals(r.getName()));
+        if (isPosp) {
+            if (client.getPospAgent() == null || !client.getPospAgent().getId().equals(performedBy.getId())) {
+                throw new org.springframework.security.access.AccessDeniedException("You do not have permission to modify this client's stage");
+            }
+        }
+
+        String oldStage = client.getStage();
+        String newStage = request.getStage() != null ? request.getStage().toUpperCase() : oldStage;
+
+        client.setStage(newStage);
+        if (request.getNotes() != null && !request.getNotes().isBlank()) {
+            String currentNotes = client.getNotes() != null ? client.getNotes() : "";
+            client.setNotes((currentNotes + "\n[" + LocalDate.now() + "] Stage updated: " + request.getNotes()).trim());
+        }
+
+        Client saved = clientRepository.save(client);
+
+        // Synchronize primary opportunity stage if one exists
+        clientOpportunityRepository.findPrimaryOpportunityByClientId(clientId).ifPresent(primaryOpp -> {
+            primaryOpp.setStage(newStage);
+            clientOpportunityRepository.save(primaryOpp);
+        });
+
+        auditService.logAction(
+                "CLIENT",
+                saved.getId(),
+                "STAGE_CHANGE",
+                "stage",
+                oldStage,
+                newStage,
+                performedBy,
+                request.getNotes() != null ? request.getNotes() : "Transitioned client stage to " + newStage
+        );
+
+        return saved;
+    }
+
     public OpportunityDto.OpportunityResponse mapToOpportunityResponse(ClientOpportunity opp) {
         return OpportunityDto.OpportunityResponse.builder()
                 .id(opp.getId())

@@ -12,6 +12,7 @@ import {
   FileCheck 
 } from 'lucide-react';
 import { portalService } from '../services/api';
+import GatedOtpModal from '../components/common/GatedOtpModal';
 
 export default function RenewPolicy() {
   const [searchParams] = useSearchParams();
@@ -19,6 +20,7 @@ export default function RenewPolicy() {
 
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     phoneNumber: '',
@@ -45,8 +47,18 @@ export default function RenewPolicy() {
     }
   }, [typeParam]);
 
-  const handleSubmit = async (e) => {
+  const handleInitialSubmit = (e) => {
     e.preventDefault();
+    const clean = (formData.phoneNumber || '').replace(/\D/g, '');
+    if (clean.length < 10) {
+      alert('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+    setShowOtpModal(true);
+  };
+
+  const handleOtpVerified = async (verificationToken) => {
+    setShowOtpModal(false);
     setLoading(true);
     try {
       await portalService.submitQuote({
@@ -55,6 +67,7 @@ export default function RenewPolicy() {
         phoneNumber: formData.phoneNumber,
         email: formData.email,
         city: formData.currentInsurer,
+        verificationToken,
         planDetails: JSON.stringify({
           action: 'renew',
           policyType: formData.policyType,
@@ -218,7 +231,7 @@ export default function RenewPolicy() {
                     </button>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit}>
+                  <form onSubmit={handleInitialSubmit}>
                     
                     <div style={{
                       display: 'flex',
@@ -510,6 +523,15 @@ export default function RenewPolicy() {
         </div>
       </section>
 
+      {/* Strict Gated OTP Verification Modal */}
+      <GatedOtpModal
+        isOpen={showOtpModal}
+        onClose={() => setShowOtpModal(false)}
+        phoneNumber={formData.phoneNumber}
+        leadName={formData.fullName || 'Policyholder'}
+        onVerified={handleOtpVerified}
+        purposeText="instant policy renewal confirmation"
+      />
     </div>
   );
 }

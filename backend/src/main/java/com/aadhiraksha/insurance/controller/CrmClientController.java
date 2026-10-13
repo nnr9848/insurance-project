@@ -1,6 +1,7 @@
 package com.aadhiraksha.insurance.controller;
 
 import com.aadhiraksha.insurance.dto.*;
+import com.aadhiraksha.insurance.model.Client;
 import com.aadhiraksha.insurance.model.User;
 import com.aadhiraksha.insurance.repository.UserRepository;
 import com.aadhiraksha.insurance.service.CrmClientService;
@@ -99,7 +100,7 @@ public class CrmClientController {
     }
 
     @GetMapping("/calls/client/{clientId}")
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
     @Operation(summary = "Get call logs for a specific client")
     public ResponseEntity<List<CallLogDto.CallLogResponse>> getClientCallLogs(@PathVariable Long clientId) {
         return ResponseEntity.ok(crmClientService.getCallLogsForClient(clientId));
@@ -107,7 +108,7 @@ public class CrmClientController {
 
     // 3. Meeting Scheduling (Google Meet / In-Person)
     @PostMapping("/meetings")
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
     @Operation(summary = "Schedule a client meeting with Google Meet link generation")
     public ResponseEntity<MeetingDto.MeetingResponse> scheduleMeeting(@RequestBody MeetingDto.ScheduleMeetingRequest request, Authentication auth) {
         User user = getAuthenticatedUser(auth);
@@ -115,7 +116,7 @@ public class CrmClientController {
     }
 
     @GetMapping("/meetings/upcoming")
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
     @Operation(summary = "Get upcoming scheduled meetings")
     public ResponseEntity<List<MeetingDto.MeetingResponse>> getUpcomingMeetings(Authentication auth) {
         User user = getAuthenticatedUser(auth);
@@ -123,14 +124,14 @@ public class CrmClientController {
     }
 
     @GetMapping("/meetings/client/{clientId}")
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
     @Operation(summary = "Get meeting history for a specific client")
     public ResponseEntity<List<MeetingDto.MeetingResponse>> getClientMeetings(@PathVariable Long clientId) {
         return ResponseEntity.ok(crmClientService.getMeetingsForClient(clientId));
     }
 
     @PatchMapping("/meetings/{meetingId}/outcome")
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
     @Operation(summary = "Log outcome for a meeting (Completed, Rescheduled, Cancelled)")
     public ResponseEntity<MeetingDto.MeetingResponse> updateMeetingOutcome(
             @PathVariable Long meetingId,
@@ -142,7 +143,7 @@ public class CrmClientController {
 
     // 4. Follow-Up Reminders & Callback Scheduling
     @PostMapping("/followups")
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
     @Operation(summary = "Schedule a client follow-up callback or task")
     public ResponseEntity<FollowUpDto.FollowUpResponse> createFollowUp(@RequestBody FollowUpDto.CreateFollowUpRequest request, Authentication auth) {
         User user = getAuthenticatedUser(auth);
@@ -150,7 +151,7 @@ public class CrmClientController {
     }
 
     @GetMapping("/followups/due-today")
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
     @Operation(summary = "Get follow-ups scheduled for today or a specific date")
     public ResponseEntity<List<FollowUpDto.FollowUpResponse>> getDueTodayFollowUps(
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date,
@@ -165,7 +166,7 @@ public class CrmClientController {
     }
 
     @GetMapping("/followups/overdue")
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
     @Operation(summary = "Get overdue follow-up tasks")
     public ResponseEntity<List<FollowUpDto.FollowUpResponse>> getOverdueFollowUps(Authentication auth) {
         User user = getAuthenticatedUser(auth);
@@ -174,14 +175,14 @@ public class CrmClientController {
 
     // 5. Multi-Product Opportunities Portfolio (Salesforce FSC Standard)
     @GetMapping("/clients/{clientId}/opportunities")
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
     @Operation(summary = "Get all product opportunities and pipeline deals for a client")
     public ResponseEntity<List<OpportunityDto.OpportunityResponse>> getClientOpportunities(@PathVariable Long clientId) {
         return ResponseEntity.ok(crmClientService.getClientOpportunities(clientId));
     }
 
     @PostMapping("/clients/{clientId}/opportunities")
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
     @Operation(summary = "Create or cross-sell a new product opportunity for a client")
     public ResponseEntity<OpportunityDto.OpportunityResponse> createOpportunity(
             @PathVariable Long clientId,
@@ -192,7 +193,7 @@ public class CrmClientController {
     }
 
     @PatchMapping("/opportunities/{opportunityId}/stage")
-    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF')")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
     @Operation(summary = "Transition an opportunity stage with reason and audit log")
     public ResponseEntity<OpportunityDto.OpportunityResponse> updateOpportunityStage(
             @PathVariable Long opportunityId,
@@ -200,5 +201,16 @@ public class CrmClientController {
             Authentication auth) {
         User user = getAuthenticatedUser(auth);
         return ResponseEntity.ok(crmClientService.updateOpportunityStage(opportunityId, request, user));
+    }
+
+    @PatchMapping("/clients/{clientId}/stage")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ADVISOR', 'ROLE_STAFF', 'ROLE_POSP_AGENT')")
+    @Operation(summary = "Transition a client master stage with notes and audit trail")
+    public ResponseEntity<Client> updateClientStage(
+            @PathVariable Long clientId,
+            @RequestBody ClientDto.UpdateStageRequest request,
+            Authentication auth) {
+        User user = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(crmClientService.updateClientStage(clientId, request, user));
     }
 }

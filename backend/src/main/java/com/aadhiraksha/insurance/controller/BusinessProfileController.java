@@ -21,6 +21,8 @@ public class BusinessProfileController {
 
     private final BusinessProfileRepository repository;
     private final com.aadhiraksha.insurance.service.FileStorageService fileStorageService;
+    private final com.aadhiraksha.insurance.service.TwilioSmsService twilioSmsService;
+    private final com.aadhiraksha.insurance.service.WhatsAppNotificationService whatsAppService;
 
     /**
      * Public endpoint: retrieve canonical company contact, hotline, and communication address
@@ -236,13 +238,62 @@ public class BusinessProfileController {
             profile.setLegalGrievancePhone(updateReq.getLegalGrievancePhone().trim());
         }
 
+        // Twilio SMS Integration
+        if (updateReq.getTwilioSmsEnabled() != null) {
+            profile.setTwilioSmsEnabled(updateReq.getTwilioSmsEnabled());
+        }
+        if (updateReq.getTwilioAccountSid() != null) {
+            profile.setTwilioAccountSid(updateReq.getTwilioAccountSid().trim());
+        }
+        if (updateReq.getTwilioAuthToken() != null) {
+            profile.setTwilioAuthToken(updateReq.getTwilioAuthToken().trim());
+        }
+        if (updateReq.getTwilioFromNumber() != null) {
+            profile.setTwilioFromNumber(updateReq.getTwilioFromNumber().trim());
+        }
+
         profile.setUpdatedAt(LocalDateTime.now());
 
         BusinessProfile saved = repository.save(profile);
-        log.info("Business profile and integrations updated by admin: primaryPhone={}, whatsappEnabled={}, firebaseEnabled={}", 
-                saved.getPrimaryPhone(), saved.getWhatsappEnabled(), saved.getFirebaseEnabled());
+        log.info("Business profile and integrations updated by admin: primaryPhone={}, whatsappEnabled={}, twilioSmsEnabled={}, firebaseEnabled={}", 
+                saved.getPrimaryPhone(), saved.getWhatsappEnabled(), saved.getTwilioSmsEnabled(), saved.getFirebaseEnabled());
 
         return ResponseEntity.ok(saved);
+    }
+
+    /**
+     * Admin endpoint: Send instant test SMS via Twilio to verify credentials
+     */
+    @PostMapping("/admin/settings/twilio/test")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @Operation(summary = "Send Test Twilio SMS", description = "Dispatches a test SMS to verify Twilio Account SID, Auth Token and From Number")
+    public ResponseEntity<java.util.Map<String, Object>> testTwilioSmsDispatch(
+            @RequestBody java.util.Map<String, String> requestBody) {
+        
+        String testPhone = requestBody.get("testPhone");
+        if (testPhone == null || testPhone.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                "success", false,
+                "message", "Recipient phone number is required"
+            ));
+        }
+
+        // Standard verification format matching Twilio trial template whitelist
+        String message = "Your Aadhiraksha verification code is: 123456. Valid for 5 minutes.";
+
+        boolean dispatched = twilioSmsService.sendSms(testPhone.trim(), message);
+
+        if (dispatched) {
+            return ResponseEntity.ok(java.util.Map.of(
+                "success", true,
+                "message", "Test SMS dispatched successfully via Twilio! Delivered to: " + testPhone
+            ));
+        } else {
+            return ResponseEntity.status(400).body(java.util.Map.of(
+                "success", false,
+                "message", "Failed to dispatch Twilio SMS. Please verify Account SID, Auth Token, and From Number."
+            ));
+        }
     }
 
     /**
@@ -252,8 +303,7 @@ public class BusinessProfileController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
     @Operation(summary = "Send Test WhatsApp Message", description = "Dispatches a live test message to verify Meta credentials")
     public ResponseEntity<java.util.Map<String, Object>> testWhatsAppDispatch(
-            @RequestBody java.util.Map<String, String> requestBody,
-            @org.springframework.beans.factory.annotation.Autowired com.aadhiraksha.insurance.service.WhatsAppNotificationService whatsAppService) {
+            @RequestBody java.util.Map<String, String> requestBody) {
         
         String testPhone = requestBody.get("testPhone");
         if (testPhone == null || testPhone.trim().isEmpty()) {

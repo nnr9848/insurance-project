@@ -74,6 +74,31 @@ public class AgentProfile {
     @Column(name = "bank_name", length = 100)
     private String bankName;
 
+    @Column(name = "photo_url", length = 500)
+    private String photoUrl;
+
+    @Column(name = "pan_doc_url", length = 500)
+    private String panDocUrl;
+
+    @Column(name = "aadhaar_doc_url", length = 500)
+    private String aadhaarDocUrl;
+
+    @Column(name = "education_certificate_url", length = 500)
+    private String educationCertificateUrl;
+
+    @Column(name = "cancelled_cheque_url", length = 500)
+    private String cancelledChequeUrl;
+
+    @Column(name = "training_certificate_url", length = 500)
+    private String trainingCertificateUrl;
+
+    @Builder.Default
+    @Column(name = "kyc_verified")
+    private Boolean kycVerified = false;
+
+    @Column(name = "kyc_rejection_reason", columnDefinition = "TEXT")
+    private String kycRejectionReason;
+
     @CreationTimestamp
     @Column(name = "applied_at", updatable = false)
     private LocalDateTime appliedAt;

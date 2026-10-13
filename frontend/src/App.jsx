@@ -53,7 +53,8 @@ class ErrorBoundary extends React.Component {
             A rendering error occurred in this workspace view:
           </p>
           <pre style={{ background: '#fef2f2', color: '#991b1b', padding: '1rem', borderRadius: '8px', fontSize: '0.82rem', overflowX: 'auto', whiteSpace: 'pre-wrap' }}>
-            {this.state.error?.toString()}
+            {this.state.error?.stack || this.state.error?.toString()}
+            {this.state.errorInfo?.componentStack}
           </pre>
           <div style={{ marginTop: '1.25rem', display: 'flex', gap: '10px' }}>
             <button

@@ -40,7 +40,8 @@ import {
   Plane,
   Plus,
   Edit3,
-  Eye
+  Eye,
+  IndianRupee
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { crmService, leadInquiryService, portalService } from '../../services/api';
@@ -879,15 +880,43 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
 
               <span className="crm-meta-dot">•</span>
 
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ color: '#64748b', fontWeight: 600 }}>Advisor:</span>
-                <strong style={{ color: currentClient.assignedAdvisorId ? '#0f2b48' : '#dc2626' }}>
-                  {currentClient.assignedAdvisorName || 'Unassigned'}
-                </strong>
-                {currentClient.managerName && (
-                  <span style={{ color: '#94a3b8', fontSize: '0.72rem' }}>({currentClient.managerName})</span>
-                )}
-              </div>
+              {currentClient.assignedAdvisorName ? (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ color: '#64748b', fontWeight: 600 }}>Advisor:</span>
+                  <strong style={{ color: '#0f2b48' }}>{currentClient.assignedAdvisorName}</strong>
+                  {currentClient.pospAgent?.fullName && (
+                    <span style={{ color: '#0369a1', fontSize: '0.72rem', fontWeight: 700 }}>
+                      (POSP: {currentClient.pospAgent.fullName})
+                    </span>
+                  )}
+                  {currentClient.managerName && (
+                    <span style={{ color: '#94a3b8', fontSize: '0.72rem' }}>({currentClient.managerName})</span>
+                  )}
+                </div>
+              ) : currentClient.pospAgent?.fullName ? (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ color: '#64748b', fontWeight: 600 }}>Servicing Partner:</span>
+                  <strong style={{ color: '#0369a1', fontWeight: 700 }}>
+                    {user?.id === currentClient.pospAgent?.id ? 'You (POSP Partner)' : `${currentClient.pospAgent.fullName} (POSP)`}
+                  </strong>
+                  <span style={{
+                    fontSize: '0.65rem',
+                    background: '#e0f2fe',
+                    color: '#0369a1',
+                    border: '1px solid #bae6fd',
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    fontWeight: 700
+                  }}>
+                    Direct Sourcing
+                  </span>
+                </div>
+              ) : (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ color: '#64748b', fontWeight: 600 }}>Advisor:</span>
+                  <strong style={{ color: '#dc2626' }}>Unassigned</strong>
+                </div>
+              )}
 
               {canReassign && (
                 <button
@@ -1040,7 +1069,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
           {activeTab === 'overview' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
               
-              {/* 0. 1-Tap Quick Activity Note Composer */}
+              {/* 1. 1-Tap Quick Activity Note Composer */}
               <div style={{ background: '#ffffff', borderRadius: '14px', padding: '1rem 1.25rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', color: '#0f2b48', marginBottom: '8px' }}>
                   <Sparkles size={14} color="#7c3aed" /> 1-Tap Telecaller Note Composer
@@ -1094,8 +1123,10 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                   category: (/life|term/i.test(currentClient.insuranceType || '') ? 'LIFE' : /vehicle|motor|car|bike/i.test(currentClient.insuranceType || '') ? 'VEHICLE' : 'HEALTH'),
                   productName: currentClient.insuranceType || 'Health Insurance',
                   coverage: currentClient.sumInsured || '₹10,00,000',
+                  estimatedPremium: currentClient.estimatedPremium,
                   stage: currentClient.stage || 'NEW_LEAD',
                   inquiryId: null,
+                  date: currentClient.createdAt ? new Date(currentClient.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : null,
                   notes: currentClient.existingInsurer ? `Existing Insurer: ${currentClient.existingInsurer}` : 'Primary Policyholder Profile',
                   raw: `[${currentClient.insuranceType || 'Health Insurance'}] Coverage: ${currentClient.sumInsured || '₹10 Lakhs'}`,
                   oppRef: { category: (/life|term/i.test(currentClient.insuranceType || '') ? 'LIFE' : /vehicle|motor|car|bike/i.test(currentClient.insuranceType || '') ? 'VEHICLE' : 'HEALTH'), coverage: currentClient.sumInsured || '₹10,00,000', id: 'PRIMARY' }
@@ -1108,6 +1139,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                   category: opp.categorySlug || 'HEALTH',
                   productName: opp.productName || `${opp.categorySlug} Insurance`,
                   coverage: opp.coverageAmount || 'As Requested',
+                  estimatedPremium: opp.estimatedPremium,
                   stage: opp.stage || 'NEW_LEAD',
                   priority: opp.priority || 'MEDIUM',
                   inquiryId: opp.inquiryId,
@@ -1392,6 +1424,34 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                                     fontWeight: 800
                                   }}>
                                     Cover: {item.coverage}
+                                  </span>
+                                )}
+
+                                {(item.estimatedPremium || item.specsObj?.estimatedPremium) && (
+                                  <span style={{
+                                    background: '#eff6ff',
+                                    color: '#1d4ed8',
+                                    border: '1px solid #bfdbfe',
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 800
+                                  }}>
+                                    Premium: ₹{Number(item.estimatedPremium || item.specsObj?.estimatedPremium).toLocaleString('en-IN')}
+                                  </span>
+                                )}
+
+                                {item.date && (
+                                  <span style={{
+                                    fontSize: '0.65rem',
+                                    color: '#64748b',
+                                    background: '#f8fafc',
+                                    border: '1px solid #e2e8f0',
+                                    padding: '1px 5px',
+                                    borderRadius: '4px',
+                                    fontWeight: 600
+                                  }}>
+                                    {item.date}
                                   </span>
                                 )}
                               </div>

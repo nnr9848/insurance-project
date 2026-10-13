@@ -114,6 +114,20 @@ public class BusinessProfile {
     @Column(name = "firebase_app_id", length = 150)
     private String firebaseAppId;
 
+    // Twilio SMS OTP Gateway Integration Settings
+    @Builder.Default
+    @Column(name = "twilio_sms_enabled")
+    private Boolean twilioSmsEnabled = false;
+
+    @Column(name = "twilio_account_sid", length = 100)
+    private String twilioAccountSid;
+
+    @Column(name = "twilio_auth_token", columnDefinition = "TEXT")
+    private String twilioAuthToken;
+
+    @Column(name = "twilio_from_number", length = 50)
+    private String twilioFromNumber;
+
     @Column(name = "firebase_storage_bucket", length = 150)
     private String firebaseStorageBucket;
 

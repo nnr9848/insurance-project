@@ -36,9 +36,14 @@ export default function ActionDropdown({
     const numericWidth = parseInt(menuWidth, 10) || 230;
 
     // Horizontal calculation
-    let leftPos = align === 'right' 
-      ? triggerRect.right - numericWidth 
-      : triggerRect.left;
+    let leftPos;
+    if (align === 'center') {
+      leftPos = triggerRect.left + (triggerRect.width / 2) - (numericWidth / 2);
+    } else if (align === 'right') {
+      leftPos = triggerRect.right - numericWidth;
+    } else {
+      leftPos = triggerRect.left;
+    }
 
     // Edge clamp horizontally to avoid screen edge clipping
     if (leftPos + numericWidth > viewportWidth - 12) {

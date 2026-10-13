@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ArrowRight, ShieldCheck, HeartPulse, Car, Briefcase, Plane, Banknote, CheckCircle, Send, PhoneCall, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { portalService } from '../services/api';
+import GatedOtpModal from './common/GatedOtpModal';
 
 import familyHero from '../assets/slides/family_hero.png';
 import healthHero from '../assets/slides/health_hero.jpg';
@@ -73,6 +74,7 @@ export default function HeroSection() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isMobileFormExpanded, setIsMobileFormExpanded] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -84,8 +86,20 @@ export default function HeroSection() {
   const handleNext = () => setCurrentSlide((prev) => (prev + 1) % slides.length);
   const handlePrev = () => setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
 
-  const handleSubmit = async (e) => {
+  // Form submission opens strict gated OTP modal
+  const handleInitialFormSubmit = (e) => {
     e.preventDefault();
+    const rawPhone = (formData.phoneNumber || '').replace(/\D/g, '');
+    if (rawPhone.length < 10) {
+      alert('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+    setShowOtpModal(true);
+  };
+
+  // Called strictly after OTP has been verified on backend
+  const handleOtpVerified = async (verificationToken) => {
+    setShowOtpModal(false);
     setLoading(true);
     try {
       await portalService.submitQuote({
@@ -94,12 +108,13 @@ export default function HeroSection() {
         phoneNumber: formData.phoneNumber,
         email: formData.email,
         city: formData.city,
-        planDetails: JSON.stringify({ coverageAmount: formData.coverageAmount })
+        planDetails: JSON.stringify({ coverageAmount: formData.coverageAmount }),
+        verificationToken
       });
       setSubmitted(true);
     } catch (err) {
       console.error('Quote submission error', err);
-      alert('Error submitting inquiry. Please check your network and try again.');
+      alert('Error submitting verified inquiry. Please check your network and try again.');
     } finally {
       setLoading(false);
     }
@@ -213,7 +228,7 @@ export default function HeroSection() {
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleInitialFormSubmit}>
                   <div className="quote-category-tabs">
                     <button
                       type="button"
@@ -324,6 +339,16 @@ export default function HeroSection() {
           </div>
         </div>
       </div>
+
+      {/* Strict Gated Mobile OTP Verification Modal */}
+      <GatedOtpModal
+        isOpen={showOtpModal}
+        onClose={() => setShowOtpModal(false)}
+        phoneNumber={formData.phoneNumber}
+        leadName={formData.fullName || 'Valued Customer'}
+        onVerified={handleOtpVerified}
+        purposeText="customized quotes and instant advisor callback"
+      />
     </section>
   );
 }

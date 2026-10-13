@@ -23,7 +23,9 @@ import {
   Menu,
   Sparkles,
   ArrowRight,
-  ArrowRightLeft
+  ArrowRightLeft,
+  RefreshCw,
+  Zap
 } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import { useBusinessProfile } from '../context/BusinessProfileContext';
@@ -137,7 +139,7 @@ export default function Header() {
           
           {/* Top Row: Brand Logo, Hamburger Menu & User Profile / Login */}
           <div className="header-brand-row">
-            <div className="header-logo-container" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className="header-logo-container" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <button
                 onClick={() => setIsMobileOpen(true)}
                 style={{
@@ -154,18 +156,18 @@ export default function Header() {
                 <Menu size={24} />
               </button>
 
-              <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+              <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '1rem', textDecoration: 'none' }}>
                 <img 
                   src={logoImg} 
                   alt="Aadhiraksha Insurance Marketing & Financial Services" 
                   className="header-brand-logo"
                 />
+                
+                {/* Desktop Inline Brand Legal Entity */}
+                <div className="slogan-box desktop-slogan">
+                  <span className="slogan-main">Insurance Marketing & Financial Services Pvt Ltd.</span>
+                </div>
               </Link>
-            </div>
-
-            {/* Desktop Center: Brand Legal Entity */}
-            <div className="slogan-box desktop-slogan">
-              <span className="slogan-main">Insurance Marketing & Financial Services Pvt Ltd.</span>
             </div>
 
             {/* Top Right: User Profile / Login button (beside logo on mobile, right on desktop) */}
@@ -413,23 +415,85 @@ export default function Header() {
               )}
             </div>
 
-            {/* 2. RENEW POLICY */}
-            <Link
-              to="/renew-policy"
-              className={`nav-item ${location.pathname.startsWith('/renew-policy') ? 'active' : ''}`}
-              style={{ height: '38px', textDecoration: 'none', display: 'flex', alignItems: 'center' }}
+            {/* 2. RENEW / PORT Dropdown */}
+            <div 
+              style={{ position: 'relative', height: '100%', display: 'flex', alignItems: 'center' }}
+              onMouseEnter={() => handleMouseEnter('renewPort')}
+              onMouseLeave={handleMouseLeave}
             >
-              RENEW POLICY
-            </Link>
+              <button
+                onClick={() => toggleDropdown('renewPort')}
+                className={`nav-item ${['/renew-policy', '/port-policy'].some(p => location.pathname.startsWith(p)) ? 'active' : ''}`}
+                style={{ height: '38px', display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                <span>RENEW / PORT</span>
+                <ChevronDown size={14} style={{ transform: activeDropdown === 'renewPort' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </button>
 
-            {/* 3. PORT POLICY (SWITCH INSURER) */}
-            <Link
-              to="/port-policy"
-              className={`nav-item ${location.pathname.startsWith('/port-policy') ? 'active' : ''}`}
-              style={{ height: '38px', textDecoration: 'none', display: 'flex', alignItems: 'center', color: '#7c3aed' }}
-            >
-              PORT POLICY
-            </Link>
+              {activeDropdown === 'renewPort' && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: '0',
+                  width: '280px',
+                  background: '#ffffff',
+                  borderRadius: '16px',
+                  border: '1px solid var(--border-subtle)',
+                  boxShadow: 'var(--shadow-xl)',
+                  padding: '8px',
+                  zIndex: 1100,
+                  animation: 'dropdownFadeIn 0.15s ease-out'
+                }}>
+                  <Link
+                    to="/renew-policy"
+                    onClick={() => setActiveDropdown(null)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      textDecoration: 'none',
+                      transition: 'background 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ background: '#ecfdf5', color: '#059669', padding: '7px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <RefreshCw size={16} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-navy)' }}>Renew Policy</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Instantly renew expiring health or vehicle policy</div>
+                    </div>
+                  </Link>
+
+                  <Link
+                    to="/port-policy"
+                    onClick={() => setActiveDropdown(null)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      textDecoration: 'none',
+                      transition: 'background 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div style={{ background: '#faf5ff', color: '#7c3aed', padding: '7px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Zap size={16} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-navy)' }}>Port Policy (Switch Insurer)</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Switch insurer with 100% waiting credit intact</div>
+                    </div>
+                  </Link>
+                </div>
+              )}
+            </div>
 
             {/* 3. CLAIM SUPPORT Dropdown */}
             <div 
@@ -516,16 +580,7 @@ export default function Header() {
               LOANS
             </NavLink>
 
-            {/* 7. BLOG & GUIDES Direct Link (High-Intent SEO Hub) */}
-            <NavLink
-              to="/blog"
-              className={({ isActive }) => `nav-item ${isActive || location.pathname.startsWith('/blog') ? 'active' : ''}`}
-              style={{ height: '38px' }}
-            >
-              BLOG & GUIDES
-            </NavLink>
-
-            {/* 8. ABOUT US Direct Link */}
+            {/* 7. ABOUT US Direct Link */}
             <NavLink
               to="/about"
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}

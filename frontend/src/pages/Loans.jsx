@@ -13,6 +13,7 @@ import {
   Building2
 } from 'lucide-react';
 import { portalService } from '../services/api';
+import GatedOtpModal from '../components/common/GatedOtpModal';
 
 export default function Loans() {
   const [loanAmount, setLoanAmount] = useState(1000000);
@@ -21,6 +22,7 @@ export default function Loans() {
   const [loanType, setLoanType] = useState('Home Loan');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     phoneNumber: '',
@@ -43,8 +45,18 @@ export default function Loans() {
   const totalPayment = monthlyEMI * (tenureYears * 12);
   const totalInterest = totalPayment - loanAmount;
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    const cleanPhone = formData.phoneNumber.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      alert('Please enter a valid 10-digit mobile number to verify.');
+      return;
+    }
+    setIsOtpModalOpen(true);
+  };
+
+  const handleOtpVerified = async (verificationToken) => {
+    setIsOtpModalOpen(false);
     setLoading(true);
     try {
       await portalService.submitQuote({
@@ -53,6 +65,7 @@ export default function Loans() {
         phoneNumber: formData.phoneNumber,
         email: formData.email,
         city: formData.city,
+        verificationToken: verificationToken,
         planDetails: JSON.stringify({
           loanType,
           loanAmount: `₹${loanAmount.toLocaleString('en-IN')}`,
@@ -63,7 +76,8 @@ export default function Loans() {
       });
       setSubmitted(true);
     } catch (err) {
-      alert('Error submitting loan inquiry. Please try again.');
+      console.error(err);
+      alert('Failed to submit loan inquiry: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -483,6 +497,14 @@ export default function Loans() {
         </div>
       </section>
 
+      {/* Gated OTP Verification Modal */}
+      <GatedOtpModal
+        isOpen={isOtpModalOpen}
+        phoneNumber={formData.phoneNumber}
+        formTitle="Loan Advisory Application Verification"
+        onClose={() => setIsOtpModalOpen(false)}
+        onVerified={handleOtpVerified}
+      />
     </div>
   );
 }

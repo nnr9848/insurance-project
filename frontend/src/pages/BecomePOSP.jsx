@@ -17,12 +17,14 @@ import {
 } from 'lucide-react';
 import { portalService } from '../services/api';
 import { useBusinessProfile } from '../context/BusinessProfileContext';
+import GatedOtpModal from '../components/common/GatedOtpModal';
 
 export default function BecomePOSP() {
   const { businessProfile } = useBusinessProfile();
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -35,14 +37,27 @@ export default function BecomePOSP() {
     password: ''
   });
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    const cleanPhone = formData.phoneNumber.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      alert('Please enter a valid 10-digit mobile number to verify.');
+      return;
+    }
+    setIsOtpModalOpen(true);
+  };
+
+  const handleOtpVerified = async (verificationToken) => {
+    setIsOtpModalOpen(false);
     setLoading(true);
     try {
-      await portalService.applyPOSP(formData);
+      await portalService.applyPOSP({
+        ...formData,
+        verificationToken
+      });
       setSubmitted(true);
     } catch (err) {
-      alert('Error submitting application. Please verify details.');
+      alert('Error submitting application: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -549,6 +564,14 @@ export default function BecomePOSP() {
         </div>
       </section>
 
+      {/* Gated OTP Verification Modal */}
+      <GatedOtpModal
+        isOpen={isOtpModalOpen}
+        phoneNumber={formData.phoneNumber}
+        formTitle="POSP Advisor Registration Verification"
+        onClose={() => setIsOtpModalOpen(false)}
+        onVerified={handleOtpVerified}
+      />
     </div>
   );
 }

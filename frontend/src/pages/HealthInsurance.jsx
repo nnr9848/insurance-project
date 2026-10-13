@@ -15,12 +15,14 @@ import {
 } from 'lucide-react';
 import { portalService } from '../services/api';
 import healthHeroImg from '../assets/slides/health_hero.jpg';
+import GatedOtpModal from '../components/common/GatedOtpModal';
 
 export default function HealthInsurance() {
   const [selectedMembers, setSelectedMembers] = useState(['Self', 'Spouse']);
   const [eldestAge, setEldestAge] = useState('26-35');
   const [sumInsured, setSumInsured] = useState('₹10 Lakhs');
   const [existingIllness, setExistingIllness] = useState('No');
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -52,8 +54,18 @@ export default function HealthInsurance() {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    const cleanPhone = formData.phoneNumber.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      alert('Please enter a valid 10-digit mobile number to verify.');
+      return;
+    }
+    setIsOtpModalOpen(true);
+  };
+
+  const handleOtpVerified = async (verificationToken) => {
+    setIsOtpModalOpen(false);
     setLoading(true);
     try {
       await portalService.submitQuote({
@@ -62,6 +74,7 @@ export default function HealthInsurance() {
         phoneNumber: formData.phoneNumber,
         email: formData.email,
         city: formData.city,
+        verificationToken: verificationToken,
         planDetails: JSON.stringify({
           category: 'Comprehensive Health Insurance',
           membersCovered: selectedMembers,
@@ -74,7 +87,7 @@ export default function HealthInsurance() {
       setSubmitted(true);
     } catch (err) {
       console.error(err);
-      setSubmitted(true);
+      alert('Failed to submit quote: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -565,6 +578,14 @@ export default function HealthInsurance() {
         </div>
       </section>
 
+      {/* Gated OTP Verification Modal */}
+      <GatedOtpModal
+        isOpen={isOtpModalOpen}
+        phoneNumber={formData.phoneNumber}
+        formTitle="Health Insurance Quote Verification"
+        onClose={() => setIsOtpModalOpen(false)}
+        onVerified={handleOtpVerified}
+      />
     </div>
   );
 }

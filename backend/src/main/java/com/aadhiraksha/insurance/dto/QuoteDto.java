@@ -20,6 +20,7 @@ public class QuoteDto {
         private String email;
         private String city;
         private String planDetails; // JSON string or text summary
+        private String verificationToken; // Gated OTP verification token
     }
 
     @Data

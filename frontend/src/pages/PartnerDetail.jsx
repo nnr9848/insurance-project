@@ -24,6 +24,7 @@ import { PARTNER_LOGO_MAP, DEFAULT_PARTNERS_FALLBACK } from '../utils/partnerAss
 import { useBusinessProfile } from '../context/BusinessProfileContext';
 import { useAuth } from '../context/AuthContext';
 import { getStoredAttribution } from '../utils/trafficAttribution';
+import GatedOtpModal from '../components/common/GatedOtpModal';
 
 export default function PartnerDetail() {
   const { slug } = useParams();
@@ -34,6 +35,7 @@ export default function PartnerDetail() {
   const [partner, setPartner] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
 
   // Instant Quote / Inquiry Form State
   const [formData, setFormData] = useState({
@@ -130,10 +132,17 @@ export default function PartnerDetail() {
       return;
     }
 
+    setFormError('');
+    setIsOtpModalOpen(true);
+  };
+
+  const handleOtpVerified = async (verificationToken) => {
+    setIsOtpModalOpen(false);
     setSubmitting(true);
     setFormError('');
 
     try {
+      const cleanPhoneVal = formData.phoneNumber.replace(/\D/g, '');
       const attribution = getStoredAttribution();
       const planDetailsPayload = JSON.stringify({
         source: attribution?.source || 'Partner Brochure Page',
@@ -154,6 +163,7 @@ export default function PartnerDetail() {
         city: formData.city.trim() || 'Hyderabad',
         category: partner.category === 'health' ? 'Health Insurance' : (partner.category === 'life' ? 'Life Insurance' : 'General Insurance'),
         subCategory: partner.name + ' - Brochure Inquiry',
+        verificationToken: verificationToken,
         planDetails: planDetailsPayload
       });
 
@@ -802,6 +812,14 @@ export default function PartnerDetail() {
         </div>
       </div>
 
+      {/* Gated OTP Verification Modal */}
+      <GatedOtpModal
+        isOpen={isOtpModalOpen}
+        phoneNumber={formData.phoneNumber}
+        formTitle={`${partner?.name || 'Insurer'} Quote Inquiry Verification`}
+        onClose={() => setIsOtpModalOpen(false)}
+        onVerified={handleOtpVerified}
+      />
     </div>
   );
 }

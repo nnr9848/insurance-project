@@ -43,15 +43,24 @@ export default function IntegrationsSettingsView() {
     firebaseAuthDomain: '',
     firebaseAppId: '',
     firebaseStorageBucket: '',
-    firebaseMessagingSenderId: ''
+    firebaseMessagingSenderId: '',
+
+    // Twilio SMS Programmable Messaging Settings (Mobile OTPs)
+    twilioSmsEnabled: false,
+    twilioAccountSid: '',
+    twilioAuthToken: '',
+    twilioFromNumber: ''
   });
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showWhatsappToken, setShowWhatsappToken] = useState(false);
   const [showFirebaseKey, setShowFirebaseKey] = useState(false);
+  const [showTwilioToken, setShowTwilioToken] = useState(false);
   const [testPhone, setTestPhone] = useState('');
   const [isTestingWhatsApp, setIsTestingWhatsApp] = useState(false);
+  const [testTwilioPhone, setTestTwilioPhone] = useState('');
+  const [isTestingTwilio, setIsTestingTwilio] = useState(false);
 
   useEffect(() => {
     if (businessProfile) {
@@ -74,11 +83,18 @@ export default function IntegrationsSettingsView() {
         firebaseAuthDomain: businessProfile.firebaseAuthDomain || '',
         firebaseAppId: businessProfile.firebaseAppId || '',
         firebaseStorageBucket: businessProfile.firebaseStorageBucket || '',
-        firebaseMessagingSenderId: businessProfile.firebaseMessagingSenderId || ''
+        firebaseMessagingSenderId: businessProfile.firebaseMessagingSenderId || '',
+
+        // Twilio SMS Settings
+        twilioSmsEnabled: businessProfile.twilioSmsEnabled ?? false,
+        twilioAccountSid: businessProfile.twilioAccountSid || '',
+        twilioAuthToken: businessProfile.twilioAuthToken || '',
+        twilioFromNumber: businessProfile.twilioFromNumber || ''
       }));
 
       if (businessProfile.whatsappNumber || businessProfile.primaryPhone) {
-        setTestPhone(businessProfile.whatsappNumber || businessProfile.primaryPhone);
+        setTestPhone(prev => prev ? prev : (businessProfile.whatsappNumber || businessProfile.primaryPhone));
+        setTestTwilioPhone(prev => prev ? prev : (businessProfile.whatsappNumber || businessProfile.primaryPhone));
       }
     }
   }, [businessProfile]);
@@ -89,6 +105,37 @@ export default function IntegrationsSettingsView() {
       ...prev, 
       [name]: type === 'checkbox' ? checked : value 
     }));
+  };
+
+  const handleTestTwilio = async () => {
+    const cleanPhone = (testTwilioPhone || '').trim();
+    if (!cleanPhone) {
+      toast.error('Please enter a valid 10-digit mobile number to receive the test SMS.');
+      return;
+    }
+    if (!formData.twilioAccountSid?.trim() || !formData.twilioAuthToken?.trim() || !formData.twilioFromNumber?.trim()) {
+      toast.error('Please configure Twilio Account SID, Auth Token, and From Number before testing.');
+      return;
+    }
+
+    setIsTestingTwilio(true);
+    try {
+      // First save current form data to database so test endpoint uses latest credentials
+      await portalService.updateBusinessProfile(formData);
+      await refreshBusinessProfile();
+
+      const res = await portalService.testTwilioSms(cleanPhone);
+      if (res.success) {
+        toast.success(`Success! Live test SMS dispatched via Twilio to ${cleanPhone}. Check your phone SMS!`);
+      } else {
+        toast.error(res.message || 'Failed to dispatch Twilio test SMS. Verify credentials.');
+      }
+    } catch (err) {
+      console.error('Twilio Test error:', err);
+      toast.error(err.response?.data?.message || 'Failed to dispatch Twilio SMS. Check Account SID & Auth Token.');
+    } finally {
+      setIsTestingTwilio(false);
+    }
   };
 
   const handleTestWhatsApp = async () => {
@@ -128,7 +175,7 @@ export default function IntegrationsSettingsView() {
     try {
       await portalService.updateBusinessProfile(formData);
       await refreshBusinessProfile();
-      toast.success('Integrations, Firebase Auth & Meta WhatsApp settings saved successfully!');
+      toast.success('Twilio SMS, Firebase Auth & Meta WhatsApp settings saved successfully!');
     } catch (err) {
       console.error('Failed to update integrations settings:', err);
       toast.error('Failed to save settings: ' + (err.response?.data?.message || err.message));
@@ -401,7 +448,221 @@ export default function IntegrationsSettingsView() {
         </div>
 
         {/* ========================================================================= */}
-        {/* INTEGRATION 2: META WHATSAPP CLOUD API & NOTIFICATIONS */}
+        {/* INTEGRATION 2: TWILIO PROGRAMMABLE SMS (MOBILE OTP ENGINE) */}
+        {/* ========================================================================= */}
+        <div style={{
+          background: '#ffffff',
+          borderRadius: '16px',
+          border: formData.twilioSmsEnabled ? '2px solid #ef4444' : '1px solid #e2e8f0',
+          padding: '1.5rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+          transition: 'all 0.2s ease'
+        }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '10px',
+                background: '#fef2f2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ef4444'
+              }}>
+                <Zap size={20} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f2b48', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>Twilio SMS Messaging (Public Form Mobile OTP Verification)</span>
+                  {formData.twilioSmsEnabled ? (
+                    <span style={{ fontSize: '0.72rem', background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                      ● Active (Real SMS Dispatch)
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '0.72rem', background: '#f1f5f9', color: '#64748b', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                      ○ Inactive (Dev Mock Mode: Master OTP 123456)
+                    </span>
+                  )}
+                </h3>
+                <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '2px 0 0' }}>
+                  Sends 6-digit cryptographic OTPs via Twilio SMS for Instant Quotes, Policy Renewals, Policy Porting, and POSP leads.
+                </p>
+              </div>
+            </div>
+
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                name="twilioSmsEnabled"
+                checked={formData.twilioSmsEnabled}
+                onChange={handleChange}
+                style={{ width: '18px', height: '18px', accentColor: '#ef4444', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>
+                Enable Twilio SMS OTPs
+              </span>
+            </label>
+          </div>
+
+          {/* Form Fields Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                Twilio Account SID
+              </label>
+              <input
+                type="text"
+                name="twilioAccountSid"
+                value={formData.twilioAccountSid}
+                onChange={handleChange}
+                placeholder="ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.88rem',
+                  fontFamily: 'monospace'
+                }}
+              />
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
+                  Twilio Auth Token
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowTwilioToken(!showTwilioToken)}
+                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}
+                >
+                  {showTwilioToken ? <EyeOff size={13} /> : <Eye size={13} />}
+                  <span>{showTwilioToken ? 'Hide' : 'Reveal'}</span>
+                </button>
+              </div>
+              <input
+                type={showTwilioToken ? 'text' : 'password'}
+                name="twilioAuthToken"
+                value={formData.twilioAuthToken}
+                onChange={handleChange}
+                placeholder="Auth Token"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.88rem',
+                  fontFamily: 'monospace'
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                Twilio From Number / Sender ID
+              </label>
+              <input
+                type="text"
+                name="twilioFromNumber"
+                value={formData.twilioFromNumber}
+                onChange={handleChange}
+                placeholder="+1XXXXXXXXXX or AADHIRAKSHA"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.88rem',
+                  fontFamily: 'monospace'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Test Dispatch Panel */}
+          <div style={{
+            background: '#fff1f2',
+            borderRadius: '12px',
+            border: '1px solid #fecdd3',
+            padding: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            <div>
+              <h4 style={{ fontSize: '0.88rem', fontWeight: 800, color: '#9f1239', margin: '0 0 2px' }}>
+                ⚡ Test Twilio SMS Delivery
+              </h4>
+              <p style={{ fontSize: '0.78rem', color: '#be123c', margin: 0 }}>
+                Sends a live test SMS to verify your Account SID and Sender ID before enabling live OTPs for users.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <span style={{ position: 'absolute', left: '10px', fontSize: '0.85rem', fontWeight: 700, color: '#9f1239' }}>
+                  🇮🇳 +91
+                </span>
+                <input
+                  type="tel"
+                  maxLength={10}
+                  value={testTwilioPhone.replace(/\D/g, '').slice(-10)}
+                  onChange={(e) => setTestTwilioPhone(e.target.value.replace(/\D/g, ''))}
+                  placeholder="10-digit mobile"
+                  style={{
+                    padding: '8px 12px 8px 58px',
+                    borderRadius: '8px',
+                    border: '1px solid #fda4af',
+                    background: '#ffffff',
+                    fontSize: '0.88rem',
+                    width: '180px'
+                  }}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleTestTwilio}
+                disabled={isTestingTwilio}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#e11d48',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  cursor: isTestingTwilio ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 6px rgba(225, 29, 72, 0.25)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {isTestingTwilio ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Dispatching...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send size={14} />
+                    <span>Send Test SMS</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* INTEGRATION 3: META WHATSAPP CLOUD API & NOTIFICATIONS */}
         {/* ========================================================================= */}
         <div style={{
           background: '#ffffff',

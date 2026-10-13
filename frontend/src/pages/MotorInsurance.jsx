@@ -14,11 +14,13 @@ import {
   FileCheck
 } from 'lucide-react';
 import { portalService } from '../services/api';
+import GatedOtpModal from '../components/common/GatedOtpModal';
 
 export default function MotorInsurance() {
   const [vehicleType, setVehicleType] = useState('car'); // 'car' | 'two_wheeler' | 'commercial'
   const [isBrandNew, setIsBrandNew] = useState(false);
   const [hasZeroDep, setHasZeroDep] = useState(true);
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   
   const [formData, setFormData] = useState({
     vehicleNumber: '',
@@ -33,8 +35,18 @@ export default function MotorInsurance() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    const cleanPhone = formData.phoneNumber.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      alert('Please enter a valid 10-digit mobile number to verify.');
+      return;
+    }
+    setIsOtpModalOpen(true);
+  };
+
+  const handleOtpVerified = async (verificationToken) => {
+    setIsOtpModalOpen(false);
     setLoading(true);
     try {
       await portalService.submitQuote({
@@ -43,6 +55,7 @@ export default function MotorInsurance() {
         phoneNumber: formData.phoneNumber,
         email: formData.email,
         city: formData.city,
+        verificationToken: verificationToken,
         planDetails: JSON.stringify({
           category: vehicleType === 'car' ? 'Car Insurance' : vehicleType === 'two_wheeler' ? '2-Wheeler Insurance' : 'Commercial Vehicle Insurance',
           vehicleNumber: isBrandNew ? 'Brand New Vehicle' : (formData.vehicleNumber || 'Not Provided'),
@@ -55,7 +68,7 @@ export default function MotorInsurance() {
       setSubmitted(true);
     } catch (err) {
       console.error(err);
-      setSubmitted(true);
+      alert('Failed to submit quote: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -510,6 +523,14 @@ export default function MotorInsurance() {
         </div>
       </section>
 
+      {/* Gated OTP Verification Modal */}
+      <GatedOtpModal
+        isOpen={isOtpModalOpen}
+        phoneNumber={formData.phoneNumber}
+        formTitle="Motor Insurance Quotation Verification"
+        onClose={() => setIsOtpModalOpen(false)}
+        onVerified={handleOtpVerified}
+      />
     </div>
   );
 }

@@ -46,6 +46,7 @@ import { formatWhatsAppNumber, calculateCustomerTouchpoints } from '../../utils/
 import WhatsAppIcon from '../common/WhatsAppIcon';
 import InsurerLogoBadge from '../common/InsurerLogoBadge';
 import ScheduleActivityModal from './ScheduleActivityModal';
+import { getStageBadge, STAGE_OPTIONS } from '../../utils/crmStageConstants';
 
 export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: propSetQuotes, onOpenClient360, onOpenCallModal, onOpenMeetingModal }) {
   const { isSuperAdmin, isManager, user } = useAuth();
@@ -132,22 +133,6 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
     stage: 'NEW_LEAD',
     notes: ''
   });
-
-  const getStageBadge = (stage) => {
-    switch (stage) {
-      case 'NEW_LEAD': return { label: 'New Lead', bg: '#e0f2fe', color: '#0284c7' };
-      case 'CONTACTED': return { label: 'Contacted', bg: '#fef3c7', color: '#d97706' };
-      case 'FOLLOWUP': return { label: 'Follow-up Due', bg: '#ffedd5', color: '#ea580c' };
-      case 'INTERESTED': return { label: 'Interested', bg: '#dcfce7', color: '#16a34a' };
-      case 'QUOTATION': return { label: 'Quotation', bg: '#e0e7ff', color: '#4f46e5' };
-      case 'MEETING': return { label: 'Meeting Scheduled', bg: '#f3e8ff', color: '#9333ea' };
-      case 'DOCUMENTS': return { label: 'Documents / KYC', bg: '#ccfbf1', color: '#0d9488' };
-      case 'PAYMENT': return { label: 'Payment Pending', bg: '#fef9c3', color: '#ca8a04' };
-      case 'POLICY_ISSUED': return { label: 'Policy Issued 🎉', bg: '#d1fae5', color: '#059669' };
-      case 'LOST': return { label: 'Lost Lead', bg: '#fee2e2', color: '#dc2626' };
-      default: return { label: stage || 'Active', bg: '#f1f5f9', color: '#475569' };
-    }
-  };
 
   const getProductBadge = (productName) => {
     if (!productName) return { label: 'General Insurance', shortLabel: 'General', bg: '#f1f5f9', color: '#475569', border: '#e2e8f0', icon: <Shield size={12} /> };

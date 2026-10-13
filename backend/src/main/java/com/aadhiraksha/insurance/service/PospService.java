@@ -27,6 +27,7 @@ public class PospService {
     private final PospCommissionRepository pospCommissionRepository;
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
+    private final com.aadhiraksha.insurance.repository.ClientOpportunityRepository clientOpportunityRepository;
 
     @Transactional(readOnly = true)
     public Map<String, Object> getPospDashboard(User user) {
@@ -153,5 +154,176 @@ public class PospService {
                 .build();
 
         return pospCommissionRepository.save(comm);
+    }
+
+    @Transactional
+    public AgentProfile updateAgentProfile(User user, Map<String, Object> payload) {
+        AgentProfile profile = agentProfileRepository.findByUserId(user.getId())
+                .orElseGet(() -> AgentProfile.builder()
+                        .user(user)
+                        .panNumber("PENDING")
+                        .build());
+
+        if (payload.containsKey("panNumber")) profile.setPanNumber((String) payload.get("panNumber"));
+        if (payload.containsKey("city")) profile.setCity((String) payload.get("city"));
+        if (payload.containsKey("state")) profile.setState((String) payload.get("state"));
+        if (payload.containsKey("bankName")) profile.setBankName((String) payload.get("bankName"));
+        if (payload.containsKey("bankAccountNumber")) profile.setBankAccountNumber((String) payload.get("bankAccountNumber"));
+        if (payload.containsKey("ifscCode")) profile.setIfscCode((String) payload.get("ifscCode"));
+        if (payload.containsKey("photoUrl")) profile.setPhotoUrl((String) payload.get("photoUrl"));
+
+        return agentProfileRepository.save(profile);
+    }
+
+    @Transactional
+    public AgentProfile uploadAgentDocument(User user, String docType, String fileUrl) {
+        AgentProfile profile = agentProfileRepository.findByUserId(user.getId())
+                .orElseGet(() -> AgentProfile.builder()
+                        .user(user)
+                        .panNumber("PENDING")
+                        .build());
+
+        switch (docType.toUpperCase().trim()) {
+            case "PHOTO":
+                profile.setPhotoUrl(fileUrl);
+                break;
+            case "PAN":
+                profile.setPanDocUrl(fileUrl);
+                break;
+            case "AADHAAR":
+                profile.setAadhaarDocUrl(fileUrl);
+                break;
+            case "EDUCATION":
+                profile.setEducationCertificateUrl(fileUrl);
+                break;
+            case "CHEQUE":
+                profile.setCancelledChequeUrl(fileUrl);
+                break;
+            case "TRAINING":
+                profile.setTrainingCertificateUrl(fileUrl);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown document type: " + docType);
+        }
+
+        // Marking documents as uploaded leaves verification to Admin review
+        return agentProfileRepository.save(profile);
+    }
+
+    @Transactional
+    public Client addClient(User agentUser, Map<String, Object> payload) {
+        String fullName = (String) payload.get("fullName");
+        String phoneNumber = (String) payload.get("phoneNumber");
+        String email = (String) payload.get("email");
+        String insuranceType = payload.get("insuranceType") != null ? payload.get("insuranceType").toString() : "HEALTH";
+        String existingInsurer = (String) payload.get("existingInsurer");
+        String notes = (String) payload.get("notes");
+        String stage = payload.get("stage") != null ? payload.get("stage").toString() : "PROPOSAL_SHARED";
+
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+            throw new IllegalArgumentException("Client phone number is mandatory");
+        }
+
+        BigDecimal estimatedPremium = BigDecimal.ZERO;
+        if (payload.get("estimatedPremium") != null) {
+            try {
+                estimatedPremium = new BigDecimal(payload.get("estimatedPremium").toString());
+            } catch (Exception ignored) {}
+        }
+
+        List<Client> existing = clientRepository.findByPhoneSuffix(phoneNumber.length() > 10 ? phoneNumber.substring(phoneNumber.length() - 10) : phoneNumber);
+        if (!existing.isEmpty()) {
+            Client c = existing.get(0);
+            if (c.getPospAgent() == null) {
+                c.setPospAgent(agentUser);
+            }
+            // Non-destructive preservation: Only fill empty email/fields; NEVER overwrite existing name or active policy
+            if ((c.getEmail() == null || c.getEmail().isBlank()) && email != null) {
+                c.setEmail(email);
+            }
+            
+            // Append inquiry details to notes history
+            String noteAppend = "\n[" + java.time.LocalDate.now() + "] Ingested " + insuranceType + " opportunity via POSP portal" + 
+                    (notes != null ? ": " + notes : "");
+            String curNotes = c.getNotes() != null ? c.getNotes() : "";
+            c.setNotes((curNotes + noteAppend).trim());
+            Client savedClient = clientRepository.save(c);
+
+            // Create a child opportunity in the client's multi-product portfolio
+            Map<String, Object> specsMap = new HashMap<>();
+            if (existingInsurer != null) specsMap.put("insurerName", existingInsurer);
+            specsMap.put("insuranceLine", insuranceType);
+            if (estimatedPremium.compareTo(BigDecimal.ZERO) > 0) specsMap.put("estimatedPremium", "₹" + estimatedPremium);
+
+            String specsJson = "{}";
+            try {
+                specsJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(specsMap);
+            } catch (Exception ignored) {}
+
+            String displayCoverage = (c.getSumInsured() != null && !c.getSumInsured().isBlank()) ? c.getSumInsured() : "₹10,00,000";
+
+            com.aadhiraksha.insurance.model.ClientOpportunity opp = com.aadhiraksha.insurance.model.ClientOpportunity.builder()
+                    .client(savedClient)
+                    .categorySlug(insuranceType)
+                    .productName((existingInsurer != null ? existingInsurer + " - " : "") + insuranceType + " Insurance")
+                    .coverageAmount(displayCoverage)
+                    .estimatedPremium(estimatedPremium)
+                    .stage(stage != null ? stage : "PROPOSAL_SHARED")
+                    .priority("MEDIUM")
+                    .isPrimary(false)
+                    .assignedAdvisor(agentUser)
+                    .specs(specsJson)
+                    .notes(notes != null ? notes : "Added via POSP partner portal lead ingestion")
+                    .build();
+            clientOpportunityRepository.save(opp);
+
+            return savedClient;
+        }
+
+        Client client = Client.builder()
+                .clientCode("CL-P" + (System.currentTimeMillis() % 100000))
+                .fullName(fullName != null && !fullName.trim().isEmpty() ? fullName : "Client " + phoneNumber)
+                .phoneNumber(phoneNumber)
+                .email(email)
+                .insuranceType(insuranceType)
+                .existingInsurer(existingInsurer)
+                .estimatedPremium(estimatedPremium)
+                .sumInsured("₹10,00,000")
+                .leadSource("POSP_DIRECT")
+                .stage(stage)
+                .priority("MEDIUM")
+                .pospAgent(agentUser)
+                .notes(notes != null ? notes : "Introduced by POSP Partner " + agentUser.getFullName())
+                .build();
+
+        Client savedClient = clientRepository.save(client);
+
+        // Also create primary opportunity for the newly created client
+        Map<String, Object> primarySpecsMap = new HashMap<>();
+        if (existingInsurer != null) primarySpecsMap.put("insurerName", existingInsurer);
+        primarySpecsMap.put("insuranceLine", insuranceType);
+        if (estimatedPremium.compareTo(BigDecimal.ZERO) > 0) primarySpecsMap.put("estimatedPremium", "₹" + estimatedPremium);
+
+        String primarySpecsJson = "{}";
+        try {
+            primarySpecsJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(primarySpecsMap);
+        } catch (Exception ignored) {}
+
+        com.aadhiraksha.insurance.model.ClientOpportunity primaryOpp = com.aadhiraksha.insurance.model.ClientOpportunity.builder()
+                .client(savedClient)
+                .categorySlug(insuranceType)
+                .productName((existingInsurer != null ? existingInsurer + " - " : "") + insuranceType + " Insurance")
+                .coverageAmount("₹10,00,000")
+                .estimatedPremium(estimatedPremium)
+                .stage(stage != null ? stage : "PROPOSAL_SHARED")
+                .priority("MEDIUM")
+                .isPrimary(true)
+                .assignedAdvisor(agentUser)
+                .specs(primarySpecsJson)
+                .notes(notes != null ? notes : "Primary policy opportunity")
+                .build();
+        clientOpportunityRepository.save(primaryOpp);
+
+        return savedClient;
     }
 }

@@ -14,11 +14,13 @@ import {
   FileCheck
 } from 'lucide-react';
 import { portalService } from '../services/api';
+import GatedOtpModal from '../components/common/GatedOtpModal';
 
 export default function TravelInsurance() {
   const [destination, setDestination] = useState('Schengen'); // 'Schengen' | 'USA_Canada' | 'Asia' | 'Worldwide'
   const [tripType, setTripType] = useState('single'); // 'single' | 'multi' | 'student'
   const [travelerCount, setTravelerCount] = useState('1');
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -32,8 +34,18 @@ export default function TravelInsurance() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    const cleanPhone = formData.phoneNumber.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      alert('Please enter a valid 10-digit mobile number to verify.');
+      return;
+    }
+    setIsOtpModalOpen(true);
+  };
+
+  const handleOtpVerified = async (verificationToken) => {
+    setIsOtpModalOpen(false);
     setLoading(true);
     try {
       await portalService.submitQuote({
@@ -42,6 +54,7 @@ export default function TravelInsurance() {
         phoneNumber: formData.phoneNumber,
         email: formData.email,
         city: formData.city,
+        verificationToken: verificationToken,
         planDetails: JSON.stringify({
           category: 'International Travel Insurance',
           destination,
@@ -54,7 +67,7 @@ export default function TravelInsurance() {
       setSubmitted(true);
     } catch (err) {
       console.error(err);
-      setSubmitted(true);
+      alert('Failed to submit quote: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -489,6 +502,14 @@ export default function TravelInsurance() {
         </div>
       </section>
 
+      {/* Gated OTP Verification Modal */}
+      <GatedOtpModal
+        isOpen={isOtpModalOpen}
+        phoneNumber={formData.phoneNumber}
+        formTitle="Travel Insurance Quote Verification"
+        onClose={() => setIsOtpModalOpen(false)}
+        onVerified={handleOtpVerified}
+      />
     </div>
   );
 }

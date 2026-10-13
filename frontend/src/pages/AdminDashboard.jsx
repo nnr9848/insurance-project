@@ -59,7 +59,8 @@ import {
   Cpu,
   Camera,
   ArrowRightLeft,
-  CalendarDays
+  CalendarDays,
+  Percent
 } from 'lucide-react';
 import { portalService, crmService } from '../services/api';
 import UserManagementView from '../components/crm/UserManagementView';
@@ -197,6 +198,20 @@ export default function AdminDashboard() {
           category: 'CRM Workspace',
           subtitle: 'Interactive spreadsheet for fast lead filtering, client updates, and multi-advisor assignment.',
           icon: <FileSpreadsheet size={18} color="#0284c7" />
+        };
+      case 'posp-kyc':
+        return {
+          title: 'My KYC, Banking & ID Card',
+          category: 'POSP Credentials',
+          subtitle: 'Manage official IRDAI statutory verification documents, payout bank account, and print digital ID.',
+          icon: <ShieldCheck size={18} color="#059669" />
+        };
+      case 'calculator':
+        return {
+          title: 'Commission Payout Calculator',
+          category: 'Earnings Estimator',
+          subtitle: 'Estimate gross commissions, standard Section 194H TDS deductions, and net take-home bank credits.',
+          icon: <Percent size={18} color="#d97706" />
         };
       case 'agenda':
         return {
@@ -483,8 +498,10 @@ export default function AdminDashboard() {
 
   // Navigation Items
   const navItemsCRM = isPospAgent ? [
-    { id: 'dashboard', label: 'POSP Partner Portal', icon: <Award size={19} color="var(--accent-gold)" />, count: null },
+    { id: 'dashboard', label: 'Overview & Ledger', icon: <Award size={19} color="var(--accent-gold)" />, count: null },
     { id: 'clients', label: 'My Client Book', icon: <FileText size={19} />, count: leads.length, badgeColor: '#0284c7' },
+    { id: 'posp-kyc', label: 'My KYC, Banking & ID', icon: <ShieldCheck size={19} />, count: null },
+    { id: 'calculator', label: 'Commission Calculator', icon: <Percent size={19} />, count: null },
     { id: 'proposals', label: 'Multi-Insurer Quotes', icon: <FileSpreadsheet size={19} />, count: null },
     { id: 'renewals', label: 'Client Renewals', icon: <ShieldCheck size={19} />, count: null },
   ] : [
@@ -514,7 +531,7 @@ export default function AdminDashboard() {
   ];
 
   const navItemsAdmin = isPospAgent ? [
-    { id: 'hospitals', label: 'Cashless Hospitals Directory', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' }
+    { id: 'hospitals', label: 'Cashless Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' }
   ] : [
     ...(canManageUsers ? [{ id: 'users', label: 'User & Team Hierarchy', icon: <Users size={19} />, count: null }] : []),
     ...((isSuperAdmin || isManager) ? [
@@ -522,7 +539,7 @@ export default function AdminDashboard() {
       { id: 'audit', label: 'Audit Trail & Compliance', icon: <ShieldCheck size={19} />, count: null }
     ] : []),
     { id: 'posp', label: 'POSP Agent Network', icon: <UserCheck size={19} />, count: pospList.filter(p => p.status === 'PENDING').length, badgeColor: '#d97706' },
-    { id: 'hospitals', label: (isSuperAdmin || isManager) ? 'Cashless Hospitals' : 'Cashless Hospitals Directory', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' },
+    { id: 'hospitals', label: 'Cashless Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' },
     ...((isSuperAdmin || isManager) ? [
       { id: 'partners', label: 'Insurance Partners', icon: <Globe size={19} />, count: null }
     ] : []),
@@ -718,7 +735,10 @@ export default function AdminDashboard() {
         </div>
 
         {/* Navigation Section */}
-        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: showMiniRail ? '0.75rem 0.4rem' : '1rem 0.75rem' }}>
+        <div 
+          className="crm-sidebar-nav-scroll"
+          style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: showMiniRail ? '0.75rem 0.4rem' : '1rem 0.75rem' }}
+        >
           
           {/* CRM WORKSPACE GROUP */}
           {!showMiniRail ? (
@@ -830,7 +850,7 @@ export default function AdminDashboard() {
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
-              <span>Operations & Admin</span>
+              <span>{isPospAgent ? 'Client Lookup Tools' : 'Operations & Admin'}</span>
             </div>
           ) : (
             <div style={{ height: '1px', background: 'var(--crm-sidebar-border)', margin: '0.5rem 0.4rem' }} />
@@ -1361,6 +1381,17 @@ export default function AdminDashboard() {
             isPospAgent ? (
               <PospPartnerPortalView 
                 user={user}
+                initialTab="overview"
+                onOpenClient360={(client) => setSelectedClient360(client)}
+                onTabChange={(tab) => {
+                  const viewMap = {
+                    overview: 'dashboard',
+                    clients: 'clients',
+                    kyc: 'posp-kyc',
+                    calculator: 'calculator'
+                  };
+                  if (viewMap[tab]) handleNavigateView(viewMap[tab]);
+                }}
               />
             ) : isSuperAdmin ? (
               <SuperAdminDashboardOverview 
@@ -1397,6 +1428,16 @@ export default function AdminDashboard() {
               <PospPartnerPortalView 
                 user={user}
                 initialTab="clients"
+                onOpenClient360={(client) => setSelectedClient360(client)}
+                onTabChange={(tab) => {
+                  const viewMap = {
+                    overview: 'dashboard',
+                    clients: 'clients',
+                    kyc: 'posp-kyc',
+                    calculator: 'calculator'
+                  };
+                  if (viewMap[tab]) handleNavigateView(viewMap[tab]);
+                }}
               />
             ) : (
               <ClientDataSheetView 
@@ -1410,6 +1451,40 @@ export default function AdminDashboard() {
                 }}
               />
             )
+          )}
+
+          {/* VIEW: POSP KYC, BANKING & ID */}
+          {activeView === 'posp-kyc' && (
+            <PospPartnerPortalView 
+              user={user}
+              initialTab="kyc"
+              onTabChange={(tab) => {
+                const viewMap = {
+                  overview: 'dashboard',
+                  clients: 'clients',
+                  kyc: 'posp-kyc',
+                  calculator: 'calculator'
+                };
+                if (viewMap[tab]) handleNavigateView(viewMap[tab]);
+              }}
+            />
+          )}
+
+          {/* VIEW: POSP COMMISSION CALCULATOR */}
+          {activeView === 'calculator' && (
+            <PospPartnerPortalView 
+              user={user}
+              initialTab="calculator"
+              onTabChange={(tab) => {
+                const viewMap = {
+                  overview: 'dashboard',
+                  clients: 'clients',
+                  kyc: 'posp-kyc',
+                  calculator: 'calculator'
+                };
+                if (viewMap[tab]) handleNavigateView(viewMap[tab]);
+              }}
+            />
           )}
 
           {/* VIEW: WORK SCHEDULE (UNIFIED DAILY AGENDA & CALENDAR PLANNER) */}
@@ -1516,7 +1591,8 @@ export default function AdminDashboard() {
             <PospApplicationsView 
               pospList={pospList} 
               onUpdateStatus={handleUpdatePOSP}
-              onRefresh={loadAdminData}
+              onRefresh={loadData}
+              onNavigateView={handleNavigateView}
             />
           )}
 

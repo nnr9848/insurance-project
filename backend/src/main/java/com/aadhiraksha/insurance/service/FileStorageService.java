@@ -30,6 +30,13 @@ public class FileStorageService {
     }
 
     /**
+     * Stores a physical file securely on disk using its original filename.
+     */
+    public String storeFile(MultipartFile file) {
+        return storeFile(file, file != null ? file.getOriginalFilename() : null);
+    }
+
+    /**
      * Stores a physical file securely on disk and returns the relative storage filename.
      */
     public String storeFile(MultipartFile file, String originalName) {

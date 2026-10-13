@@ -15,6 +15,7 @@ import {
   FileCheck
 } from 'lucide-react';
 import { portalService } from '../services/api';
+import GatedOtpModal from '../components/common/GatedOtpModal';
 
 export default function BusinessInsurance() {
   const [businessType, setBusinessType] = useState('gmc'); // 'gmc' | 'fire' | 'marine' | 'cyber'
@@ -31,9 +32,20 @@ export default function BusinessInsurance() {
 
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    const cleanPhone = formData.phoneNumber.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      alert('Please enter a valid 10-digit mobile number to verify.');
+      return;
+    }
+    setIsOtpModalOpen(true);
+  };
+
+  const handleOtpVerified = async (verificationToken) => {
+    setIsOtpModalOpen(false);
     setLoading(true);
     try {
       await portalService.submitQuote({
@@ -42,6 +54,7 @@ export default function BusinessInsurance() {
         phoneNumber: formData.phoneNumber,
         email: formData.workEmail,
         city: formData.city,
+        verificationToken: verificationToken,
         planDetails: JSON.stringify({
           category: businessType === 'gmc' ? 'Group Medical Cover (GMC)' : businessType === 'fire' ? 'Commercial Fire & Asset Shield' : businessType === 'marine' ? 'Marine Cargo & Transit' : 'Cyber & Directors Liability (D&O)',
           companyName: formData.companyName,
@@ -53,7 +66,7 @@ export default function BusinessInsurance() {
       setSubmitted(true);
     } catch (err) {
       console.error(err);
-      setSubmitted(true);
+      alert('Failed to submit quote: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -422,6 +435,14 @@ export default function BusinessInsurance() {
         </div>
       </section>
 
+      {/* Gated OTP Verification Modal */}
+      <GatedOtpModal
+        isOpen={isOtpModalOpen}
+        phoneNumber={formData.phoneNumber}
+        formTitle="Corporate & SME Proposal Verification"
+        onClose={() => setIsOtpModalOpen(false)}
+        onVerified={handleOtpVerified}
+      />
     </div>
   );
 }

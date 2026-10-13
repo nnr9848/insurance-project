@@ -66,6 +66,10 @@ export const crmService = {
     const res = await api.post(`/crm/users/${id}/reset-password`, { newPassword });
     return res.data;
   },
+  resetUserPassword: async (id, newPassword) => {
+    const res = await api.post(`/crm/users/${id}/reset-password`, { newPassword });
+    return res.data;
+  },
   getDepartments: async () => {
     const res = await api.get('/crm/users/departments');
     return res.data;
@@ -138,6 +142,10 @@ export const crmService = {
   },
   updateOpportunityStage: async (opportunityId, stage, reason) => {
     const res = await api.patch(`/crm/opportunities/${opportunityId}/stage`, { stage, reason });
+    return res.data;
+  },
+  updateClientStage: async (clientId, stage, notes) => {
+    const res = await api.patch(`/crm/clients/${clientId}/stage`, { stage, notes });
     return res.data;
   },
 
@@ -322,6 +330,14 @@ export const portalService = {
     const res = await api.get('/categories');
     return res.data;
   },
+  sendOtp: async (phoneNumber) => {
+    const res = await api.post('/portal/otp/send', { phoneNumber });
+    return res.data;
+  },
+  verifyOtp: async (phoneNumber, otp) => {
+    const res = await api.post('/portal/otp/verify', { phoneNumber, otp });
+    return res.data;
+  },
   submitQuote: async (data) => {
     const res = await api.post('/quotes', data);
     return res.data;
@@ -363,8 +379,18 @@ export const portalService = {
     const res = await api.get('/admin/posp-applications');
     return res.data;
   },
-  updatePOSPStatus: async (id, status) => {
-    const res = await api.patch(`/admin/posp-applications/${id}/status`, { status });
+  updatePOSPStatus: async (id, payload) => {
+    const body = typeof payload === 'string' ? { status: payload } : payload;
+    const res = await api.patch(`/admin/posp-applications/${id}/status`, body);
+    return res.data;
+  },
+  uploadPOSPDocument: async (id, docType, file) => {
+    const formData = new FormData();
+    formData.append('docType', docType);
+    formData.append('file', file);
+    const res = await api.post(`/admin/posp-applications/${id}/upload-document`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return res.data;
   },
   getAdminClaims: async () => {
@@ -462,6 +488,10 @@ export const portalService = {
     const res = await api.post('/admin/settings/whatsapp/test', { testPhone });
     return res.data;
   },
+  testTwilioSms: async (testPhone) => {
+    const res = await api.post('/admin/settings/twilio/test', { testPhone });
+    return res.data;
+  },
   uploadGalleryImage: async (formData) => {
     const res = await api.post('/admin/settings/gallery/upload', formData, {
       headers: {
@@ -533,8 +563,29 @@ export const pospService = {
     const res = await api.get('/agent/clients');
     return res.data;
   },
+  addClient: async (data) => {
+    const res = await api.post('/agent/clients', data);
+    return res.data;
+  },
+  updateClientStage: async (clientId, stage, notes) => {
+    const res = await api.patch(`/agent/clients/${clientId}/stage`, { stage, notes });
+    return res.data;
+  },
   bookPolicy: async (data) => {
     const res = await api.post('/agent/book', data);
+    return res.data;
+  },
+  updateProfile: async (data) => {
+    const res = await api.put('/agent/profile', data);
+    return res.data;
+  },
+  uploadDocument: async (docType, file) => {
+    const formData = new FormData();
+    formData.append('docType', docType);
+    formData.append('file', file);
+    const res = await api.post('/agent/upload-document', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return res.data;
   }
 };
