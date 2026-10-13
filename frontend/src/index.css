@@ -5377,6 +5377,14 @@ h1, h2, h3, h4, h5, h6 {
   flex-wrap: wrap;
 }
 
+.badge-type-desktop {
+  display: inline;
+}
+
+.badge-type-mobile {
+  display: none;
+}
+
 .contests-filter-search-group {
   display: flex;
   align-items: center;
@@ -5385,6 +5393,14 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Mobile Screens (<= 640px) */
 @media (max-width: 640px) {
+  .badge-type-desktop {
+    display: none !important;
+  }
+
+  .badge-type-mobile {
+    display: inline !important;
+  }
+
   .contests-page-wrapper {
     padding: 0.75rem 0.5rem !important;
   }

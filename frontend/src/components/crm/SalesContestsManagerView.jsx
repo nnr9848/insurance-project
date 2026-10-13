@@ -809,34 +809,67 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                       </span>
                     </div>
 
-                    <div style={{
-                      position: 'absolute',
-                      top: '6px',
-                      left: '6px',
-                      background: 'rgba(15, 23, 42, 0.8)',
-                      color: '#ffffff',
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                      fontSize: '0.65rem',
-                      fontWeight: 800,
-                      letterSpacing: '0.04em'
-                    }}>
-                      {c.sponsorInsurer}
-                    </div>
+                    {/* Banner Top Badges Bar (Flex, zero-collision on mobile) */}
+                    <div
+                      className="contests-banner-badges-bar"
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '6px 8px',
+                        boxBox: 'border-box',
+                        zIndex: 2,
+                        pointerEvents: 'none'
+                      }}
+                    >
+                      <div
+                        className="contests-badge-insurer"
+                        title={c.sponsorInsurer}
+                        style={{
+                          background: 'rgba(15, 23, 42, 0.82)',
+                          color: '#ffffff',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontSize: '0.65rem',
+                          fontWeight: 800,
+                          letterSpacing: '0.03em',
+                          maxWidth: '52%',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          flexShrink: 1
+                        }}
+                      >
+                        {c.sponsorInsurer}
+                      </div>
 
-                    <div style={{
-                      position: 'absolute',
-                      top: '6px',
-                      right: '6px',
-                      fontSize: '0.65rem',
-                      fontWeight: 800,
-                      background: c.contestType === 'TRIP' ? '#fef3c7' : c.contestType === 'COMMISSION_BONUS' ? '#dcfce7' : '#ffffff',
-                      color: c.contestType === 'TRIP' ? '#92400e' : c.contestType === 'COMMISSION_BONUS' ? '#166534' : '#0f2b48',
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                    }}>
-                      {c.contestType.replace('_', ' ')}
+                      <div
+                        className="contests-badge-type"
+                        style={{
+                          fontSize: '0.65rem',
+                          fontWeight: 800,
+                          background: c.contestType === 'TRIP' ? '#fef3c7' : c.contestType === 'COMMISSION_BONUS' ? '#dcfce7' : '#ffffff',
+                          color: c.contestType === 'TRIP' ? '#92400e' : c.contestType === 'COMMISSION_BONUS' ? '#166534' : '#0f2b48',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
+                        }}
+                      >
+                        {/* On mobile screens, display concise type badge to prevent overlap */}
+                        <span className="badge-type-desktop">
+                          {c.contestType.replace('_', ' ')}
+                        </span>
+                        <span className="badge-type-mobile">
+                          {c.contestType === 'COMMISSION_BONUS' ? 'Bonus' : c.contestType === 'TRIP' ? 'Trip' : 'Kit'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
