@@ -190,6 +190,7 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
       alert('Failed to upload image banner: ' + (err.response?.data?.message || err.message));
     } finally {
       setUploadingBanner(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -204,6 +205,7 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
       alert('Failed to upload brochure document: ' + (err.response?.data?.message || err.message));
     } finally {
       setUploadingDoc(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -1479,72 +1481,234 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                 border: '1px solid #e2e8f0',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '10px'
+                gap: '14px'
               }}>
-                <h4 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase' }}>
-                  Media & Documents Locker
-                </h4>
-
-                {/* Poster Banner */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                  <div style={{ flex: 1 }}>
-                    <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>
-                      Promotional Poster / Banner Image
-                    </span>
-                    <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-                      {form.bannerImageUrl ? form.bannerImageUrl.split('/').pop() : 'No image uploaded yet'}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => bannerFileRef.current?.click()}
-                    disabled={uploadingBanner}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      background: '#ffffff',
-                      border: '1px solid #cbd5e1',
-                      padding: '6px 12px',
-                      borderRadius: '6px',
-                      fontSize: '0.76rem',
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Camera size={13} /> {uploadingBanner ? 'Uploading...' : 'Upload Image'}
-                  </button>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Media & Documents Locker
+                  </h4>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>
+                    1 Promotional Image + 1 Circular PDF
+                  </span>
                 </div>
 
-                {/* Brochure PDF */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-                  <div style={{ flex: 1 }}>
-                    <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>
-                      Official Circular / PDF Brochure
-                    </span>
-                    <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-                      {form.brochureDocUrl ? form.brochureDocUrl.split('/').pop() : 'No document uploaded yet'}
-                    </span>
+                {/* Poster Banner Section */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                    {form.bannerImageUrl ? (
+                      <div style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '6px',
+                        overflow: 'hidden',
+                        border: '1px solid #cbd5e1',
+                        flexShrink: 0,
+                        background: '#f1f5f9'
+                      }}>
+                        <img
+                          src={form.bannerImageUrl}
+                          alt="Poster preview"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      </div>
+                    ) : (
+                      <div style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '6px',
+                        background: '#f1f5f9',
+                        border: '1px dashed #cbd5e1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#94a3b8',
+                        flexShrink: 0
+                      }}>
+                        <Camera size={18} />
+                      </div>
+                    )}
+
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <span style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#334155' }}>
+                        Promotional Poster / Banner Image
+                      </span>
+                      <span style={{
+                        display: 'block',
+                        fontSize: '0.71rem',
+                        color: form.bannerImageUrl ? '#0284c7' : '#94a3b8',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        fontWeight: form.bannerImageUrl ? 600 : 400
+                      }}>
+                        {form.bannerImageUrl ? form.bannerImageUrl.split('/').pop() : 'No image uploaded yet (Default theme banner used)'}
+                      </span>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => docFileRef.current?.click()}
-                    disabled={uploadingDoc}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      background: '#ffffff',
-                      border: '1px solid #cbd5e1',
-                      padding: '6px 12px',
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => bannerFileRef.current?.click()}
+                      disabled={uploadingBanner}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        background: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        color: '#334155',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Camera size={13} /> {uploadingBanner ? 'Uploading...' : form.bannerImageUrl ? 'Replace' : 'Upload'}
+                    </button>
+                    {form.bannerImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setForm(prev => ({ ...prev, bannerImageUrl: '' }))}
+                        title="Remove uploaded banner"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: '#fff1f2',
+                          border: '1px solid #fecdd3',
+                          color: '#e11d48',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Circular PDF Section */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                    <div style={{
+                      width: '44px',
+                      height: '44px',
                       borderRadius: '6px',
-                      fontSize: '0.76rem',
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <FileCheck size={13} /> {uploadingDoc ? 'Uploading...' : 'Upload Circular (PDF)'}
-                  </button>
+                      background: form.brochureDocUrl ? '#fee2e2' : '#f1f5f9',
+                      border: form.brochureDocUrl ? '1px solid #fca5a5' : '1px dashed #cbd5e1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: form.brochureDocUrl ? '#dc2626' : '#94a3b8',
+                      flexShrink: 0
+                    }}>
+                      <FileCheck size={18} />
+                    </div>
+
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <span style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#334155' }}>
+                        Official Circular / PDF Brochure
+                      </span>
+                      <span style={{
+                        display: 'block',
+                        fontSize: '0.71rem',
+                        color: form.brochureDocUrl ? '#dc2626' : '#94a3b8',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        fontWeight: form.brochureDocUrl ? 600 : 400
+                      }}>
+                        {form.brochureDocUrl ? form.brochureDocUrl.split('/').pop() : 'No official document uploaded yet'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                    {form.brochureDocUrl && (
+                      <a
+                        href={form.brochureDocUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          background: '#f8fafc',
+                          border: '1px solid #cbd5e1',
+                          padding: '6px 9px',
+                          borderRadius: '6px',
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          color: '#0284c7',
+                          textDecoration: 'none'
+                        }}
+                      >
+                        <ExternalLink size={12} /> View
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => docFileRef.current?.click()}
+                      disabled={uploadingDoc}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        background: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        color: '#334155',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <FileCheck size={13} /> {uploadingDoc ? 'Uploading...' : form.brochureDocUrl ? 'Replace' : 'Upload'}
+                    </button>
+                    {form.brochureDocUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setForm(prev => ({ ...prev, brochureDocUrl: '' }))}
+                        title="Remove uploaded circular"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: '#fff1f2',
+                          border: '1px solid #fecdd3',
+                          color: '#e11d48',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
