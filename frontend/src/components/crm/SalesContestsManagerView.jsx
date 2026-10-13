@@ -30,6 +30,7 @@ import {
 import { salesContestService, portalService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import WhatsAppIcon from '../common/WhatsAppIcon';
+import ConfirmationModal from '../common/ConfirmationModal';
 
 export default function SalesContestsManagerView({ isAgentView = false }) {
   const { isSuperAdmin, isManager } = useAuth();
@@ -63,6 +64,18 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
   // Broadcast Offer State
   const [broadcastingId, setBroadcastingId] = useState(null);
   const [broadcastSuccess, setBroadcastSuccess] = useState('');
+
+  // Reusable Confirmation Dialog State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    variant: 'danger',
+    isLoading: false,
+    entitySummary: null,
+    onConfirm: null
+  });
 
   // Form State
   const [form, setForm] = useState({
@@ -204,43 +217,81 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
     }
   };
 
-  const handleDelete = async (id, title) => {
-    if (!window.confirm(`Are you sure you want to remove the contest "${title}"?`)) return;
-    try {
-      await salesContestService.deleteContest(id);
-      loadContests();
-    } catch (err) {
-      alert('Failed to delete contest: ' + (err.response?.data?.message || err.message));
-    }
+  const handleDelete = (id, title, contest) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Sales Campaign',
+      message: 'Are you sure you want to delete this contest? Active agents will no longer see this sprint or be able to track qualification milestones.',
+      confirmLabel: 'Delete Campaign',
+      variant: 'delete',
+      isLoading: false,
+      entitySummary: {
+        title: title,
+        badge: contest?.sponsorInsurer || 'Campaign',
+        subtitle: contest?.rewardDescription || contest?.description,
+        details: contest ? `Target: ${contest.targetMetricType === 'GWP_AMOUNT' ? '₹' + Number(contest.targetValue).toLocaleString() + ' GWP' : contest.targetValue + ' Policies'} | Valid until ${contest.endDate}` : null
+      },
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isLoading: true }));
+        try {
+          await salesContestService.deleteContest(id);
+          setConfirmModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          loadContests();
+        } catch (err) {
+          setConfirmModal(prev => ({ ...prev, isLoading: false }));
+          alert('Failed to delete contest: ' + (err.response?.data?.message || err.message));
+        }
+      }
+    });
   };
 
   // WhatsApp Broadcast Trigger directly from a contest card
-  const handleQuickWhatsAppBroadcast = async (contest) => {
-    if (!window.confirm(`Broadcast contest "${contest.title}" to all POSP agent network via Twilio WhatsApp?`)) return;
-    setBroadcastingId(contest.id);
-    setBroadcastSuccess('');
-    try {
-      const allPosps = await portalService.getPOSPProfiles();
-      const recipients = (allPosps || []).map(p => p.phoneNumber || p.user?.phoneNumber).filter(Boolean);
-      const cleanRecipients = Array.from(new Set(recipients));
+  const handleQuickWhatsAppBroadcast = (contest) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Broadcast Contest to POSP Network',
+      message: 'Broadcast this sales incentive sprint to all verified POSP advisors via Twilio WhatsApp? Outbound messages will be delivered with promotional flyer details.',
+      confirmLabel: 'Send WhatsApp Broadcast',
+      variant: 'whatsapp',
+      isLoading: false,
+      entitySummary: {
+        title: contest.title,
+        badge: contest.sponsorInsurer,
+        subtitle: contest.rewardDescription || contest.description,
+        details: `Target: ${contest.targetMetricType === 'GWP_AMOUNT' ? '₹' + Number(contest.targetValue).toLocaleString() + ' GWP' : contest.targetValue + ' Policies'} | Validity: ${contest.startDate} to ${contest.endDate}`
+      },
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isLoading: true }));
+        setBroadcastingId(contest.id);
+        setBroadcastSuccess('');
+        try {
+          const allPosps = await portalService.getPOSPProfiles();
+          const recipients = (allPosps || []).map(p => p.phoneNumber || p.user?.phoneNumber).filter(Boolean);
+          const cleanRecipients = Array.from(new Set(recipients));
 
-      if (cleanRecipients.length === 0) {
-        alert('No registered POSP agent phone numbers found to broadcast.');
-        return;
+          if (cleanRecipients.length === 0) {
+            alert('No registered POSP agent phone numbers found to broadcast.');
+            setConfirmModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+            return;
+          }
+
+          const res = await portalService.broadcastWhatsAppOffers({
+            title: `🏆 New Contest Alert: ${contest.title}`,
+            message: `${contest.description}\n\n🎯 Target: ${contest.targetMetricType === 'GWP_AMOUNT' ? '₹' + Number(contest.targetValue).toLocaleString() + ' GWP' : contest.targetValue + ' Policies'}\n🎁 Reward: ${contest.rewardDescription}\n📅 Valid: ${contest.startDate} to ${contest.endDate}\nSponsor: ${contest.sponsorInsurer}\n\nLogin to POSP Partner Portal for full terms & brochure.`,
+            recipients: cleanRecipients
+          });
+
+          setConfirmModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          setBroadcastSuccess(`Broadcast sent successfully to ${res.sentCount} agents!`);
+          setTimeout(() => setBroadcastSuccess(''), 5000);
+        } catch (err) {
+          setConfirmModal(prev => ({ ...prev, isLoading: false }));
+          alert('Failed to broadcast contest: ' + (err.response?.data?.message || err.message));
+        } finally {
+          setBroadcastingId(null);
+        }
       }
-
-      const res = await portalService.broadcastWhatsAppOffers({
-        title: `🏆 New Contest Alert: ${contest.title}`,
-        message: `${contest.description}\n\n🎯 Target: ${contest.targetMetricType === 'GWP_AMOUNT' ? '₹' + Number(contest.targetValue).toLocaleString() + ' GWP' : contest.targetValue + ' Policies'}\n🎁 Reward: ${contest.rewardDescription}\n📅 Valid: ${contest.startDate} to ${contest.endDate}\nSponsor: ${contest.sponsorInsurer}\n\nLogin to POSP Partner Portal for full terms & brochure.`,
-        recipients: cleanRecipients
-      });
-      setBroadcastSuccess(`Broadcast sent successfully to ${res.sentCount} agents!`);
-      setTimeout(() => setBroadcastSuccess(''), 5000);
-    } catch (err) {
-      alert('Failed to broadcast contest: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setBroadcastingId(null);
-    }
+    });
   };
 
   // Filter & Search
@@ -707,7 +758,7 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
 
                       {/* Delete */}
                       <button
-                        onClick={() => handleDelete(c.id, c.title)}
+                        onClick={() => handleDelete(c.id, c.title, c)}
                         style={{
                           background: '#ffffff',
                           border: '1px solid #fecaca',
@@ -1053,7 +1104,7 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                           <Edit3 size={12} />
                         </button>
                         <button
-                          onClick={() => handleDelete(c.id, c.title)}
+                          onClick={() => handleDelete(c.id, c.title, c)}
                           style={{
                             background: '#ffffff',
                             border: '1px solid #fecaca',
@@ -1445,6 +1496,19 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
           </div>
         </div>
       )}
+
+      {/* Centralized Reusable Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmLabel={confirmModal.confirmLabel}
+        variant={confirmModal.variant}
+        isLoading={confirmModal.isLoading}
+        entitySummary={confirmModal.entitySummary}
+      />
 
     </div>
   );
