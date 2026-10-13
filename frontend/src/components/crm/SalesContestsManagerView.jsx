@@ -246,19 +246,57 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
   };
 
   // WhatsApp Broadcast Trigger directly from a contest card
-  const handleQuickWhatsAppBroadcast = (contest) => {
+  const handleQuickWhatsAppBroadcast = async (contest) => {
+    // 1. Pre-flight check: fetch target recipient audience so the admin sees exactly who receives it
+    let preflightRecipients = [];
+    try {
+      const allPosps = await portalService.getAdminPOSP();
+      const raw = (allPosps || []).map(p => p.user?.phoneNumber || p.phoneNumber).filter(Boolean);
+      preflightRecipients = Array.from(new Set(raw));
+    } catch (e) {
+      // Continue with empty fallback if pre-fetch fails
+    }
+
     setConfirmModal({
       isOpen: true,
       title: 'Broadcast Contest to POSP Network',
       message: 'Broadcast this sales incentive sprint to all verified POSP advisors via Twilio WhatsApp? Outbound messages will be delivered with promotional flyer details.',
-      confirmLabel: 'Send WhatsApp Broadcast',
+      confirmLabel: preflightRecipients.length > 0 ? `Send Broadcast (${preflightRecipients.length} Agents)` : 'Send WhatsApp Broadcast',
       variant: 'whatsapp',
       isLoading: false,
       entitySummary: {
         title: contest.title,
         badge: contest.sponsorInsurer,
         subtitle: contest.rewardDescription || contest.description,
-        details: `Target: ${contest.targetMetricType === 'GWP_AMOUNT' ? '₹' + Number(contest.targetValue).toLocaleString() + ' GWP' : contest.targetValue + ' Policies'} | Validity: ${contest.startDate} to ${contest.endDate}`
+        details: `Target: ${contest.targetMetricType === 'GWP_AMOUNT' ? '₹' + Number(contest.targetValue).toLocaleString() + ' GWP' : contest.targetValue + ' Policies'} | Validity: ${contest.startDate} to ${contest.endDate}`,
+        extraContent: (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: '#ecfdf5',
+            border: '1px solid #a7f3d0',
+            borderRadius: '6px',
+            padding: '6px 10px',
+            fontSize: '0.75rem',
+            color: '#065f46',
+            fontWeight: 700
+          }}>
+            <span>Audience: {preflightRecipients.length} Verified POSP Agents</span>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: '#047857',
+              color: '#ffffff',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              fontSize: '0.65rem'
+            }}>
+              Twilio Dispatch
+            </span>
+          </div>
+        )
       },
       onConfirm: async () => {
         setConfirmModal(prev => ({ ...prev, isLoading: true }));

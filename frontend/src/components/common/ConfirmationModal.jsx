@@ -261,6 +261,11 @@ export default function ConfirmationModal({
                 {entitySummary.details}
               </div>
             )}
+            {entitySummary.extraContent && (
+              <div style={{ marginTop: '8px' }}>
+                {entitySummary.extraContent}
+              </div>
+            )}
           </div>
         )}
 
