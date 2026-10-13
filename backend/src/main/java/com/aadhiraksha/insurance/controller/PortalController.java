@@ -33,7 +33,6 @@ public class PortalController {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final com.aadhiraksha.insurance.service.AuditService auditService;
-    private final com.aadhiraksha.insurance.service.WhatsAppNotificationService whatsAppNotificationService;
     private final com.aadhiraksha.insurance.service.FileStorageService fileStorageService;
     private final com.aadhiraksha.insurance.service.OtpVerificationService otpVerificationService;
 
@@ -83,18 +82,6 @@ public class PortalController {
                 .status("NEW")
                 .build();
         QuoteInquiry saved = quoteInquiryRepository.save(inquiry);
-
-        // Dispatch async WhatsApp notification to lead
-        try {
-            whatsAppNotificationService.sendLeadInquiryConfirmation(
-                    saved.getPhoneNumber(),
-                    saved.getFullName(),
-                    saved.getCategorySlug()
-            );
-        } catch (Exception ex) {
-            // Non-blocking
-        }
-
         return ResponseEntity.ok(saved);
     }
 
@@ -180,19 +167,6 @@ public class PortalController {
                 .status("SUBMITTED")
                 .build();
         Claim savedClaim = claimRepository.save(claim);
-
-        // Dispatch async WhatsApp notification to claimant
-        try {
-            whatsAppNotificationService.sendClaimStatusUpdate(
-                    savedClaim.getContactPhone(),
-                    "CLM-" + savedClaim.getId(),
-                    savedClaim.getStatus(),
-                    "Claim received. Our cashless claims desk has been notified."
-            );
-        } catch (Exception ex) {
-            // Non-blocking
-        }
-
         return ResponseEntity.ok(savedClaim);
     }
 

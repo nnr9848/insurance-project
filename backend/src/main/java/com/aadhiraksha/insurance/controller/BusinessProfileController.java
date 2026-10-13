@@ -23,7 +23,6 @@ public class BusinessProfileController {
     private final com.aadhiraksha.insurance.service.FileStorageService fileStorageService;
     private final com.aadhiraksha.insurance.service.TwilioSmsService twilioSmsService;
     private final com.aadhiraksha.insurance.service.TwilioWhatsAppService twilioWhatsAppService;
-    private final com.aadhiraksha.insurance.service.WhatsAppNotificationService whatsAppService;
 
     /**
      * Public endpoint: retrieve canonical company contact, hotline, and communication address
