@@ -26,16 +26,6 @@ export default function IntegrationsSettingsView() {
   const toast = useToast();
 
   const [formData, setFormData] = useState({
-    // Meta WhatsApp Cloud API Settings
-    whatsappEnabled: false,
-    whatsappApiUrl: 'https://graph.facebook.com/v19.0',
-    whatsappPhoneNumberId: '',
-    whatsappAccessToken: '',
-    whatsappBusinessAccountId: '',
-    notifyLeadsOnWhatsapp: true,
-    notifyClaimsOnWhatsapp: true,
-    notifyDocsOnWhatsapp: true,
-
     // Google Firebase Phone Auth Settings
     firebaseEnabled: true,
     firebaseProjectId: 'aadhiraksha-insurance',
@@ -49,12 +39,15 @@ export default function IntegrationsSettingsView() {
     twilioSmsEnabled: false,
     twilioAccountSid: '',
     twilioAuthToken: '',
-    twilioFromNumber: ''
+    twilioFromNumber: '',
+
+    // Twilio WhatsApp Messaging Settings (Agent Broadcasts, Launches & Offers)
+    twilioWhatsappEnabled: false,
+    twilioWhatsappFromNumber: 'whatsapp:+14155238886'
   });
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showWhatsappToken, setShowWhatsappToken] = useState(false);
   const [showFirebaseKey, setShowFirebaseKey] = useState(false);
   const [showTwilioToken, setShowTwilioToken] = useState(false);
   const [testPhone, setTestPhone] = useState('');
@@ -66,16 +59,6 @@ export default function IntegrationsSettingsView() {
     if (businessProfile) {
       setFormData(prev => ({
         ...prev,
-        // Meta WhatsApp
-        whatsappEnabled: businessProfile.whatsappEnabled ?? false,
-        whatsappApiUrl: businessProfile.whatsappApiUrl || 'https://graph.facebook.com/v19.0',
-        whatsappPhoneNumberId: businessProfile.whatsappPhoneNumberId || '',
-        whatsappAccessToken: businessProfile.whatsappAccessToken || '',
-        whatsappBusinessAccountId: businessProfile.whatsappBusinessAccountId || '',
-        notifyLeadsOnWhatsapp: businessProfile.notifyLeadsOnWhatsapp ?? true,
-        notifyClaimsOnWhatsapp: businessProfile.notifyClaimsOnWhatsapp ?? true,
-        notifyDocsOnWhatsapp: businessProfile.notifyDocsOnWhatsapp ?? true,
-
         // Firebase Phone Auth
         firebaseEnabled: businessProfile.firebaseEnabled ?? true,
         firebaseProjectId: businessProfile.firebaseProjectId || 'aadhiraksha-insurance',
@@ -89,7 +72,11 @@ export default function IntegrationsSettingsView() {
         twilioSmsEnabled: businessProfile.twilioSmsEnabled ?? false,
         twilioAccountSid: businessProfile.twilioAccountSid || '',
         twilioAuthToken: businessProfile.twilioAuthToken || '',
-        twilioFromNumber: businessProfile.twilioFromNumber || ''
+        twilioFromNumber: businessProfile.twilioFromNumber || '',
+
+        // Twilio WhatsApp Settings
+        twilioWhatsappEnabled: businessProfile.twilioWhatsappEnabled ?? false,
+        twilioWhatsappFromNumber: businessProfile.twilioWhatsappFromNumber || 'whatsapp:+14155238886'
       }));
 
       if (businessProfile.whatsappNumber || businessProfile.primaryPhone) {
@@ -120,7 +107,6 @@ export default function IntegrationsSettingsView() {
 
     setIsTestingTwilio(true);
     try {
-      // First save current form data to database so test endpoint uses latest credentials
       await portalService.updateBusinessProfile(formData);
       await refreshBusinessProfile();
 
@@ -144,26 +130,25 @@ export default function IntegrationsSettingsView() {
       toast.error('Please enter a valid 10-digit mobile number to receive the test WhatsApp message.');
       return;
     }
-    if (!formData.whatsappPhoneNumberId?.trim() || !formData.whatsappAccessToken?.trim()) {
-      toast.error('Please configure both Meta Phone Number ID and Access Token before testing.');
+    if (!formData.twilioAccountSid?.trim() || !formData.twilioAuthToken?.trim() || !formData.twilioWhatsappFromNumber?.trim()) {
+      toast.error('Please configure Twilio Account SID, Auth Token, and WhatsApp Sender before testing.');
       return;
     }
 
     setIsTestingWhatsApp(true);
     try {
-      // First save current form data to database so test endpoint uses current credentials
       await portalService.updateBusinessProfile(formData);
       await refreshBusinessProfile();
 
-      const res = await portalService.testWhatsAppMessage(cleanPhone);
+      const res = await portalService.testTwilioWhatsApp(cleanPhone);
       if (res.success) {
-        toast.success(`Success! Live test WhatsApp message dispatched to ${cleanPhone}. Check your WhatsApp!`);
+        toast.success(`Success! Live test WhatsApp message dispatched via Twilio to ${cleanPhone}. Check your WhatsApp!`);
       } else {
-        toast.error(res.message || 'Failed to dispatch test message. Verify Meta credentials.');
+        toast.error(res.message || 'Failed to dispatch Twilio WhatsApp message.');
       }
     } catch (err) {
-      console.error('WhatsApp Test error:', err);
-      toast.error(err.response?.data?.message || 'Failed to dispatch test message. Check Meta Phone ID & Token.');
+      console.error('Twilio WhatsApp Test error:', err);
+      toast.error(err.response?.data?.message || 'Failed to dispatch WhatsApp message. Ensure recipient has joined Twilio Sandbox if testing in sandbox.');
     } finally {
       setIsTestingWhatsApp(false);
     }
@@ -175,7 +160,7 @@ export default function IntegrationsSettingsView() {
     try {
       await portalService.updateBusinessProfile(formData);
       await refreshBusinessProfile();
-      toast.success('Twilio SMS, Firebase Auth & Meta WhatsApp settings saved successfully!');
+      toast.success('Twilio SMS, Twilio WhatsApp & Firebase Auth settings saved successfully!');
     } catch (err) {
       console.error('Failed to update integrations settings:', err);
       toast.error('Failed to save settings: ' + (err.response?.data?.message || err.message));
@@ -662,12 +647,13 @@ export default function IntegrationsSettingsView() {
         </div>
 
         {/* ========================================================================= */}
-        {/* INTEGRATION 3: META WHATSAPP CLOUD API & NOTIFICATIONS */}
+        {/* ========================================================================= */}
+        {/* INTEGRATION 3: TWILIO WHATSAPP MESSAGING & PROMOTIONAL BROADCASTS */}
         {/* ========================================================================= */}
         <div style={{
           background: '#ffffff',
           borderRadius: '16px',
-          border: formData.whatsappEnabled ? '2px solid #10b981' : '1px solid #e2e8f0',
+          border: formData.twilioWhatsappEnabled ? '2px solid #059669' : '1px solid #e2e8f0',
           padding: '1.5rem',
           boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
           transition: 'all 0.2s ease'
@@ -689,10 +675,10 @@ export default function IntegrationsSettingsView() {
               </div>
               <div>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f2b48', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>Meta WhatsApp Cloud API (Transactional Messages)</span>
-                  {formData.whatsappEnabled ? (
+                  <span>Twilio WhatsApp API (Offers & Agent Broadcasts)</span>
+                  {formData.twilioWhatsappEnabled ? (
                     <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
-                      ● Active (1,000 Free Convs/mo)
+                      ● Active (Twilio WhatsApp)
                     </span>
                   ) : (
                     <span style={{ fontSize: '0.72rem', background: '#f1f5f9', color: '#64748b', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
@@ -701,7 +687,7 @@ export default function IntegrationsSettingsView() {
                   )}
                 </h3>
                 <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '2px 0 0' }}>
-                  Dispatches official transactional insurance updates, claim numbers, and quote follow-ups with 98%+ open rates.
+                  Dispatches new policy launch announcements, commission boosters, and promo alerts to POSP agents and chosen groups using your Twilio account.
                 </p>
               </div>
             </div>
@@ -709,153 +695,55 @@ export default function IntegrationsSettingsView() {
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none' }}>
               <input
                 type="checkbox"
-                name="whatsappEnabled"
-                checked={formData.whatsappEnabled}
+                name="twilioWhatsappEnabled"
+                checked={formData.twilioWhatsappEnabled}
                 onChange={handleChange}
                 style={{ width: '18px', height: '18px', accentColor: '#059669', cursor: 'pointer' }}
               />
-              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: formData.whatsappEnabled ? '#059669' : '#475569' }}>
-                Enable Live WhatsApp Sending
+              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: formData.twilioWhatsappEnabled ? '#059669' : '#475569' }}>
+                Enable Twilio WhatsApp Broadcasts
               </span>
             </label>
           </div>
 
-          {/* Credentials Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                Meta Phone Number ID
-              </label>
-              <input
-                type="text"
-                name="whatsappPhoneNumberId"
-                value={formData.whatsappPhoneNumberId}
-                onChange={handleChange}
-                placeholder="e.g. 105938472910482"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '0.88rem',
-                  fontFamily: 'monospace'
-                }}
-              />
-              <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                Found in Meta for Developers &rarr; WhatsApp &rarr; API Setup
-              </span>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                WhatsApp Business Account ID (WABA)
-              </label>
-              <input
-                type="text"
-                name="whatsappBusinessAccountId"
-                value={formData.whatsappBusinessAccountId}
-                onChange={handleChange}
-                placeholder="e.g. 192837465019283"
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '0.88rem',
-                  fontFamily: 'monospace'
-                }}
-              />
-              <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                Found in Meta Business Manager Settings &rarr; WhatsApp Accounts
-              </span>
-            </div>
-
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                Permanent Graph API Access Token (System User Bearer Token)
-              </label>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <input
-                  type={showWhatsappToken ? 'text' : 'password'}
-                  name="whatsappAccessToken"
-                  value={formData.whatsappAccessToken}
-                  onChange={handleChange}
-                  placeholder="EAAG..."
-                  style={{
-                    width: '100%',
-                    padding: '8px 40px 8px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.88rem',
-                    fontFamily: 'monospace'
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowWhatsappToken(!showWhatsappToken)}
-                  style={{
-                    position: 'absolute',
-                    right: '10px',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: '#64748b'
-                  }}
-                  title={showWhatsappToken ? 'Hide Token' : 'Show Token'}
-                >
-                  {showWhatsappToken ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                Meta Business Settings &rarr; System Users &rarr; Generate Token with <code>whatsapp_business_messaging</code> permission.
-              </span>
-            </div>
-          </div>
-
-          {/* Automated Event Trigger Toggles */}
+          {/* Configuration Note & Sender ID */}
           <div style={{
             background: '#f8fafc',
-            borderRadius: '12px',
             border: '1px solid #e2e8f0',
+            borderRadius: '12px',
             padding: '1rem',
             marginBottom: '1.25rem'
           }}>
-            <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1e293b', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              ⚡ Notification Event Matrix
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0369a1', fontWeight: 800, fontSize: '0.82rem', marginBottom: '6px' }}>
+              <Info size={15} />
+              <span>Unified Twilio Credentials</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.75rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#334155', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  name="notifyLeadsOnWhatsapp"
-                  checked={formData.notifyLeadsOnWhatsapp}
-                  onChange={handleChange}
-                  style={{ accentColor: '#059669', width: '16px', height: '16px' }}
-                />
-                <span>Quote Inquiries (Instant Welcome & Advisor Connect)</span>
-              </label>
+            <p style={{ fontSize: '0.78rem', color: '#475569', margin: '0 0 1rem', lineHeight: 1.5 }}>
+              This WhatsApp service automatically reuses your <strong>Twilio Account SID</strong> and <strong>Auth Token</strong> configured in the Twilio SMS card above. No separate third-party Meta tokens needed.
+            </p>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#334155', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  name="notifyClaimsOnWhatsapp"
-                  checked={formData.notifyClaimsOnWhatsapp}
-                  onChange={handleChange}
-                  style={{ accentColor: '#059669', width: '16px', height: '16px' }}
-                />
-                <span>Claim Submissions (Intimation Number & Cashless Desk)</span>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                Twilio WhatsApp Sender Number (From)
               </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#334155', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  name="notifyDocsOnWhatsapp"
-                  checked={formData.notifyDocsOnWhatsapp}
-                  onChange={handleChange}
-                  style={{ accentColor: '#059669', width: '16px', height: '16px' }}
-                />
-                <span>Document Vault Updates (Approval & Re-upload Notices)</span>
-              </label>
+              <input
+                type="text"
+                name="twilioWhatsappFromNumber"
+                value={formData.twilioWhatsappFromNumber}
+                onChange={handleChange}
+                placeholder="whatsapp:+14155238886 (Sandbox) or whatsapp:+1XXXXXXXXXX"
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.88rem',
+                  fontFamily: 'monospace'
+                }}
+              />
+              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginTop: '4px' }}>
+                For free testing, use Twilio Sandbox: <code>whatsapp:+14155238886</code> (Send <em>join &lt;your-code&gt;</em> from your phone to this number to opt in).
+              </span>
             </div>
           </div>
 
@@ -874,10 +762,10 @@ export default function IntegrationsSettingsView() {
             <div>
               <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#065f46', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Zap size={16} color="#059669" />
-                <span>1-Click Live WhatsApp Delivery Test</span>
+                <span>1-Click Live Twilio WhatsApp Test</span>
               </div>
               <p style={{ fontSize: '0.78rem', color: '#047857', margin: '2px 0 0' }}>
-                Send a real test WhatsApp message immediately to verify your credentials against Meta's Graph API.
+                Sends a live announcement test directly via Twilio WhatsApp API.
               </p>
             </div>
 
@@ -931,7 +819,7 @@ export default function IntegrationsSettingsView() {
                 ) : (
                   <>
                     <Send size={14} />
-                    <span>Send Test Message</span>
+                    <span>Send Test WhatsApp</span>
                   </>
                 )}
               </button>

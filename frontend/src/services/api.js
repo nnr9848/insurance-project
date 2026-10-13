@@ -485,7 +485,15 @@ export const portalService = {
     return res.data;
   },
   testWhatsAppMessage: async (testPhone) => {
-    const res = await api.post('/admin/settings/whatsapp/test', { testPhone });
+    const res = await api.post('/admin/settings/twilio-whatsapp/test', { testPhone });
+    return res.data;
+  },
+  testTwilioWhatsApp: async (testPhone) => {
+    const res = await api.post('/admin/settings/twilio-whatsapp/test', { testPhone });
+    return res.data;
+  },
+  broadcastWhatsAppOffers: async (payload) => {
+    const res = await api.post('/admin/broadcasts/whatsapp', payload);
     return res.data;
   },
   testTwilioSms: async (testPhone) => {

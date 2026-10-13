@@ -22,6 +22,7 @@ public class BusinessProfileController {
     private final BusinessProfileRepository repository;
     private final com.aadhiraksha.insurance.service.FileStorageService fileStorageService;
     private final com.aadhiraksha.insurance.service.TwilioSmsService twilioSmsService;
+    private final com.aadhiraksha.insurance.service.TwilioWhatsAppService twilioWhatsAppService;
     private final com.aadhiraksha.insurance.service.WhatsAppNotificationService whatsAppService;
 
     /**
@@ -252,6 +253,14 @@ public class BusinessProfileController {
             profile.setTwilioFromNumber(updateReq.getTwilioFromNumber().trim());
         }
 
+        // Twilio WhatsApp Integration
+        if (updateReq.getTwilioWhatsappEnabled() != null) {
+            profile.setTwilioWhatsappEnabled(updateReq.getTwilioWhatsappEnabled());
+        }
+        if (updateReq.getTwilioWhatsappFromNumber() != null) {
+            profile.setTwilioWhatsappFromNumber(updateReq.getTwilioWhatsappFromNumber().trim());
+        }
+
         profile.setUpdatedAt(LocalDateTime.now());
 
         BusinessProfile saved = repository.save(profile);
@@ -297,12 +306,12 @@ public class BusinessProfileController {
     }
 
     /**
-     * Admin endpoint: Send instant live test WhatsApp message to verify Meta API credentials
+     * Admin endpoint: Send instant live test WhatsApp message via Twilio WhatsApp API
      */
-    @PostMapping("/admin/settings/whatsapp/test")
+    @PostMapping("/admin/settings/twilio-whatsapp/test")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
-    @Operation(summary = "Send Test WhatsApp Message", description = "Dispatches a live test message to verify Meta credentials")
-    public ResponseEntity<java.util.Map<String, Object>> testWhatsAppDispatch(
+    @Operation(summary = "Send Test Twilio WhatsApp Message", description = "Dispatches a live test WhatsApp message using Twilio WhatsApp API")
+    public ResponseEntity<java.util.Map<String, Object>> testTwilioWhatsAppDispatch(
             @RequestBody java.util.Map<String, String> requestBody) {
         
         String testPhone = requestBody.get("testPhone");
@@ -314,23 +323,65 @@ public class BusinessProfileController {
         }
 
         String message = String.format(
-            "🔔 *Aadhiraksha WhatsApp Integration Test*\n\nYour Meta WhatsApp Cloud API credentials have been successfully connected and verified!\nTimestamp: %s\n\nPlatform: https://www.aadhirakshainsurance.com",
+            "🔔 *Aadhiraksha WhatsApp System Test*\n\nYour Twilio WhatsApp communications gateway has been successfully connected and verified!\nTimestamp: %s\n\n_Aadhiraksha Insurance Leadership Team_\nhttps://www.aadhirakshainsurance.com",
             LocalDateTime.now()
         );
 
-        boolean dispatched = whatsAppService.sendTextMessage(testPhone.trim(), message);
+        boolean dispatched = twilioWhatsAppService.sendWhatsAppMessage(testPhone.trim(), message);
 
         if (dispatched) {
             return ResponseEntity.ok(java.util.Map.of(
                 "success", true,
-                "message", "Test WhatsApp message dispatched successfully! Check phone: " + testPhone
+                "message", "Test WhatsApp message dispatched successfully via Twilio! Delivered to: " + testPhone
             ));
         } else {
             return ResponseEntity.status(400).body(java.util.Map.of(
                 "success", false,
-                "message", "Failed to dispatch test message. Please verify Phone Number ID and Access Token."
+                "message", "Failed to dispatch Twilio WhatsApp message. Ensure your recipient has joined the Twilio WhatsApp sandbox or verify Twilio credentials."
             ));
         }
+    }
+
+    /**
+     * Admin endpoint: Broadcast promotional announcement / new offer to POSP agents or client groups via Twilio WhatsApp
+     */
+    @PostMapping("/admin/broadcasts/whatsapp")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @Operation(summary = "Broadcast Twilio WhatsApp Offer", description = "Broadcasts a promotional announcement or offer launch to phone numbers via Twilio WhatsApp")
+    public ResponseEntity<java.util.Map<String, Object>> broadcastTwilioWhatsAppOffer(
+            @RequestBody java.util.Map<String, Object> requestBody) {
+        
+        String title = (String) requestBody.get("title");
+        String message = (String) requestBody.get("message");
+        @SuppressWarnings("unchecked")
+        java.util.List<String> recipients = (java.util.List<String>) requestBody.get("recipients");
+
+        if (title == null || title.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                "success", false,
+                "message", "Campaign title is required."
+            ));
+        }
+        if (message == null || message.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                "success", false,
+                "message", "Campaign announcement message is required."
+            ));
+        }
+        if (recipients == null || recipients.isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                "success", false,
+                "message", "At least one recipient phone number is required."
+            ));
+        }
+
+        twilioWhatsAppService.broadcastWhatsAppOffers(recipients, title.trim(), message.trim());
+
+        return ResponseEntity.ok(java.util.Map.of(
+            "success", true,
+            "message", String.format("Promotional broadcast '%s' initiated for %d recipient(s) via Twilio WhatsApp.", title, recipients.size()),
+            "count", recipients.size()
+        ));
     }
 
     /**

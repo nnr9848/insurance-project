@@ -128,6 +128,15 @@ public class BusinessProfile {
     @Column(name = "twilio_from_number", length = 50)
     private String twilioFromNumber;
 
+    // Twilio WhatsApp Messaging & Promotional Broadcast Settings
+    @Builder.Default
+    @Column(name = "twilio_whatsapp_enabled")
+    private Boolean twilioWhatsappEnabled = false;
+
+    @Builder.Default
+    @Column(name = "twilio_whatsapp_from_number", length = 60)
+    private String twilioWhatsappFromNumber = "whatsapp:+14155238886";
+
     @Column(name = "firebase_storage_bucket", length = 150)
     private String firebaseStorageBucket;
 

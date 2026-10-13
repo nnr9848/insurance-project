@@ -137,6 +137,16 @@ export default function PospApplicationsView({
   const fileInputRef = useRef(null);
   const [currentUploadTarget, setCurrentUploadTarget] = useState(null); // 'PHOTO' | 'PAN' | 'AADHAAR' | 'EDUCATION' | 'CHEQUE' | 'TRAINING'
 
+  // Twilio WhatsApp Promo & Offer Broadcast State
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastTarget, setBroadcastTarget] = useState('ALL'); // 'ALL' | 'APPROVED' | 'CUSTOM'
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [customPhonesInput, setCustomPhonesInput] = useState('');
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [broadcastResult, setBroadcastResult] = useState(null);
+  const [broadcastError, setBroadcastError] = useState('');
+
   // Add form state
   const [form, setForm] = useState({
     fullName: '',
@@ -487,6 +497,35 @@ export default function PospApplicationsView({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {(isSuperAdmin || isManager) && (
+            <button
+              onClick={() => {
+                setBroadcastError('');
+                setBroadcastResult(null);
+                setBroadcastTitle('');
+                setBroadcastMessage('');
+                setShowBroadcastModal(true);
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                background: '#047857',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+              }}
+              title="Broadcast new promotional offers and product announcements via Twilio WhatsApp"
+            >
+              <WhatsAppIcon size={15} color="#ffffff" /> WhatsApp Broadcast
+            </button>
+          )}
+
           {canCreatePosp && (
             <button
               onClick={() => { setErrorMsg(''); setShowAddModal(true); }}
@@ -2792,6 +2831,279 @@ export default function PospApplicationsView({
                   }}
                 >
                   {submitting ? 'Onboarding...' : 'Onboard Agent'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* TWILIO WHATSAPP PROMO & OFFER BROADCAST MODAL */}
+      {showBroadcastModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '560px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: '1px solid #e2e8f0',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              background: '#064e3b',
+              color: '#ffffff',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <WhatsAppIcon size={20} color="#34d399" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Broadcast Promo / Offer</h3>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#a7f3d0' }}>Twilio WhatsApp Messaging Channel</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBroadcastModal(false)}
+                style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setBroadcastError('');
+              setBroadcastResult(null);
+
+              let recipients = [];
+              if (broadcastTarget === 'ALL') {
+                recipients = (pospList || []).map(p => p.phoneNumber || p.user?.phoneNumber).filter(Boolean);
+              } else if (broadcastTarget === 'APPROVED') {
+                recipients = (pospList || [])
+                  .filter(p => (p.status || '').toUpperCase() === 'APPROVED')
+                  .map(p => p.phoneNumber || p.user?.phoneNumber)
+                  .filter(Boolean);
+              } else if (broadcastTarget === 'CUSTOM') {
+                recipients = customPhonesInput.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+              }
+
+              // Deduplicate
+              recipients = Array.from(new Set(recipients));
+
+              if (recipients.length === 0) {
+                setBroadcastError('No valid recipient phone numbers found for the selected target.');
+                return;
+              }
+
+              setBroadcasting(true);
+              try {
+                const res = await portalService.broadcastWhatsAppOffers({
+                  title: broadcastTitle,
+                  message: broadcastMessage,
+                  recipients
+                });
+                setBroadcastResult(res);
+              } catch (err) {
+                setBroadcastError(err.response?.data?.message || err.message || 'Failed to dispatch WhatsApp broadcast');
+              } finally {
+                setBroadcasting(false);
+              }
+            }} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+
+              {broadcastError && (
+                <div style={{
+                  padding: '10px 14px',
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  color: '#b91c1c',
+                  fontSize: '0.82rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <AlertCircle size={16} />
+                  <span>{broadcastError}</span>
+                </div>
+              )}
+
+              {broadcastResult && (
+                <div style={{
+                  padding: '12px 14px',
+                  background: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: '8px',
+                  color: '#166534',
+                  fontSize: '0.82rem'
+                }}>
+                  <div style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle2 size={16} color="#16a34a" /> {broadcastResult.message}
+                  </div>
+                  <div style={{ marginTop: '4px', fontSize: '0.78rem' }}>
+                    Sent: <strong>{broadcastResult.sentCount}</strong> / {broadcastResult.totalAttempted} successfully.
+                    {broadcastResult.failedCount > 0 && (
+                      <span style={{ color: '#dc2626', marginLeft: '6px' }}>
+                        ({broadcastResult.failedCount} failed)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Recipient Audience Selection */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Target Audience
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  {[
+                    { id: 'ALL', label: 'All Partners', desc: `${(pospList || []).length} Agents` },
+                    { id: 'APPROVED', label: 'Active / Approved', desc: `${(pospList || []).filter(p => (p.status || '').toUpperCase() === 'APPROVED').length} Agents` },
+                    { id: 'CUSTOM', label: 'Custom List', desc: 'Paste Numbers' }
+                  ].map(item => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setBroadcastTarget(item.id)}
+                      style={{
+                        padding: '10px 8px',
+                        borderRadius: '8px',
+                        border: broadcastTarget === item.id ? '2px solid #059669' : '1px solid #cbd5e1',
+                        background: broadcastTarget === item.id ? '#ecfdf5' : '#ffffff',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '2px'
+                      }}
+                    >
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: broadcastTarget === item.id ? '#065f46' : '#1e293b' }}>
+                        {item.label}
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                        {item.desc}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom numbers input */}
+              {broadcastTarget === 'CUSTOM' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Recipient Phone Numbers (comma or newline separated)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={customPhonesInput}
+                    onChange={(e) => setCustomPhonesInput(e.target.value)}
+                    placeholder="+919848314319, +919876543210"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                    required={broadcastTarget === 'CUSTOM'}
+                  />
+                </div>
+              )}
+
+              {/* Offer / Campaign Title */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Campaign Title / Offer Heading *
+                </label>
+                <input
+                  type="text"
+                  value={broadcastTitle}
+                  onChange={(e) => setBroadcastTitle(e.target.value)}
+                  placeholder="e.g. Special Festive Commission Boost: Extra 3% on Health Policies"
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                  required
+                />
+              </div>
+
+              {/* Offer Details / Message */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Offer Details & Announcement Body *
+                </label>
+                <textarea
+                  rows={4}
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                  placeholder="Describe the promo details, valid dates, eligibility rules, or links to portal banners..."
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
+                  required
+                />
+                <span style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                  Messages are sent via official Twilio WhatsApp Sender directly to recipient WhatsApp inboxes.
+                </span>
+              </div>
+
+              {/* Footer buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowBroadcastModal(false)}
+                  style={{
+                    background: '#f1f5f9',
+                    color: '#475569',
+                    border: 'none',
+                    padding: '9px 16px',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close
+                </button>
+                <button
+                  type="submit"
+                  disabled={broadcasting}
+                  style={{
+                    background: '#047857',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '9px 20px',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Send size={15} />
+                  {broadcasting ? 'Broadcasting...' : 'Send WhatsApp Broadcast'}
                 </button>
               </div>
             </form>
