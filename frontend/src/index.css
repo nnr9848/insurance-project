@@ -5312,6 +5312,239 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* =========================================================
+   SALES CONTESTS & CAMPAIGNS HUB - RESPONSIVE DESIGN SYSTEM
+   Desktop: 3-4 Grid Items & Spacious Executive Rows
+   Mobile: Exactly 2 Items per Grid Row & Ultra-Compact 64px List Rows
+   ========================================================= */
+
+/* Desktop defaults */
+.contests-page-wrapper {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.contests-grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.contests-grid-card {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.contests-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.contests-list-row {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.contests-filter-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: #ffffff;
+  padding: 0.85rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.contests-filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.contests-filter-search-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Mobile Screens (<= 640px) */
+@media (max-width: 640px) {
+  .contests-page-wrapper {
+    padding: 0.75rem 0.5rem !important;
+  }
+
+  .contests-filter-toolbar {
+    padding: 0.65rem 0.75rem !important;
+    gap: 0.65rem !important;
+    margin-bottom: 0.85rem !important;
+  }
+
+  /* Single-row swipeable scroll rail for category pills */
+  .contests-filter-pills {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
+    padding-bottom: 4px;
+    scrollbar-width: none; /* Firefox */
+  }
+  .contests-filter-pills::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+
+  .contests-filter-pills button {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    padding: 5px 11px !important;
+    font-size: 0.74rem !important;
+  }
+
+  .contests-filter-search-group {
+    width: 100% !important;
+    display: flex !important;
+    gap: 8px !important;
+  }
+
+  .contests-filter-search-group .contests-search-wrapper {
+    flex: 1 !important;
+    width: auto !important;
+  }
+
+  /* Mobile Grid: Strictly 2 cards per row without any horizontal overflow */
+  .contests-grid-container {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.55rem !important;
+    width: 100% !important;
+  }
+
+  .contests-grid-card {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .contests-grid-card .contests-banner-box {
+    height: 85px !important;
+  }
+
+  .contests-grid-card .contests-card-body {
+    padding: 0.6rem !important;
+  }
+
+  .contests-grid-card .contests-card-title {
+    font-size: 0.8rem !important;
+    margin-bottom: 3px !important;
+    min-height: 2.2em !important;
+    line-height: 1.25 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .contests-grid-card .contests-card-desc {
+    display: none !important; /* Hide long paragraph on 2-col mobile grid for crisp readability */
+  }
+
+  .contests-grid-card .contests-target-box {
+    padding: 4px 6px !important;
+    margin-bottom: 0.45rem !important;
+  }
+
+  .contests-grid-card .contests-target-val {
+    font-size: 0.76rem !important;
+  }
+
+  .contests-grid-card .contests-card-footer {
+    padding: 0.45rem 0.55rem !important;
+    gap: 4px !important;
+  }
+
+  .contests-grid-card .contests-card-footer button {
+    padding: 4px 6px !important;
+    font-size: 0.68rem !important;
+  }
+
+  /* Mobile List: Truly Ultra-Compact Row (~64px height) */
+  .contests-list-container {
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+
+  .contests-list-row {
+    padding: 0.65rem 0.75rem !important;
+    gap: 0.5rem !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    min-height: 62px !important;
+  }
+
+  .contests-list-row .contests-row-main {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  .contests-list-row .contests-row-icon {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 8px !important;
+  }
+
+  .contests-list-row .contests-row-icon svg {
+    width: 17px !important;
+    height: 17px !important;
+  }
+
+  .contests-list-row .contests-row-title {
+    font-size: 0.82rem !important;
+    max-width: 160px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .contests-list-row .contests-row-reward {
+    font-size: 0.7rem !important;
+    max-width: 160px !important;
+  }
+
+  .contests-list-row .contests-row-metric {
+    display: none !important; /* Hidden in primary view on mobile to ensure zero horizontal spill */
+  }
+
+  .contests-list-row .contests-row-validity {
+    display: none !important;
+  }
+
+  .contests-list-row .contests-row-actions {
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .contests-list-row .contests-row-actions button,
+  .contests-list-row .contests-row-actions a {
+    padding: 4px 7px !important;
+    font-size: 0.7rem !important;
+  }
+}
+
 
 
 

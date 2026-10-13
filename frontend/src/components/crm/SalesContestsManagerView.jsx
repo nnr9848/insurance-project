@@ -257,7 +257,7 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
   });
 
   return (
-    <div style={{ padding: '1.5rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div className="contests-page-wrapper">
       
       {/* Hidden file inputs */}
       <input type="file" ref={bannerFileRef} onChange={handleBannerUpload} style={{ display: 'none' }} accept="image/*" />
@@ -343,21 +343,9 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
       )}
 
       {/* Filter and Search Bar */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '1rem',
-        background: '#ffffff',
-        padding: '0.85rem 1.25rem',
-        borderRadius: '12px',
-        border: '1px solid #e2e8f0',
-        marginBottom: '1.5rem',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-      }}>
-        {/* Category Filter Pills */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+      <div className="contests-filter-toolbar">
+        {/* Category Filter Pills (Horizontal swipe rail on mobile) */}
+        <div className="contests-filter-pills">
           {[
             { id: 'ALL', label: 'All Sprints', icon: Trophy },
             { id: 'TRIP', label: 'Trip Incentives', icon: Plane },
@@ -392,8 +380,8 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
         </div>
 
         {/* Search Input and View Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ position: 'relative', width: '260px', maxWidth: '100%' }}>
+        <div className="contests-filter-search-group">
+          <div className="contests-search-wrapper" style={{ position: 'relative', width: '260px', maxWidth: '100%' }}>
             <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input
               type="text"
@@ -419,7 +407,8 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
             background: '#f1f5f9',
             padding: '3px',
             borderRadius: '8px',
-            border: '1px solid #e2e8f0'
+            border: '1px solid #e2e8f0',
+            flexShrink: 0
           }}>
             <button
               onClick={() => handleToggleViewMode('grid')}
@@ -498,8 +487,8 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
           </button>
         </div>
       ) : viewMode === 'list' ? (
-        /* EXECUTIVE CARD-ROW LIST VIEW (Industry Standard Horizontal Rows) */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+        /* EXECUTIVE CARD-ROW LIST VIEW (Desktop: Spacious, Mobile: Ultra-Compact ~64px) */
+        <div className="contests-list-container">
           {filteredContests.map(c => {
             const today = new Date().toISOString().split('T')[0];
             const isOngoing = c.isActive && today >= c.startDate && today <= c.endDate;
@@ -519,6 +508,7 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
             return (
               <div
                 key={c.id}
+                className="contests-list-row"
                 style={{
                   background: '#ffffff',
                   borderRadius: '12px',
@@ -542,33 +532,39 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                 }}
               >
                 {/* 1. Category Icon + Title + Sponsor + Prize */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: '1 1 360px', minWidth: '280px' }}>
+                <div className="contests-row-main" style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1 1 300px', minWidth: '200px' }}>
                   {/* Category Accent Icon Tile */}
-                  <div style={{
-                    width: '46px',
-                    height: '46px',
-                    borderRadius: '10px',
-                    background: isTrip ? '#fef3c7' : isBonus ? '#dcfce7' : '#f1f5f9',
-                    color: isTrip ? '#b45309' : isBonus ? '#15803d' : '#0f2b48',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    {isTrip ? <Plane size={22} /> : isBonus ? <Percent size={22} /> : <Trophy size={22} />}
+                  <div
+                    className="contests-row-icon"
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '10px',
+                      background: isTrip ? '#fef3c7' : isBonus ? '#dcfce7' : '#f1f5f9',
+                      color: isTrip ? '#b45309' : isBonus ? '#15803d' : '#0f2b48',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                  >
+                    {isTrip ? <Plane size={20} /> : isBonus ? <Percent size={20} /> : <Trophy size={20} />}
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1 }}>
                     {/* Header line: Title & Tags */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#0f2b48' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <h4
+                        className="contests-row-title"
+                        style={{ margin: 0, fontSize: '0.96rem', fontWeight: 800, color: '#0f2b48', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                      >
                         {c.title}
                       </h4>
                       <span style={{
-                        fontSize: '0.68rem',
+                        fontSize: '0.66rem',
                         fontWeight: 800,
-                        padding: '2px 7px',
-                        borderRadius: '5px',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
                         background: '#f8fafc',
                         border: '1px solid #e2e8f0',
                         color: '#475569'
@@ -579,14 +575,17 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
 
                     {/* Reward callout */}
                     {c.rewardDescription ? (
-                      <div style={{ fontSize: '0.78rem', color: '#b45309', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Sparkles size={12} />
-                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '380px' }}>
+                      <div
+                        className="contests-row-reward"
+                        style={{ fontSize: '0.76rem', color: '#b45309', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        <Sparkles size={11} style={{ flexShrink: 0 }} />
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {c.rewardDescription}
                         </span>
                       </div>
                     ) : (
-                      <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                      <div className="contests-row-reward" style={{ fontSize: '0.76rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {c.description || 'Verified partner sprint'}
                       </div>
                     )}
@@ -594,12 +593,12 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                 </div>
 
                 {/* 2. Target Qualification Metric */}
-                <div style={{ minWidth: '150px', flex: '0 0 auto' }}>
-                  <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <div className="contests-row-metric" style={{ minWidth: '140px', flex: '0 0 auto' }}>
+                  <div style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Target Milestone
                   </div>
                   <div style={{
-                    fontSize: '1rem',
+                    fontSize: '0.96rem',
                     fontWeight: 900,
                     color: '#059669',
                     marginTop: '2px',
@@ -612,7 +611,7 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                 </div>
 
                 {/* 3. Validity Range & Live Status Countdown */}
-                <div style={{ minWidth: '170px', flex: '0 0 auto' }}>
+                <div className="contests-row-validity" style={{ minWidth: '160px', flex: '0 0 auto' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{
                       display: 'inline-flex',
@@ -629,13 +628,13 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                       {isOngoing ? `Active (${daysRemaining}d left)` : isUpcoming ? `Starts in ${daysRemaining}d` : 'Concluded'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600, marginTop: '3px' }}>
+                  <div style={{ fontSize: '0.74rem', color: '#475569', fontWeight: 600, marginTop: '2px' }}>
                     {c.startDate} <span style={{ color: '#94a3b8' }}>to</span> {c.endDate}
                   </div>
                 </div>
 
                 {/* 4. Action Buttons & Collateral */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                <div className="contests-row-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                   {/* Brochure download */}
                   {c.brochureDocUrl && (
                     <a
@@ -649,16 +648,16 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                         background: '#f8fafc',
                         border: '1px solid #cbd5e1',
                         borderRadius: '7px',
-                        padding: '6px 10px',
+                        padding: '5px 9px',
                         color: '#0284c7',
-                        fontSize: '0.74rem',
+                        fontSize: '0.72rem',
                         fontWeight: 700,
                         textDecoration: 'none',
                         transition: 'all 0.15s ease'
                       }}
                       title="Download PDF Circular"
                     >
-                      <Download size={13} /> Circular
+                      <Download size={12} /> PDF
                     </a>
                   )}
 
@@ -671,21 +670,21 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '5px',
+                          gap: '4px',
                           background: '#047857',
                           color: '#ffffff',
                           border: 'none',
-                          padding: '6px 12px',
+                          padding: '5px 10px',
                           borderRadius: '7px',
-                          fontSize: '0.75rem',
+                          fontSize: '0.72rem',
                           fontWeight: 700,
                           cursor: 'pointer',
                           boxShadow: '0 1px 3px rgba(4, 120, 87, 0.2)'
                         }}
                         title="Broadcast contest to all POSP agents on WhatsApp"
                       >
-                        <WhatsAppIcon size={13} color="#ffffff" />
-                        {broadcastingId === c.id ? 'Broadcasting...' : 'Broadcast'}
+                        <WhatsAppIcon size={12} color="#ffffff" />
+                        {broadcastingId === c.id ? '...' : 'Broadcast'}
                       </button>
 
                       {/* Edit */}
@@ -695,7 +694,7 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                           background: '#ffffff',
                           border: '1px solid #cbd5e1',
                           borderRadius: '7px',
-                          padding: '6px 9px',
+                          padding: '5px 8px',
                           cursor: 'pointer',
                           color: '#475569',
                           display: 'flex',
@@ -703,7 +702,7 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                         }}
                         title="Edit Contest"
                       >
-                        <Edit3 size={14} />
+                        <Edit3 size={13} />
                       </button>
 
                       {/* Delete */}
@@ -713,7 +712,7 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                           background: '#ffffff',
                           border: '1px solid #fecaca',
                           borderRadius: '7px',
-                          padding: '6px 9px',
+                          padding: '5px 8px',
                           cursor: 'pointer',
                           color: '#dc2626',
                           display: 'flex',
@@ -721,19 +720,19 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                         }}
                         title="Delete Contest"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={13} />
                       </button>
                     </>
                   ) : (
                     <span style={{
                       background: '#dcfce7',
                       color: '#166534',
-                      padding: '5px 10px',
+                      padding: '4px 8px',
                       borderRadius: '7px',
-                      fontSize: '0.72rem',
+                      fontSize: '0.7rem',
                       fontWeight: 700
                     }}>
-                      Direct Credit Eligible
+                      Eligible
                     </span>
                   )}
                 </div>
@@ -742,12 +741,8 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
           })}
         </div>
       ) : (
-        /* RESPONSIVE 3 TO 4 COLUMN GRID VIEW */
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(285px, 1fr))',
-          gap: '1.25rem'
-        }}>
+        /* RESPONSIVE GRID VIEW (Desktop: 3-4 Columns, Mobile: Exactly 2 Columns) */
+        <div className="contests-grid-container">
           {filteredContests.map(c => {
             const today = new Date().toISOString().split('T')[0];
             const isOngoing = c.isActive && today >= c.startDate && today <= c.endDate;
@@ -757,6 +752,7 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
             return (
               <div
                 key={c.id}
+                className="contests-grid-card"
                 style={{
                   background: '#ffffff',
                   borderRadius: '14px',
@@ -778,41 +774,50 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                 }}
               >
                 <div>
-                  {/* Poster Banner Image (Compact 130px height) */}
-                  <div style={{ height: '130px', width: '100%', overflow: 'hidden', background: '#0f2b48', position: 'relative' }}>
-                    {c.bannerImageUrl ? (
+                  {/* Poster Banner Image with fallback */}
+                  <div
+                    className="contests-banner-box"
+                    style={{ height: '130px', width: '100%', overflow: 'hidden', background: '#0f2b48', position: 'relative' }}
+                  >
+                    {c.bannerImageUrl && !c.bannerImageUrl.includes('placeholder') && !c.bannerImageUrl.includes('invalid') ? (
                       <img
                         src={c.bannerImageUrl}
                         alt={c.title}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                        }}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
-                    ) : (
-                      <div style={{
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'linear-gradient(135deg, #0f2b48 0%, #1e3a8a 100%)',
-                        color: '#f59e0b',
-                        gap: '6px'
-                      }}>
-                        <Trophy size={28} />
-                        <span style={{ fontSize: '0.72rem', color: '#93c5fd', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                          Official Sales Contest
-                        </span>
-                      </div>
-                    )}
+                    ) : null}
+
+                    {/* Gradient Fallback when no image or image fails */}
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      display: c.bannerImageUrl ? 'none' : 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'linear-gradient(135deg, #0f2b48 0%, #1e3a8a 100%)',
+                      color: '#f59e0b',
+                      gap: '4px'
+                    }}>
+                      <Trophy size={24} />
+                      <span style={{ fontSize: '0.68rem', color: '#93c5fd', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                        Incentive Sprint
+                      </span>
+                    </div>
+
                     <div style={{
                       position: 'absolute',
-                      top: '8px',
-                      left: '8px',
+                      top: '6px',
+                      left: '6px',
                       background: 'rgba(15, 23, 42, 0.8)',
                       color: '#ffffff',
-                      padding: '2px 7px',
-                      borderRadius: '5px',
-                      fontSize: '0.68rem',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontSize: '0.65rem',
                       fontWeight: 800,
                       letterSpacing: '0.04em'
                     }}>
@@ -821,81 +826,91 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
 
                     <div style={{
                       position: 'absolute',
-                      top: '8px',
-                      right: '8px',
-                      fontSize: '0.68rem',
+                      top: '6px',
+                      right: '6px',
+                      fontSize: '0.65rem',
                       fontWeight: 800,
                       background: c.contestType === 'TRIP' ? '#fef3c7' : c.contestType === 'COMMISSION_BONUS' ? '#dcfce7' : '#ffffff',
                       color: c.contestType === 'TRIP' ? '#92400e' : c.contestType === 'COMMISSION_BONUS' ? '#166534' : '#0f2b48',
-                      padding: '2px 7px',
-                      borderRadius: '5px',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
                       boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                     }}>
                       {c.contestType.replace('_', ' ')}
                     </div>
                   </div>
 
-                  <div style={{ padding: '1rem' }}>
-                    
+                  <div className="contests-card-body" style={{ padding: '0.9rem' }}>
                     {/* Status Pill */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
                       <span style={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '4px',
-                        padding: '2px 7px',
+                        padding: '2px 6px',
                         borderRadius: '20px',
-                        fontSize: '0.68rem',
+                        fontSize: '0.66rem',
                         fontWeight: 800,
                         background: isOngoing ? '#ecfdf5' : isUpcoming ? '#eff6ff' : '#f1f5f9',
                         color: isOngoing ? '#059669' : isUpcoming ? '#2563eb' : '#64748b'
                       }}>
-                        <Clock size={11} />
-                        {isOngoing ? '🟢 Active Sprint' : isUpcoming ? '🟡 Upcoming' : '⚪ Concluded'}
+                        <Clock size={10} />
+                        {isOngoing ? '🟢 Active' : isUpcoming ? '🟡 Upcoming' : '⚪ Concluded'}
                       </span>
                     </div>
 
-                    {/* Title & Description */}
-                    <h3 style={{ fontSize: '0.96rem', fontWeight: 800, color: '#0f2b48', margin: '0 0 5px', lineHeight: 1.35, minHeight: '2.5em' }}>
+                    {/* Title */}
+                    <h3
+                      className="contests-card-title"
+                      style={{ fontSize: '0.94rem', fontWeight: 800, color: '#0f2b48', margin: '0 0 4px', lineHeight: 1.35, minHeight: '2.5em' }}
+                    >
                       {c.title}
                     </h3>
-                    <p style={{
-                      fontSize: '0.78rem',
-                      color: '#64748b',
-                      lineHeight: 1.45,
-                      margin: '0 0 0.85rem',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden'
-                    }}>
+
+                    {/* Description (Visible on Desktop, cleanly hidden on 2-col mobile) */}
+                    <p
+                      className="contests-card-desc"
+                      style={{
+                        fontSize: '0.78rem',
+                        color: '#64748b',
+                        lineHeight: 1.45,
+                        margin: '0 0 0.75rem',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}
+                    >
                       {c.description}
                     </p>
 
-                    {/* Key Metrics / Target Box */}
-                    <div style={{
-                      background: '#f8fafc',
-                      padding: '8px 10px',
-                      borderRadius: '8px',
-                      border: '1px solid #e2e8f0',
-                      marginBottom: '0.75rem',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
+                    {/* Target Metric Box */}
+                    <div
+                      className="contests-target-box"
+                      style={{
+                        background: '#f8fafc',
+                        padding: '7px 9px',
+                        borderRadius: '7px',
+                        border: '1px solid #e2e8f0',
+                        marginBottom: '0.65rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
                       <div>
-                        <span style={{ display: 'block', fontSize: '0.66rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                        <span style={{ display: 'block', fontSize: '0.62rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
                           Target
                         </span>
-                        <span style={{ fontSize: '0.88rem', fontWeight: 900, color: '#059669' }}>
+                        <span className="contests-target-val" style={{ fontSize: '0.86rem', fontWeight: 900, color: '#059669' }}>
                           {c.targetMetricType === 'GWP_AMOUNT' ? `₹${Number(c.targetValue).toLocaleString()} GWP` : `${c.targetValue} Policies`}
                         </span>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <span style={{ display: 'block', fontSize: '0.66rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                        <span style={{ display: 'block', fontSize: '0.62rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
                           Validity
                         </span>
-                        <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#334155' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#334155' }}>
                           {c.startDate} to {c.endDate}
                         </span>
                       </div>
@@ -904,18 +919,18 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                     {/* Reward description */}
                     {c.rewardDescription && (
                       <div style={{
-                        padding: '6px 8px',
+                        padding: '5px 7px',
                         background: 'rgba(245, 158, 11, 0.08)',
                         border: '1px solid rgba(245, 158, 11, 0.25)',
                         borderRadius: '6px',
-                        fontSize: '0.74rem',
+                        fontSize: '0.72rem',
                         color: '#92400e',
                         display: 'flex',
                         alignItems: 'flex-start',
-                        gap: '5px',
-                        marginBottom: '0.75rem'
+                        gap: '4px',
+                        marginBottom: '0.65rem'
                       }}>
-                        <Sparkles size={13} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <Sparkles size={12} style={{ flexShrink: 0, marginTop: '2px' }} />
                         <span style={{
                           display: '-webkit-box',
                           WebkitLineClamp: 2,
@@ -936,62 +951,65 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '5px',
+                          gap: '4px',
                           color: '#0284c7',
-                          fontSize: '0.75rem',
+                          fontSize: '0.72rem',
                           fontWeight: 700,
                           textDecoration: 'none',
-                          marginBottom: '0.25rem'
+                          marginBottom: '0.2rem'
                         }}
                       >
-                        <Download size={13} /> Official Circular / PDF
+                        <Download size={12} /> Circular / PDF
                       </a>
                     )}
                   </div>
                 </div>
 
                 {/* Footer Action Buttons */}
-                <div style={{
-                  padding: '0.75rem 1rem',
-                  background: '#f8fafc',
-                  borderTop: '1px solid #e2e8f0',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
+                <div
+                  className="contests-card-footer"
+                  style={{
+                    padding: '0.65rem 0.85rem',
+                    background: '#f8fafc',
+                    borderTop: '1px solid #e2e8f0',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
                   {canManage ? (
                     <>
-                      {/* WhatsApp Broadcast 1-Click Trigger */}
+                      {/* WhatsApp Broadcast */}
                       <button
                         onClick={() => handleQuickWhatsAppBroadcast(c)}
                         disabled={broadcastingId === c.id}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '4px',
+                          gap: '3px',
                           background: '#047857',
                           color: '#ffffff',
                           border: 'none',
-                          padding: '5px 8px',
-                          borderRadius: '6px',
-                          fontSize: '0.72rem',
+                          padding: '4px 7px',
+                          borderRadius: '5px',
+                          fontSize: '0.7rem',
                           fontWeight: 700,
                           cursor: 'pointer'
                         }}
-                        title="Send instant WhatsApp broadcast to all POSP agents"
+                        title="Broadcast contest to all POSP agents on WhatsApp"
                       >
-                        <WhatsAppIcon size={12} color="#ffffff" />
-                        {broadcastingId === c.id ? 'Broadcasting...' : 'Broadcast'}
+                        <WhatsAppIcon size={11} color="#ffffff" />
+                        {broadcastingId === c.id ? '...' : 'Broadcast'}
                       </button>
 
-                      <div style={{ display: 'flex', gap: '5px' }}>
+                      <div style={{ display: 'flex', gap: '4px' }}>
                         <button
                           onClick={() => openEditModal(c)}
                           style={{
                             background: '#ffffff',
                             border: '1px solid #cbd5e1',
-                            borderRadius: '6px',
-                            padding: '5px 7px',
+                            borderRadius: '5px',
+                            padding: '4px 6px',
                             cursor: 'pointer',
                             color: '#475569',
                             display: 'flex',
@@ -999,15 +1017,15 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                           }}
                           title="Edit Contest"
                         >
-                          <Edit3 size={13} />
+                          <Edit3 size={12} />
                         </button>
                         <button
                           onClick={() => handleDelete(c.id, c.title)}
                           style={{
                             background: '#ffffff',
                             border: '1px solid #fecaca',
-                            borderRadius: '6px',
-                            padding: '5px 7px',
+                            borderRadius: '5px',
+                            padding: '4px 6px',
                             cursor: 'pointer',
                             color: '#dc2626',
                             display: 'flex',
@@ -1015,24 +1033,24 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                           }}
                           title="Delete Contest"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={12} />
                         </button>
                       </div>
                     </>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                      <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
-                        Accredited POSP Sprint
+                      <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>
+                        Accredited POSP
                       </span>
                       <span style={{
                         background: '#dcfce7',
                         color: '#166534',
-                        padding: '3px 7px',
-                        borderRadius: '6px',
-                        fontSize: '0.7rem',
+                        padding: '2px 6px',
+                        borderRadius: '5px',
+                        fontSize: '0.66rem',
                         fontWeight: 700
                       }}>
-                        Direct Credit Eligible
+                        Eligible
                       </span>
                     </div>
                   )}
