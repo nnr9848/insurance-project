@@ -239,7 +239,7 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
           loadContests();
         } catch (err) {
           setConfirmModal(prev => ({ ...prev, isLoading: false }));
-          alert('Failed to delete contest: ' + (err.response?.data?.message || err.message));
+          setErrorMsg('Failed to delete contest: ' + (err.response?.data?.message || err.message));
         }
       }
     });
@@ -265,12 +265,14 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
         setBroadcastingId(contest.id);
         setBroadcastSuccess('');
         try {
-          const allPosps = await portalService.getPOSPProfiles();
-          const recipients = (allPosps || []).map(p => p.phoneNumber || p.user?.phoneNumber).filter(Boolean);
+          const allPosps = await portalService.getAdminPOSP();
+          const recipients = (allPosps || [])
+            .map(p => p.user?.phoneNumber || p.phoneNumber)
+            .filter(Boolean);
           const cleanRecipients = Array.from(new Set(recipients));
 
           if (cleanRecipients.length === 0) {
-            alert('No registered POSP agent phone numbers found to broadcast.');
+            setErrorMsg('No registered POSP agent phone numbers found to broadcast.');
             setConfirmModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
             return;
           }
@@ -282,11 +284,12 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
           });
 
           setConfirmModal(prev => ({ ...prev, isOpen: false, isLoading: false }));
-          setBroadcastSuccess(`Broadcast sent successfully to ${res.sentCount} agents!`);
-          setTimeout(() => setBroadcastSuccess(''), 5000);
+          const count = res.count || res.sentCount || cleanRecipients.length;
+          setBroadcastSuccess(`Broadcast successfully sent to ${count} POSP agents!`);
+          setTimeout(() => setBroadcastSuccess(''), 6000);
         } catch (err) {
           setConfirmModal(prev => ({ ...prev, isLoading: false }));
-          alert('Failed to broadcast contest: ' + (err.response?.data?.message || err.message));
+          setErrorMsg('Failed to broadcast contest: ' + (err.response?.data?.message || err.message));
         } finally {
           setBroadcastingId(null);
         }
