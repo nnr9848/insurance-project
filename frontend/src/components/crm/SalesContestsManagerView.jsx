@@ -99,6 +99,60 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
     isActive: true
   });
 
+  // Human-friendly date formatter: '14 Oct 2026'
+  const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const parts = dateStr.split('T')[0].split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        const d = new Date(year, month, day);
+        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      }
+      return dateStr;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Compact Date Range (Industry Standard): '14 Oct – 28 Nov 2026' (Single line, 100% uniform)
+  const formatSmartDateRange = (startStr, endStr) => {
+    if (!startStr && !endStr) return '';
+    if (!startStr) return formatDisplayDate(endStr);
+    if (!endStr) return formatDisplayDate(startStr);
+    try {
+      const sParts = startStr.split('T')[0].split('-');
+      const eParts = endStr.split('T')[0].split('-');
+      if (sParts.length === 3 && eParts.length === 3) {
+        const sYear = parseInt(sParts[0], 10);
+        const sMonth = parseInt(sParts[1], 10) - 1;
+        const sDay = parseInt(sParts[2], 10);
+        const sDate = new Date(sYear, sMonth, sDay);
+
+        const eYear = parseInt(eParts[0], 10);
+        const eMonth = parseInt(eParts[1], 10) - 1;
+        const eDay = parseInt(eParts[2], 10);
+        const eDate = new Date(eYear, eMonth, eDay);
+
+        // Same year: '14 Oct – 28 Nov 2026'
+        if (sYear === eYear) {
+          const sFormatted = sDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+          const eFormatted = eDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+          return `${sFormatted} – ${eFormatted}`;
+        }
+        // Different years: '20 Dec 2026 – 15 Jan 2027'
+        const sFormatted = sDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        const eFormatted = eDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        return `${sFormatted} – ${eFormatted}`;
+      }
+      return `${startStr} – ${endStr}`;
+    } catch {
+      return `${startStr} – ${endStr}`;
+    }
+  };
+
   const loadContests = async () => {
     setLoading(true);
     try {
@@ -788,8 +842,14 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                       {isOngoing ? `Active (${daysRemaining}d left)` : isUpcoming ? `Starts in ${daysRemaining}d` : 'Concluded'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.74rem', color: '#475569', fontWeight: 600, marginTop: '2px' }}>
-                    {c.startDate} <span style={{ color: '#94a3b8' }}>to</span> {c.endDate}
+                  <div style={{
+                    fontSize: '0.74rem',
+                    color: '#475569',
+                    fontWeight: 600,
+                    marginTop: '2px',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {formatSmartDateRange(c.startDate, c.endDate)}
                   </div>
                 </div>
 
@@ -1095,16 +1155,22 @@ export default function SalesContestsManagerView({ isAgentView = false }) {
                         <span style={{ display: 'block', fontSize: '0.62rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
                           Target
                         </span>
-                        <span className="contests-target-val" style={{ fontSize: '0.86rem', fontWeight: 900, color: '#059669' }}>
+                        <span className="contests-target-val" style={{ fontSize: '0.86rem', fontWeight: 900, color: '#059669', whiteSpace: 'nowrap' }}>
                           {c.targetMetricType === 'GWP_AMOUNT' ? `₹${Number(c.targetValue).toLocaleString()} GWP` : `${c.targetValue} Policies`}
                         </span>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
+                      <div className="contests-card-validity" style={{ textAlign: 'right', minWidth: 0, flex: '1 1 auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                         <span style={{ display: 'block', fontSize: '0.62rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
                           Validity
                         </span>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#334155' }}>
-                          {c.startDate} to {c.endDate}
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          color: '#334155',
+                          whiteSpace: 'nowrap',
+                          lineHeight: 1.25
+                        }}>
+                          {formatSmartDateRange(c.startDate, c.endDate)}
                         </span>
                       </div>
                     </div>

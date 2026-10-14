@@ -5482,10 +5482,15 @@ h1, h2, h3, h4, h5, h6 {
   .contests-grid-card .contests-target-box {
     padding: 4px 6px !important;
     margin-bottom: 0.45rem !important;
+    gap: 4px !important;
   }
 
   .contests-grid-card .contests-target-val {
-    font-size: 0.76rem !important;
+    font-size: 0.74rem !important;
+  }
+
+  .contests-grid-card .contests-card-validity > div {
+    font-size: 0.64rem !important;
   }
 
   .contests-grid-card .contests-card-footer {
