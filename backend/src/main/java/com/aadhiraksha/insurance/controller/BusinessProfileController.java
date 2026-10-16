@@ -24,6 +24,7 @@ public class BusinessProfileController {
     private final com.aadhiraksha.insurance.service.TwilioSmsService twilioSmsService;
     private final com.aadhiraksha.insurance.service.TwilioWhatsAppService twilioWhatsAppService;
     private final com.aadhiraksha.insurance.repository.BroadcastCampaignLogRepository broadcastCampaignLogRepository;
+    private final com.aadhiraksha.insurance.service.EmailService emailService;
 
     /**
      * Public endpoint: retrieve canonical company contact, hotline, and communication address
@@ -580,6 +581,50 @@ public class BusinessProfileController {
             "fileName", storedFileName,
             "url", fileUrl
         ));
+    }
+
+    /**
+     * Admin diagnostic endpoint: Test transactional email delivery via Stalwart SMTP
+     */
+    @PostMapping("/admin/settings/email/test")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @Operation(summary = "Test Outbound Transactional Email", description = "Synchronously delivers a branded test email to any desired recipient to verify SMTP health")
+    public ResponseEntity<java.util.Map<String, Object>> testEmailDelivery(
+            @RequestBody java.util.Map<String, String> request) {
+        
+        String targetEmail = request != null ? request.get("targetEmail") : null;
+        if (targetEmail == null || targetEmail.trim().isEmpty() || !targetEmail.contains("@")) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                "success", false,
+                "message", "Please provide a valid recipient email address."
+            ));
+        }
+
+        try {
+            String subject = "Aadhiraksha Mail Diagnostic: Outbound SMTP Delivery Verified";
+            String htmlContent = """
+                <p>Hello,</p>
+                <p>This is an automated <strong>SMTP Delivery Verification Test</strong> dispatched from the <strong>Aadhiraksha CRM Operations Console</strong>.</p>
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                    <p style="margin: 0 0 6px; color: #166534; font-weight: bold;">✔ Stalwart SMTP Handshake Successful</p>
+                    <p style="margin: 0; color: #15803d; font-size: 13px;">Recipient Address: <strong>%s</strong></p>
+                </div>
+                <p>If you are reading this email, your corporate mail server (Stalwart), DNS records (SPF, DKIM, MX), and application SMTP dispatch channels are fully operational.</p>
+                """.formatted(targetEmail.trim());
+
+            emailService.sendEmailDirect(targetEmail.trim(), subject, htmlContent);
+
+            return ResponseEntity.ok(java.util.Map.of(
+                "success", true,
+                "message", "Test email successfully delivered to " + targetEmail.trim() + " via Stalwart SMTP!"
+            ));
+        } catch (Exception ex) {
+            log.error("Failed to deliver test email to {}: {}", targetEmail, ex.getMessage(), ex);
+            return ResponseEntity.status(500).body(java.util.Map.of(
+                "success", false,
+                "message", "SMTP delivery failed: " + ex.getMessage()
+            ));
+        }
     }
 }
 

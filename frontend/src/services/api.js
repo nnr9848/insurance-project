@@ -505,6 +505,10 @@ export const portalService = {
     const res = await api.post('/admin/settings/twilio/test', { testPhone });
     return res.data;
   },
+  testEmailDelivery: async (targetEmail) => {
+    const res = await api.post('/admin/settings/email/test', { targetEmail });
+    return res.data;
+  },
   uploadGalleryImage: async (formData) => {
     const res = await api.post('/admin/settings/gallery/upload', formData, {
       headers: {

@@ -30,15 +30,18 @@ spring:
     locations: classpath:db/migration
   mail:
     host: ${SPRING_MAIL_HOST:mail.aadhirakshainsurance.com}
-    port: ${SPRING_MAIL_PORT:587}
-    username: ${SPRING_MAIL_USERNAME:notifications@aadhirakshainsurance.com}
+    port: ${SPRING_MAIL_PORT:465}
+    username: ${SPRING_MAIL_USERNAME:admin@aadhirakshainsurance.com}
     password: ${SPRING_MAIL_PASSWORD:AadhirakshaMailSecret2026!}
     properties:
       mail:
         smtp:
           auth: true
-          starttls:
+          ssl:
             enable: true
+            trust: "*"
+          starttls:
+            enable: false
             required: false
           connectiontimeout: 5000
           timeout: 5000

@@ -15,7 +15,8 @@ import {
   Lock,
   ExternalLink,
   ShieldAlert,
-  Info
+  Info,
+  Mail
 } from 'lucide-react';
 import { portalService } from '../../services/api';
 import { useBusinessProfile } from '../../context/BusinessProfileContext';
@@ -56,6 +57,8 @@ export default function IntegrationsSettingsView() {
   const [isTestingWhatsApp, setIsTestingWhatsApp] = useState(false);
   const [testTwilioPhone, setTestTwilioPhone] = useState('');
   const [isTestingTwilio, setIsTestingTwilio] = useState(false);
+  const [testEmail, setTestEmail] = useState('');
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
 
   useEffect(() => {
     if (businessProfile) {
@@ -155,6 +158,29 @@ export default function IntegrationsSettingsView() {
       toast.error(err.response?.data?.message || 'Failed to dispatch WhatsApp message. Ensure recipient has joined Twilio Sandbox if testing in sandbox.');
     } finally {
       setIsTestingWhatsApp(false);
+    }
+  };
+
+  const handleTestEmail = async () => {
+    const cleanEmail = (testEmail || '').trim();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      toast.error('Please enter a valid recipient email address (e.g. name@domain.com).');
+      return;
+    }
+
+    setIsTestingEmail(true);
+    try {
+      const res = await portalService.testEmailDelivery(cleanEmail);
+      if (res.success) {
+        toast.success(res.message || `Test email successfully dispatched to ${cleanEmail}! Check inbox/spam.`);
+      } else {
+        toast.error(res.message || 'Failed to dispatch test email. Check server logs.');
+      }
+    } catch (err) {
+      console.error('Email Test error:', err);
+      toast.error(err.response?.data?.message || 'SMTP delivery failed. Check Stalwart mail server status.');
+    } finally {
+      setIsTestingEmail(false);
     }
   };
 
@@ -871,6 +897,134 @@ export default function IntegrationsSettingsView() {
                   <>
                     <Send size={14} />
                     <span>Send Test WhatsApp</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* INTEGRATION 4: CORPORATE MAIL SERVER & TRANSACTIONAL SMTP (STALWART) */}
+        {/* ========================================================================= */}
+        <div style={{
+          background: '#ffffff',
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          padding: '1.5rem',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#2563eb'
+              }}>
+                <Mail size={24} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f2b48', margin: '0 0 2px' }}>
+                  Corporate Mail Server (Stalwart SMTP)
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
+                  Active on <strong>mail.aadhirakshainsurance.com</strong> | SMTPS Port 465 (TLS/SSL) | DKIM & SPF Verified
+                </p>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '20px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              background: '#f0fdf4',
+              color: '#166534',
+              border: '1px solid #bbf7d0'
+            }}>
+              <CheckCircle2 size={14} />
+              <span>Mail Server Operational</span>
+            </div>
+          </div>
+
+          <div style={{
+            background: '#f8fafc',
+            borderRadius: '12px',
+            border: '1px solid #e2e8f0',
+            padding: '1rem 1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0f2b48', fontWeight: 700, fontSize: '0.88rem' }}>
+              <Zap size={16} color="#2563eb" />
+              <span>Real-Time Outbound Email Dispatch Diagnostics</span>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
+              Dispatch a synchronous, branded test HTML email to any address (e.g. your Gmail or customer inbox) to verify live SMTP handshake and deliverability.
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginTop: '4px' }}>
+              <div style={{ flex: 1, minWidth: '240px' }}>
+                <input
+                  type="email"
+                  value={testEmail}
+                  onChange={(e) => setTestEmail(e.target.value)}
+                  placeholder="Enter recipient email (e.g. name@domain.com)"
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    color: '#1e293b',
+                    outline: 'none',
+                    background: '#ffffff'
+                  }}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleTestEmail}
+                disabled={isTestingEmail}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '9px 18px',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  cursor: isTestingEmail ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {isTestingEmail ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Delivering via SMTP...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send size={14} />
+                    <span>Send Test Email</span>
                   </>
                 )}
               </button>

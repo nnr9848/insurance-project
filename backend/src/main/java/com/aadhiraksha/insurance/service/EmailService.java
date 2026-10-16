@@ -77,6 +77,31 @@ public class EmailService {
     }
 
     /**
+     * Synchronously dispatch an email and throw exceptions on failure.
+     * Used by the Admin Test Delivery Diagnostic Endpoint to provide real-time UI feedback.
+     */
+    public void sendEmailDirect(String to, String subject, String htmlContent) throws Exception {
+        if (to == null || to.trim().isEmpty() || !to.contains("@")) {
+            throw new IllegalArgumentException("Invalid recipient email address format: " + to);
+        }
+
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(
+                message,
+                MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
+                StandardCharsets.UTF_8.name()
+        );
+
+        helper.setFrom(fromEmail, "Aadhiraksha Insurance");
+        helper.setTo(to.trim());
+        helper.setSubject(subject);
+        helper.setText(buildBrandedEmailTemplate(subject, htmlContent), true);
+
+        mailSender.send(message);
+        log.info("Direct test email successfully dispatched via SMTP to {}", to);
+    }
+
+    /**
      * Dispatches Welcome Email with credentials to newly provisioned CRM employees or POSP Agents.
      */
     @Async
