@@ -40,6 +40,7 @@ import {
 import PartnerLeadModal from '../components/common/PartnerLeadModal';
 import CustomerReviewsSection from '../components/common/CustomerReviewsSection';
 import { PARTNER_LOGO_MAP, DEFAULT_PARTNERS_FALLBACK } from '../utils/partnerAssetCatalog';
+import InContextPageEditorModal, { SectionEditTrigger } from '../components/common/InContextPageEditorModal';
 
 export default function Home() {
   const { isSuperAdmin, isManager } = useAuth();
@@ -136,6 +137,25 @@ export default function Home() {
       setSavingWhyUs(false);
     }
   };
+
+  // Industry Standard: Escape key handler & body scroll lock for Why Us modal
+  useEffect(() => {
+    if (!isEditingWhyUs) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        e.preventDefault();
+        setIsEditingWhyUs(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isEditingWhyUs]);
 
   // PolicyBazaar Style Product Categories Grid
   const productTiles = [
@@ -410,34 +430,18 @@ export default function Home() {
       <section className="pb-comparison-section" style={{ position: 'relative' }}>
         <div className="container" style={{ position: 'relative' }}>
           
-          {/* Admin / Manager In-Context Inline Edit Trigger Button */}
+          {/* Admin / Manager In-Context Section Edit Trigger Button */}
           {(isSuperAdmin || isManager) && (
             <div style={{
               display: 'flex',
               justifyContent: 'flex-end',
               marginBottom: '1rem'
             }}>
-              <button
+              <SectionEditTrigger
+                label="Edit"
+                tooltip="Edit Why Choose Us comparison section"
                 onClick={openWhyUsEditor}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: '#0f2b48',
-                  color: '#ffffff',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  padding: '7px 14px',
-                  borderRadius: '8px',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(15, 43, 72, 0.15)',
-                  transition: 'all 0.2s ease'
-                }}
-                title="Edit Comparison Headings and Comparison Points Directly"
-              >
-                <Edit3 size={14} color="#f59e0b" /> Edit Comparison Section
-              </button>
+              />
             </div>
           )}
 
@@ -613,32 +617,38 @@ export default function Home() {
 
       {/* IN-CONTEXT WHY CHOOSE US COMPARISON EDIT MODAL (Rule 10 Compliant) */}
       {isEditingWhyUs && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1200,
-          padding: '1rem'
-        }}>
-          <div style={{
-            background: '#ffffff',
-            borderRadius: '16px',
-            width: '100%',
-            maxWidth: '720px',
-            maxHeight: '90vh',
+        <div
+          onClick={() => setIsEditingWhyUs(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'none',
             display: 'flex',
-            flexDirection: 'column',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            border: '1px solid #e2e8f0',
-            overflow: 'hidden'
-          }}>
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1200,
+            padding: '1rem'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: '720px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid #e2e8f0',
+              overflow: 'hidden'
+            }}
+          >
             {/* Modal Header */}
             <div style={{
               padding: '1.25rem 1.5rem',

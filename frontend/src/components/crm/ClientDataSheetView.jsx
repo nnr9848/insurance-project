@@ -36,7 +36,9 @@ import {
   Building2,
   Mail,
   Zap,
-  Layers
+  Layers,
+  MoreVertical,
+  MoreHorizontal
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { crmService, portalService } from '../../services/api';
@@ -62,6 +64,7 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
   const [stageFilter, setStageFilter] = useState('ALL');
   const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [insuranceTypeFilter, setInsuranceTypeFilter] = useState('ALL');
+  const [portalStatusFilter, setPortalStatusFilter] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'OFFLINE'
   const [sortField, setSortField] = useState('updatedAt'); // 'deadline', 'updatedAt', 'premium', 'name'
   const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
   const [scheduleActivityModalState, setScheduleActivityModalState] = useState({ isOpen: false, client: null, type: 'MEETING' });
@@ -82,6 +85,20 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
   const [editingRowId, setEditingRowId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [activeReachLead, setActiveReachLead] = useState(null); // Active lead for omni-contact popover/bottom-sheet
+  const [activeActionMenuId, setActiveActionMenuId] = useState(null); // ID of lead whose '•••' more menu is open
+  
+  // Close overflow menu when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.crm-actions-overflow-container')) {
+        setActiveActionMenuId(null);
+      }
+    };
+    if (activeActionMenuId) {
+      document.addEventListener('click', handleOutsideClick);
+      return () => document.removeEventListener('click', handleOutsideClick);
+    }
+  }, [activeActionMenuId]);
   
   // In-Context Schedule Meeting Modal (Keeps user on Client Data Sheet view without background redirects)
   const [inContextMeetingLead, setInContextMeetingLead] = useState(null);
@@ -457,14 +474,16 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
     const matchesPriority = priorityFilter === 'ALL' || l.priority === priorityFilter;
     const matchesType = insuranceTypeFilter === 'ALL' || l.insuranceType === insuranceTypeFilter;
     const matchesAdvisor = advisorFilter === 'ALL' || String(l.assignedAdvisorId) === String(advisorFilter);
+    const matchesPortal = portalStatusFilter === 'ALL' || (portalStatusFilter === 'ACTIVE' ? Boolean(l.isPortalActive) : !l.isPortalActive);
 
-    return matchesSearch && matchesStage && matchesPriority && matchesType && matchesAdvisor;
+    return matchesSearch && matchesStage && matchesPriority && matchesType && matchesAdvisor && matchesPortal;
   });
 
   // Calculate active filter count (excluding default search & stage)
   const activeSecondaryFiltersCount = [
     priorityFilter !== 'ALL',
     insuranceTypeFilter !== 'ALL',
+    portalStatusFilter !== 'ALL',
     advisorFilter !== 'ALL'
   ].filter(Boolean).length;
 
@@ -719,6 +738,26 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
                 <option value="Vehicle / Motor Insurance">Vehicle</option>
                 <option value="Commercial / SME Insurance">Business & SME</option>
                 <option value="Travel Insurance">Travel</option>
+              </select>
+
+              <select
+                className="form-select"
+                value={portalStatusFilter}
+                onChange={(e) => setPortalStatusFilter(e.target.value)}
+                style={{
+                  height: '36px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  minWidth: '160px',
+                  width: 'auto',
+                  border: portalStatusFilter !== 'ALL' ? '1px solid #10b981' : undefined,
+                  background: portalStatusFilter === 'ACTIVE' ? '#ecfdf5' : undefined
+                }}
+                title="Filter by Online Customer Portal Access"
+              >
+                <option value="ALL">🌐 All Access Modes</option>
+                <option value="ACTIVE">🟢 Online Portal Users</option>
+                <option value="OFFLINE">⚪ Offline Clients Only</option>
               </select>
 
               {/* Desktop Sort Dropdown */}
@@ -1085,13 +1124,14 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
                     </th>
                     <th className="crm-table-th" style={{ minWidth: '140px' }}>Pipeline Stage</th>
                     <th className="crm-table-th" style={{ minWidth: '130px' }}>Advisor</th>
-                    <th className="crm-table-th" style={{ textAlign: 'center', width: '160px' }}>Quick Actions</th>
+                    <th className="crm-table-th" style={{ textAlign: 'center', width: '110px', minWidth: '110px' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedLeads.map((lead, index) => {
                     const isEditing = editingRowId === lead.id;
                     const isSelected = selectedLeadIds.includes(lead.id);
+                    const isMenuOpen = activeActionMenuId === lead.id;
                     const stageBadge = getStageBadge(lead.stage);
                     const priorityBadge = getPriorityBadge(lead.priority);
 
@@ -1111,7 +1151,11 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
                       <tr 
                         key={lead.id} 
                         className="crm-table-row"
-                        style={{ background: isSelected ? 'rgba(99, 102, 241, 0.05)' : undefined }}
+                        style={{ 
+                          background: isSelected ? 'rgba(99, 102, 241, 0.05)' : undefined,
+                          position: isMenuOpen ? 'relative' : undefined,
+                          zIndex: isMenuOpen ? 40 : undefined
+                        }}
                       >
                         {/* Multi-Select Checkbox for Admin/Manager */}
                         {canReassign && (
@@ -1195,6 +1239,23 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
                                       title="Client Identifier Code"
                                     >
                                       {lead.clientCode}
+                                    </span>
+                                  )}
+                                  {lead.isPortalActive && (
+                                    <span style={{
+                                      fontSize: '0.66rem',
+                                      fontWeight: 800,
+                                      color: '#15803d',
+                                      background: '#dcfce7',
+                                      border: '1px solid #86efac',
+                                      padding: '1px 6px',
+                                      borderRadius: '4px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px'
+                                    }} title={lead.lastPortalLogin ? `Customer Portal Active (Last active: ${new Date(lead.lastPortalLogin).toLocaleDateString('en-IN')})` : 'Customer Portal Active'}>
+                                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#22c55e' }}></span>
+                                      Portal User
                                     </span>
                                   )}
                                   <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
@@ -1502,8 +1563,22 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
                             </div>
                           ) : (
                             <div>
-                              <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.84rem' }}>
-                                {lead.sumInsured || (lead.notes?.match(/₹[\d,]+(\s*Lakhs|\s*Crore|\s*Cr)?/)?.[0] ? `${lead.notes.match(/₹[\d,]+(\s*Lakhs|\s*Crore|\s*Cr)?/)[0]} (Desired)` : 'Quote Pending')}
+                              <div style={{ fontWeight: 800, color: '#0f2b48', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                <span>{lead.sumInsured || (lead.notes?.match(/₹[\d,]+(\s*Lakhs|\s*Crore|\s*Cr)?/)?.[0] ? `${lead.notes.match(/₹[\d,]+(\s*Lakhs|\s*Crore|\s*Cr)?/)[0]} (Desired)` : 'Quote Pending')}</span>
+                                {String(lead.sumInsured || '').startsWith('$') && (
+                                  <span style={{
+                                    fontSize: '0.62rem',
+                                    fontWeight: 800,
+                                    background: '#e0f2fe',
+                                    color: '#0369a1',
+                                    border: '1px solid #bae6fd',
+                                    padding: '1px 4px',
+                                    borderRadius: '3px',
+                                    letterSpacing: '0.02em'
+                                  }} title="Overseas Medical Cover limit in US Dollars ($)">
+                                    OVERSEAS
+                                  </span>
+                                )}
                               </div>
                               <div style={{ fontSize: '0.74rem', color: lead.estimatedPremium ? '#059669' : '#64748b', fontWeight: lead.estimatedPremium ? 700 : 500 }}>
                                 {lead.estimatedPremium ? `Est. ₹${Number(lead.estimatedPremium).toLocaleString()}` : 'Premium TBD'}
@@ -1706,138 +1781,280 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
                               </button>
                             </div>
                           ) : (
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}>
-                              {/* 1. Direct Phone Call */}
+                            <div 
+                              className="crm-actions-overflow-container"
+                              style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: '6px', 
+                                justifyContent: 'center',
+                                position: 'relative' 
+                              }}
+                            >
+                              {/* 1. Primary Reach Action: 1-Tap WhatsApp */}
                               <button
-                                onClick={() => {
-                                  const cleanPhone = (lead.phoneNumber || '').replace(/[^0-9+]/g, '');
-                                  if (cleanPhone) {
-                                    window.location.href = `tel:${cleanPhone}`;
-                                  } else {
-                                    toast.error('No phone number recorded for this client.');
-                                  }
-                                }}
+                                onClick={() => openWhatsApp(lead.phoneNumber, lead.fullName, lead.insuranceType)}
                                 style={{
                                   background: '#ecfdf5',
                                   color: '#059669',
                                   border: '1px solid #a7f3d0',
-                                  width: '28px',
-                                  height: '28px',
-                                  borderRadius: '6px',
+                                  padding: '4px 8px',
+                                  borderRadius: '7px',
                                   cursor: 'pointer',
-                                  display: 'flex',
+                                  display: 'inline-flex',
                                   alignItems: 'center',
-                                  justifyContent: 'center',
+                                  gap: '5px',
+                                  fontSize: '0.74rem',
+                                  fontWeight: 700,
                                   transition: 'all 0.15s ease'
                                 }}
-                                title={`Call ${lead.fullName} (${lead.phoneNumber || 'No Phone'})`}
+                                title={`1-Tap WhatsApp ${lead.fullName}`}
                               >
-                                <Phone size={13} />
+                                <WhatsAppIcon size={13} color="#059669" />
+                                <span>Reach</span>
                               </button>
 
-                              {/* 2. 1-Tap WhatsApp */}
+                              {/* 2. Overflow '•••' More Options Button */}
                               <button
-                                onClick={() => openWhatsApp(lead.phoneNumber, lead.fullName, lead.insuranceType)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveActionMenuId(activeActionMenuId === lead.id ? null : lead.id);
+                                }}
                                 style={{
-                                  background: '#f0fdf4',
-                                  color: '#16a34a',
-                                  border: '1px solid #bbf7d0',
+                                  background: activeActionMenuId === lead.id ? 'var(--primary-navy)' : '#f8fafc',
+                                  color: activeActionMenuId === lead.id ? '#ffffff' : '#475569',
+                                  border: `1px solid ${activeActionMenuId === lead.id ? 'var(--primary-navy)' : '#e2e8f0'}`,
                                   width: '28px',
                                   height: '28px',
-                                  borderRadius: '6px',
+                                  borderRadius: '7px',
                                   cursor: 'pointer',
-                                  display: 'flex',
+                                  display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   transition: 'all 0.15s ease'
                                 }}
-                                title={`WhatsApp ${lead.fullName}`}
+                                title="More Actions & Interactions"
                               >
-                                <WhatsAppIcon size={14} color="#16a34a" />
+                                <MoreVertical size={14} />
                               </button>
 
-                              {/* 3. Send Email Proposal */}
-                              <button
-                                onClick={() => {
-                                  if (lead.email) {
-                                    window.open(`mailto:${lead.email}?subject=Insurance%20Advisory%20Proposal%20-%20Aadhiraksha&body=Dear%20${encodeURIComponent(lead.fullName)},%0D%0A%0D%0APlease%20find%20attached%20your%20customized%20insurance%20portfolio%20details.`, '_blank');
-                                  } else {
-                                    setQuickEmailLead(lead);
-                                    setQuickEmailInput('');
-                                  }
-                                }}
-                                style={{
-                                  background: '#f0f9ff',
-                                  color: '#0284c7',
-                                  border: '1px solid #bae6fd',
-                                  width: '28px',
-                                  height: '28px',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  transition: 'all 0.15s ease'
-                                }}
-                                title={lead.email ? `Email ${lead.email}` : `+ Add Email for ${lead.fullName}`}
-                              >
-                                <Mail size={13} />
-                              </button>
+                              {/* Dropdown Menu (Zero Blur Standard, Crisp Shadow & Clean Typography) */}
+                              {activeActionMenuId === lead.id && (
+                                <div
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{
+                                    position: 'absolute',
+                                    right: 0,
+                                    top: 'calc(100% + 4px)',
+                                    background: '#ffffff',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '12px',
+                                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                                    zIndex: 50,
+                                    minWidth: '200px',
+                                    padding: '6px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '2px',
+                                    textAlign: 'left'
+                                  }}
+                                >
+                                  {/* Menu Item: Client 360 */}
+                                  <button
+                                    onClick={() => {
+                                      setActiveActionMenuId(null);
+                                      onOpenClient360 && onOpenClient360(lead);
+                                    }}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '8px',
+                                      padding: '8px 10px',
+                                      background: 'none',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      fontSize: '0.78rem',
+                                      fontWeight: 700,
+                                      color: '#0f2b48',
+                                      cursor: 'pointer',
+                                      width: '100%',
+                                      transition: 'background 0.12s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                  >
+                                    <ExternalLink size={13} color="var(--accent-gold)" />
+                                    <span>Client 360° Profile</span>
+                                  </button>
 
-                              {/* 4. Schedule Consultation (In-Context Modal) */}
-                              <button
-                                onClick={() => {
-                                  setMeetingForm({
-                                    title: `Insurance Consultation with ${lead.fullName}`,
-                                    meetingDate: new Date().toISOString().slice(0, 10),
-                                    startTime: '11:00',
-                                    endTime: '11:30',
-                                    product: lead.insuranceType || 'Health Insurance',
-                                    purpose: 'Detailed Plan Comparison & Policy Finalization',
-                                    meetingType: 'GOOGLE_MEET',
-                                    location: '',
-                                    notes: ''
-                                  });
-                                  setInContextMeetingLead(lead);
-                                }}
-                                style={{
-                                  background: '#eff6ff',
-                                  color: '#2563eb',
-                                  border: '1px solid #bfdbfe',
-                                  width: '28px',
-                                  height: '28px',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  transition: 'all 0.15s ease'
-                                }}
-                                title="Schedule Meeting Consultation"
-                              >
-                                <Calendar size={13} />
-                              </button>
+                                  <div style={{ height: '1px', background: '#f1f5f9', margin: '3px 0' }} />
 
-                              {/* 5. Inline Edit */}
-                              <button
-                                onClick={() => startInlineEdit(lead)}
-                                style={{
-                                  background: '#f8fafc',
-                                  color: '#64748b',
-                                  border: '1px solid #e2e8f0',
-                                  width: '28px',
-                                  height: '28px',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  transition: 'all 0.15s ease'
-                                }}
-                                title="Quick Edit Client Record"
-                              >
-                                <Edit3 size={13} />
-                              </button>
+                                  {/* Menu Item: Phone Call */}
+                                  <button
+                                    onClick={() => {
+                                      setActiveActionMenuId(null);
+                                      const cleanPhone = (lead.phoneNumber || '').replace(/[^0-9+]/g, '');
+                                      if (cleanPhone) {
+                                        window.location.href = `tel:${cleanPhone}`;
+                                      } else {
+                                        toast.error('No phone number recorded for this client.');
+                                      }
+                                    }}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '8px',
+                                      padding: '7px 10px',
+                                      background: 'none',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      fontSize: '0.78rem',
+                                      fontWeight: 600,
+                                      color: '#334155',
+                                      cursor: 'pointer',
+                                      width: '100%',
+                                      transition: 'background 0.12s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                  >
+                                    <Phone size={13} color="#059669" />
+                                    <span>Place Phone Call</span>
+                                  </button>
+
+                                  {/* Menu Item: Send Email */}
+                                  <button
+                                    onClick={() => {
+                                      setActiveActionMenuId(null);
+                                      if (lead.email) {
+                                        window.open(`mailto:${lead.email}?subject=Insurance%20Advisory%20Proposal%20-%20Aadhiraksha&body=Dear%20${encodeURIComponent(lead.fullName)},%0D%0A%0D%0APlease%20find%20attached%20your%20customized%20insurance%20portfolio%20details.`, '_blank');
+                                      } else {
+                                        setQuickEmailLead(lead);
+                                        setQuickEmailInput('');
+                                      }
+                                    }}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '8px',
+                                      padding: '7px 10px',
+                                      background: 'none',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      fontSize: '0.78rem',
+                                      fontWeight: 600,
+                                      color: '#334155',
+                                      cursor: 'pointer',
+                                      width: '100%',
+                                      transition: 'background 0.12s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                  >
+                                    <Mail size={13} color="#0284c7" />
+                                    <span>{lead.email ? 'Send Email Proposal' : '+ Add Email Address'}</span>
+                                  </button>
+
+                                  {/* Menu Item: Schedule Meeting */}
+                                  <button
+                                    onClick={() => {
+                                      setActiveActionMenuId(null);
+                                      setMeetingForm({
+                                        title: `Insurance Consultation with ${lead.fullName}`,
+                                        meetingDate: new Date().toISOString().slice(0, 10),
+                                        startTime: '11:00',
+                                        endTime: '11:30',
+                                        product: lead.insuranceType || 'Health Insurance',
+                                        purpose: 'Detailed Plan Comparison & Policy Finalization',
+                                        meetingType: 'GOOGLE_MEET',
+                                        location: '',
+                                        notes: ''
+                                      });
+                                      setInContextMeetingLead(lead);
+                                    }}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '8px',
+                                      padding: '7px 10px',
+                                      background: 'none',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      fontSize: '0.78rem',
+                                      fontWeight: 600,
+                                      color: '#334155',
+                                      cursor: 'pointer',
+                                      width: '100%',
+                                      transition: 'background 0.12s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                  >
+                                    <Calendar size={13} color="#2563eb" />
+                                    <span>Schedule Meeting</span>
+                                  </button>
+
+                                  <div style={{ height: '1px', background: '#f1f5f9', margin: '3px 0' }} />
+
+                                  {/* Menu Item: Inline Edit */}
+                                  <button
+                                    onClick={() => {
+                                      setActiveActionMenuId(null);
+                                      startInlineEdit(lead);
+                                    }}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '8px',
+                                      padding: '7px 10px',
+                                      background: 'none',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      fontSize: '0.78rem',
+                                      fontWeight: 600,
+                                      color: '#334155',
+                                      cursor: 'pointer',
+                                      width: '100%',
+                                      transition: 'background 0.12s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                  >
+                                    <Edit3 size={13} color="#d97706" />
+                                    <span>Quick Edit Details</span>
+                                  </button>
+
+                                  {/* Menu Item: Reassign (if authorized) */}
+                                  {canReassign && (
+                                    <button
+                                      onClick={() => {
+                                        setActiveActionMenuId(null);
+                                        openQuickReassign(lead);
+                                      }}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '7px 10px',
+                                        background: 'none',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 600,
+                                        color: '#334155',
+                                        cursor: 'pointer',
+                                        width: '100%',
+                                        transition: 'background 0.12s'
+                                      }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                    >
+                                      <UserCheck size={13} color="#4f46e5" />
+                                      <span>Reassign Advisor</span>
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           )}
                         </td>

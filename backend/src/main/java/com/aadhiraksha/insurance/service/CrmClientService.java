@@ -548,6 +548,13 @@ public class CrmClientService {
     }
 
     public ClientDto.ClientResponse mapToClientResponse(Client client) {
+        User customerUser = client.getCustomerUser();
+        boolean isPortalActive = customerUser != null;
+        LocalDateTime lastPortalLogin = null;
+        if (customerUser != null) {
+            lastPortalLogin = customerUser.getUpdatedAt() != null ? customerUser.getUpdatedAt() : customerUser.getCreatedAt();
+        }
+
         return ClientDto.ClientResponse.builder()
                 .id(client.getId())
                 .clientCode(client.getClientCode())
@@ -576,6 +583,8 @@ public class CrmClientService {
                 .managerId(client.getManager() != null ? client.getManager().getId() : null)
                 .managerName(client.getManager() != null ? client.getManager().getFullName() : "None")
                 .notes(client.getNotes())
+                .isPortalActive(isPortalActive)
+                .lastPortalLogin(lastPortalLogin)
                 .createdAt(client.getCreatedAt())
                 .updatedAt(client.getUpdatedAt())
                 .build();

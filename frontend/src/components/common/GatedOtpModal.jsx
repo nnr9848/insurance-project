@@ -16,7 +16,7 @@ export default function GatedOtpModal({
   purposeText = 'instant quote and advisor consultation'
 }) {
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
-  const [countdown, setCountdown] = useState(30);
+  const [countdown, setCountdown] = useState(60);
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -49,7 +49,7 @@ export default function GatedOtpModal({
     try {
       const res = await portalService.sendOtp(cleanPhone);
       setOtpSentMsg(res.message || `OTP sent to +91 ${cleanPhone}`);
-      setCountdown(30);
+      setCountdown(60);
       setTimeout(() => {
         if (inputRefs.current[0]) inputRefs.current[0].focus();
       }, 100);
@@ -317,26 +317,36 @@ export default function GatedOtpModal({
             )}
           </button>
 
-          {/* Resend Action */}
+          {/* Resend Action & Validity Info */}
           <div style={{ textAlign: 'center', fontSize: '0.78rem', color: '#64748b' }}>
             {countdown > 0 ? (
-              <span>Resend verification code in <strong>{countdown}s</strong></span>
+              <div>
+                <span>Resend code in <strong>{countdown >= 60 ? `${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, '0')}` : `${countdown}s`}</strong></span>
+                <span style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', marginTop: '4px' }}>
+                  Code is valid for 5 minutes
+                </span>
+              </div>
             ) : (
-              <button
-                type="button"
-                onClick={handleTriggerSendOtp}
-                disabled={isSending}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#0284c7',
-                  fontWeight: 700,
-                  cursor: isSending ? 'not-allowed' : 'pointer',
-                  padding: 0
-                }}
-              >
-                {isSending ? 'Sending new code...' : 'Resend Code Now'}
-              </button>
+              <div>
+                <button
+                  type="button"
+                  onClick={handleTriggerSendOtp}
+                  disabled={isSending}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#0284c7',
+                    fontWeight: 700,
+                    cursor: isSending ? 'not-allowed' : 'pointer',
+                    padding: 0
+                  }}
+                >
+                  {isSending ? 'Sending new code...' : 'Resend Code Now'}
+                </button>
+                <span style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', marginTop: '4px' }}>
+                  Code is valid for 5 minutes
+                </span>
+              </div>
             )}
           </div>
         </div>

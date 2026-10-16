@@ -17,10 +17,14 @@ import {
 } from 'lucide-react';
 import { portalService } from '../services/api';
 import { useBusinessProfile } from '../context/BusinessProfileContext';
+import { useAuth } from '../context/AuthContext';
+import InContextPageEditorModal, { InContextAdminBar, SectionEditTrigger } from '../components/common/InContextPageEditorModal';
 import GatedOtpModal from '../components/common/GatedOtpModal';
 
 export default function BecomePOSP() {
   const { businessProfile } = useBusinessProfile();
+  const { isSuperAdmin, isManager } = useAuth();
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -66,6 +70,32 @@ export default function BecomePOSP() {
   return (
     <div style={{ background: '#f8fafc', minHeight: '100vh', color: '#0f2b48' }}>
       
+
+      {/* In-Context Admin Edit Modal */}
+      <InContextPageEditorModal
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+        pageTitle="Become a POSP Content"
+        pageRoute="/become-posp"
+        fields={[
+          {
+            name: 'pospPageHeadline',
+            label: 'Hero Main Headline',
+            defaultValue: 'Empower Your Career as a Certified POSP Insurance Advisor',
+            placeholder: 'e.g. Empower Your Career as a Certified POSP Insurance Advisor',
+            helpText: 'Primary headline visible in the hero onboarding fold.'
+          },
+          {
+            name: 'pospPageSubheadline',
+            label: 'Value Proposition & Subheadline',
+            type: 'textarea',
+            rows: 3,
+            defaultValue: 'Join Telangana & AP\'s fastest-growing insurtech partner network with zero initial capital, 100% digital onboarding, and direct multi-insurer quotes.',
+            placeholder: 'e.g. Zero initial capital, paperless IRDAI certification, and direct multi-insurer quotation access.'
+          }
+        ]}
+      />
+
       {/* 1. HERO SECTION (Executive Agent Onboarding Banner + Structured Form) */}
       <section className="product-funnel-hero" style={{ background: 'linear-gradient(135deg, #071728 0%, #1e1b4b 100%)' }}>
         {/* Indigo / Purple Glow Orb */}
@@ -85,6 +115,18 @@ export default function BecomePOSP() {
             
             {/* Left Column: POSP Career Value Prop */}
             <div className="funnel-hero-intro">
+              
+              {/* Section Edit Trigger: Hero & Value Prop */}
+              {(isSuperAdmin || isManager) && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <SectionEditTrigger
+                    label="Edit"
+                    tooltip="Edit Hero Headline & Value Proposition"
+                    onClick={() => setIsEditorOpen(true)}
+                  />
+                </div>
+              )}
+
               <div style={{
                 display: 'inline-flex',
                 alignItems: 'center',

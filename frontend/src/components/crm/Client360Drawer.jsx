@@ -741,6 +741,41 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
                 <span>{1 + (Array.isArray(clientOpportunities) ? clientOpportunities.filter(o => !o?.isPrimary).length : 0) + (Array.isArray(linkedInquiries) ? linkedInquiries.length : 0)} Enquiries</span>
               </span>
 
+              {/* Online Customer Portal Status Indicator */}
+              {currentClient.isPortalActive ? (
+                <span style={{
+                  fontSize: '0.72rem',
+                  background: '#dcfce7',
+                  color: '#15803d',
+                  border: '1px solid #86efac',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  fontWeight: 800,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }} title={currentClient.lastPortalLogin ? `Customer Portal Active (Last Login: ${new Date(currentClient.lastPortalLogin).toLocaleString('en-IN')})` : 'Customer Portal Active'}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }}></span>
+                  <span>Portal Active</span>
+                </span>
+              ) : (
+                <span style={{
+                  fontSize: '0.72rem',
+                  background: '#f8fafc',
+                  color: '#64748b',
+                  border: '1px solid #e2e8f0',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }} title="Client has not yet logged into the Online Customer Portal">
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#cbd5e1' }}></span>
+                  <span>Offline Client</span>
+                </span>
+              )}
+
               {/* Policy Expiry / Renewal Date Interactive Widget */}
               {(() => {
                 const expiry = currentClient.policyExpiryDate;

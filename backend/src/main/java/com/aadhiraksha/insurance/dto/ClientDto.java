@@ -76,6 +76,8 @@ public class ClientDto {
         private LocalDateTime updatedAt;
         private Long callCount;
         private Long pendingFollowUpCount;
+        private Boolean isPortalActive;
+        private LocalDateTime lastPortalLogin;
     }
 
     @Data

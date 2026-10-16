@@ -24,14 +24,16 @@ import {
   UserX,
   Inbox,
   AtSign,
-  Settings
+  Settings,
+  Smartphone,
+  ExternalLink
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import ActionDropdown from '../common/ActionDropdown';
 import { CrmTablePaginationBar, CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
-export default function UserManagementView() {
+export default function UserManagementView({ initialSegment = 'STAFF' }) {
   const { 
     user: authUser, 
     isSuperAdmin, 
@@ -50,6 +52,14 @@ export default function UserManagementView() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
+  const [activeUserSegment, setActiveUserSegment] = useState(initialSegment); // 'STAFF' | 'CUSTOMERS'
+
+  useEffect(() => {
+    if (initialSegment) {
+      setActiveUserSegment(initialSegment);
+    }
+  }, [initialSegment]);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => {
     const saved = localStorage.getItem('user_management_page_size');
@@ -68,7 +78,7 @@ export default function UserManagementView() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, roleFilter]);
+  }, [searchQuery, roleFilter, activeUserSegment]);
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -405,6 +415,15 @@ export default function UserManagementView() {
   };
 
   const filteredUsers = users.filter((u) => {
+    // Segment partitioning:
+    const isCustomer = u.isCustomerUser || u.roles?.includes('ROLE_USER') || u.roles?.includes('ROLE_CUSTOMER');
+    if (activeUserSegment === 'CUSTOMERS') {
+      if (!isCustomer) return false;
+    } else {
+      // In 'STAFF' segment, show only organization employees & partners
+      if (isCustomer) return false;
+    }
+
     // Defense-in-depth: If logged-in user is a Manager, strictly enforce subordinate-only display
     if (isManager && !isSuperAdmin) {
       if (u.managerId !== authUser?.id) {
@@ -415,6 +434,8 @@ export default function UserManagementView() {
     const matchesSearch = 
       u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (u.phoneNumber && u.phoneNumber.includes(searchQuery)) ||
+      (u.clientCode && u.clientCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (u.employeeCode && u.employeeCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (u.designation && u.designation.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -425,6 +446,9 @@ export default function UserManagementView() {
     return matchesSearch && matchesRole;
   });
 
+  const staffCount = users.filter(u => !(u.isCustomerUser || u.roles?.includes('ROLE_USER') || u.roles?.includes('ROLE_CUSTOMER'))).length;
+  const customerCount = users.filter(u => (u.isCustomerUser || u.roles?.includes('ROLE_USER') || u.roles?.includes('ROLE_CUSTOMER'))).length;
+
   const totalPages = Math.ceil(filteredUsers.length / pageSize) || 1;
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedUsers = filteredUsers.slice(startIndex, startIndex + pageSize);
@@ -433,22 +457,89 @@ export default function UserManagementView() {
     <div style={{ 
       display: 'flex', 
       flexDirection: 'column', 
-      height: 'calc(100vh - 120px)',
-      maxHeight: 'calc(100vh - 120px)',
-      gap: '0.75rem',
-      overflow: 'hidden'
+      flex: 1,
+      minHeight: 0,
+      width: '100%',
+      gap: '0.75rem'
     }}>
       
-      {/* Top Header & Actions */}
+      {/* Top Header & Segmented Tabs */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', flexShrink: 0 }}>
         <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--crm-text-primary)', margin: 0 }}>
-            {isSuperAdmin ? 'Organization Staff & Team Hierarchy' : 'My Team Members'}
-          </h2>
-          <p style={{ color: 'var(--crm-text-muted)', fontSize: '0.8rem', margin: '2px 0 0 0' }}>
-            {isSuperAdmin 
-              ? 'Manage Super Admins, Insurance Managers, Advisors, and global user provisioning.'
-              : 'View and manage insurance advisors and employees assigned directly under your team hierarchy.'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--crm-text-primary)', margin: 0 }}>
+              {activeUserSegment === 'CUSTOMERS' ? 'Customers' : 'Team'}
+            </h2>
+            
+            {/* Industry-Standard Segment Switcher */}
+            <div style={{
+              display: 'inline-flex',
+              background: '#f1f5f9',
+              padding: '3px',
+              borderRadius: '10px',
+              border: '1px solid #e2e8f0',
+              gap: '2px'
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveUserSegment('STAFF');
+                  setRoleFilter('ALL');
+                }}
+                style={{
+                  background: activeUserSegment === 'STAFF' ? '#ffffff' : 'transparent',
+                  color: activeUserSegment === 'STAFF' ? 'var(--primary-navy)' : '#64748b',
+                  boxShadow: activeUserSegment === 'STAFF' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  border: 'none',
+                  padding: '5px 12px',
+                  borderRadius: '7px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Users size={13} color={activeUserSegment === 'STAFF' ? 'var(--primary-navy)' : '#64748b'} />
+                <span>Team ({staffCount})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveUserSegment('CUSTOMERS');
+                  setRoleFilter('ALL');
+                }}
+                style={{
+                  background: activeUserSegment === 'CUSTOMERS' ? '#ffffff' : 'transparent',
+                  color: activeUserSegment === 'CUSTOMERS' ? '#059669' : '#64748b',
+                  boxShadow: activeUserSegment === 'CUSTOMERS' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  border: 'none',
+                  padding: '5px 12px',
+                  borderRadius: '7px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Smartphone size={13} color={activeUserSegment === 'CUSTOMERS' ? '#059669' : '#64748b'} />
+                <span>Customers ({customerCount})</span>
+              </button>
+            </div>
+          </div>
+
+          <p style={{ color: 'var(--crm-text-muted)', fontSize: '0.8rem', margin: '4px 0 0 0' }}>
+            {activeUserSegment === 'CUSTOMERS'
+              ? 'Real-time directory of verified retail customers, self-service mobile app logins, and linked CRM client profiles.'
+              : (isSuperAdmin 
+                ? 'Manage organizational staff, advisors, branch hierarchy, and global user provisioning.'
+                : 'Advisors and employees allocated under your manager branch.')}
           </p>
         </div>
 
@@ -513,7 +604,7 @@ export default function UserManagementView() {
             autoComplete="search"
             data-lpignore="true"
             data-form-type="other"
-            placeholder="Search by Employee Code, Name, Email, or Designation..."
+            placeholder={activeUserSegment === 'CUSTOMERS' ? "Search customers by Name, Mobile (+91...), Email, or Client Code..." : "Search by Employee Code, Name, Email, or Designation..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -527,27 +618,31 @@ export default function UserManagementView() {
         </form>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Filter size={16} color="#64748b" />
-          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Role Filter:</span>
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            style={{
-              padding: '6px 12px',
-              borderRadius: '8px',
-              border: '1px solid var(--crm-border-subtle)',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              background: 'var(--crm-surface-card)',
-              color: 'var(--crm-text-primary)'
-            }}
-          >
-            <option value="ALL">All Roles ({filteredUsers.length})</option>
-            {isSuperAdmin && <option value="ROLE_SUPER_ADMIN">Super Admins</option>}
-            {isSuperAdmin && <option value="ROLE_MANAGER">Insurance Managers</option>}
-            <option value="ROLE_ADVISOR">Insurance Advisors</option>
-            <option value="ROLE_POSP_AGENT">POSP Agents</option>
-          </select>
+          {activeUserSegment === 'STAFF' && (
+            <>
+              <Filter size={16} color="#64748b" />
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Role Filter:</span>
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--crm-border-subtle)',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  background: 'var(--crm-surface-card)',
+                  color: 'var(--crm-text-primary)'
+                }}
+              >
+                <option value="ALL">All Roles ({filteredUsers.length})</option>
+                {isSuperAdmin && <option value="ROLE_SUPER_ADMIN">Super Admins</option>}
+                {isSuperAdmin && <option value="ROLE_MANAGER">Insurance Managers</option>}
+                <option value="ROLE_ADVISOR">Insurance Advisors</option>
+                <option value="ROLE_POSP_AGENT">POSP Agents</option>
+              </select>
+            </>
+          )}
 
           <CrmTopMiniPager
             currentPage={currentPage}
@@ -590,17 +685,224 @@ export default function UserManagementView() {
           <div className="crm-table-scroll-container" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
             <table className="crm-table">
               <thead className="crm-table-head" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-                <tr>
-                  <th className="crm-table-th">Employee</th>
-                  <th className="crm-table-th">Role</th>
-                  <th className="crm-table-th">Reporting Manager</th>
-                  <th className="crm-table-th">Assigned Clients</th>
-                  <th className="crm-table-th">Status</th>
-                  <th className="crm-table-th" style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
+                {activeUserSegment === 'CUSTOMERS' ? (
+                  <tr>
+                    <th className="crm-table-th">Customer / Mobile User</th>
+                    <th className="crm-table-th">Login Method & Security</th>
+                    <th className="crm-table-th">Linked CRM Client</th>
+                    <th className="crm-table-th">Active Policies</th>
+                    <th className="crm-table-th">Last Activity / Registered</th>
+                    <th className="crm-table-th" style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                ) : (
+                  <tr>
+                    <th className="crm-table-th">Employee</th>
+                    <th className="crm-table-th">Role</th>
+                    <th className="crm-table-th">Reporting Manager</th>
+                    <th className="crm-table-th">Assigned Clients</th>
+                    <th className="crm-table-th">Status</th>
+                    <th className="crm-table-th" style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                )}
               </thead>
               <tbody>
                 {paginatedUsers.map((u) => {
+                  if (activeUserSegment === 'CUSTOMERS') {
+                    return (
+                      <tr key={u.id} className="crm-table-row">
+                        {/* 1. Customer / Mobile User */}
+                        <td className="crm-table-td">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                              width: '36px',
+                              height: '36px',
+                              borderRadius: '50%',
+                              background: '#ecfdf5',
+                              border: '1px solid #a7f3d0',
+                              color: '#059669',
+                              fontWeight: 800,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.85rem',
+                              flexShrink: 0
+                            }}>
+                              {u.fullName ? u.fullName[0].toUpperCase() : 'C'}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 700, color: 'var(--crm-text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span>{u.fullName}</span>
+                                <span style={{
+                                  fontSize: '0.68rem',
+                                  fontWeight: 800,
+                                  background: '#f0fdf4',
+                                  color: '#16a34a',
+                                  border: '1px solid #bbf7d0',
+                                  padding: '1px 5px',
+                                  borderRadius: '4px'
+                                }}>
+                                  Verified Mobile
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--crm-text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                                <span style={{ fontWeight: 600, color: '#0f2b48' }}>+91 {u.phoneNumber || 'N/A'}</span>
+                                {u.email && !u.email.includes('@aadhiraksha.internal') && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{u.email}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 2. Login Method & Security */}
+                        <td className="crm-table-td">
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              border: '1px solid #bfdbfe',
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              width: 'fit-content'
+                            }}>
+                              <Smartphone size={11} /> Twilio SMS OTP
+                            </span>
+                            <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                              Passwordless Secure Session
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* 3. Linked CRM Client */}
+                        <td className="crm-table-td">
+                          {u.clientCode ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <span style={{
+                                background: '#f8fafc',
+                                border: '1px solid #cbd5e1',
+                                padding: '3px 7px',
+                                borderRadius: '5px',
+                                fontWeight: 800,
+                                fontSize: '0.74rem',
+                                color: '#0f2b48'
+                              }}>
+                                {u.clientCode}
+                              </span>
+                              <span style={{ fontSize: '0.7rem', color: '#059669', fontWeight: 700 }}>
+                                (Synced)
+                              </span>
+                            </div>
+                          ) : (
+                            <span style={{ color: '#94a3b8', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                              Prospect / In-Progress
+                            </span>
+                          )}
+                        </td>
+
+                        {/* 4. Active Policies */}
+                        <td className="crm-table-td">
+                          <span style={{
+                            background: u.linkedPoliciesCount > 0 ? '#f0fdf4' : '#f8fafc',
+                            border: `1px solid ${u.linkedPoliciesCount > 0 ? '#bbf7d0' : '#e2e8f0'}`,
+                            color: u.linkedPoliciesCount > 0 ? '#15803d' : '#64748b',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontWeight: 700,
+                            fontSize: '0.76rem'
+                          }}>
+                            {u.linkedPoliciesCount || 0} {u.linkedPoliciesCount === 1 ? 'Policy' : 'Policies'}
+                          </span>
+                        </td>
+
+                        {/* 5. Last Activity / Registered */}
+                        <td className="crm-table-td" style={{ fontSize: '0.76rem', color: '#64748b' }}>
+                          <div style={{ fontWeight: 600, color: '#334155' }}>
+                            {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recently'}
+                          </div>
+                          <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                            Joined {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'N/A'}
+                          </div>
+                        </td>
+
+                        {/* 6. Actions */}
+                        <td className="crm-table-td" style={{ textAlign: 'right', position: 'relative' }}>
+                          <ActionDropdown
+                            menuWidth="210px"
+                            trigger={({ isOpen }) => (
+                              <button
+                                type="button"
+                                title="Customer Actions"
+                                className="crm-modal-close-btn"
+                                style={{ padding: '6px', background: isOpen ? '#f1f5f9' : 'transparent' }}
+                              >
+                                <MoreVertical size={16} />
+                              </button>
+                            )}
+                          >
+                            {({ close }) => (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    close();
+                                    const cleanPhone = (u.phoneNumber || '').replace(/[^0-9+]/g, '');
+                                    if (cleanPhone) window.location.href = `tel:${cleanPhone}`;
+                                  }}
+                                  className="crm-popover-btn"
+                                >
+                                  <Phone size={14} color="#059669" /> Call Customer
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    close();
+                                    const cleanPhone = (u.phoneNumber || '').replace(/[^0-9]/g, '');
+                                    if (cleanPhone) {
+                                      window.open(`https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(`Dear ${u.fullName}, greetings from Aadhiraksha Insurance Advisory.`)}`, '_blank');
+                                    }
+                                  }}
+                                  className="crm-popover-btn"
+                                >
+                                  <ExternalLink size={14} color="#16a34a" /> WhatsApp Message
+                                </button>
+
+                                <div style={{ height: '1px', background: 'var(--crm-border-subtle)', margin: '4px 0' }} />
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    close();
+                                    handleToggleUserStatus(u);
+                                  }}
+                                  className="crm-popover-btn danger"
+                                >
+                                  {u.isActive ? (
+                                    <>
+                                      <UserX size={14} /> Suspend Portal Access
+                                    </>
+                                  ) : (
+                                    <>
+                                      <UserCheck size={14} color="var(--crm-success)" /> Restore Portal Access
+                                    </>
+                                  )}
+                                </button>
+                              </>
+                            )}
+                          </ActionDropdown>
+                        </td>
+                      </tr>
+                    );
+                  }
+
                   const isSuper = u.roles.includes('ROLE_SUPER_ADMIN') || u.roles.includes('ROLE_ADMIN');
                   const isMgr = u.roles.includes('ROLE_MANAGER');
                   const isAdv = u.roles.includes('ROLE_ADVISOR');

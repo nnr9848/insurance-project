@@ -18,9 +18,13 @@ import {
 } from 'lucide-react';
 import { portalService } from '../services/api';
 import { useBusinessProfile } from '../context/BusinessProfileContext';
+import { useAuth } from '../context/AuthContext';
+import InContextPageEditorModal, { InContextAdminBar, SectionEditTrigger } from '../components/common/InContextPageEditorModal';
 
 export default function ClaimSupport() {
   const { businessProfile } = useBusinessProfile();
+  const { isSuperAdmin, isManager } = useAuth();
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('file'); // 'file' | 'track'
   const [submitted, setSubmitted] = useState(false);
@@ -87,6 +91,32 @@ export default function ClaimSupport() {
   return (
     <div style={{ background: '#f8fafc', minHeight: '100vh', color: '#0f2b48' }}>
       
+
+      {/* In-Context Admin Edit Modal */}
+      <InContextPageEditorModal
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+        pageTitle="Claim Support Desk Content"
+        pageRoute="/claim-support"
+        fields={[
+          {
+            name: 'claimsPageHeadline',
+            label: 'Hero Main Headline',
+            defaultValue: '24/7 Cashless Claims Assistance & Emergency Concierge',
+            placeholder: 'e.g. 24/7 Cashless Claims Assistance & Emergency Concierge',
+            helpText: 'Displayed in bold white text in the emergency claims header fold.'
+          },
+          {
+            name: 'claimsPageSubheadline',
+            label: 'Claim Intimation Subheadline',
+            type: 'textarea',
+            rows: 3,
+            defaultValue: 'File your cashless hospitalization or motor damage intimation in under 60 seconds with dedicated claim managers.',
+            placeholder: 'e.g. File your cashless hospitalization or motor damage intimation in under 60 seconds with dedicated claim managers.'
+          }
+        ]}
+      />
+
       {/* 1. HERO SECTION (Emergency Priority Banner + Lead Container) */}
       <section className="product-funnel-hero">
         {/* Amber Priority Glow Orb */}
@@ -106,6 +136,18 @@ export default function ClaimSupport() {
             
             {/* Left Column: 24x7 Emergency Callout & Settlement SLA */}
             <div className="funnel-hero-intro">
+              
+              {/* Section Edit Trigger: Hero & Headline */}
+              {(isSuperAdmin || isManager) && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <SectionEditTrigger
+                    label="Edit"
+                    tooltip="Edit Hero Headline & Copy"
+                    onClick={() => setIsEditorOpen(true)}
+                  />
+                </div>
+              )}
+
               <div style={{
                 display: 'inline-flex',
                 alignItems: 'center',

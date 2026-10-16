@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, Phone, Shield, ArrowRight, CheckCircle2, KeyRound, Smartphone, RefreshCw, MessageSquare, Eye, EyeOff } from 'lucide-react';
-import { auth } from '../config/firebase';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import { portalService } from '../services/api';
 
 export default function Login({ isAdminPortal = false }) {
   const [searchParams] = useSearchParams();
@@ -28,9 +27,8 @@ export default function Login({ isAdminPortal = false }) {
   const [loading, setLoading] = useState(false);
 
   const otpInputRefs = useRef([]);
-  const recaptchaVerifierRef = useRef(null);
 
-  const { login, register, firebaseLogin, logout } = useAuth();
+  const { login, register, otpLogin, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -40,7 +38,6 @@ export default function Login({ isAdminPortal = false }) {
     setAuthMode(isAdminPortal ? 'password' : 'otp');
     setOtpStep('phone');
     setOtpCode(['', '', '', '', '', '']);
-    setConfirmationResult(null);
   }, [location.pathname, isAdminPortal]);
 
   // Countdown timer for Resend OTP
@@ -51,19 +48,6 @@ export default function Login({ isAdminPortal = false }) {
     }
     return () => clearTimeout(timer);
   }, [countdown]);
-
-  // Clean up recaptcha verifier on unmount
-  useEffect(() => {
-    return () => {
-      if (recaptchaVerifierRef.current) {
-        try {
-          recaptchaVerifierRef.current.clear();
-        } catch (e) {
-          // ignore
-        }
-      }
-    };
-  }, []);
 
   const handlePostLoginRedirect = (user) => {
     const hasCrmAccess = user?.roles?.some(r => [
@@ -102,21 +86,6 @@ export default function Login({ isAdminPortal = false }) {
     }
   };
 
-  const setupRecaptcha = () => {
-    if (!recaptchaVerifierRef.current) {
-      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {
-          // reCAPTCHA solved - will proceed with submit
-        },
-        'expired-callback': () => {
-          setError('reCAPTCHA expired. Please try sending OTP again.');
-        }
-      });
-    }
-    return recaptchaVerifierRef.current;
-  };
-
   const handleSendOtp = async (e) => {
     if (e) e.preventDefault();
     setError('');
@@ -129,23 +98,16 @@ export default function Login({ isAdminPortal = false }) {
 
     setLoading(true);
     try {
-      const formattedPhone = `+91${rawPhone}`;
-      const appVerifier = setupRecaptcha();
-      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
-      setConfirmationResult(confirmation);
+      await portalService.sendOtp(rawPhone);
       setOtpStep('verify');
-      setCountdown(30);
+      setCountdown(60);
+      setOtpCode(['', '', '', '', '', '']);
+      setTimeout(() => {
+        otpInputRefs.current[0]?.focus();
+      }, 100);
     } catch (err) {
-      console.error('Firebase Phone Auth error:', err);
-      if (err?.code === 'auth/invalid-app-credential' || err?.code === 'auth/api-key-not-valid') {
-        setError('Firebase project keys not yet configured in .env. Falling back to Password Sign-In.');
-      } else {
-        setError(err?.message || 'Failed to send OTP. Please try again.');
-      }
-      if (recaptchaVerifierRef.current) {
-        try { recaptchaVerifierRef.current.clear(); } catch (_) {}
-        recaptchaVerifierRef.current = null;
-      }
+      console.error('Twilio SMS Auth error:', err);
+      setError(err?.response?.data?.message || err?.message || 'Failed to send OTP via SMS. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -181,16 +143,10 @@ export default function Login({ isAdminPortal = false }) {
     setLoading(true);
 
     try {
-      if (!confirmationResult) {
-        throw new Error('OTP session expired. Please request a new OTP.');
-      }
-
-      const userCredential = await confirmationResult.confirm(code);
-      const idToken = await userCredential.user.getIdToken();
-
-      // Submit Firebase token to Spring Boot backend
-      const res = await firebaseLogin({
-        idToken,
+      const rawPhone = phoneNumber.trim().replace(/\D/g, '');
+      const res = await otpLogin({
+        phoneNumber: rawPhone,
+        otp: code,
         fullName: fullName || undefined,
         role: role || 'ROLE_USER'
       });
@@ -198,7 +154,7 @@ export default function Login({ isAdminPortal = false }) {
       handlePostLoginRedirect(res);
     } catch (err) {
       console.error('OTP Verification error:', err);
-      setError(err?.response?.data?.message || err?.message || 'Invalid OTP code. Please re-enter.');
+      setError(err?.response?.data?.message || err?.message || 'Invalid or expired OTP code. Please re-enter.');
     } finally {
       setLoading(false);
     }
@@ -352,9 +308,6 @@ export default function Login({ isAdminPortal = false }) {
               </button>
             </div>
           )}
-
-          {/* Hidden reCAPTCHA container for Firebase */}
-          <div id="recaptcha-container"></div>
 
           {error && (
             <div style={{ 

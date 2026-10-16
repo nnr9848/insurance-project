@@ -25,8 +25,11 @@ public class TwilioSmsService {
     @Value("${twilio.account-sid:}")
     private String envAccountSid;
 
-    @Value("${twilio.auth-token:}")
-    private String envAuthToken;
+    @Value("${twilio.api-key-sid:}")
+    private String envApiKeySid;
+
+    @Value("${twilio.api-key-secret:}")
+    private String envApiKeySecret;
 
     @Value("${twilio.from-number:}")
     private String envFromNumber;
@@ -36,7 +39,7 @@ public class TwilioSmsService {
 
     /**
      * Sends an SMS message to recipientPhone using Twilio Programmable Messaging API.
-     * Respects Admin Settings in BusinessProfile with fallback to environment variables.
+     * Uses enterprise API Key SID (SK...) and API Key Secret for HTTP Basic Authentication on behalf of Account SID.
      */
     public boolean sendSms(String recipientPhone, String messageBody) {
         String cleanPhone = sanitizePhoneNumber(recipientPhone);
@@ -46,12 +49,13 @@ public class TwilioSmsService {
         }
 
         String accountSid = getAccountSid();
-        String authToken = getAuthToken();
+        String apiKeySid = getApiKeySid();
+        String apiKeySecret = getApiKeySecret();
         String fromNumber = getFromNumber();
         boolean isEnabled = isTwilioEnabled();
 
-        if (!isEnabled || accountSid.isBlank() || authToken.isBlank() || fromNumber.isBlank()) {
-            log.info("[Twilio SMS MOCK] Twilio not enabled or credentials blank. Message to {}: {}", 
+        if (!isEnabled || accountSid.isBlank() || apiKeySid.isBlank() || apiKeySecret.isBlank() || fromNumber.isBlank()) {
+            log.info("[Twilio SMS MOCK] Twilio not enabled or API Key credentials blank. Message to {}: {}", 
                     cleanPhone, messageBody);
             return false;
         }
@@ -65,9 +69,9 @@ public class TwilioSmsService {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-            // Twilio HTTP Basic Auth: AccountSID : AuthToken
+            // Twilio HTTP Basic Auth with API Key: ApiKeySID (SK...) : ApiKeySecret
             String authHeader = "Basic " + Base64.getEncoder().encodeToString(
-                    (accountSid + ":" + authToken).getBytes(StandardCharsets.UTF_8)
+                    (apiKeySid + ":" + apiKeySecret).getBytes(StandardCharsets.UTF_8)
             );
             headers.set("Authorization", authHeader);
 
@@ -93,13 +97,10 @@ public class TwilioSmsService {
             log.error("[Twilio SMS HTTP ERROR] Twilio status {}: {}", ex.getStatusCode(), errorBody);
 
             // AUTO-FALLBACK FOR TWILIO TRIAL ACCOUNTS (Code 572006: Predefined template required)
-            // If trial account restriction is hit, automatically retry using trial template 'sms_appointment_reminders'.
-            // When user upgrades to a paid account, the primary attempt above succeeds automatically with zero code changes.
             if (errorBody != null && errorBody.contains("572006") && !messageBody.equals("sms_appointment_reminders")) {
                 log.warn("[Twilio SMS TRIAL NOTICE] Account is in Twilio Trial mode (Error 572006). "
-                        + "Automatically retrying with Twilio trial template 'sms_appointment_reminders' to ensure phone delivery. "
-                        + "(Note: Upgrading to a paid Twilio account will instantly enable custom OTP text without any code change.)");
-                return dispatchTwilioHttpRequest(accountSid, authToken, fromNumber, destinationPhone, "sms_appointment_reminders");
+                        + "Automatically retrying with Twilio trial template 'sms_appointment_reminders' to ensure phone delivery.");
+                return dispatchTwilioHttpRequest(accountSid, apiKeySid, apiKeySecret, fromNumber, destinationPhone, "sms_appointment_reminders");
             }
 
             return false;
@@ -109,7 +110,7 @@ public class TwilioSmsService {
         }
     }
 
-    private boolean dispatchTwilioHttpRequest(String accountSid, String authToken, String fromNumber, String destinationPhone, String body) {
+    private boolean dispatchTwilioHttpRequest(String accountSid, String apiKeySid, String apiKeySecret, String fromNumber, String destinationPhone, String body) {
         try {
             String twilioUrl = String.format("https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json", accountSid);
 
@@ -117,7 +118,7 @@ public class TwilioSmsService {
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
             String authHeader = "Basic " + Base64.getEncoder().encodeToString(
-                    (accountSid + ":" + authToken).getBytes(StandardCharsets.UTF_8)
+                    (apiKeySid + ":" + apiKeySecret).getBytes(StandardCharsets.UTF_8)
             );
             headers.set("Authorization", authHeader);
 
@@ -155,11 +156,18 @@ public class TwilioSmsService {
                 .orElse(envAccountSid);
     }
 
-    private String getAuthToken() {
+    private String getApiKeySid() {
         return businessProfileRepository.findAll().stream().findFirst()
-                .map(BusinessProfile::getTwilioAuthToken)
+                .map(BusinessProfile::getTwilioApiKeySid)
                 .filter(s -> s != null && !s.isBlank())
-                .orElse(envAuthToken);
+                .orElse(envApiKeySid);
+    }
+
+    private String getApiKeySecret() {
+        return businessProfileRepository.findAll().stream().findFirst()
+                .map(BusinessProfile::getTwilioApiKeySecret)
+                .filter(s -> s != null && !s.isBlank())
+                .orElse(envApiKeySecret);
     }
 
     private String getFromNumber() {

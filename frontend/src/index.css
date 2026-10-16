@@ -853,8 +853,8 @@ h1, h2, h3, h4, h5, h6 {
 .hero-slider-overlay {
   position: relative;
   z-index: 2;
-  /* Vivid authentic imagery: transparent top with bottom text scrim */
-  background: linear-gradient(to top, rgba(9, 26, 44, 0.92) 0%, rgba(9, 26, 44, 0.55) 35%, rgba(9, 26, 44, 0.1) 65%, transparent 100%);
+  /* Vivid authentic imagery: transparent top with deep bottom text scrim */
+  background: linear-gradient(to top, rgba(5, 16, 28, 0.96) 0%, rgba(5, 16, 28, 0.75) 40%, rgba(5, 16, 28, 0.2) 70%, transparent 100%);
   padding: 2.5rem 2rem 2rem;
   height: 100%;
   display: flex;
@@ -877,21 +877,26 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .hero-slider-title {
   font-size: 1.85rem;
   font-weight: 800;
-  color: #fff;
+  color: #ffffff;
   margin-bottom: 0.5rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  letter-spacing: -0.01em;
 }
 
 .hero-slider-desc {
   font-size: 0.95rem;
-  color: #cbd5e1;
+  color: #f1f5f9;
   margin-bottom: 1.25rem;
   max-width: 90%;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  line-height: 1.5;
 }
 
 .slider-controls {
@@ -5565,6 +5570,69 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 0.7rem !important;
   }
 }
+
+/* ==========================================================================
+   Legal Document Typography (Privacy Policy, Terms of Service, Disclaimers)
+   ========================================================================== */
+.legal-document-content h2 {
+  font-size: 1.22rem;
+  font-weight: 800;
+  color: #0f2b48;
+  margin-top: 1.6rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.35;
+}
+
+.legal-document-content h3 {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: #0f2b48;
+  margin-top: 1.25rem;
+  margin-bottom: 0.4rem;
+  line-height: 1.4;
+}
+
+.legal-document-content p {
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: #334155;
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.legal-document-content ul,
+.legal-document-content ol {
+  padding-left: 1.4rem;
+  margin-top: 0.35rem;
+  margin-bottom: 1.2rem;
+  color: #334155;
+  line-height: 1.7;
+}
+
+.legal-document-content li {
+  margin-bottom: 0.35rem;
+}
+
+.legal-document-content strong {
+  color: #0f2b48;
+  font-weight: 700;
+}
+
+.legal-document-content blockquote {
+  background: #f8fafc;
+  border-left: 4px solid #0284c7;
+  padding: 0.85rem 1.25rem;
+  margin: 1.25rem 0;
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+  color: #475569;
+}
+
+.legal-document-content a {
+  color: #0284c7;
+  text-decoration: underline;
+}
+
 
 
 

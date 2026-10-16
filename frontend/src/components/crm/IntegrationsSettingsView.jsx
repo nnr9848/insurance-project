@@ -35,21 +35,23 @@ export default function IntegrationsSettingsView() {
     firebaseStorageBucket: '',
     firebaseMessagingSenderId: '',
 
-    // Twilio SMS Programmable Messaging Settings (Mobile OTPs)
+    // Twilio Programmable Messaging Settings (SMS OTPs & WhatsApp Broadcasts)
     twilioSmsEnabled: false,
     twilioAccountSid: '',
-    twilioAuthToken: '',
+    twilioApiKeySid: '',
+    twilioApiKeySecret: '',
     twilioFromNumber: '',
 
     // Twilio WhatsApp Messaging Settings (Agent Broadcasts, Launches & Offers)
     twilioWhatsappEnabled: false,
-    twilioWhatsappFromNumber: 'whatsapp:+14155238886'
+    twilioWhatsappFromNumber: 'whatsapp:+14155238886',
+    twilioWhatsappContentSid: ''
   });
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showFirebaseKey, setShowFirebaseKey] = useState(false);
-  const [showTwilioToken, setShowTwilioToken] = useState(false);
+  const [showTwilioSecret, setShowTwilioSecret] = useState(false);
   const [testPhone, setTestPhone] = useState('');
   const [isTestingWhatsApp, setIsTestingWhatsApp] = useState(false);
   const [testTwilioPhone, setTestTwilioPhone] = useState('');
@@ -71,12 +73,14 @@ export default function IntegrationsSettingsView() {
         // Twilio SMS Settings
         twilioSmsEnabled: businessProfile.twilioSmsEnabled ?? false,
         twilioAccountSid: businessProfile.twilioAccountSid || '',
-        twilioAuthToken: businessProfile.twilioAuthToken || '',
+        twilioApiKeySid: businessProfile.twilioApiKeySid || '',
+        twilioApiKeySecret: businessProfile.twilioApiKeySecret || '',
         twilioFromNumber: businessProfile.twilioFromNumber || '',
 
         // Twilio WhatsApp Settings
         twilioWhatsappEnabled: businessProfile.twilioWhatsappEnabled ?? false,
-        twilioWhatsappFromNumber: businessProfile.twilioWhatsappFromNumber || 'whatsapp:+14155238886'
+        twilioWhatsappFromNumber: businessProfile.twilioWhatsappFromNumber || 'whatsapp:+14155238886',
+        twilioWhatsappContentSid: businessProfile.twilioWhatsappContentSid || ''
       }));
 
       if (businessProfile.whatsappNumber || businessProfile.primaryPhone) {
@@ -88,9 +92,9 @@ export default function IntegrationsSettingsView() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
@@ -100,8 +104,8 @@ export default function IntegrationsSettingsView() {
       toast.error('Please enter a valid 10-digit mobile number to receive the test SMS.');
       return;
     }
-    if (!formData.twilioAccountSid?.trim() || !formData.twilioAuthToken?.trim() || !formData.twilioFromNumber?.trim()) {
-      toast.error('Please configure Twilio Account SID, Auth Token, and From Number before testing.');
+    if (!formData.twilioAccountSid?.trim() || !formData.twilioApiKeySid?.trim() || !formData.twilioApiKeySecret?.trim() || !formData.twilioFromNumber?.trim()) {
+      toast.error('Please configure Twilio Account SID, API Key SID (SK...), API Key Secret, and From Number before testing.');
       return;
     }
 
@@ -118,7 +122,7 @@ export default function IntegrationsSettingsView() {
       }
     } catch (err) {
       console.error('Twilio Test error:', err);
-      toast.error(err.response?.data?.message || 'Failed to dispatch Twilio SMS. Check Account SID & Auth Token.');
+      toast.error(err.response?.data?.message || 'Failed to dispatch Twilio SMS. Check Account SID, API Key SID, and API Key Secret.');
     } finally {
       setIsTestingTwilio(false);
     }
@@ -130,8 +134,8 @@ export default function IntegrationsSettingsView() {
       toast.error('Please enter a valid 10-digit mobile number to receive the test WhatsApp message.');
       return;
     }
-    if (!formData.twilioAccountSid?.trim() || !formData.twilioAuthToken?.trim() || !formData.twilioWhatsappFromNumber?.trim()) {
-      toast.error('Please configure Twilio Account SID, Auth Token, and WhatsApp Sender before testing.');
+    if (!formData.twilioAccountSid?.trim() || !formData.twilioApiKeySid?.trim() || !formData.twilioApiKeySecret?.trim() || !formData.twilioWhatsappFromNumber?.trim()) {
+      toast.error('Please configure Twilio Account SID, API Key SID, API Key Secret, and WhatsApp Sender before testing.');
       return;
     }
 
@@ -492,7 +496,7 @@ export default function IntegrationsSettingsView() {
           </div>
 
           {/* Form Fields Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
                 Twilio Account SID
@@ -515,25 +519,46 @@ export default function IntegrationsSettingsView() {
             </div>
 
             <div>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                Twilio API Key SID
+              </label>
+              <input
+                type="text"
+                name="twilioApiKeySid"
+                value={formData.twilioApiKeySid}
+                onChange={handleChange}
+                placeholder="SKXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.88rem',
+                  fontFamily: 'monospace'
+                }}
+              />
+            </div>
+
+            <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                 <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
-                  Twilio Auth Token
+                  Twilio API Key Secret
                 </label>
                 <button
                   type="button"
-                  onClick={() => setShowTwilioToken(!showTwilioToken)}
+                  onClick={() => setShowTwilioSecret(!showTwilioSecret)}
                   style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}
                 >
-                  {showTwilioToken ? <EyeOff size={13} /> : <Eye size={13} />}
-                  <span>{showTwilioToken ? 'Hide' : 'Reveal'}</span>
+                  {showTwilioSecret ? <EyeOff size={13} /> : <Eye size={13} />}
+                  <span>{showTwilioSecret ? 'Hide' : 'Reveal'}</span>
                 </button>
               </div>
               <input
-                type={showTwilioToken ? 'text' : 'password'}
-                name="twilioAuthToken"
-                value={formData.twilioAuthToken}
+                type={showTwilioSecret ? 'text' : 'password'}
+                name="twilioApiKeySecret"
+                value={formData.twilioApiKeySecret}
                 onChange={handleChange}
-                placeholder="Auth Token"
+                placeholder="API Key Secret"
                 style={{
                   width: '100%',
                   padding: '8px 12px',
@@ -719,31 +744,57 @@ export default function IntegrationsSettingsView() {
               <span>Unified Twilio Credentials</span>
             </div>
             <p style={{ fontSize: '0.78rem', color: '#475569', margin: '0 0 1rem', lineHeight: 1.5 }}>
-              This WhatsApp service automatically reuses your <strong>Twilio Account SID</strong> and <strong>Auth Token</strong> configured in the Twilio SMS card above. No separate third-party Meta tokens needed.
+              This WhatsApp service automatically reuses your <strong>Twilio Account SID</strong>, <strong>API Key SID</strong>, and <strong>API Key Secret</strong> configured in the Twilio SMS card above. No separate third-party Meta tokens needed.
             </p>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                Twilio WhatsApp Sender Number (From)
-              </label>
-              <input
-                type="text"
-                name="twilioWhatsappFromNumber"
-                value={formData.twilioWhatsappFromNumber}
-                onChange={handleChange}
-                placeholder="whatsapp:+14155238886 (Sandbox) or whatsapp:+1XXXXXXXXXX"
-                style={{
-                  width: '100%',
-                  padding: '9px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '0.88rem',
-                  fontFamily: 'monospace'
-                }}
-              />
-              <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginTop: '4px' }}>
-                For free testing, use Twilio Sandbox: <code>whatsapp:+14155238886</code> (Send <em>join &lt;your-code&gt;</em> from your phone to this number to opt in).
-              </span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Twilio WhatsApp Sender Number (From)
+                </label>
+                <input
+                  type="text"
+                  name="twilioWhatsappFromNumber"
+                  value={formData.twilioWhatsappFromNumber}
+                  onChange={handleChange}
+                  placeholder="whatsapp:+14155238886 (Sandbox) or whatsapp:+1XXXXXXXXXX"
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    fontFamily: 'monospace'
+                  }}
+                />
+                <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginTop: '4px' }}>
+                  For free testing, use Twilio Sandbox: <code>whatsapp:+14155238886</code> (Send <em>join &lt;your-code&gt;</em> from your phone to this number to opt in).
+                </span>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  WhatsApp Content Template SID (Optional / For Outbound)
+                </label>
+                <input
+                  type="text"
+                  name="twilioWhatsappContentSid"
+                  value={formData.twilioWhatsappContentSid}
+                  onChange={handleChange}
+                  placeholder="HXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    fontFamily: 'monospace'
+                  }}
+                />
+                <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginTop: '4px' }}>
+                  Required by Meta when initiating WhatsApp outbound messages from custom phone numbers. Found in Twilio Content Editor.
+                </span>
+              </div>
             </div>
           </div>
 

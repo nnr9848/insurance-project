@@ -18,10 +18,11 @@ export const authService = {
     const res = await api.post('/auth/login', { identifier, password });
     return res.data;
   },
-  firebaseLogin: async (payload) => {
-    const res = await api.post('/auth/firebase-login', payload);
+  otpLogin: async (payload) => {
+    const res = await api.post('/auth/otp-login', payload);
     return res.data;
   },
+
   register: async (data) => {
     const res = await api.post('/auth/register', data);
     return res.data;

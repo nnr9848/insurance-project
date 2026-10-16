@@ -30,6 +30,9 @@ public class AuthService {
     private final JwtUtils jwtUtils;
     private final AuthenticationManager authenticationManager;
     private final CustomUserDetailsService userDetailsService;
+    private final OtpVerificationService otpVerificationService;
+    private final com.aadhiraksha.insurance.repository.ClientRepository clientRepository;
+    private final AuditService auditService;
 
     @Transactional
     public AuthDto.AuthResponse register(AuthDto.RegisterRequest request) {
@@ -69,39 +72,27 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthDto.AuthResponse firebaseLogin(AuthDto.FirebaseLoginRequest request) {
-        String phoneNumber = null;
-        String name = request.getFullName();
-
-        try {
-            // Verify with Firebase Admin if initialized
-            if (!com.google.firebase.FirebaseApp.getApps().isEmpty()) {
-                com.google.firebase.auth.FirebaseToken decodedToken = 
-                        com.google.firebase.auth.FirebaseAuth.getInstance().verifyIdToken(request.getIdToken());
-                phoneNumber = (String) decodedToken.getClaims().get("phone_number");
-                if (name == null || name.isBlank()) {
-                    name = decodedToken.getName();
-                }
-            } else {
-                // In local/mock mode without active Firebase keys, accept token payload safely for dev/testing
-                phoneNumber = request.getIdToken().startsWith("+") ? request.getIdToken() : "+919876543210";
-            }
-        } catch (Exception ex) {
-            throw new BadCredentialsException("Failed to verify Firebase authentication token: " + ex.getMessage());
+    public AuthDto.AuthResponse otpLogin(AuthDto.OtpLoginRequest request) {
+        String rawPhone = request.getPhoneNumber();
+        if (rawPhone == null || rawPhone.isBlank()) {
+            throw new IllegalArgumentException("Phone number is required.");
         }
 
-        if (phoneNumber == null || phoneNumber.isBlank()) {
-            throw new BadCredentialsException("No phone number associated with this Firebase authentication token");
+        // Verify OTP against native OTP service (Twilio/dev master)
+        String verificationToken = otpVerificationService.verifyOtp(rawPhone, request.getOtp());
+        if (verificationToken == null) {
+            throw new BadCredentialsException("Invalid or expired OTP code.");
         }
 
-        // Clean phone number (keep last 10 digits or normalized standard)
-        String cleanPhone = phoneNumber.replaceAll("[^0-9]", "");
+        // Clean phone number (keep last 10 digits)
+        String cleanPhone = rawPhone.replaceAll("[^0-9]", "");
         if (cleanPhone.length() > 10) {
             cleanPhone = cleanPhone.substring(cleanPhone.length() - 10);
         }
 
         final String finalPhone = cleanPhone;
-        final String finalName = (name != null && !name.isBlank()) ? name : "User " + finalPhone.substring(Math.max(0, finalPhone.length() - 4));
+        String name = request.getFullName();
+        final String finalName = (name != null && !name.isBlank()) ? name.trim() : "User " + finalPhone.substring(Math.max(0, finalPhone.length() - 4));
 
         User user = userRepository.findByPhoneNumber(finalPhone).orElseGet(() -> {
             String roleName = (request.getRole() != null && !request.getRole().isBlank()) 
@@ -116,7 +107,6 @@ public class AuthService {
                     .orElseGet(() -> roleRepository.save(Role.builder().name(targetRole).build()));
 
             String syntheticEmail = "phone_" + finalPhone + "@aadhiraksha.internal";
-            // Ensure unique email
             if (userRepository.existsByEmail(syntheticEmail)) {
                 syntheticEmail = "phone_" + finalPhone + "_" + System.currentTimeMillis() + "@aadhiraksha.internal";
             }
@@ -136,9 +126,28 @@ public class AuthService {
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtUtils.generateToken(userDetails);
 
+        // Update login timestamp
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        userRepository.save(user);
+
+        // Seamless Bridge: Auto-link existing client records in Client Data Sheet
+        List<com.aadhiraksha.insurance.model.Client> matchingClients = clientRepository.findByPhoneSuffix(finalPhone);
+        for (com.aadhiraksha.insurance.model.Client client : matchingClients) {
+            if (client.getCustomerUser() == null || !client.getCustomerUser().getId().equals(user.getId())) {
+                client.setCustomerUser(user);
+                clientRepository.save(client);
+            }
+        }
+
+        // Compliance audit trail
+        auditService.logAction("PORTAL_AUTH", user.getId(), "LOGIN", "PHONE", null,
+                "Customer logged in via Twilio OTP (+91 " + finalPhone + ")", user, null);
+
         List<String> roleNames = user.getRoles().stream().map(Role::getName).collect(Collectors.toList());
         return new AuthDto.AuthResponse(token, user.getId(), user.getFullName(), user.getEmail(), user.getPhoneNumber(), roleNames);
     }
+
+
 
     public AuthDto.AuthResponse login(AuthDto.LoginRequest request) {
         String trimmedIdentifier = request.getIdentifier() != null ? request.getIdentifier().trim() : "";

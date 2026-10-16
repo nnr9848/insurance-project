@@ -61,7 +61,8 @@ import {
   ArrowRightLeft,
   CalendarDays,
   Percent,
-  Trophy
+  Trophy,
+  Smartphone
 } from 'lucide-react';
 import { portalService, crmService } from '../services/api';
 import UserManagementView from '../components/crm/UserManagementView';
@@ -189,15 +190,23 @@ export default function AdminDashboard() {
   // View metadata for in-page header and breadcrumb navigation
   const getViewMeta = (viewId) => {
     switch (viewId) {
+      case 'customers':
+      case 'portal-users':
+        return {
+          title: 'Customers',
+          category: 'Workspace',
+          subtitle: 'Verified mobile & web app client accounts with Twilio OTP authentication.',
+          icon: <Smartphone size={18} color="#059669" />
+        };
       case 'clients':
         return isPospAgent ? {
-          title: 'My Attributed Client Book',
-          category: 'POSP Portfolio',
+          title: 'Clients',
+          category: 'Portfolio',
           subtitle: 'Verified portfolio of clients introduced and serviced under your POSP accreditation.',
           icon: <FileText size={18} color="#0284c7" />
         } : {
-          title: 'Client Data Sheet',
-          category: 'CRM Workspace',
+          title: 'Clients',
+          category: 'Workspace',
           subtitle: 'Interactive spreadsheet for fast lead filtering, client updates, and multi-advisor assignment.',
           icon: <FileSpreadsheet size={18} color="#0284c7" />
         };
@@ -287,8 +296,8 @@ export default function AdminDashboard() {
         };
       case 'users':
         return {
-          title: 'User & Team Management',
-          category: 'Operations & Management',
+          title: 'Team',
+          category: 'Organization',
           subtitle: 'Manage branch managers, insurance advisors, staff permissions, and hierarchy teams.',
           icon: <Users size={18} color="#059669" />
         };
@@ -513,59 +522,60 @@ export default function AdminDashboard() {
   // Navigation Items
   const navItemsCRM = isPospAgent ? [
     { id: 'dashboard', label: 'Overview & Ledger', icon: <Award size={19} color="var(--accent-gold)" />, count: null },
-    { id: 'contests', label: 'Contests & Sprints', icon: <Trophy size={19} color="#f59e0b" />, count: null, badgeColor: '#f59e0b' },
     { id: 'clients', label: 'My Client Book', icon: <FileText size={19} />, count: leads.length, badgeColor: '#0284c7' },
-    { id: 'posp-kyc', label: 'My KYC, Banking & ID', icon: <ShieldCheck size={19} />, count: null },
-    { id: 'calculator', label: 'Commission Calculator', icon: <Percent size={19} />, count: null },
     { id: 'proposals', label: 'Multi-Insurer Quotes', icon: <FileSpreadsheet size={19} />, count: null },
     { id: 'renewals', label: 'Client Renewals', icon: <ShieldCheck size={19} />, count: null },
+    { id: 'posp-kyc', label: 'My KYC, Banking & ID', icon: <ShieldCheck size={19} />, count: null },
+    { id: 'calculator', label: 'Commission Calculator', icon: <Percent size={19} />, count: null },
+    { id: 'contests', label: 'Sales Contests', icon: <Trophy size={19} color="#f59e0b" />, count: null, badgeColor: '#f59e0b' },
   ] : [
-    { id: 'dashboard', label: 'CRM Dashboard', icon: <LayoutDashboard size={19} />, count: null },
+    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={19} />, count: null },
+    { id: 'agenda', label: 'Schedule', icon: <CalendarDays size={19} />, count: dueFollowUps.length, badgeColor: '#ea580c' },
     { id: 'enquiries', label: 'Enquiries', icon: <Briefcase size={19} />, count: quotes.length, badgeColor: '#16a34a' },
-    { id: 'contests', label: 'Sales Contests & Trips', icon: <Trophy size={19} color="#f59e0b" />, count: null, badgeColor: '#f59e0b' },
-    { id: 'clients', label: 'Client Data Sheet', icon: <FileText size={19} />, count: leads.length, badgeColor: '#0284c7' },
-    { id: 'pipeline', label: 'Sales Pipeline', icon: <TrendingUp size={19} />, count: null },
-    { id: 'agenda', label: 'Work Schedule', icon: <CalendarDays size={19} />, count: dueFollowUps.length, badgeColor: '#ea580c' },
-    { id: 'calls', label: 'Activity Log', icon: <Clock size={19} />, count: null },
-    { id: 'proposals', label: 'Quotes & Proposals', icon: <FileSpreadsheet size={19} />, count: null },
-    { id: 'renewals', label: 'Policy Renewal Desk', icon: <ShieldCheck size={19} />, count: null },
-    { 
-      id: 'porting', 
-      label: 'Policy Porting Desk', 
-      icon: <ArrowRightLeft size={19} />, 
-      count: quotes.filter(q => (q.categorySlug || '').toLowerCase().includes('port') && (q.status === 'NEW' || !q.status)).length || null, 
-      badgeColor: '#7c3aed' 
-    },
+    { id: 'pipeline', label: 'Pipeline', icon: <TrendingUp size={19} />, count: null },
+    { id: 'proposals', label: 'Proposals', icon: <FileSpreadsheet size={19} />, count: null },
+    { id: 'clients', label: 'Clients', icon: <FileText size={19} />, count: leads.length, badgeColor: '#0284c7' },
+    { id: 'customers', label: 'Customers', icon: <Smartphone size={19} color="#059669" />, count: null },
+    { id: 'renewals', label: 'Renewals', icon: <ShieldCheck size={19} />, count: null },
     { 
       id: 'claims', 
-      label: 'Claims Desk', 
+      label: 'Claims', 
       icon: <ShieldAlert size={19} />, 
       count: claims.filter(c => c.status !== 'SETTLED' && c.status !== 'REJECTED').length || null, 
       badgeColor: '#dc2626' 
     },
-    { id: 'documents', label: 'Document Locker', icon: <FolderCheck size={19} />, count: null },
+    { 
+      id: 'porting', 
+      label: 'Porting', 
+      icon: <ArrowRightLeft size={19} />, 
+      count: quotes.filter(q => (q.categorySlug || '').toLowerCase().includes('port') && (q.status === 'NEW' || !q.status)).length || null, 
+      badgeColor: '#7c3aed' 
+    },
+    { id: 'documents', label: 'Documents', icon: <FolderCheck size={19} />, count: null },
+    { id: 'calls', label: 'Activity Log', icon: <Clock size={19} />, count: null },
+    { id: 'contests', label: 'Sales Contests', icon: <Trophy size={19} color="#f59e0b" />, count: null, badgeColor: '#f59e0b' },
   ];
 
   const navItemsAdmin = isPospAgent ? [
-    { id: 'hospitals', label: 'Cashless Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' }
+    { id: 'hospitals', label: 'Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' }
   ] : [
-    ...(canManageUsers ? [{ id: 'users', label: 'User & Team Hierarchy', icon: <Users size={19} />, count: null }] : []),
     ...((isSuperAdmin || isManager) ? [
-      { id: 'approvals', label: 'Manager Approvals Desk', icon: <CheckSquare size={19} />, count: null },
-      { id: 'audit', label: 'Audit Trail & Compliance', icon: <ShieldCheck size={19} />, count: null }
+      { id: 'approvals', label: 'Approvals', icon: <CheckSquare size={19} />, count: null }
     ] : []),
-    { id: 'posp', label: 'POSP Agent Network', icon: <UserCheck size={19} />, count: pospList.filter(p => p.status === 'PENDING').length, badgeColor: '#d97706' },
-    { id: 'hospitals', label: 'Cashless Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' },
+    ...(canManageUsers ? [{ id: 'users', label: 'Team', icon: <Users size={19} />, count: null }] : []),
+    { id: 'posp', label: 'POSP Network', icon: <UserCheck size={19} />, count: pospList.filter(p => p.status === 'PENDING').length, badgeColor: '#d97706' },
     ...((isSuperAdmin || isManager) ? [
-      { id: 'partners', label: 'Insurance Partners', icon: <Globe size={19} />, count: null }
+      { id: 'partners', label: 'Partners', icon: <Globe size={19} />, count: null }
     ] : []),
-    { id: 'reviews', label: 'Customer Reviews', icon: <Star size={19} />, count: null },
+    { id: 'hospitals', label: 'Hospitals', icon: <Building2 size={19} />, count: hospitals.length, badgeColor: '#059669' },
+    { id: 'reviews', label: 'Reviews', icon: <Star size={19} />, count: null },
     ...((isSuperAdmin || isManager) ? [
-      { id: 'blogs', label: 'Blog & SEO Articles', icon: <FileText size={19} />, count: null },
-      { id: 'profile', label: 'Company Profile & Branding', icon: <Building size={19} />, count: null },
-      { id: 'pages', label: 'Company Website Pages', icon: <Globe size={19} />, count: null },
-      { id: 'gallery', label: 'Corporate Media & Albums', icon: <Camera size={19} />, count: null },
-      { id: 'integrations', label: 'Integrations & Cloud APIs', icon: <Cpu size={19} />, count: null }
+      { id: 'pages', label: 'Pages', icon: <Globe size={19} />, count: null },
+      { id: 'blogs', label: 'Articles', icon: <FileText size={19} />, count: null },
+      { id: 'gallery', label: 'Gallery', icon: <Camera size={19} />, count: null },
+      { id: 'profile', label: 'Company Profile', icon: <Building size={19} />, count: null },
+      { id: 'integrations', label: 'Integrations', icon: <Cpu size={19} />, count: null },
+      { id: 'audit', label: 'Audit Trail', icon: <ShieldCheck size={19} />, count: null }
     ] : []),
   ];
 
@@ -1572,9 +1582,14 @@ export default function AdminDashboard() {
             />
           )}
 
+          {/* VIEW: CUSTOMERS (MOBILE & WEB USERS DIRECTORY) */}
+          {(activeView === 'customers' || activeView === 'portal-users') && (
+            <UserManagementView initialSegment="CUSTOMERS" />
+          )}
+
           {/* VIEW: USER MANAGEMENT */}
           {activeView === 'users' && (
-            <UserManagementView />
+            <UserManagementView initialSegment="STAFF" />
           )}
 
           {/* VIEW: AUDIT TRAIL & COMPLIANCE */}
@@ -1648,7 +1663,7 @@ export default function AdminDashboard() {
 
           {/* VIEW: COMPANY WEBSITE PAGES DYNAMIC CONTENT */}
           {activeView === 'pages' && (isSuperAdmin || isManager) && (
-            <CompanyPagesManagerView />
+            <CompanyPagesManagerView onNavigateView={handleNavigateView} />
           )}
 
           {/* VIEW: CORPORATE MEDIA & OUTREACH ALBUMS */}

@@ -38,9 +38,15 @@ import businessTravelHero from '../assets/slides/business_travel_hero.jpg';
 // Insurer catalog
 import { portalService } from '../services/api';
 import { PARTNER_LOGO_MAP, DEFAULT_PARTNERS_FALLBACK } from '../utils/partnerAssetCatalog';
+import { useAuth } from '../context/AuthContext';
+import InContextPageEditorModal, { InContextAdminBar, SectionEditTrigger } from '../components/common/InContextPageEditorModal';
 
 export default function About() {
   const { businessProfile } = useBusinessProfile();
+  const { isSuperAdmin, isManager } = useAuth();
+  
+  // Section-specific editor modals
+  const [activeSectionModal, setActiveSectionModal] = useState(null); // 'hero' | 'stats' | 'mission' | 'contact'
   const [activeTab, setActiveTab] = useState('all');
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [partners, setPartners] = useState([]);
@@ -262,8 +268,129 @@ export default function About() {
   return (
     <div className="about-page-wrapper" style={{ background: '#f8fafc', color: 'var(--text-dark)', minHeight: '100vh' }}>
       
+
+      {/* 1. Modal: Hero Section */}
+      <InContextPageEditorModal
+        isOpen={activeSectionModal === 'hero'}
+        onClose={() => setActiveSectionModal(null)}
+        pageTitle="Hero Banner & Executive Story"
+        pageRoute="/about (Hero Fold)"
+        fields={[
+          {
+            name: 'aboutHeroTitle',
+            label: 'Hero Main Headline',
+            defaultValue: 'India’s Most Dependable Bridge Between Families, Protection & Financial Freedom',
+            placeholder: 'e.g. India’s Most Dependable Bridge Between Families, Protection & Financial Freedom',
+            helpText: 'Primary large headline displayed in the hero banner.'
+          },
+          {
+            name: 'aboutHeroDescription',
+            label: 'Executive Story & Ethos',
+            type: 'textarea',
+            rows: 4,
+            defaultValue: "At Aadhiraksha Insurance Marketing & Financial Services Pvt Ltd, we believe every Indian family deserves unbiased, transparent, and prompt insurance advisory with zero hidden catches. Rooted in Hyderabad with a pan-regional network of over 1,200 certified advisors, we don't just sell policies — we stand beside you during claim settlements.",
+            placeholder: 'Company founding story, consumer-first philosophy, and advisory network...'
+          }
+        ]}
+      />
+
+      {/* 2. Modal: Impact Statistics */}
+      <InContextPageEditorModal
+        isOpen={activeSectionModal === 'stats'}
+        onClose={() => setActiveSectionModal(null)}
+        pageTitle="Live Impact Metrics"
+        pageRoute="/about (Impact Bar)"
+        fields={[
+          {
+            name: 'claimsSettledAmount',
+            label: 'Claims Settled Amount',
+            defaultValue: '₹50+ Cr',
+            placeholder: 'e.g. ₹50+ Cr'
+          },
+          {
+            name: 'familiesProtectedCount',
+            label: 'Families Protected',
+            defaultValue: '25,000+',
+            placeholder: 'e.g. 25,000+'
+          },
+          {
+            name: 'certifiedAdvisorsCount',
+            label: 'Certified POSP Advisors Count',
+            defaultValue: '1,200+',
+            placeholder: 'e.g. 1,200+'
+          },
+          {
+            name: 'settlementRatio',
+            label: 'Settlement Ratio',
+            defaultValue: '98.8%',
+            placeholder: 'e.g. 98.8%'
+          }
+        ]}
+      />
+
+      {/* 3. Modal: Mission & Vision */}
+      <InContextPageEditorModal
+        isOpen={activeSectionModal === 'mission'}
+        onClose={() => setActiveSectionModal(null)}
+        pageTitle="Mission & Vision Statements"
+        pageRoute="/about (Mission & Vision)"
+        fields={[
+          {
+            name: 'aboutMissionStatement',
+            label: 'Mission Statement',
+            type: 'textarea',
+            rows: 3,
+            defaultValue: 'To democratize transparent insurance advisory across India, ensuring zero out-of-pocket surprise rejections and 100% cashless hospitalization concierge.',
+            placeholder: 'Our core purpose...'
+          },
+          {
+            name: 'aboutVisionStatement',
+            label: 'Vision Statement',
+            type: 'textarea',
+            rows: 3,
+            defaultValue: "To become the nation's most trusted insurance marketing firm, empowering families and businesses through ethical advisory and swift claim resolution.",
+            placeholder: 'Where we aspire to lead...'
+          }
+        ]}
+      />
+
+      {/* 4. Modal: Headquarters & Contacts */}
+      <InContextPageEditorModal
+        isOpen={activeSectionModal === 'contact'}
+        onClose={() => setActiveSectionModal(null)}
+        pageTitle="Headquarters & Contact Details"
+        pageRoute="/about (Walk-in Desk)"
+        fields={[
+          {
+            name: 'officeAddressLine1',
+            label: 'Office Suite & Building',
+            defaultValue: '4th Floor, Mytri Constructions,',
+            placeholder: 'e.g. 4th Floor, Mytri Constructions,'
+          },
+          {
+            name: 'officeAddressLine2',
+            label: 'Street, City & Pincode',
+            defaultValue: 'Opp: ECIL Busstop, ECIL, Hyderabad.',
+            placeholder: 'e.g. Opp: ECIL Busstop, ECIL, Hyderabad.'
+          },
+          {
+            name: 'primaryPhone',
+            label: 'Main Support Helpline',
+            defaultValue: '+91 8367415156',
+            placeholder: 'e.g. +91 8367415156'
+          },
+          {
+            name: 'supportEmail',
+            label: 'Primary Inquiries Email',
+            type: 'email',
+            defaultValue: 'info@aadhirakshainsurance.com',
+            placeholder: 'e.g. info@aadhirakshainsurance.com'
+          }
+        ]}
+      />
+
       {/* 1. HERO BANNER */}
-      <section className="about-hero-section">
+      <section className="about-hero-section" style={{ position: 'relative' }}>
         {/* Decorative Grid Pattern */}
         <div style={{
           position: 'absolute',
@@ -275,6 +402,18 @@ export default function About() {
         }} />
 
         <div className="container" style={{ maxWidth: '1180px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+          
+          {/* Section Edit Trigger: Hero Banner */}
+          {(isSuperAdmin || isManager) && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+              <SectionEditTrigger
+                label="Edit"
+                tooltip="Edit Hero Banner & Story"
+                onClick={() => setActiveSectionModal('hero')}
+              />
+            </div>
+          )}
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.85rem' }}>
             <span style={{
               background: 'rgba(217, 119, 6, 0.2)',
@@ -362,8 +501,20 @@ export default function About() {
       </section>
 
       {/* 2. LIVE IMPACT METRICS */}
-      <section className="about-metrics-bar">
-        <div className="container" style={{ maxWidth: '1180px', margin: '0 auto', padding: '0 1rem' }}>
+      <section className="about-metrics-bar" style={{ position: 'relative' }}>
+        <div className="container" style={{ maxWidth: '1180px', margin: '0 auto', padding: '0 1rem', position: 'relative' }}>
+          
+          {/* Section Edit Trigger: Impact Metrics */}
+          {(isSuperAdmin || isManager) && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
+              <SectionEditTrigger
+                label="Edit"
+                tooltip="Edit Live Impact Stats"
+                onClick={() => setActiveSectionModal('stats')}
+              />
+            </div>
+          )}
+
           <div className="about-metrics-card">
             <div className="about-metric-cell">
               <div className="about-metric-val" style={{ color: 'var(--primary-navy)' }}>
@@ -521,6 +672,17 @@ export default function About() {
               </h2>
             </div>
 
+            {/* Section Edit Trigger: Corporate Albums */}
+            {(isSuperAdmin || isManager) && (
+              <div>
+                <SectionEditTrigger
+                  label="Manage Albums & Photos ↗"
+                  onClick={() => {
+                    window.open('/admin?tab=gallery', '_blank', 'noopener,noreferrer');
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {/* ALBUM CARDS GRID (Direct 1-click Lightbox: clicking opens the album's photos directly in modal) */}
@@ -907,15 +1069,27 @@ export default function About() {
             alignItems: 'center'
           }}>
             <div>
-              <span style={{
-                color: 'var(--accent-gold)',
-                fontSize: '0.82rem',
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em'
-              }}>
-                Walk-In Support Desk
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{
+                  color: 'var(--accent-gold)',
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em'
+                }}>
+                  Walk-In Support Desk
+                </span>
+
+                {/* Section Edit Trigger: Headquarters & Walk-In Desk */}
+                {(isSuperAdmin || isManager) && (
+                  <SectionEditTrigger
+                    label="Edit"
+                    tooltip="Edit Headquarters Address & Helpline"
+                    onClick={() => setActiveSectionModal('contact')}
+                  />
+                )}
+              </div>
+
               <h2 style={{ fontSize: '2rem', fontWeight: 900, margin: '8px 0 16px', color: '#ffffff' }}>
                 Visit Our Hyderabad Headquarters
               </h2>

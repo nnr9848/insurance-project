@@ -107,7 +107,10 @@ public class CrmUserDto {
         private Boolean hasDomainMailbox;
         private String domainMailboxEmail;
         private String mailboxStatus;
-        private Integer mailboxQuotaMb;
         private LocalDateTime mailboxCreatedAt;
+        private LocalDateTime lastLoginAt;
+        private String clientCode;
+        private Long linkedPoliciesCount;
+        private Boolean isCustomerUser;
     }
 }

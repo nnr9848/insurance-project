@@ -32,8 +32,8 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const firebaseLogin = async (payload) => {
-    const data = await authService.firebaseLogin(payload);
+  const otpLogin = async (payload) => {
+    const data = await authService.otpLogin(payload);
     localStorage.setItem('token', data.token);
     setUser(data);
     return data;
@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }) => {
       user, 
       loading, 
       login, 
-      firebaseLogin,
+      otpLogin,
       register, 
       logout, 
       isAuthenticated: !!user,

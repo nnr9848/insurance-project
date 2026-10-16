@@ -954,9 +954,26 @@ export default function LeadInquiriesView({
                             {matchingClient.clientCode}
                           </span>
                         ) : (
-                          <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>
-                            New Web Prospect
-                          </span>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>
+                              New Web Prospect
+                            </span>
+                            <span style={{
+                              fontSize: '0.65rem',
+                              fontWeight: 800,
+                              color: '#15803d',
+                              background: '#dcfce7',
+                              border: '1px solid #86efac',
+                              padding: '1px 5px',
+                              borderRadius: '4px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }} title="Phone number verified via OTP">
+                              <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#22c55e' }}></span>
+                              OTP Verified
+                            </span>
+                          </div>
                         )}
                       </div>
                     </td>

@@ -26,16 +26,17 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    @Operation(summary = "Login with email or phone number")
+    @Operation(summary = "Login with email or phone number and password")
     public ResponseEntity<AuthDto.AuthResponse> login(@Valid @RequestBody AuthDto.LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
-    @PostMapping("/firebase-login")
-    @Operation(summary = "Login or register automatically using verified Firebase Phone OTP ID Token")
-    public ResponseEntity<AuthDto.AuthResponse> firebaseLogin(@Valid @RequestBody AuthDto.FirebaseLoginRequest request) {
-        return ResponseEntity.ok(authService.firebaseLogin(request));
+    @PostMapping("/otp-login")
+    @Operation(summary = "Instant login or registration using SMS OTP (Twilio verified)")
+    public ResponseEntity<AuthDto.AuthResponse> otpLogin(@Valid @RequestBody AuthDto.OtpLoginRequest request) {
+        return ResponseEntity.ok(authService.otpLogin(request));
     }
+
 
     @GetMapping("/me")
     @Operation(summary = "Get current authenticated user profile")

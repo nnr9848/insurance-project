@@ -122,8 +122,11 @@ public class BusinessProfile {
     @Column(name = "twilio_account_sid", length = 100)
     private String twilioAccountSid;
 
-    @Column(name = "twilio_auth_token", columnDefinition = "TEXT")
-    private String twilioAuthToken;
+    @Column(name = "twilio_api_key_sid", length = 100)
+    private String twilioApiKeySid;
+
+    @Column(name = "twilio_api_key_secret", columnDefinition = "TEXT")
+    private String twilioApiKeySecret;
 
     @Column(name = "twilio_from_number", length = 50)
     private String twilioFromNumber;
@@ -136,6 +139,9 @@ public class BusinessProfile {
     @Builder.Default
     @Column(name = "twilio_whatsapp_from_number", length = 60)
     private String twilioWhatsappFromNumber = "whatsapp:+14155238886";
+
+    @Column(name = "twilio_whatsapp_content_sid", length = 100)
+    private String twilioWhatsappContentSid;
 
     @Column(name = "firebase_storage_bucket", length = 150)
     private String firebaseStorageBucket;
@@ -234,6 +240,147 @@ public class BusinessProfile {
     @Builder.Default
     @Column(name = "legal_grievance_phone")
     private String legalGrievancePhone = "+91 8367415156";
+
+    @Builder.Default
+    @Column(name = "legal_grievance_address", columnDefinition = "TEXT")
+    private String legalGrievanceAddress = "4th Floor, Mytri Constructions, Opp: ECIL Busstop, ECIL, Hyderabad.";
+
+    @Builder.Default
+    @Column(name = "legal_grievance_timing", length = 100)
+    private String legalGrievanceTiming = "Mon - Sat, 9:30 AM to 6:30 PM";
+
+    @Builder.Default
+    @Column(name = "legal_grievance_level1_intro", columnDefinition = "TEXT")
+    private String legalGrievanceLevel1Intro = "For any service deficiency, delay in policy delivery, or assistance in claim disputes, customers may reach out to our Principal Grievance Officer:";
+
+    @Builder.Default
+    @Column(name = "legal_grievance_level2_text", columnDefinition = "TEXT")
+    private String legalGrievanceLevel2Text = "If the response from our desk is unsatisfactory within 14 working days, you can lodge a formal complaint directly with the Grievance Redressal Officer (GRO) of the respective underwriting insurance company.";
+
+    @Builder.Default
+    @Column(name = "legal_grievance_level3_text", columnDefinition = "TEXT")
+    private String legalGrievanceLevel3Text = "You may also register complaints with the IRDAI's Integrated Grievance Management System (Bima Bharosa):";
+
+    @Builder.Default
+    @Column(name = "legal_grievance_ombudsman_helpline", length = 100)
+    private String legalGrievanceOmbudsmanHelpline = "155255 / 1800 4254 732";
+
+    @Builder.Default
+    @Column(name = "legal_grievance_ombudsman_portal")
+    private String legalGrievanceOmbudsmanPortal = "https://bimabharosa.irdai.gov.in";
+
+    // Page Hero Header
+    @Builder.Default
+    @Column(name = "legal_page_badge", length = 100)
+    private String legalPageBadge = "Legal & Regulatory Governance";
+
+    @Builder.Default
+    @Column(name = "legal_page_hero_title", columnDefinition = "TEXT")
+    private String legalPageHeroTitle = "Trust, Transparency & Compliance";
+
+    @Builder.Default
+    @Column(name = "legal_page_hero_subtitle", columnDefinition = "TEXT")
+    private String legalPageHeroSubtitle = "Aadhiraksha Insurance & Financial Services Pvt Ltd adheres strictly to the regulations and consumer protection guidelines established by the Insurance Regulatory and Development Authority of India (IRDAI).";
+
+    // Tab 1: Privacy Policy
+    @Builder.Default
+    @Column(name = "legal_privacy_last_updated", length = 100)
+    private String legalPrivacyLastUpdated = "January 2026 | Effective immediately";
+
+    @Builder.Default
+    @Column(name = "legal_privacy_sec1_heading")
+    private String legalPrivacySec1Heading = "1. Commitment to Privacy";
+
+    @Builder.Default
+    @Column(name = "legal_privacy_sec1_body", columnDefinition = "TEXT")
+    private String legalPrivacySec1Body = "At Aadhiraksha Insurance & Financial Services Pvt Ltd (\"Aadhiraksha\", \"we\", \"us\", or \"our\"), we respect your privacy and are committed to protecting the personal data and financial information you share with us through our website, mobile interface, POSP portal, and client assistance desks.";
+
+    @Builder.Default
+    @Column(name = "legal_privacy_sec2_heading")
+    private String legalPrivacySec2Heading = "2. Information We Collect";
+
+    @Builder.Default
+    @Column(name = "legal_privacy_sec2_body", columnDefinition = "TEXT")
+    private String legalPrivacySec2Body = "To provide accurate insurance quotes, process policy issuance, execute renewals, and manage claim intimations, we collect personal identity details, vehicle specs, and lifestyle metrics.";
+
+    @Builder.Default
+    @Column(name = "legal_privacy_sec3_heading")
+    private String legalPrivacySec3Heading = "3. How Your Information is Used";
+
+    @Builder.Default
+    @Column(name = "legal_privacy_sec3_body", columnDefinition = "TEXT")
+    private String legalPrivacySec3Body = "Your data is strictly utilized to generate real-time comparison quotes from our empanelled IRDAI-licensed insurance partners, verify eligibility, transmit necessary underwriting information for policy binding, facilitate cashless hospitalizations/garage approvals, and deliver automated policy renewal reminders.";
+
+    @Builder.Default
+    @Column(name = "legal_privacy_sec4_heading")
+    private String legalPrivacySec4Heading = "4. Zero-Spam & Data Security Guarantee";
+
+    @Builder.Default
+    @Column(name = "legal_privacy_sec4_body", columnDefinition = "TEXT")
+    private String legalPrivacySec4Body = "We do not sell, rent, or trade your personal information to third-party marketing brokers. All database transmissions are encrypted using enterprise-grade SSL/TLS protocols with role-based cryptographic access controls.";
+
+    // Tab 2: Terms of Service
+    @Builder.Default
+    @Column(name = "legal_terms_last_updated", length = 100)
+    private String legalTermsLastUpdated = "Agreement for Platform Usage & Quote Inquiries";
+
+    @Builder.Default
+    @Column(name = "legal_terms_sec1_heading")
+    private String legalTermsSec1Heading = "1. Acceptance of Terms";
+
+    @Builder.Default
+    @Column(name = "legal_terms_sec1_body", columnDefinition = "TEXT")
+    private String legalTermsSec1Body = "By accessing, browsing, or submitting quotation/claim forms on the Aadhiraksha portal, you agree to be bound by these Terms of Service, applicable laws, and regulatory guidelines set forth by the IRDAI.";
+
+    @Builder.Default
+    @Column(name = "legal_terms_sec2_heading")
+    private String legalTermsSec2Heading = "2. Role of Aadhiraksha Insurance";
+
+    @Builder.Default
+    @Column(name = "legal_terms_sec2_body", columnDefinition = "TEXT")
+    private String legalTermsSec2Body = "Aadhiraksha functions as a licensed insurance intermediary facilitating price comparison, pre-sales advisory, and post-sales claims assistance. The contract of insurance is strictly between the insured customer and the respective insurance underwriter (e.g., Star Health, HDFC ERGO, ICICI Lombard, TATA AIG, LIC, etc.).";
+
+    @Builder.Default
+    @Column(name = "legal_terms_sec3_heading")
+    private String legalTermsSec3Heading = "3. Accuracy of Declarations (Utmost Good Faith)";
+
+    @Builder.Default
+    @Column(name = "legal_terms_sec3_body", columnDefinition = "TEXT")
+    private String legalTermsSec3Body = "Insurance contracts in India operate under the doctrine of Uberrima Fides (Utmost Good Faith). It is the sole responsibility of the policyholder to provide true, complete, and accurate declarations regarding pre-existing medical conditions, vehicle modifications, prior claims, and age. Any misrepresentation or suppression of material facts may result in rejection of claims by the insurer under Section 45 of the Insurance Act, 1938.";
+
+    // Tab 3: IRDAI Statutory Disclaimers
+    @Builder.Default
+    @Column(name = "legal_disclaimer_subtitle")
+    private String legalDisclaimerSubtitle = "Mandated Public Disclosures under Insurance Act, 1938";
+
+    @Builder.Default
+    @Column(name = "legal_disclaimer_sec41_title")
+    private String legalDisclaimerSec41Title = "⚠️ Section 41 of the Insurance Act, 1938 (Prohibition of Rebates):";
+
+    @Builder.Default
+    @Column(name = "legal_disclaimer_sec41_body", columnDefinition = "TEXT")
+    private String legalDisclaimerSec41Body = "(1) No person shall allow or offer to allow, either directly or indirectly, as an inducement to any person to take out or renew or continue an insurance in respect of any kind of risk relating to lives or property in India, any rebate of the whole or part of the commission payable or any rebate of the premium shown on the policy, nor shall any person taking out or renewing or continuing a policy accept any rebate, except such rebate as may be allowed in accordance with the published prospectuses or tables of the insurer.\n\n(2) Any person making default in complying with the provisions of this section shall be liable for a penalty which may extend to ten lakh rupees.";
+
+    @Builder.Default
+    @Column(name = "legal_disclaimer_solicitation_text", columnDefinition = "TEXT")
+    private String legalDisclaimerSolicitationText = "Product information, premiums, discounts, and benefits displayed on this platform are indicative and based on data provided by respective insurance companies. Please read the policy sales brochure and wording carefully before concluding any sale.";
+
+    @Builder.Default
+    @Column(name = "legal_disclaimer_tax_text", columnDefinition = "TEXT")
+    private String legalDisclaimerTaxText = "Tax deductions under Section 80C, 80D, and exemptions under Section 10(10D) of the Income Tax Act, 1961 are subject to prevailing provisions and amendments in tax laws. Clients are advised to consult their qualified tax advisor.";
+
+    // Full Document Rich HTML/Text Fields (WordPress/Notion Document Style)
+    @Column(name = "legal_privacy_document_html", columnDefinition = "TEXT")
+    private String legalPrivacyDocumentHtml;
+
+    @Column(name = "legal_terms_document_html", columnDefinition = "TEXT")
+    private String legalTermsDocumentHtml;
+
+    @Column(name = "legal_disclaimer_document_html", columnDefinition = "TEXT")
+    private String legalDisclaimerDocumentHtml;
+
+    @Column(name = "legal_grievance_document_html", columnDefinition = "TEXT")
+    private String legalGrievanceDocumentHtml;
 
     // Dynamic Comparison / Why Choose Us Section
     @Builder.Default

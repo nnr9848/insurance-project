@@ -64,13 +64,14 @@ export default function GalleryManagerView() {
     return url;
   };
 
-  // Initialize albums from businessProfile JSON
+  // Initialize albums from businessProfile JSON (or auto-populate defaults if empty)
   useEffect(() => {
+    let loaded = false;
     if (businessProfile?.aboutGalleryPhotosJson) {
       try {
         const raw = JSON.parse(businessProfile.aboutGalleryPhotosJson);
-        if (Array.isArray(raw)) {
-          const isAlbumStructure = raw.length > 0 && Array.isArray(raw[0].photos);
+        if (Array.isArray(raw) && raw.length > 0) {
+          const isAlbumStructure = Array.isArray(raw[0].photos);
           if (isAlbumStructure) {
             const sanitized = raw.map(alb => ({
               ...alb,
@@ -82,6 +83,7 @@ export default function GalleryManagerView() {
             }));
             setAlbums(sanitized);
             if (!activeAlbumId && sanitized.length > 0) setActiveAlbumId(sanitized[0].id);
+            loaded = true;
           } else {
             // Group legacy flat items into albums by category
             const grouped = [
@@ -127,13 +129,111 @@ export default function GalleryManagerView() {
               }
             ].filter(a => a.photos.length > 0);
 
-            setAlbums(grouped);
-            if (grouped.length > 0) setActiveAlbumId(grouped[0].id);
+            if (grouped.length > 0) {
+              setAlbums(grouped);
+              if (!activeAlbumId) setActiveAlbumId(grouped[0].id);
+              loaded = true;
+            }
           }
         }
       } catch (err) {
-        setAlbums([]);
+        console.warn('Could not parse aboutGalleryPhotosJson:', err);
       }
+    }
+
+    // Auto-fallback: If no albums exist yet in the database, automatically populate the 5 curated default albums
+    if (!loaded && businessProfile) {
+      const fallbackDefaults = [
+        {
+          id: 'album-hq',
+          title: 'Corporate Headquarters & Advisory Suites',
+          subtitle: 'ECIL, Hyderabad - 4th Floor Mytri Constructions',
+          category: 'office',
+          tag: 'Headquarters',
+          photos: [
+            {
+              id: 101,
+              title: 'Executive Advisory Suite',
+              subtitle: 'Personalized face-to-face consultation desks',
+              imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+              tag: 'Headquarters'
+            },
+            {
+              id: 102,
+              title: 'Policy Onboarding Wing',
+              subtitle: 'Digital instant proposal issuance infrastructure',
+              imageUrl: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=1200&q=80',
+              tag: 'Headquarters'
+            }
+          ]
+        },
+        {
+          id: 'album-conclaves',
+          title: 'Annual POSP & Advisor Conclaves',
+          subtitle: 'Empowering 1,200+ certified regional advisors across Telangana & AP',
+          category: 'conclave',
+          tag: 'Advisor Network',
+          photos: [
+            {
+              id: 201,
+              title: 'Regional Advisor Leadership Summit',
+              subtitle: 'Novotel Hitec City Conclave',
+              imageUrl: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80',
+              tag: 'Advisor Network'
+            }
+          ]
+        },
+        {
+          id: 'album-claims',
+          title: '24/7 Claim Concierge Desk',
+          subtitle: 'Physical claim managers assisting cashless hospital admissions',
+          category: 'claims',
+          tag: 'Claim Support',
+          photos: [
+            {
+              id: 301,
+              title: 'Claim Settlement Concierge in Action',
+              subtitle: 'Hospital TPA coordination suite',
+              imageUrl: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80',
+              tag: 'Claim Support'
+            }
+          ]
+        },
+        {
+          id: 'album-awards',
+          title: 'Industry Awards & Partner Honours',
+          subtitle: 'Top Performance recognition for settlement speed & ethical compliance',
+          category: 'awards',
+          tag: 'Awards & Honours',
+          photos: [
+            {
+              id: 401,
+              title: 'Best Regional InsurTech Marketing Firm',
+              subtitle: 'Annual Financial Services Summit Award',
+              imageUrl: 'https://images.unsplash.com/photo-1531545514256-b1400bc00f31?auto=format&fit=crop&w=1200&q=80',
+              tag: 'Awards & Honours'
+            }
+          ]
+        },
+        {
+          id: 'album-community',
+          title: 'Family Financial Wellness & Motor Camps',
+          subtitle: 'Educating policyholders on porting rights and cashless claims',
+          category: 'community',
+          tag: 'Community Camp',
+          photos: [
+            {
+              id: 501,
+              title: 'Secunderabad Road Safety & Zero-Dep Camp',
+              subtitle: 'Community outreach initiative',
+              imageUrl: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1200&q=80',
+              tag: 'Community Camp'
+            }
+          ]
+        }
+      ];
+      setAlbums(fallbackDefaults);
+      if (!activeAlbumId) setActiveAlbumId('album-hq');
     }
   }, [businessProfile]);
 

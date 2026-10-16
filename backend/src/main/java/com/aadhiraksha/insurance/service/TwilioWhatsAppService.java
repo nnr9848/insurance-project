@@ -33,17 +33,24 @@ public class TwilioWhatsAppService {
     @Value("${twilio.account-sid:}")
     private String envAccountSid;
 
-    @Value("${twilio.auth-token:}")
-    private String envAuthToken;
+    @Value("${twilio.api-key-sid:}")
+    private String envApiKeySid;
+
+    @Value("${twilio.api-key-secret:}")
+    private String envApiKeySecret;
 
     @Value("${twilio.whatsapp-from-number:whatsapp:+14155238886}")
     private String envWhatsAppFromNumber;
+
+    @Value("${twilio.whatsapp-content-sid:}")
+    private String envWhatsAppContentSid;
 
     @Value("${twilio.whatsapp-enabled:false}")
     private boolean envWhatsAppEnabled;
 
     /**
      * Sends a single WhatsApp message via Twilio WhatsApp API.
+     * Uses enterprise API Key SID (SK...) and API Key Secret for authentication.
      * Formats numbers to E.164 with the 'whatsapp:' prefix required by Twilio.
      */
     public boolean sendWhatsAppMessage(String recipientPhone, String messageBody) {
@@ -54,12 +61,13 @@ public class TwilioWhatsAppService {
         }
 
         String accountSid = getAccountSid();
-        String authToken = getAuthToken();
+        String apiKeySid = getApiKeySid();
+        String apiKeySecret = getApiKeySecret();
         String fromWhatsApp = getWhatsAppFromNumber();
         boolean isEnabled = isWhatsAppEnabled();
 
-        if (!isEnabled || accountSid.isBlank() || authToken.isBlank() || fromWhatsApp.isBlank()) {
-            log.info("[Twilio WhatsApp MOCK] Notifications disabled or credentials missing. Message to {}: {}", 
+        if (!isEnabled || accountSid.isBlank() || apiKeySid.isBlank() || apiKeySecret.isBlank() || fromWhatsApp.isBlank()) {
+            log.info("[Twilio WhatsApp MOCK] Notifications disabled or API Key credentials missing. Message to {}: {}", 
                     cleanPhone, messageBody);
             return false;
         }
@@ -71,22 +79,33 @@ public class TwilioWhatsAppService {
 
         log.info("[Twilio WhatsApp DISPATCH] Attempting WhatsApp dispatch: From='{}' -> To='{}'", formattedFrom, formattedTo);
 
+        String contentSid = getContentSid();
+
         try {
             String twilioUrl = String.format("https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json", accountSid);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-            // Basic Auth: AccountSID:AuthToken
+            // Basic Auth: ApiKeySID:ApiKeySecret
             String authHeader = "Basic " + Base64.getEncoder().encodeToString(
-                    (accountSid + ":" + authToken).getBytes(StandardCharsets.UTF_8)
+                    (apiKeySid + ":" + apiKeySecret).getBytes(StandardCharsets.UTF_8)
             );
             headers.set("Authorization", authHeader);
 
             MultiValueMap<String, String> requestBody = new LinkedMultiValueMap<>();
             requestBody.add("To", formattedTo);
             requestBody.add("From", formattedFrom);
-            requestBody.add("Body", messageBody);
+
+            // If a Meta approved WhatsApp Content Template (HX...) is configured, use Content API parameters
+            if (contentSid != null && !contentSid.isBlank()) {
+                requestBody.add("ContentSid", contentSid);
+                // Twilio ContentVariables JSON format for placeholders {"1":"...", "2":"..."}
+                String cleanBody = messageBody.replaceAll("[\"\\r\\n]", " ").trim();
+                requestBody.add("ContentVariables", String.format("{\"1\":\"%s\"}", cleanBody));
+            } else {
+                requestBody.add("Body", messageBody);
+            }
 
             HttpEntity<MultiValueMap<String, String>> requestEntity = new HttpEntity<>(requestBody, headers);
             ResponseEntity<String> response = restTemplate.postForEntity(twilioUrl, requestEntity, String.class);
@@ -100,7 +119,14 @@ public class TwilioWhatsAppService {
             }
 
         } catch (org.springframework.web.client.HttpStatusCodeException ex) {
-            log.error("[Twilio WhatsApp HTTP ERROR] Twilio status {}: {}", ex.getStatusCode(), ex.getResponseBodyAsString());
+            String errorBody = ex.getResponseBodyAsString();
+            log.error("[Twilio WhatsApp HTTP ERROR] Twilio status {}: {}", ex.getStatusCode(), errorBody);
+
+            // Handle Error 21654: Meta requires ContentSid for outbound notifications outside 24h window
+            if (errorBody != null && errorBody.contains("21654") && (contentSid == null || contentSid.isBlank())) {
+                log.warn("[Twilio WhatsApp META NOTICE] WhatsApp outbound initiation requires a pre-approved template (ContentSid). "
+                        + "Please configure a WhatsApp Content Template SID (HX...) in CRM Integrations settings.");
+            }
             return false;
         } catch (Exception ex) {
             log.error("[Twilio WhatsApp EXCEPTION] Error dispatching WhatsApp to {}: {}", formattedTo, ex.getMessage());
@@ -165,11 +191,25 @@ public class TwilioWhatsAppService {
                 .orElse(envAccountSid);
     }
 
-    private String getAuthToken() {
+    private String getApiKeySid() {
         return businessProfileRepository.findAll().stream().findFirst()
-                .map(BusinessProfile::getTwilioAuthToken)
+                .map(BusinessProfile::getTwilioApiKeySid)
                 .filter(s -> s != null && !s.isBlank())
-                .orElse(envAuthToken);
+                .orElse(envApiKeySid);
+    }
+
+    private String getApiKeySecret() {
+        return businessProfileRepository.findAll().stream().findFirst()
+                .map(BusinessProfile::getTwilioApiKeySecret)
+                .filter(s -> s != null && !s.isBlank())
+                .orElse(envApiKeySecret);
+    }
+
+    private String getContentSid() {
+        return businessProfileRepository.findAll().stream().findFirst()
+                .map(BusinessProfile::getTwilioWhatsappContentSid)
+                .filter(s -> s != null && !s.isBlank())
+                .orElse(envWhatsAppContentSid);
     }
 
     private String sanitizePhoneNumber(String raw) {

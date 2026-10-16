@@ -511,6 +511,25 @@ public class CrmUserService {
         Long managerId = staff != null && staff.getReportingManager() != null ? staff.getReportingManager().getId() : (user.getManager() != null ? user.getManager().getId() : null);
         String managerName = staff != null && staff.getReportingManager() != null ? staff.getReportingManager().getFullName() : (user.getManager() != null ? user.getManager().getFullName() : null);
 
+        boolean isCustomer = user.getRoles().stream().anyMatch(r -> "ROLE_USER".equals(r.getName()) || "ROLE_CUSTOMER".equals(r.getName()));
+        
+        String clientCode = null;
+        long policyCount = 0;
+        if (isCustomer) {
+            String phone = user.getPhoneNumber();
+            if (phone != null && !phone.isBlank()) {
+                String cleanPhone = phone.replaceAll("[^0-9]", "");
+                if (cleanPhone.length() >= 10) {
+                    cleanPhone = cleanPhone.substring(cleanPhone.length() - 10);
+                }
+                List<com.aadhiraksha.insurance.model.Client> matching = clientRepository.findByPhoneSuffix(cleanPhone);
+                if (!matching.isEmpty()) {
+                    clientCode = matching.get(0).getClientCode();
+                    policyCount = matching.size();
+                }
+            }
+        }
+
         return CrmUserDto.UserResponse.builder()
                 .id(user.getId())
                 .employeeCode(employeeCode)
@@ -525,12 +544,15 @@ public class CrmUserService {
                 .mustChangePassword(user.getMustChangePassword())
                 .roles(user.getRoles().stream().map(Role::getName).collect(Collectors.toSet()))
                 .createdAt(user.getCreatedAt())
+                .lastLoginAt(user.getUpdatedAt())
                 .assignedClientsCount(clientCount)
                 .hasDomainMailbox(Boolean.TRUE.equals(user.getHasDomainMailbox()))
                 .domainMailboxEmail(user.getDomainMailboxEmail())
                 .mailboxStatus(user.getMailboxStatus())
-                .mailboxQuotaMb(user.getMailboxQuotaMb())
                 .mailboxCreatedAt(user.getMailboxCreatedAt())
+                .clientCode(clientCode)
+                .linkedPoliciesCount(policyCount)
+                .isCustomerUser(isCustomer)
                 .build();
     }
 }

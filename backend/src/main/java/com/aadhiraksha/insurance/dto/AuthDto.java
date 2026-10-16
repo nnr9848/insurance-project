@@ -17,13 +17,17 @@ public class AuthDto {
     }
 
     @Data
-    public static class FirebaseLoginRequest {
-        @NotBlank(message = "Firebase ID Token is required")
-        private String idToken;
+    public static class OtpLoginRequest {
+        @NotBlank(message = "Phone number is required")
+        private String phoneNumber;
+
+        @NotBlank(message = "OTP code is required")
+        private String otp;
 
         private String fullName;
         private String role; // Optional: "ROLE_POSP_AGENT" or default "ROLE_USER"
     }
+
 
     @Data
     public static class RegisterRequest {

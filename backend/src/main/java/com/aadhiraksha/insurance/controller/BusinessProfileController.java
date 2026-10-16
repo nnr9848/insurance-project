@@ -238,6 +238,113 @@ public class BusinessProfileController {
         if (updateReq.getLegalGrievancePhone() != null) {
             profile.setLegalGrievancePhone(updateReq.getLegalGrievancePhone().trim());
         }
+        if (updateReq.getLegalGrievanceAddress() != null) {
+            profile.setLegalGrievanceAddress(updateReq.getLegalGrievanceAddress().trim());
+        }
+        if (updateReq.getLegalGrievanceTiming() != null) {
+            profile.setLegalGrievanceTiming(updateReq.getLegalGrievanceTiming().trim());
+        }
+        if (updateReq.getLegalGrievanceLevel1Intro() != null) {
+            profile.setLegalGrievanceLevel1Intro(updateReq.getLegalGrievanceLevel1Intro().trim());
+        }
+        if (updateReq.getLegalGrievanceLevel2Text() != null) {
+            profile.setLegalGrievanceLevel2Text(updateReq.getLegalGrievanceLevel2Text().trim());
+        }
+        if (updateReq.getLegalGrievanceLevel3Text() != null) {
+            profile.setLegalGrievanceLevel3Text(updateReq.getLegalGrievanceLevel3Text().trim());
+        }
+        if (updateReq.getLegalGrievanceOmbudsmanHelpline() != null) {
+            profile.setLegalGrievanceOmbudsmanHelpline(updateReq.getLegalGrievanceOmbudsmanHelpline().trim());
+        }
+        if (updateReq.getLegalGrievanceOmbudsmanPortal() != null) {
+            profile.setLegalGrievanceOmbudsmanPortal(updateReq.getLegalGrievanceOmbudsmanPortal().trim());
+        }
+
+        // Legal & Compliance CMS fields
+        if (updateReq.getLegalPageBadge() != null) {
+            profile.setLegalPageBadge(updateReq.getLegalPageBadge().trim());
+        }
+        if (updateReq.getLegalPageHeroTitle() != null) {
+            profile.setLegalPageHeroTitle(updateReq.getLegalPageHeroTitle().trim());
+        }
+        if (updateReq.getLegalPageHeroSubtitle() != null) {
+            profile.setLegalPageHeroSubtitle(updateReq.getLegalPageHeroSubtitle().trim());
+        }
+        if (updateReq.getLegalPrivacyLastUpdated() != null) {
+            profile.setLegalPrivacyLastUpdated(updateReq.getLegalPrivacyLastUpdated().trim());
+        }
+        if (updateReq.getLegalPrivacySec1Heading() != null) {
+            profile.setLegalPrivacySec1Heading(updateReq.getLegalPrivacySec1Heading().trim());
+        }
+        if (updateReq.getLegalPrivacySec1Body() != null) {
+            profile.setLegalPrivacySec1Body(updateReq.getLegalPrivacySec1Body().trim());
+        }
+        if (updateReq.getLegalPrivacySec2Heading() != null) {
+            profile.setLegalPrivacySec2Heading(updateReq.getLegalPrivacySec2Heading().trim());
+        }
+        if (updateReq.getLegalPrivacySec2Body() != null) {
+            profile.setLegalPrivacySec2Body(updateReq.getLegalPrivacySec2Body().trim());
+        }
+        if (updateReq.getLegalPrivacySec3Heading() != null) {
+            profile.setLegalPrivacySec3Heading(updateReq.getLegalPrivacySec3Heading().trim());
+        }
+        if (updateReq.getLegalPrivacySec3Body() != null) {
+            profile.setLegalPrivacySec3Body(updateReq.getLegalPrivacySec3Body().trim());
+        }
+        if (updateReq.getLegalPrivacySec4Heading() != null) {
+            profile.setLegalPrivacySec4Heading(updateReq.getLegalPrivacySec4Heading().trim());
+        }
+        if (updateReq.getLegalPrivacySec4Body() != null) {
+            profile.setLegalPrivacySec4Body(updateReq.getLegalPrivacySec4Body().trim());
+        }
+        if (updateReq.getLegalTermsLastUpdated() != null) {
+            profile.setLegalTermsLastUpdated(updateReq.getLegalTermsLastUpdated().trim());
+        }
+        if (updateReq.getLegalTermsSec1Heading() != null) {
+            profile.setLegalTermsSec1Heading(updateReq.getLegalTermsSec1Heading().trim());
+        }
+        if (updateReq.getLegalTermsSec1Body() != null) {
+            profile.setLegalTermsSec1Body(updateReq.getLegalTermsSec1Body().trim());
+        }
+        if (updateReq.getLegalTermsSec2Heading() != null) {
+            profile.setLegalTermsSec2Heading(updateReq.getLegalTermsSec2Heading().trim());
+        }
+        if (updateReq.getLegalTermsSec2Body() != null) {
+            profile.setLegalTermsSec2Body(updateReq.getLegalTermsSec2Body().trim());
+        }
+        if (updateReq.getLegalTermsSec3Heading() != null) {
+            profile.setLegalTermsSec3Heading(updateReq.getLegalTermsSec3Heading().trim());
+        }
+        if (updateReq.getLegalTermsSec3Body() != null) {
+            profile.setLegalTermsSec3Body(updateReq.getLegalTermsSec3Body().trim());
+        }
+        if (updateReq.getLegalDisclaimerSubtitle() != null) {
+            profile.setLegalDisclaimerSubtitle(updateReq.getLegalDisclaimerSubtitle().trim());
+        }
+        if (updateReq.getLegalDisclaimerSec41Title() != null) {
+            profile.setLegalDisclaimerSec41Title(updateReq.getLegalDisclaimerSec41Title().trim());
+        }
+        if (updateReq.getLegalDisclaimerSec41Body() != null) {
+            profile.setLegalDisclaimerSec41Body(updateReq.getLegalDisclaimerSec41Body().trim());
+        }
+        if (updateReq.getLegalDisclaimerSolicitationText() != null) {
+            profile.setLegalDisclaimerSolicitationText(updateReq.getLegalDisclaimerSolicitationText().trim());
+        }
+        if (updateReq.getLegalDisclaimerTaxText() != null) {
+            profile.setLegalDisclaimerTaxText(updateReq.getLegalDisclaimerTaxText().trim());
+        }
+        if (updateReq.getLegalPrivacyDocumentHtml() != null) {
+            profile.setLegalPrivacyDocumentHtml(updateReq.getLegalPrivacyDocumentHtml());
+        }
+        if (updateReq.getLegalTermsDocumentHtml() != null) {
+            profile.setLegalTermsDocumentHtml(updateReq.getLegalTermsDocumentHtml());
+        }
+        if (updateReq.getLegalDisclaimerDocumentHtml() != null) {
+            profile.setLegalDisclaimerDocumentHtml(updateReq.getLegalDisclaimerDocumentHtml());
+        }
+        if (updateReq.getLegalGrievanceDocumentHtml() != null) {
+            profile.setLegalGrievanceDocumentHtml(updateReq.getLegalGrievanceDocumentHtml());
+        }
 
         // Twilio SMS Integration
         if (updateReq.getTwilioSmsEnabled() != null) {
@@ -246,8 +353,11 @@ public class BusinessProfileController {
         if (updateReq.getTwilioAccountSid() != null) {
             profile.setTwilioAccountSid(updateReq.getTwilioAccountSid().trim());
         }
-        if (updateReq.getTwilioAuthToken() != null) {
-            profile.setTwilioAuthToken(updateReq.getTwilioAuthToken().trim());
+        if (updateReq.getTwilioApiKeySid() != null) {
+            profile.setTwilioApiKeySid(updateReq.getTwilioApiKeySid().trim());
+        }
+        if (updateReq.getTwilioApiKeySecret() != null) {
+            profile.setTwilioApiKeySecret(updateReq.getTwilioApiKeySecret().trim());
         }
         if (updateReq.getTwilioFromNumber() != null) {
             profile.setTwilioFromNumber(updateReq.getTwilioFromNumber().trim());
@@ -259,6 +369,9 @@ public class BusinessProfileController {
         }
         if (updateReq.getTwilioWhatsappFromNumber() != null) {
             profile.setTwilioWhatsappFromNumber(updateReq.getTwilioWhatsappFromNumber().trim());
+        }
+        if (updateReq.getTwilioWhatsappContentSid() != null) {
+            profile.setTwilioWhatsappContentSid(updateReq.getTwilioWhatsappContentSid().trim());
         }
 
         // Dynamic Why Choose Us Comparison Section
@@ -332,7 +445,7 @@ public class BusinessProfileController {
         } else {
             return ResponseEntity.status(400).body(java.util.Map.of(
                 "success", false,
-                "message", "Failed to dispatch Twilio SMS. Please verify Account SID, Auth Token, and From Number."
+                "message", "Failed to dispatch Twilio SMS. Please verify Account SID, API Key SID, API Key Secret, and From Number."
             ));
         }
     }

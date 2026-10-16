@@ -49,6 +49,7 @@ public class SecurityConfig {
                         // Public endpoints
                         .requestMatchers(
                                 AntPathRequestMatcher.antMatcher("/api/auth/**"),
+                                AntPathRequestMatcher.antMatcher("/api/portal/otp/**"),
                                 AntPathRequestMatcher.antMatcher("/api/categories"),
                                 AntPathRequestMatcher.antMatcher("/api/categories/**"),
                                 AntPathRequestMatcher.antMatcher("/api/quotes"),
