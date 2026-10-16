@@ -40,6 +40,7 @@ spring:
           ssl:
             enable: true
             trust: "*"
+            checkserveridentity: false
           starttls:
             enable: false
             required: false
