@@ -37,6 +37,7 @@ public class CrmUserService {
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
     private final MailboxProvisioningService mailboxProvisioningService;
+    private final EmailService emailService;
 
     private static final String CHAR_LOWER = "abcdefghijklmnopqrstuvwxyz";
     private static final String CHAR_UPPER = CHAR_LOWER.toUpperCase();
@@ -217,6 +218,17 @@ public class CrmUserService {
                 log.warn("Automatic domain mailbox provisioning failed during user creation: {}", ex.getMessage());
                 result.put("domainMailboxError", ex.getMessage());
             }
+        }
+
+        // Asynchronously dispatch welcome credentials email to new user/staff
+        if (savedUser.getEmail() != null && savedUser.getEmail().contains("@")) {
+            String domainEmail = savedUser.getDomainMailboxEmail();
+            emailService.sendWelcomeCredentialsEmail(
+                    savedUser.getEmail(),
+                    savedUser.getFullName(),
+                    rawPassword,
+                    domainEmail
+            );
         }
 
         result.put("user", mapToResponse(savedUser));

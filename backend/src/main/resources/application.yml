@@ -28,6 +28,22 @@ spring:
     repair-on-migrate: true
     validate-on-migrate: false
     locations: classpath:db/migration
+  mail:
+    host: ${SPRING_MAIL_HOST:mail.aadhirakshainsurance.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:notifications@aadhirakshainsurance.com}
+    password: ${SPRING_MAIL_PASSWORD:AadhirakshaMailSecret2026!}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: false
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
 
 # JWT Configuration
 app:
