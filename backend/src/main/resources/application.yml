@@ -31,8 +31,8 @@ spring:
   mail:
     host: ${SPRING_MAIL_HOST:mail.aadhirakshainsurance.com}
     port: ${SPRING_MAIL_PORT:465}
-    username: ${SPRING_MAIL_USERNAME:admin@aadhirakshainsurance.com}
-    password: ${SPRING_MAIL_PASSWORD:AadhirakshaMailSecret2026!}
+    username: ${SPRING_MAIL_USERNAME:admin}
+    password: ${SPRING_MAIL_PASSWORD:pFLV0mGhXb4Jn5Om}
     properties:
       mail:
         smtp:
