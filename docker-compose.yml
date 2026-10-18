@@ -34,6 +34,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-insurance_db}
       SPRING_DATASOURCE_USERNAME: ${DB_USER:-aadhiraksha_admin}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-aadhiraksha_secure_password}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-mailserver}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-465}
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-*}"
     volumes:
       - aadhiraksha_document_uploads:/app/uploads
