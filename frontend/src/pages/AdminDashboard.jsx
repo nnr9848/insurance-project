@@ -352,7 +352,7 @@ export default function AdminDashboard() {
         return {
           title: 'Integrations & Cloud Communications',
           category: 'Operations & Management',
-          subtitle: 'Manage Google Firebase Phone Authentication (SMS OTP) and Meta WhatsApp Cloud API credentials & live delivery testing.',
+          subtitle: 'Manage Twilio SMS OTPs, Twilio WhatsApp Messaging, and Mailgun/SMTP credentials & live delivery testing.',
           icon: <Cpu size={18} color="#2563eb" />
         };
       case 'reviews':

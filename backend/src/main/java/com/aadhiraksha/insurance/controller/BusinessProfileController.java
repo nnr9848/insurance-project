@@ -1,6 +1,7 @@
 package com.aadhiraksha.insurance.controller;
 
 import com.aadhiraksha.insurance.model.BusinessProfile;
+import com.aadhiraksha.insurance.model.User;
 import com.aadhiraksha.insurance.repository.BusinessProfileRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -136,29 +138,6 @@ public class BusinessProfileController {
         }
         if (updateReq.getNotifyDocsOnWhatsapp() != null) {
             profile.setNotifyDocsOnWhatsapp(updateReq.getNotifyDocsOnWhatsapp());
-        }
-
-        // Firebase Phone Auth Settings
-        if (updateReq.getFirebaseEnabled() != null) {
-            profile.setFirebaseEnabled(updateReq.getFirebaseEnabled());
-        }
-        if (updateReq.getFirebaseProjectId() != null && !updateReq.getFirebaseProjectId().trim().isEmpty()) {
-            profile.setFirebaseProjectId(updateReq.getFirebaseProjectId().trim());
-        }
-        if (updateReq.getFirebaseApiKey() != null) {
-            profile.setFirebaseApiKey(updateReq.getFirebaseApiKey().trim());
-        }
-        if (updateReq.getFirebaseAuthDomain() != null) {
-            profile.setFirebaseAuthDomain(updateReq.getFirebaseAuthDomain().trim());
-        }
-        if (updateReq.getFirebaseAppId() != null) {
-            profile.setFirebaseAppId(updateReq.getFirebaseAppId().trim());
-        }
-        if (updateReq.getFirebaseStorageBucket() != null) {
-            profile.setFirebaseStorageBucket(updateReq.getFirebaseStorageBucket().trim());
-        }
-        if (updateReq.getFirebaseMessagingSenderId() != null) {
-            profile.setFirebaseMessagingSenderId(updateReq.getFirebaseMessagingSenderId().trim());
         }
 
         // Google Maps & Review Links
@@ -410,8 +389,8 @@ public class BusinessProfileController {
         profile.setUpdatedAt(LocalDateTime.now());
 
         BusinessProfile saved = repository.save(profile);
-        log.info("Business profile and integrations updated by admin: primaryPhone={}, whatsappEnabled={}, twilioSmsEnabled={}, firebaseEnabled={}", 
-                saved.getPrimaryPhone(), saved.getWhatsappEnabled(), saved.getTwilioSmsEnabled(), saved.getFirebaseEnabled());
+        log.info("Business profile and integrations updated by admin: primaryPhone={}, whatsappEnabled={}, twilioSmsEnabled={}", 
+                saved.getPrimaryPhone(), saved.getWhatsappEnabled(), saved.getTwilioSmsEnabled());
 
         return ResponseEntity.ok(saved);
     }
@@ -590,7 +569,8 @@ public class BusinessProfileController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
     @Operation(summary = "Test Outbound Transactional Email", description = "Synchronously delivers a branded test email to any desired recipient to verify SMTP health")
     public ResponseEntity<java.util.Map<String, Object>> testEmailDelivery(
-            @RequestBody java.util.Map<String, String> request) {
+            @RequestBody java.util.Map<String, String> request,
+            @AuthenticationPrincipal User currentUser) {
         
         String targetEmail = request != null ? request.get("targetEmail") : null;
         if (targetEmail == null || targetEmail.trim().isEmpty() || !targetEmail.contains("@")) {
@@ -601,18 +581,7 @@ public class BusinessProfileController {
         }
 
         try {
-            String subject = "Aadhiraksha Mail Diagnostic: Outbound SMTP Delivery Verified";
-            String htmlContent = """
-                <p>Hello,</p>
-                <p>This is an automated <strong>SMTP Delivery Verification Test</strong> dispatched from the <strong>Aadhiraksha CRM Operations Console</strong>.</p>
-                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px; margin: 16px 0;">
-                    <p style="margin: 0 0 6px; color: #166534; font-weight: bold;">✔ Stalwart SMTP Handshake Successful</p>
-                    <p style="margin: 0; color: #15803d; font-size: 13px;">Recipient Address: <strong>%s</strong></p>
-                </div>
-                <p>If you are reading this email, your corporate mail server (Stalwart), DNS records (SPF, DKIM, MX), and application SMTP dispatch channels are fully operational.</p>
-                """.formatted(targetEmail.trim());
-
-            emailService.sendEmailDirect(targetEmail.trim(), subject, htmlContent);
+            emailService.sendDiagnosticTestEmail(targetEmail.trim(), currentUser != null ? currentUser.getFullName() : "Administrator");
 
             return ResponseEntity.ok(java.util.Map.of(
                 "success", true,
@@ -623,6 +592,139 @@ public class BusinessProfileController {
             return ResponseEntity.status(500).body(java.util.Map.of(
                 "success", false,
                 "message", "SMTP delivery failed: " + ex.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Get catalogue of production transactional email templates for CRM Preview
+     */
+    @GetMapping("/admin/settings/email/templates")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @Operation(summary = "List Email Templates", description = "Returns metadata and variable schemas for all available Thymeleaf email templates")
+    public ResponseEntity<java.util.List<java.util.Map<String, Object>>> getEmailTemplates() {
+        return ResponseEntity.ok(java.util.List.of(
+            java.util.Map.of(
+                "id", "smtp-diagnostic",
+                "name", "System SMTP Diagnostic",
+                "category", "OPERATIONAL",
+                "description", "Real-time server handshake verification and delivery status dispatch",
+                "subject", "Aadhiraksha Mail Diagnostic: Outbound SMTP Delivery Verified",
+                "sampleData", java.util.Map.of(
+                    "recipientEmail", "admin@aadhirakshainsurance.com",
+                    "dispatchTimestamp", "19-Oct-2026 14:50:00 IST",
+                    "mailHost", "mailserver:465",
+                    "triggeredBy", "Operations Desk"
+                )
+            ),
+            java.util.Map.of(
+                "id", "welcome-credentials",
+                "name", "Employee & Agent Welcome Credentials",
+                "category", "SECURITY & ONBOARDING",
+                "description", "Official onboarding welcome with generated temporary password and corporate email address",
+                "subject", "Welcome to Aadhiraksha - Your Portal Credentials",
+                "sampleData", java.util.Map.of(
+                    "fullName", "Ramesh Kumar",
+                    "crmUsername", "ramesh.kumar@gmail.com",
+                    "temporaryPassword", "Aadhiraksha@2026!",
+                    "domainMailboxEmail", "ramesh@aadhirakshainsurance.com",
+                    "portalLoginUrl", "https://aadhirakshainsurance.com/login",
+                    "webmailUrl", "https://mail.aadhirakshainsurance.com"
+                )
+            ),
+            java.util.Map.of(
+                "id", "customer-enquiry-receipt",
+                "name", "Customer Enquiry Receipt",
+                "category", "SALES & SUPPORT",
+                "description", "Instant branded ticket acknowledgment sent to customers upon quote request submission",
+                "subject", "We Received Your Enquiry [ADR-ENQ-8821] - Aadhiraksha Insurance",
+                "sampleData", java.util.Map.of(
+                    "customerName", "Priya Sharma",
+                    "enquiryReference", "ADR-ENQ-2026-8821",
+                    "insuranceCategory", "Family Health Protection Plan"
+                )
+            ),
+            java.util.Map.of(
+                "id", "policy-quote",
+                "name", "Insurance Quotation & Proposal",
+                "category", "POLICY TRANSACTIONS",
+                "description", "Structured premium quote breakdown with carrier plan and KYC proposal CTA button",
+                "subject", "Insurance Proposal & Quotation [ADR-QT-9912] - Aadhiraksha",
+                "sampleData", java.util.Map.of(
+                    "customerName", "Suresh Varma",
+                    "quoteReference", "ADR-QT-2026-9912",
+                    "planName", "Optima Secure Comprehensive Health",
+                    "insurerName", "HDFC ERGO General Insurance",
+                    "sumInsured", "₹ 15,00,000",
+                    "premiumAmount", "₹ 14,820 / year",
+                    "proposalUrl", "https://aadhirakshainsurance.com/quotes"
+                )
+            )
+        ));
+    }
+
+    /**
+     * Live Preview rendered HTML for any email template
+     */
+    @PostMapping("/admin/settings/email/preview")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @Operation(summary = "Preview Email Template", description = "Renders Thymeleaf template with provided or sample dynamic variables without sending")
+    public ResponseEntity<java.util.Map<String, Object>> previewEmailTemplate(
+            @RequestBody java.util.Map<String, Object> request) {
+        String templateId = (String) request.get("templateId");
+        if (templateId == null || templateId.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "templateId is required"));
+        }
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> variables = (java.util.Map<String, Object>) request.get("variables");
+
+        try {
+            String renderedHtml = emailService.renderTemplate(templateId, variables);
+            return ResponseEntity.ok(java.util.Map.of(
+                "templateId", templateId,
+                "html", renderedHtml
+            ));
+        } catch (Exception ex) {
+            log.error("Failed to render preview for template '{}': {}", templateId, ex.getMessage());
+            return ResponseEntity.status(500).body(java.util.Map.of("error", ex.getMessage()));
+        }
+    }
+
+    /**
+     * Dispatch any chosen template as a live test to a specific recipient
+     */
+    @PostMapping("/admin/settings/email/dispatch-template-test")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @Operation(summary = "Dispatch Template Test Email", description = "Sends chosen template with custom or sample data to any email address")
+    public ResponseEntity<java.util.Map<String, Object>> dispatchTemplateTest(
+            @RequestBody java.util.Map<String, Object> request) {
+        String templateId = (String) request.get("templateId");
+        String targetEmail = (String) request.get("targetEmail");
+        String subject = (String) request.get("subject");
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> variables = (java.util.Map<String, Object>) request.get("variables");
+
+        if (templateId == null || targetEmail == null || !targetEmail.contains("@")) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "Valid templateId and targetEmail are required"));
+        }
+
+        try {
+            String renderedHtml = emailService.renderTemplate(templateId, variables);
+            String finalSubject = (subject != null && !subject.trim().isEmpty()) 
+                    ? subject 
+                    : "Aadhiraksha Test Dispatch: " + templateId;
+
+            emailService.sendEmailDirect(targetEmail.trim(), finalSubject, renderedHtml);
+
+            return ResponseEntity.ok(java.util.Map.of(
+                "success", true,
+                "message", "Template '" + templateId + "' successfully dispatched to " + targetEmail.trim()
+            ));
+        } catch (Exception ex) {
+            log.error("Failed to dispatch template test '{}' to {}: {}", templateId, targetEmail, ex.getMessage(), ex);
+            return ResponseEntity.status(500).body(java.util.Map.of(
+                "success", false,
+                "message", "Dispatch failed: " + ex.getMessage()
             ));
         }
     }

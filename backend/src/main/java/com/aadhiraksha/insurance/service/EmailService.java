@@ -10,13 +10,19 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
+
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 /**
  * Enterprise Transactional Email Service.
- * Connects directly to the Stalwart Mail Server container via standard SMTP TLS (Port 587).
- * Dispatches modern responsive HTML templates asynchronously with zero blocking on user requests.
+ * Connects directly to the Stalwart Mail Server container via standard SMTP TLS (Port 587/465).
+ * Dispatches modern responsive Thymeleaf HTML templates asynchronously with zero blocking on user requests.
  */
 @Service
 @RequiredArgsConstructor
@@ -24,12 +30,19 @@ import java.nio.charset.StandardCharsets;
 public class EmailService {
 
     private final JavaMailSender mailSender;
+    private final TemplateEngine templateEngine;
 
     @Value("${spring.mail.username:notifications@aadhirakshainsurance.com}")
     private String fromEmail;
 
     @Value("${mailserver.domain:aadhirakshainsurance.com}")
     private String mailDomain;
+
+    @Value("${spring.mail.host:mailserver}")
+    private String mailHost;
+
+    @Value("${spring.mail.port:465}")
+    private int mailPort;
 
     /**
      * Send standard transactional HTML email asynchronously.
@@ -60,7 +73,11 @@ public class EmailService {
             helper.setFrom(fromEmail, "Aadhiraksha Insurance");
             helper.setTo(to.trim());
             helper.setSubject(subject);
-            helper.setText(buildBrandedEmailTemplate(subject, htmlContent), true);
+
+            String finalBody = isCompleteHtmlDocument(htmlContent) 
+                    ? htmlContent 
+                    : buildBrandedEmailTemplate(subject, htmlContent);
+            helper.setText(finalBody, true);
 
             if (attachmentFilename != null && attachmentFile != null && attachmentFile.exists()) {
                 helper.addAttachment(attachmentFilename, attachmentFile);
@@ -95,42 +112,124 @@ public class EmailService {
         helper.setFrom(fromEmail, "Aadhiraksha Insurance");
         helper.setTo(to.trim());
         helper.setSubject(subject);
-        helper.setText(buildBrandedEmailTemplate(subject, htmlContent), true);
+
+        String finalBody = isCompleteHtmlDocument(htmlContent) 
+                ? htmlContent 
+                : buildBrandedEmailTemplate(subject, htmlContent);
+        helper.setText(finalBody, true);
 
         mailSender.send(message);
         log.info("Direct test email successfully dispatched via SMTP to {}", to);
     }
 
     /**
-     * Dispatches Welcome Email with credentials to newly provisioned CRM employees or POSP Agents.
+     * Render a Thymeleaf template into a compiled HTML string with dynamic variables.
+     */
+    public String renderTemplate(String templateName, Map<String, Object> variables) {
+        Context context = new Context();
+        if (variables != null) {
+            context.setVariables(variables);
+        }
+        // Always inject system defaults if not explicitly passed
+        if (!context.containsVariable("mailDomain")) {
+            context.setVariable("mailDomain", mailDomain);
+        }
+        if (!context.containsVariable("supportEmail")) {
+            context.setVariable("supportEmail", "support@" + mailDomain);
+        }
+        return templateEngine.process("email/" + templateName, context);
+    }
+
+    /**
+     * Send email using a Thymeleaf template asynchronously.
+     */
+    @Async
+    public void sendTemplateEmail(String to, String subject, String templateName, Map<String, Object> variables) {
+        try {
+            String htmlContent = renderTemplate(templateName, variables);
+            sendHtmlEmail(to, subject, htmlContent);
+        } catch (Exception ex) {
+            log.error("Failed to render and send template email '{}' to {}: {}", templateName, to, ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Dispatches Welcome Email with credentials to newly provisioned CRM employees or POSP Agents using Thymeleaf.
      */
     @Async
     public void sendWelcomeCredentialsEmail(String toEmail, String fullName, String temporaryPassword, String domainMailboxEmail) {
-        String content = """
-            <p>Dear <strong>%s</strong>,</p>
-            <p>Welcome to the <strong>Aadhiraksha Insurance & Financial Services</strong> ecosystem.</p>
-            <p>Your official corporate access credentials have been provisioned:</p>
-            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0;">
-                <p style="margin: 0 0 8px;"><strong>CRM Portal Username:</strong> <span style="color: #0284c7;">%s</span></p>
-                <p style="margin: 0 0 8px;"><strong>Temporary Password:</strong> <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">%s</code></p>
-                %s
-            </div>
-            <p>Please log in immediately and change your password to complete your onboarding.</p>
-            <div style="margin-top: 24px;">
-                <a href="https://aadhirakshainsurance.com/login" style="background: #0284c7; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; display: inline-block;">
-                    Access Portal Now &rarr;
-                </a>
-            </div>
-            """.formatted(
-                fullName,
-                toEmail,
-                temporaryPassword,
-                domainMailboxEmail != null 
-                    ? "<p style=\"margin: 0;\"><strong>Corporate Email:</strong> <span style=\"color: #059669;\">" + domainMailboxEmail + "</span> (Webmail: <a href=\"https://mail." + mailDomain + "\">mail." + mailDomain + "</a>)</p>" 
-                    : ""
-        );
+        try {
+            Map<String, Object> model = Map.of(
+                    "fullName", fullName != null ? fullName : "Team Member",
+                    "crmUsername", toEmail,
+                    "temporaryPassword", temporaryPassword != null ? temporaryPassword : "N/A",
+                    "domainMailboxEmail", domainMailboxEmail != null ? domainMailboxEmail : "",
+                    "portalLoginUrl", "https://aadhirakshainsurance.com/login",
+                    "webmailUrl", "https://mail." + mailDomain
+            );
 
-        sendHtmlEmail(toEmail, "Welcome to Aadhiraksha - Your Portal Credentials", content);
+            String htmlContent = renderTemplate("welcome-credentials", model);
+            sendHtmlEmail(toEmail, "Welcome to Aadhiraksha - Your Portal Credentials", htmlContent);
+            log.info("Welcome credentials email dispatched successfully to {} for user {}", toEmail, fullName);
+        } catch (Exception ex) {
+            log.error("Failed to dispatch welcome credentials email to {}: {}", toEmail, ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Send Customer Enquiry Receipt Acknowledgment via Thymeleaf.
+     */
+    @Async
+    public void sendCustomerEnquiryReceipt(String customerEmail, String customerName, String enquiryRef, String category) {
+        try {
+            Map<String, Object> model = Map.of(
+                    "customerName", customerName != null ? customerName : "Customer",
+                    "enquiryReference", enquiryRef != null ? enquiryRef : "ADR-ENQ-" + System.currentTimeMillis() % 100000,
+                    "insuranceCategory", category != null ? category : "General Insurance Advisory"
+            );
+            String htmlContent = renderTemplate("customer-enquiry-receipt", model);
+            sendHtmlEmail(customerEmail, "We Received Your Enquiry [" + model.get("enquiryReference") + "] - Aadhiraksha Insurance", htmlContent);
+        } catch (Exception ex) {
+            log.error("Failed to dispatch enquiry receipt email to {}: {}", customerEmail, ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Send Policy Quotation breakdown via Thymeleaf.
+     */
+    @Async
+    public void sendPolicyQuoteEmail(String customerEmail, String customerName, String quoteRef, String planName, String insurer, String sumInsured, String premium, String proposalUrl) {
+        try {
+            Map<String, Object> model = Map.of(
+                    "customerName", customerName != null ? customerName : "Valued Customer",
+                    "quoteReference", quoteRef != null ? quoteRef : "ADR-QT-" + System.currentTimeMillis() % 100000,
+                    "planName", planName != null ? planName : "Comprehensive Insurance Cover",
+                    "insurerName", insurer != null ? insurer : "Aadhiraksha Partner Insurers",
+                    "sumInsured", sumInsured != null ? sumInsured : "As per plan",
+                    "premiumAmount", premium != null ? premium : "Contact Advisor",
+                    "proposalUrl", proposalUrl != null ? proposalUrl : "https://aadhirakshainsurance.com"
+            );
+            String htmlContent = renderTemplate("policy-quote", model);
+            sendHtmlEmail(customerEmail, "Insurance Proposal & Quotation [" + model.get("quoteReference") + "] - Aadhiraksha", htmlContent);
+        } catch (Exception ex) {
+            log.error("Failed to dispatch quote email to {}: {}", customerEmail, ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Synchronously dispatch SMTP Diagnostic Health check email via Thymeleaf.
+     */
+    public void sendDiagnosticTestEmail(String toEmail, String triggeredBy) throws Exception {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd-MMM-yyyy HH:mm:ss");
+        Map<String, Object> model = Map.of(
+                "recipientEmail", toEmail,
+                "dispatchTimestamp", LocalDateTime.now().format(dtf) + " IST",
+                "mailHost", mailHost + ":" + mailPort,
+                "triggeredBy", triggeredBy != null ? triggeredBy : "System Administrator"
+        );
+        String subject = "Aadhiraksha Mail Diagnostic: Outbound SMTP Delivery Verified";
+        String htmlContent = renderTemplate("smtp-diagnostic", model);
+        sendEmailDirect(toEmail, subject, htmlContent);
     }
 
     /**
@@ -190,5 +289,19 @@ public class EmailService {
             </body>
             </html>
             """.formatted(title, bodyContent, mailDomain, mailDomain);
+    }
+
+    /**
+     * Helper to detect whether a content payload is already a fully formed HTML document
+     * (e.g. from a Thymeleaf template) to avoid accidental double-wrapping.
+     */
+    private boolean isCompleteHtmlDocument(String content) {
+        if (content == null) {
+            return false;
+        }
+        String trimmed = content.trim().toLowerCase();
+        return trimmed.startsWith("<!doctype html") 
+                || trimmed.startsWith("<html") 
+                || trimmed.contains("<body");
     }
 }

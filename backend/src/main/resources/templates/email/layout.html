@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title th:text="${emailTitle != null ? emailTitle : 'Aadhiraksha Insurance'}">Aadhiraksha Insurance</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px 12px; color: #1e293b;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0">
+    <tr>
+      <td align="center">
+        <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; max-width: 600px; width: 100%;">
+          
+          <!-- Brand Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 24px 32px; text-align: left;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.5px;">
+                      🛡️ Aadhiraksha Insurance
+                    </h1>
+                    <p style="color: #bae6fd; margin: 4px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                      Financial Services & Risk Solutions
+                    </p>
+                  </td>
+                  <td align="right">
+                    <span style="display: inline-block; background: rgba(255,255,255,0.15); color: #ffffff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px; letter-spacing: 0.5px;">
+                      OFFICIAL
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Main Dynamic Body Slot -->
+          <tr>
+            <td style="padding: 32px; font-size: 15px; line-height: 1.6; color: #334155;">
+              <div th:replace="${bodyContent}">
+                <!-- Dynamic template content inserted here -->
+              </div>
+            </td>
+          </tr>
+
+          <!-- Compliance & Support Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; padding: 24px 32px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b; line-height: 1.5;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="padding-bottom: 8px;">
+                    <strong style="color: #0f172a;">Aadhiraksha Insurance & Financial Services Pvt Ltd</strong><br/>
+                    IRDAI Licensed Intermediary | ISO/IEC 27001 Certified Security Standards
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding-bottom: 12px; color: #94a3b8; font-size: 11px;">
+                    This is an automated system notification. If you did not request this communication or need immediate assistance, please reach our operations desk at 
+                    <a th:href="'mailto:' + ${supportEmail != null ? supportEmail : 'support@aadhirakshainsurance.com'}" 
+                       style="color: #0284c7; text-decoration: none; font-weight: 600;" 
+                       th:text="${supportEmail != null ? supportEmail : 'support@aadhirakshainsurance.com'}">
+                      support@aadhirakshainsurance.com
+                    </a>.
+                  </td>
+                </tr>
+                <tr>
+                  <td style="border-top: 1px dashed #cbd5e1; padding-top: 12px; font-size: 11px; color: #94a3b8;">
+                    &copy; <span th:text="${#calendars.format(#calendars.createNow(), 'yyyy')}">2026</span> Aadhiraksha Insurance. All rights reserved.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

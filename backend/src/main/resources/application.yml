@@ -56,11 +56,6 @@ app:
     expiration-ms: 86400000 # 24 hours for CRM Admin, Managers, and Staff
     customer-expiration-ms: 2592000000 # 30 days (720 hours) for Customers & POSP Agents (zero re-OTP friction)
 
-# Firebase Authentication (Phone OTP)
-firebase:
-  enabled: ${FIREBASE_ENABLED:false}
-  project-id: ${FIREBASE_PROJECT_ID:aadhiraksha-insurance}
-  credentials-path: ${FIREBASE_CREDENTIALS_PATH:} # Optional path to serviceAccountKey.json
 
 # CORS Configuration
 cors:

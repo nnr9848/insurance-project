@@ -509,6 +509,18 @@ export const portalService = {
     const res = await api.post('/admin/settings/email/test', { targetEmail });
     return res.data;
   },
+  getEmailTemplates: async () => {
+    const res = await api.get('/admin/settings/email/templates');
+    return res.data;
+  },
+  previewEmailTemplate: async (templateId, variables) => {
+    const res = await api.post('/admin/settings/email/preview', { templateId, variables });
+    return res.data;
+  },
+  dispatchTemplateTest: async (templateId, targetEmail, subject, variables) => {
+    const res = await api.post('/admin/settings/email/dispatch-template-test', { templateId, targetEmail, subject, variables });
+    return res.data;
+  },
   uploadGalleryImage: async (formData) => {
     const res = await api.post('/admin/settings/gallery/upload', formData, {
       headers: {
