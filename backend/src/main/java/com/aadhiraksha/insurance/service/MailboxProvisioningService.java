@@ -11,8 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * MailboxProvisioningService
@@ -188,6 +188,181 @@ public class MailboxProvisioningService {
     }
 
     /**
+     * Parse aliases string into list.
+     */
+    public List<String> getAliasesList(User user) {
+        if (user.getDomainMailboxAliases() == null || user.getDomainMailboxAliases().trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        return Arrays.stream(user.getDomainMailboxAliases().split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Add an alias to the employee's mailbox.
+     */
+    @Transactional
+    public Map<String, Object> addMailboxAlias(Long userId, String aliasHandle, User performedBy) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+
+        if (!Boolean.TRUE.equals(user.getHasDomainMailbox()) || user.getDomainMailboxEmail() == null) {
+            throw new IllegalArgumentException("User does not have an active domain mailbox.");
+        }
+
+        if (aliasHandle == null || aliasHandle.trim().isEmpty()) {
+            throw new IllegalArgumentException("Alias handle cannot be empty.");
+        }
+
+        String sanitizedHandle = aliasHandle.toLowerCase().trim().replaceAll("[^a-z0-9._-]", "");
+        if (sanitizedHandle.isEmpty()) {
+            throw new IllegalArgumentException("Invalid alias handle.");
+        }
+
+        String fullAliasEmail = sanitizedHandle + "@" + mailDomain;
+
+        if (fullAliasEmail.equalsIgnoreCase(user.getDomainMailboxEmail())) {
+            throw new IllegalArgumentException("Alias is already the primary email address.");
+        }
+
+        List<String> currentAliases = getAliasesList(user);
+        if (currentAliases.stream().anyMatch(a -> a.equalsIgnoreCase(fullAliasEmail))) {
+            throw new IllegalArgumentException("Alias already exists for this mailbox.");
+        }
+
+        // Collision check across entire organization
+        userRepository.findAll().forEach(u -> {
+            if (fullAliasEmail.equalsIgnoreCase(u.getDomainMailboxEmail())) {
+                throw new IllegalArgumentException("Address " + fullAliasEmail + " is already in use as primary email by " + u.getFullName());
+            }
+            List<String> otherAliases = getAliasesList(u);
+            if (otherAliases.stream().anyMatch(a -> a.equalsIgnoreCase(fullAliasEmail))) {
+                throw new IllegalArgumentException("Address " + fullAliasEmail + " is already in use as alias by " + u.getFullName());
+            }
+        });
+
+        currentAliases.add(fullAliasEmail);
+        user.setDomainMailboxAliases(String.join(",", currentAliases));
+        userRepository.save(user);
+
+        // Remote Stalwart account alias sync
+        try {
+            if (mailServerEnabled) {
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.setBearerAuth(mailServerApiSecret);
+
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("alias", fullAliasEmail);
+                HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
+
+                try {
+                    String primaryUser = user.getDomainMailboxEmail().split("@")[0];
+                    restTemplate.postForEntity(mailServerApiUrl + "/account/" + primaryUser + "@" + mailDomain + "/alias", requestEntity, String.class);
+                } catch (Exception ex) {
+                    log.warn("Remote mailserver alias sync note: {}", ex.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to sync alias with mailserver container: {}", e.getMessage());
+        }
+
+        log.info("Added alias {} to user ID: {} by admin: {}", fullAliasEmail, user.getId(), performedBy != null ? performedBy.getFullName() : "SYSTEM");
+
+        Map<String, Object> res = new HashMap<>();
+        res.put("success", true);
+        res.put("alias", fullAliasEmail);
+        res.put("aliases", currentAliases);
+        res.put("primaryEmail", user.getDomainMailboxEmail());
+        return res;
+    }
+
+    /**
+     * Remove an alias from the employee's mailbox.
+     */
+    @Transactional
+    public Map<String, Object> removeMailboxAlias(Long userId, String aliasEmail, User performedBy) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+
+        List<String> currentAliases = getAliasesList(user);
+        boolean removed = currentAliases.removeIf(a -> a.equalsIgnoreCase(aliasEmail.trim()));
+        if (!removed) {
+            throw new IllegalArgumentException("Alias not found on this mailbox.");
+        }
+
+        user.setDomainMailboxAliases(String.join(",", currentAliases));
+        userRepository.save(user);
+
+        // Remote Stalwart alias deletion
+        try {
+            if (mailServerEnabled) {
+                HttpHeaders headers = new HttpHeaders();
+                headers.setBearerAuth(mailServerApiSecret);
+                HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
+                try {
+                    String primaryUser = user.getDomainMailboxEmail().split("@")[0];
+                    restTemplate.exchange(mailServerApiUrl + "/account/" + primaryUser + "@" + mailDomain + "/alias/" + aliasEmail.trim(), HttpMethod.DELETE, requestEntity, String.class);
+                } catch (Exception ex) {
+                    log.warn("Remote mailserver alias deletion warning: {}", ex.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to delete alias on mailserver container: {}", e.getMessage());
+        }
+
+        log.info("Removed alias {} from user ID: {} by admin: {}", aliasEmail, user.getId(), performedBy != null ? performedBy.getFullName() : "SYSTEM");
+
+        Map<String, Object> res = new HashMap<>();
+        res.put("success", true);
+        res.put("aliases", currentAliases);
+        res.put("primaryEmail", user.getDomainMailboxEmail());
+        return res;
+    }
+
+    /**
+     * Set an existing alias as the new Primary Address (swapping the old primary into aliases).
+     */
+    @Transactional
+    public Map<String, Object> setPrimaryEmail(Long userId, String newPrimaryEmail, User performedBy) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+
+        String oldPrimary = user.getDomainMailboxEmail();
+        if (oldPrimary == null || !Boolean.TRUE.equals(user.getHasDomainMailbox())) {
+            throw new IllegalArgumentException("User does not have an active domain mailbox.");
+        }
+
+        if (oldPrimary.equalsIgnoreCase(newPrimaryEmail.trim())) {
+            throw new IllegalArgumentException("Address is already the primary email.");
+        }
+
+        List<String> currentAliases = getAliasesList(user);
+        boolean found = currentAliases.removeIf(a -> a.equalsIgnoreCase(newPrimaryEmail.trim()));
+        if (!found) {
+            throw new IllegalArgumentException("Specified address is not an alias for this mailbox.");
+        }
+
+        // Keep old primary as alias so no inbound emails ever bounce
+        currentAliases.add(oldPrimary);
+
+        user.setDomainMailboxEmail(newPrimaryEmail.trim());
+        user.setDomainMailboxAliases(String.join(",", currentAliases));
+        userRepository.save(user);
+
+        log.info("Promoted alias {} to primary email for user ID: {} (old primary: {}) by admin: {}", 
+                newPrimaryEmail, user.getId(), oldPrimary, performedBy != null ? performedBy.getFullName() : "SYSTEM");
+
+        Map<String, Object> res = new HashMap<>();
+        res.put("success", true);
+        res.put("primaryEmail", user.getDomainMailboxEmail());
+        res.put("aliases", currentAliases);
+        return res;
+    }
+
+    /**
      * Returns server connection parameters for Outlook / Apple Mail / Android setup.
      */
     public Map<String, Object> getMailboxSettings(Long userId) {
@@ -196,6 +371,7 @@ public class MailboxProvisioningService {
 
         Map<String, Object> settings = new HashMap<>();
         settings.put("domainEmail", user.getDomainMailboxEmail());
+        settings.put("aliases", getAliasesList(user));
         settings.put("hasMailbox", Boolean.TRUE.equals(user.getHasDomainMailbox()));
         settings.put("status", user.getMailboxStatus());
         settings.put("quotaMb", user.getMailboxQuotaMb());

@@ -126,6 +126,10 @@ public class BusinessProfile {
     @Column(name = "twilio_whatsapp_content_sid", length = 100)
     private String twilioWhatsappContentSid;
 
+    // Transactional Email Templates Configuration (Custom Subjects, Trigger Toggles, Variable Overrides)
+    @Column(name = "email_templates_config_json", columnDefinition = "TEXT")
+    private String emailTemplatesConfigJson;
+
 
     // Google Maps & Reviews Links
     @Builder.Default

@@ -26,7 +26,9 @@ import {
   AtSign,
   Settings,
   Smartphone,
-  ExternalLink
+  ExternalLink,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -52,6 +54,8 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
+  const [domainMailboxOnly, setDomainMailboxOnly] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState(null);
   const [activeUserSegment, setActiveUserSegment] = useState(initialSegment); // 'STAFF' | 'CUSTOMERS'
 
   useEffect(() => {
@@ -78,7 +82,7 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, roleFilter, activeUserSegment]);
+  }, [searchQuery, roleFilter, activeUserSegment, domainMailboxOnly]);
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -123,6 +127,12 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
   const [mailboxSettings, setMailboxSettings] = useState(null);
   const [mailboxActionLoading, setMailboxActionLoading] = useState(false);
   const [mailboxSuccessInfo, setMailboxSuccessInfo] = useState(null);
+  const [provisionUsername, setProvisionUsername] = useState('');
+  const [provisionPasswordMode, setProvisionPasswordMode] = useState('AUTO'); // 'AUTO' | 'CUSTOM'
+  const [provisionCustomPassword, setProvisionCustomPassword] = useState('');
+  const [showProvisionPassword, setShowProvisionPassword] = useState(false);
+  const [newAliasHandle, setNewAliasHandle] = useState('');
+  const [aliasActionLoading, setAliasActionLoading] = useState(false);
 
   const [editUserForm, setEditUserForm] = useState({
     fullName: '',
@@ -267,6 +277,16 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
     setShowMailboxModal(true);
     setMailboxActionLoading(true);
     setMailboxSuccessInfo(null);
+    // Pre-fill smart default username (e.g. rajesh.kumar or rajesh)
+    const defaultAlias = (user.fullName || '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s.]/g, '')
+      .replace(/\s+/g, '.');
+    setProvisionUsername(defaultAlias);
+    setProvisionPasswordMode('AUTO');
+    setProvisionCustomPassword('');
+    setShowProvisionPassword(false);
     try {
       const settings = await crmService.getMailboxSettings(user.id);
       setMailboxSettings(settings);
@@ -281,7 +301,11 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
     if (!mailboxModalUser) return;
     setMailboxActionLoading(true);
     try {
-      const res = await crmService.provisionMailbox(mailboxModalUser.id);
+      const payload = {
+        customAlias: provisionUsername.trim() || undefined,
+        initialPassword: provisionPasswordMode === 'CUSTOM' && provisionCustomPassword.trim() ? provisionCustomPassword.trim() : undefined
+      };
+      const res = await crmService.provisionMailbox(mailboxModalUser.id, payload);
       setMailboxSuccessInfo(res);
       loadData();
       // Refresh settings
@@ -305,6 +329,61 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
       alert(err.response?.data?.message || 'Failed to reset mailbox password.');
     } finally {
       setMailboxActionLoading(false);
+    }
+  };
+
+  const handleAddAliasNow = async (e) => {
+    if (e) e.preventDefault();
+    if (!mailboxModalUser || !newAliasHandle.trim()) return;
+    setAliasActionLoading(true);
+    try {
+      const res = await crmService.addMailboxAlias(mailboxModalUser.id, newAliasHandle.trim());
+      setNewAliasHandle('');
+      // Refresh local settings and user list
+      const settings = await crmService.getMailboxSettings(mailboxModalUser.id);
+      setMailboxSettings(settings);
+      loadData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to add alias.');
+    } finally {
+      setAliasActionLoading(false);
+    }
+  };
+
+  const handleRemoveAliasNow = async (aliasEmail) => {
+    if (!mailboxModalUser) return;
+    if (!window.confirm(`Remove alias ${aliasEmail}? Inbound emails to this handle will no longer deliver.`)) return;
+    setAliasActionLoading(true);
+    try {
+      await crmService.removeMailboxAlias(mailboxModalUser.id, aliasEmail);
+      const settings = await crmService.getMailboxSettings(mailboxModalUser.id);
+      setMailboxSettings(settings);
+      loadData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to remove alias.');
+    } finally {
+      setAliasActionLoading(false);
+    }
+  };
+
+  const handleSetPrimaryEmailNow = async (newPrimary) => {
+    if (!mailboxModalUser) return;
+    if (!window.confirm(`Set ${newPrimary} as the primary address? ${mailboxModalUser.domainMailboxEmail} will be retained as an alias so no emails are lost.`)) return;
+    setAliasActionLoading(true);
+    try {
+      await crmService.setPrimaryMailboxEmail(mailboxModalUser.id, newPrimary);
+      // Update modal user state
+      setMailboxModalUser(prev => ({
+        ...prev,
+        domainMailboxEmail: newPrimary
+      }));
+      const settings = await crmService.getMailboxSettings(mailboxModalUser.id);
+      setMailboxSettings(settings);
+      loadData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to set primary email.');
+    } finally {
+      setAliasActionLoading(false);
     }
   };
 
@@ -443,10 +522,14 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
       roleFilter === 'ALL' ||
       u.roles.includes(roleFilter);
 
-    return matchesSearch && matchesRole;
+    const matchesDomainMailbox = !domainMailboxOnly || Boolean(u.hasDomainMailbox && u.domainMailboxEmail);
+
+    return matchesSearch && matchesRole && matchesDomainMailbox;
   });
 
-  const staffCount = users.filter(u => !(u.isCustomerUser || u.roles?.includes('ROLE_USER') || u.roles?.includes('ROLE_CUSTOMER'))).length;
+  const staffMembers = users.filter(u => !(u.isCustomerUser || u.roles?.includes('ROLE_USER') || u.roles?.includes('ROLE_CUSTOMER')));
+  const staffCount = staffMembers.length;
+  const staffDomainMailboxCount = staffMembers.filter(u => Boolean(u.hasDomainMailbox && u.domainMailboxEmail)).length;
   const customerCount = users.filter(u => (u.isCustomerUser || u.roles?.includes('ROLE_USER') || u.roles?.includes('ROLE_CUSTOMER'))).length;
 
   const totalPages = Math.ceil(filteredUsers.length / pageSize) || 1;
@@ -617,30 +700,68 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
           />
         </form>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           {activeUserSegment === 'STAFF' && (
             <>
-              <Filter size={16} color="#64748b" />
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Role Filter:</span>
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
+              {/* Corporate Mailbox Quick Filter */}
+              <button
+                type="button"
+                onClick={() => setDomainMailboxOnly(prev => !prev)}
+                title={domainMailboxOnly ? "Showing only employees with corporate mailboxes. Click to show all." : "Filter to employees with provisioned corporate mailboxes"}
                 style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
                   padding: '6px 12px',
                   borderRadius: '8px',
-                  border: '1px solid var(--crm-border-subtle)',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  background: 'var(--crm-surface-card)',
-                  color: 'var(--crm-text-primary)'
+                  border: domainMailboxOnly ? '1px solid #059669' : '1px solid var(--crm-border-subtle)',
+                  background: domainMailboxOnly ? '#ecfdf5' : 'var(--crm-surface-card)',
+                  color: domainMailboxOnly ? '#047857' : 'var(--crm-text-secondary)',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
                 }}
               >
-                <option value="ALL">All Roles ({filteredUsers.length})</option>
-                {isSuperAdmin && <option value="ROLE_SUPER_ADMIN">Super Admins</option>}
-                {isSuperAdmin && <option value="ROLE_MANAGER">Insurance Managers</option>}
-                <option value="ROLE_ADVISOR">Insurance Advisors</option>
-                <option value="ROLE_POSP_AGENT">POSP Agents</option>
-              </select>
+                <AtSign size={14} color={domainMailboxOnly ? '#059669' : '#64748b'} />
+                <span>Domain Mailbox ({staffDomainMailboxCount})</span>
+                {domainMailboxOnly && (
+                  <span style={{
+                    fontSize: '0.68rem',
+                    background: '#059669',
+                    color: '#ffffff',
+                    padding: '1px 6px',
+                    borderRadius: '9999px',
+                    marginLeft: '2px'
+                  }}>
+                    Active Filter
+                  </span>
+                )}
+              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Filter size={16} color="#64748b" />
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Role:</span>
+                <select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--crm-border-subtle)',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    background: 'var(--crm-surface-card)',
+                    color: 'var(--crm-text-primary)'
+                  }}
+                >
+                  <option value="ALL">All Roles ({filteredUsers.length})</option>
+                  {isSuperAdmin && <option value="ROLE_SUPER_ADMIN">Super Admins</option>}
+                  {isSuperAdmin && <option value="ROLE_MANAGER">Insurance Managers</option>}
+                  <option value="ROLE_ADVISOR">Insurance Advisors</option>
+                  <option value="ROLE_POSP_AGENT">POSP Agents</option>
+                </select>
+              </div>
             </>
           )}
 
@@ -697,6 +818,7 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                 ) : (
                   <tr>
                     <th className="crm-table-th">Employee</th>
+                    <th className="crm-table-th">Corporate Mailbox</th>
                     <th className="crm-table-th">Role</th>
                     <th className="crm-table-th">Reporting Manager</th>
                     <th className="crm-table-th">Assigned Clients</th>
@@ -959,26 +1081,97 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                                 {u.designation} ({u.department || 'Sales'})
                               </div>
                             )}
-                            {u.hasDomainMailbox && u.domainMailboxEmail && (
-                              <div style={{ 
-                                marginTop: '3px',
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                gap: '4px', 
-                                background: '#f0fdf4', 
-                                color: '#166534', 
-                                border: '1px solid #bbf7d0',
-                                padding: '1px 6px',
-                                borderRadius: '4px',
-                                fontSize: '0.7rem',
-                                fontWeight: 700 
-                              }}>
-                                <AtSign size={10} />
-                                {u.domainMailboxEmail}
-                              </div>
-                            )}
                           </div>
                         </div>
+                      </td>
+
+                      {/* Corporate Mailbox Column */}
+                      <td className="crm-table-td">
+                        {u.hasDomainMailbox && u.domainMailboxEmail ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-start' }}>
+                            <div style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              background: '#f0fdf4',
+                              color: '#166534',
+                              border: '1px solid #bbf7d0',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700
+                            }}>
+                              <AtSign size={12} color="#16a34a" />
+                              <span>{u.domainMailboxEmail}</span>
+                              <button
+                                type="button"
+                                title="Copy Corporate Email"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(u.domainMailboxEmail);
+                                  setCopiedEmail(u.domainMailboxEmail);
+                                  setTimeout(() => setCopiedEmail(null), 2000);
+                                }}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  padding: '2px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  color: '#166534'
+                                }}
+                              >
+                                {copiedEmail === u.domainMailboxEmail ? <Check size={11} color="#16a34a" /> : <Copy size={11} />}
+                              </button>
+                            </div>
+                            {canActOnUser && (
+                              <button
+                                type="button"
+                                onClick={() => openMailboxModal(u)}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#059669',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  padding: '0 2px',
+                                  textDecoration: 'underline',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px'
+                                }}
+                              >
+                                <span>Settings / Credentials</span>
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--crm-text-muted)', fontStyle: 'italic' }}>
+                              Not Provisioned
+                            </span>
+                            {canActOnUser && (
+                              <button
+                                type="button"
+                                onClick={() => openMailboxModal(u)}
+                                style={{
+                                  background: '#f1f5f9',
+                                  border: '1px solid #cbd5e1',
+                                  borderRadius: '4px',
+                                  color: '#334155',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  padding: '2px 6px'
+                                }}
+                              >
+                                + Provision
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* Role Badge */}
@@ -1939,6 +2132,31 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                       <strong>New Password:</strong> <code style={{ background: '#ffffff', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>{mailboxSuccessInfo.newPassword}</code>
                     </div>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const pwd = mailboxSuccessInfo.mailboxPassword || mailboxSuccessInfo.newPassword || '(as specified)';
+                      const text = `Corporate Email Credentials:\nEmail: ${mailboxSuccessInfo.domainEmail}\nPassword: ${pwd}\nWebmail: https://mail.aadhirakshainsurance.com\nIncoming (IMAP): mail.aadhirakshainsurance.com:993 (SSL)\nOutgoing (SMTP): mail.aadhirakshainsurance.com:465 (SSL)`;
+                      navigator.clipboard.writeText(text);
+                      alert('Copied all mailbox setup credentials to clipboard!');
+                    }}
+                    style={{
+                      marginTop: '8px',
+                      background: '#059669',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <Copy size={12} /> Copy All Credentials for Employee
+                  </button>
                 </div>
               )}
 
@@ -1969,12 +2187,204 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                 </div>
 
                 <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f2b48' }}>
-                  {mailboxModalUser.domainMailboxEmail || (mailboxModalUser.fullName.toLowerCase().replace(/\s+/g, '.') + '@aadhirakshainsurance.com')}
+                  {mailboxModalUser.domainMailboxEmail || (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ color: '#059669' }}>{provisionUsername || 'username'}</span>
+                      <span style={{ color: '#64748b' }}>@aadhirakshainsurance.com</span>
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '4px' }}>
                   Storage Quota: 5 GB • Server: Hostinger VPS (mail.aadhirakshainsurance.com)
                 </div>
               </div>
+
+              {/* Customizable Provisioning Form (When Not Provisioned Yet) */}
+              {!mailboxModalUser.hasDomainMailbox && (
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}>
+                  {/* 1. Custom Username / Alias */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#0f2b48', marginBottom: '5px' }}>
+                      Corporate Email Address / Alias
+                    </label>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      background: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      overflow: 'hidden'
+                    }}>
+                      <input
+                        type="text"
+                        value={provisionUsername}
+                        onChange={(e) => setProvisionUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
+                        placeholder="e.g. rajesh.kumar"
+                        style={{
+                          flex: 1,
+                          border: 'none',
+                          background: 'transparent',
+                          padding: '8px 10px',
+                          fontSize: '0.85rem',
+                          fontWeight: 700,
+                          color: '#0f2b48',
+                          outline: 'none'
+                        }}
+                      />
+                      <span style={{
+                        padding: '8px 12px',
+                        background: '#e2e8f0',
+                        color: '#475569',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        borderLeft: '1px solid #cbd5e1',
+                        userSelect: 'none'
+                      }}>
+                        @aadhirakshainsurance.com
+                      </span>
+                    </div>
+
+                    {/* Suggested Aliases Pills */}
+                    {(() => {
+                      const parts = (mailboxModalUser.fullName || '').toLowerCase().trim().split(/\s+/).filter(Boolean);
+                      const fName = parts[0] || 'user';
+                      const lName = parts.length > 1 ? parts[parts.length - 1] : '';
+                      const suggestions = [
+                        lName ? `${fName}.${lName}` : fName,
+                        fName,
+                        lName ? `${fName[0]}${lName}` : `${fName}1`
+                      ].filter(Boolean);
+                      const uniqueSuggestions = Array.from(new Set(suggestions));
+
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>Suggestions:</span>
+                          {uniqueSuggestions.map((sug) => (
+                            <button
+                              key={sug}
+                              type="button"
+                              onClick={() => setProvisionUsername(sug)}
+                              style={{
+                                border: provisionUsername === sug ? '1px solid #059669' : '1px solid #cbd5e1',
+                                background: provisionUsername === sug ? '#ecfdf5' : '#f8fafc',
+                                color: provisionUsername === sug ? '#059669' : '#334155',
+                                padding: '1px 7px',
+                                borderRadius: '4px',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {sug}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* 2. Password Configuration Mode */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#0f2b48', marginBottom: '5px' }}>
+                      Initial Password Option
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setProvisionPasswordMode('AUTO')}
+                        style={{
+                          padding: '7px 10px',
+                          borderRadius: '8px',
+                          border: provisionPasswordMode === 'AUTO' ? '1.5px solid #059669' : '1px solid #cbd5e1',
+                          background: provisionPasswordMode === 'AUTO' ? '#ecfdf5' : '#ffffff',
+                          color: provisionPasswordMode === 'AUTO' ? '#047857' : '#64748b',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '5px'
+                        }}
+                      >
+                        <Key size={13} /> Auto-Generate
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setProvisionPasswordMode('CUSTOM')}
+                        style={{
+                          padding: '7px 10px',
+                          borderRadius: '8px',
+                          border: provisionPasswordMode === 'CUSTOM' ? '1.5px solid #059669' : '1px solid #cbd5e1',
+                          background: provisionPasswordMode === 'CUSTOM' ? '#ecfdf5' : '#ffffff',
+                          color: provisionPasswordMode === 'CUSTOM' ? '#047857' : '#64748b',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '5px'
+                        }}
+                      >
+                        <Lock size={13} /> Custom Password
+                      </button>
+                    </div>
+
+                    {provisionPasswordMode === 'CUSTOM' && (
+                      <div style={{
+                        marginTop: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        background: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        padding: '0 8px'
+                      }}>
+                        <input
+                          type={showProvisionPassword ? 'text' : 'password'}
+                          value={provisionCustomPassword}
+                          onChange={(e) => setProvisionCustomPassword(e.target.value)}
+                          placeholder="Enter secure initial password (min 8 chars)"
+                          style={{
+                            flex: 1,
+                            border: 'none',
+                            background: 'transparent',
+                            padding: '8px 4px',
+                            fontSize: '0.82rem',
+                            outline: 'none',
+                            color: '#0f2b48'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowProvisionPassword(prev => !prev)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#64748b',
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: '4px'
+                          }}
+                        >
+                          {showProvisionPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Connection Specs */}
               {mailboxModalUser.hasDomainMailbox && mailboxSettings && (
@@ -1992,6 +2402,173 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                   <div>• <strong>Incoming (IMAP):</strong> {mailboxSettings.imapServer} : {mailboxSettings.imapPort} (SSL)</div>
                   <div>• <strong>Outgoing (SMTP):</strong> {mailboxSettings.smtpServer} : {mailboxSettings.smtpPort} (TLS)</div>
                   <div>• <strong>Webmail Login:</strong> <a href={mailboxSettings.webmailUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#0284c7', fontWeight: 700 }}>{mailboxSettings.webmailUrl}</a></div>
+                </div>
+              )}
+
+              {/* Email Aliases (Google Workspace / Microsoft 365 Standard) */}
+              {mailboxModalUser.hasDomainMailbox && (
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f2b48' }}>
+                        Email Aliases (Alternate Addresses)
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                        Inbound messages sent to any of these handles deliver directly into this inbox.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Existing Aliases List */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {mailboxSettings && mailboxSettings.aliases && mailboxSettings.aliases.length > 0 ? (
+                      mailboxSettings.aliases.map((alias) => (
+                        <div
+                          key={alias}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            padding: '6px 10px',
+                            fontSize: '0.78rem'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              background: '#059669'
+                            }} />
+                            <strong style={{ color: '#0f2b48' }}>{alias}</strong>
+                            <span style={{
+                              fontSize: '0.68rem',
+                              background: '#e0f2fe',
+                              color: '#0369a1',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              fontWeight: 700
+                            }}>
+                              Alias
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleSetPrimaryEmailNow(alias)}
+                              disabled={aliasActionLoading}
+                              title="Make this the primary login email address (current primary becomes an alias)"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#0284c7',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                textDecoration: 'underline'
+                              }}
+                            >
+                              Make Primary
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAliasNow(alias)}
+                              disabled={aliasActionLoading}
+                              title="Remove alias"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#dc2626',
+                                fontSize: '0.78rem',
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                padding: '2px 4px'
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic', padding: '4px 0' }}>
+                        No alternate aliases assigned yet.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add New Alias Input */}
+                  <form onSubmit={handleAddAliasNow} style={{ display: 'flex', gap: '6px', marginTop: '4px', margin: 0 }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      background: '#f8fafc',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      flex: 1,
+                      overflow: 'hidden'
+                    }}>
+                      <input
+                        type="text"
+                        value={newAliasHandle}
+                        onChange={(e) => setNewAliasHandle(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
+                        placeholder="new.alias"
+                        disabled={aliasActionLoading}
+                        style={{
+                          flex: 1,
+                          border: 'none',
+                          background: 'transparent',
+                          padding: '6px 8px',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          color: '#0f2b48',
+                          outline: 'none'
+                        }}
+                      />
+                      <span style={{
+                        padding: '6px 10px',
+                        background: '#e2e8f0',
+                        color: '#475569',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        borderLeft: '1px solid #cbd5e1',
+                        userSelect: 'none'
+                      }}>
+                        @aadhirakshainsurance.com
+                      </span>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={aliasActionLoading || !newAliasHandle.trim()}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: aliasActionLoading || !newAliasHandle.trim() ? '#94a3b8' : '#059669',
+                        color: '#ffffff',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        cursor: aliasActionLoading || !newAliasHandle.trim() ? 'not-allowed' : 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {aliasActionLoading ? 'Adding...' : '+ Add Alias'}
+                    </button>
+                  </form>
                 </div>
               )}
 

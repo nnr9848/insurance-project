@@ -137,8 +137,43 @@ public class CrmUserController {
 
     @GetMapping("/{id}/mailbox/settings")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER')")
-    @Operation(summary = "Get IMAP/SMTP/Webmail connection settings for employee's domain mailbox")
+    @Operation(summary = "Get IMAP/SMTP/Webmail connection settings and aliases for employee's domain mailbox")
     public ResponseEntity<Map<String, Object>> getMailboxSettings(@PathVariable Long id) {
         return ResponseEntity.ok(mailboxProvisioningService.getMailboxSettings(id));
+    }
+
+    @PostMapping("/{id}/mailbox/aliases")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    @Operation(summary = "Add an email alias to employee's corporate mailbox")
+    public ResponseEntity<Map<String, Object>> addMailboxAlias(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        User performedBy = getAuthenticatedUser(auth);
+        String alias = body != null ? body.get("alias") : null;
+        return ResponseEntity.ok(mailboxProvisioningService.addMailboxAlias(id, alias, performedBy));
+    }
+
+    @DeleteMapping("/{id}/mailbox/aliases")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    @Operation(summary = "Remove an email alias from employee's corporate mailbox")
+    public ResponseEntity<Map<String, Object>> removeMailboxAlias(
+            @PathVariable Long id,
+            @RequestParam String alias,
+            Authentication auth) {
+        User performedBy = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(mailboxProvisioningService.removeMailboxAlias(id, alias, performedBy));
+    }
+
+    @PostMapping("/{id}/mailbox/set-primary")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    @Operation(summary = "Promote an existing alias to become the employee's primary email address")
+    public ResponseEntity<Map<String, Object>> setPrimaryEmail(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        User performedBy = getAuthenticatedUser(auth);
+        String newPrimaryEmail = body != null ? body.get("newPrimaryEmail") : null;
+        return ResponseEntity.ok(mailboxProvisioningService.setPrimaryEmail(id, newPrimaryEmail, performedBy));
     }
 }

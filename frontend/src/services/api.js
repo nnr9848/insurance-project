@@ -93,6 +93,18 @@ export const crmService = {
     const res = await api.get(`/crm/users/${userId}/mailbox/settings`);
     return res.data;
   },
+  addMailboxAlias: async (userId, alias) => {
+    const res = await api.post(`/crm/users/${userId}/mailbox/aliases`, { alias });
+    return res.data;
+  },
+  removeMailboxAlias: async (userId, alias) => {
+    const res = await api.delete(`/crm/users/${userId}/mailbox/aliases`, { params: { alias } });
+    return res.data;
+  },
+  setPrimaryMailboxEmail: async (userId, newPrimaryEmail) => {
+    const res = await api.post(`/crm/users/${userId}/mailbox/set-primary`, { newPrimaryEmail });
+    return res.data;
+  },
 
   // Clients Master (CRM)
   getClients: async () => {
@@ -519,6 +531,10 @@ export const portalService = {
   },
   dispatchTemplateTest: async (templateId, targetEmail, subject, variables) => {
     const res = await api.post('/admin/settings/email/dispatch-template-test', { templateId, targetEmail, subject, variables });
+    return res.data;
+  },
+  updateEmailTemplateConfig: async (configPayload) => {
+    const res = await api.put('/admin/settings/email/templates/config', configPayload);
     return res.data;
   },
   uploadGalleryImage: async (formData) => {

@@ -597,19 +597,38 @@ public class BusinessProfileController {
     }
 
     /**
-     * Get catalogue of production transactional email templates for CRM Preview
+     * Get catalogue of production transactional email templates for CRM Preview & Management
      */
     @GetMapping("/admin/settings/email/templates")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
-    @Operation(summary = "List Email Templates", description = "Returns metadata and variable schemas for all available Thymeleaf email templates")
+    @Operation(summary = "List Email Templates", description = "Returns metadata, trigger points, variable schemas, and custom saved settings for all email templates")
     public ResponseEntity<java.util.List<java.util.Map<String, Object>>> getEmailTemplates() {
-        return ResponseEntity.ok(java.util.List.of(
+        BusinessProfile profile = repository.findById(1L).orElse(null);
+        java.util.Map<String, Object> savedConfig = new java.util.HashMap<>();
+        if (profile != null && profile.getEmailTemplatesConfigJson() != null && !profile.getEmailTemplatesConfigJson().isBlank()) {
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                savedConfig = mapper.readValue(profile.getEmailTemplatesConfigJson(), new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {});
+            } catch (Exception e) {
+                log.warn("Failed to parse email_templates_config_json: {}", e.getMessage());
+            }
+        }
+
+        java.util.List<java.util.Map<String, Object>> baseTemplates = java.util.List.of(
             java.util.Map.of(
                 "id", "smtp-diagnostic",
                 "name", "System SMTP Diagnostic",
                 "category", "OPERATIONAL",
+                "triggerEvent", "Manual Outbound Diagnostic Ping from Admin Dashboard",
                 "description", "Real-time server handshake verification and delivery status dispatch",
+                "defaultSubject", "Aadhiraksha Mail Diagnostic: Outbound SMTP Delivery Verified",
                 "subject", "Aadhiraksha Mail Diagnostic: Outbound SMTP Delivery Verified",
+                "variables", java.util.List.of(
+                    java.util.Map.of("tag", "${recipientEmail}", "label", "Recipient Email", "description", "Destination target mailbox"),
+                    java.util.Map.of("tag", "${dispatchTimestamp}", "label", "Dispatch Timestamp", "description", "Exact IST date and time of test handshake"),
+                    java.util.Map.of("tag", "${mailHost}", "label", "SMTP Host:Port", "description", "Internal mail server host and SMTPS port"),
+                    java.util.Map.of("tag", "${triggeredBy}", "label", "Triggered By", "description", "Role or username executing the diagnostic ping")
+                ),
                 "sampleData", java.util.Map.of(
                     "recipientEmail", "admin@aadhirakshainsurance.com",
                     "dispatchTimestamp", "19-Oct-2026 14:50:00 IST",
@@ -621,8 +640,18 @@ public class BusinessProfileController {
                 "id", "welcome-credentials",
                 "name", "Employee & Agent Welcome Credentials",
                 "category", "SECURITY & ONBOARDING",
+                "triggerEvent", "Triggered when a Super Admin creates a new Staff Member or POSP Agent account",
                 "description", "Official onboarding welcome with generated temporary password and corporate email address",
+                "defaultSubject", "Welcome to Aadhiraksha - Your Portal Credentials",
                 "subject", "Welcome to Aadhiraksha - Your Portal Credentials",
+                "variables", java.util.List.of(
+                    java.util.Map.of("tag", "${fullName}", "label", "Staff Full Name", "description", "Full registered legal name"),
+                    java.util.Map.of("tag", "${crmUsername}", "label", "CRM Login Username", "description", "Primary login email for auth"),
+                    java.util.Map.of("tag", "${temporaryPassword}", "label", "Temporary Password", "description", "Auto-generated secure first-time login secret"),
+                    java.util.Map.of("tag", "${domainMailboxEmail}", "label", "Corporate Webmail", "description", "Assigned corporate domain mailbox (@aadhirakshainsurance.com)"),
+                    java.util.Map.of("tag", "${portalLoginUrl}", "label", "Portal Login URL", "description", "Direct link to staff CRM authentication portal"),
+                    java.util.Map.of("tag", "${webmailUrl}", "label", "Webmail URL", "description", "Corporate webmail login portal")
+                ),
                 "sampleData", java.util.Map.of(
                     "fullName", "Ramesh Kumar",
                     "crmUsername", "ramesh.kumar@gmail.com",
@@ -636,8 +665,15 @@ public class BusinessProfileController {
                 "id", "customer-enquiry-receipt",
                 "name", "Customer Enquiry Receipt",
                 "category", "SALES & SUPPORT",
+                "triggerEvent", "Triggered automatically when a visitor submits any Get Quote / Contact form",
                 "description", "Instant branded ticket acknowledgment sent to customers upon quote request submission",
+                "defaultSubject", "We Received Your Enquiry [ADR-ENQ-8821] - Aadhiraksha Insurance",
                 "subject", "We Received Your Enquiry [ADR-ENQ-8821] - Aadhiraksha Insurance",
+                "variables", java.util.List.of(
+                    java.util.Map.of("tag", "${customerName}", "label", "Customer Name", "description", "Salutation and customer first/full name"),
+                    java.util.Map.of("tag", "${enquiryReference}", "label", "Enquiry Reference #", "description", "Unique ticket tracking identifier"),
+                    java.util.Map.of("tag", "${insuranceCategory}", "label", "Insurance Category", "description", "e.g. Family Health, Motor, Term Life")
+                ),
                 "sampleData", java.util.Map.of(
                     "customerName", "Priya Sharma",
                     "enquiryReference", "ADR-ENQ-2026-8821",
@@ -648,8 +684,19 @@ public class BusinessProfileController {
                 "id", "policy-quote",
                 "name", "Insurance Quotation & Proposal",
                 "category", "POLICY TRANSACTIONS",
+                "triggerEvent", "Triggered when an advisor sends an official multi-insurer proposal or rate quote",
                 "description", "Structured premium quote breakdown with carrier plan and KYC proposal CTA button",
+                "defaultSubject", "Insurance Proposal & Quotation [ADR-QT-9912] - Aadhiraksha",
                 "subject", "Insurance Proposal & Quotation [ADR-QT-9912] - Aadhiraksha",
+                "variables", java.util.List.of(
+                    java.util.Map.of("tag", "${customerName}", "label", "Customer Name", "description", "Name of the prospective policyholder"),
+                    java.util.Map.of("tag", "${quoteReference}", "label", "Quote Reference #", "description", "Quotation reference number"),
+                    java.util.Map.of("tag", "${planName}", "label", "Plan Name", "description", "Underwriting plan product title"),
+                    java.util.Map.of("tag", "${insurerName}", "label", "Insurance Carrier", "description", "Underwriting insurance company (e.g. HDFC ERGO)"),
+                    java.util.Map.of("tag", "${sumInsured}", "label", "Sum Insured Coverage", "description", "Total financial risk coverage amount"),
+                    java.util.Map.of("tag", "${premiumAmount}", "label", "Calculated Premium", "description", "Annual or monthly premium rate with GST"),
+                    java.util.Map.of("tag", "${proposalUrl}", "label", "Proposal Link", "description", "Secure link to view full proposal and initiate digital KYC")
+                ),
                 "sampleData", java.util.Map.of(
                     "customerName", "Suresh Varma",
                     "quoteReference", "ADR-QT-2026-9912",
@@ -660,7 +707,68 @@ public class BusinessProfileController {
                     "proposalUrl", "https://aadhirakshainsurance.com/quotes"
                 )
             )
-        ));
+        );
+
+        java.util.List<java.util.Map<String, Object>> result = new java.util.ArrayList<>();
+        for (java.util.Map<String, Object> tmpl : baseTemplates) {
+            java.util.Map<String, Object> mutable = new java.util.HashMap<>(tmpl);
+            String id = (String) tmpl.get("id");
+            String defaultBody = com.aadhiraksha.insurance.service.EmailService.DEFAULT_TEMPLATE_BODIES.getOrDefault(id, "");
+            mutable.put("defaultBody", defaultBody);
+            mutable.put("body", defaultBody);
+
+            if (savedConfig.containsKey(id)) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Object> itemConfig = (java.util.Map<String, Object>) savedConfig.get(id);
+                if (itemConfig != null) {
+                    if (itemConfig.containsKey("subject") && itemConfig.get("subject") != null) {
+                        mutable.put("subject", itemConfig.get("subject"));
+                    }
+                    if (itemConfig.containsKey("body") && itemConfig.get("body") != null && !((String) itemConfig.get("body")).isBlank()) {
+                        mutable.put("body", itemConfig.get("body"));
+                    }
+                    if (itemConfig.containsKey("enabled")) {
+                        mutable.put("enabled", itemConfig.get("enabled"));
+                    } else {
+                        mutable.put("enabled", true);
+                    }
+                }
+            } else {
+                mutable.put("enabled", true);
+            }
+            result.add(mutable);
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Update configuration (custom subjects, enable/disable status) for email templates
+     */
+    @PutMapping("/admin/settings/email/templates/config")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @Operation(summary = "Update Email Template Config", description = "Persists custom subject lines and trigger toggles for templates")
+    public ResponseEntity<java.util.Map<String, Object>> updateEmailTemplateConfig(
+            @RequestBody java.util.Map<String, Object> payload) {
+        BusinessProfile profile = repository.findById(1L).orElseGet(() -> {
+            BusinessProfile p = new BusinessProfile();
+            p.setId(1L);
+            return p;
+        });
+
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            String json = mapper.writeValueAsString(payload);
+            profile.setEmailTemplatesConfigJson(json);
+            repository.save(profile);
+            return ResponseEntity.ok(java.util.Map.of(
+                "success", true,
+                "message", "Email template configurations saved successfully"
+            ));
+        } catch (Exception ex) {
+            log.error("Failed to update email template configuration: {}", ex.getMessage());
+            return ResponseEntity.status(500).body(java.util.Map.of("error", ex.getMessage()));
+        }
     }
 
     /**

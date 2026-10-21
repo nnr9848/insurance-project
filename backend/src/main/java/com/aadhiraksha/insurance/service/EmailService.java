@@ -122,30 +122,158 @@ public class EmailService {
         log.info("Direct test email successfully dispatched via SMTP to {}", to);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.aadhiraksha.insurance.repository.BusinessProfileRepository businessProfileRepository;
+
     /**
-     * Render a Thymeleaf template into a compiled HTML string with dynamic variables.
+     * Default body contents for the registered templates (before shell wrapping).
      */
-    public String renderTemplate(String templateName, Map<String, Object> variables) {
-        Context context = new Context();
+    public static final Map<String, String> DEFAULT_TEMPLATE_BODIES = Map.of(
+        "smtp-diagnostic", """
+            <p style="margin-top: 0;">Hello,</p>
+            <p>This is an automated <strong>SMTP Delivery Verification Test</strong> dispatched directly from the <strong>Aadhiraksha CRM Operations Console</strong>.</p>
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 18px; margin: 20px 0;">
+              <p style="margin: 0 0 8px; color: #166534; font-weight: 800; font-size: 15px;">✔ Stalwart SMTP Handshake Successful</p>
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 13px; color: #15803d; line-height: 1.6;">
+                <tr><td width="35%"><strong>Recipient Address:</strong></td><td>{{recipientEmail}}</td></tr>
+                <tr><td><strong>Dispatch Timestamp:</strong></td><td>{{dispatchTimestamp}}</td></tr>
+                <tr><td><strong>Mail Node Host:</strong></td><td><code style="background: #dcfce7; padding: 2px 6px; border-radius: 4px;">{{mailHost}}</code></td></tr>
+                <tr><td><strong>Triggered By:</strong></td><td>{{triggeredBy}}</td></tr>
+              </table>
+            </div>
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">All outbound encryption (TLS/SSL) and transport channels are operating nominally.</p>
+            """,
+
+        "welcome-credentials", """
+            <p style="margin-top: 0;">Dear <strong>{{fullName}}</strong>,</p>
+            <p>Welcome to the <strong>Aadhiraksha Insurance & Financial Services</strong> ecosystem. Your official corporate access credentials have been provisioned.</p>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 24px 0;">
+              <h3 style="margin: 0 0 12px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: #0284c7; font-weight: 800;">🔑 Portal Access Credentials</h3>
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 14px; line-height: 1.8;">
+                <tr><td width="35%" style="color: #64748b; font-weight: 600;">CRM Portal Login:</td><td><strong style="color: #0284c7;">{{crmUsername}}</strong></td></tr>
+                <tr><td style="color: #64748b; font-weight: 600;">Temporary Password:</td><td><code style="background: #e2e8f0; padding: 3px 8px; border-radius: 4px; font-weight: bold; color: #0f172a;">{{temporaryPassword}}</code></td></tr>
+                <tr><td style="color: #64748b; font-weight: 600; padding-top: 8px;">Corporate Email:</td><td style="padding-top: 8px;"><strong style="color: #059669;">{{domainMailboxEmail}}</strong><span style="font-size: 12px; color: #64748b; display: block;">Webmail: <a href="{{webmailUrl}}" style="color: #0284c7;" target="_blank">{{webmailUrl}}</a></span></td></tr>
+              </table>
+            </div>
+            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; margin-bottom: 24px; font-size: 13px; color: #92400e; border-radius: 0 8px 8px 0;">
+              <strong>Security Mandatory:</strong> You will be prompted to change this temporary password upon your initial login. Do not share your credentials with anyone.
+            </div>
+            <div style="text-align: center; margin: 32px 0 16px;">
+              <a href="{{portalLoginUrl}}" style="background: #0284c7; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 15px; display: inline-block; box-shadow: 0 4px 10px rgba(2, 132, 199, 0.3);">Log in to CRM Portal &rarr;</a>
+            </div>
+            """,
+
+        "customer-enquiry-receipt", """
+            <p style="margin-top: 0;">Dear <strong>{{customerName}}</strong>,</p>
+            <p>Thank you for submitting your insurance requirement to <strong>Aadhiraksha Insurance & Financial Services</strong>. We have successfully logged your enquiry into our advisory queue.</p>
+            <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 20px; margin: 24px 0;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 14px; line-height: 1.8;">
+                <tr><td width="40%" style="color: #0369a1; font-weight: 600;">Enquiry Reference #:</td><td><strong style="color: #0c4a6e;">{{enquiryReference}}</strong></td></tr>
+                <tr><td style="color: #0369a1; font-weight: 600;">Requested Category:</td><td><strong style="color: #0284c7;">{{insuranceCategory}}</strong></td></tr>
+                <tr><td style="color: #0369a1; font-weight: 600;">Assigned Advisory Desk:</td><td><span>Dedicated Operations Advisory Team</span></td></tr>
+              </table>
+            </div>
+            <p>One of our certified insurance advisors is currently reviewing carrier rates to structure the most comprehensive risk coverage for you at optimal premium pricing.</p>
+            <div style="background: #f8fafc; border-left: 4px solid #0284c7; padding: 14px 18px; margin: 24px 0; border-radius: 0 8px 8px 0; font-size: 13px; color: #475569;">
+              <strong>What to expect next:</strong> Our advisor will connect with you within <strong>2 business hours</strong> via your verified phone number or email with comparison proposals.
+            </div>
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">If your requirement is urgent, you can directly reach our helpline or reply directly to this email.</p>
+            """,
+
+        "policy-quote", """
+            <p style="margin-top: 0;">Dear <strong>{{customerName}}</strong>,</p>
+            <p>Thank you for consulting with Aadhiraksha. Based on your risk profile, here is your customized insurance quotation prepared by our certified underwriting advisory:</p>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 24px 0;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 14px; line-height: 1.9;">
+                <tr><td width="40%" style="color: #64748b;">Quotation Ref #:</td><td><strong style="color: #0f172a;">{{quoteReference}}</strong></td></tr>
+                <tr><td style="color: #64748b;">Coverage Plan:</td><td><strong style="color: #0284c7;">{{planName}}</strong></td></tr>
+                <tr><td style="color: #64748b;">Insurance Carrier:</td><td><span>{{insurerName}}</span></td></tr>
+                <tr><td style="color: #64748b;">Sum Insured:</td><td><strong style="color: #059669; font-size: 15px;">{{sumInsured}}</strong></td></tr>
+                <tr><td style="color: #64748b;">Calculated Premium:</td><td><strong style="color: #0f172a; font-size: 16px;">{{premiumAmount}}</strong></td></tr>
+              </table>
+            </div>
+            <div style="text-align: center; margin: 32px 0 16px;">
+              <a href="{{proposalUrl}}" style="background: #0284c7; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold; font-size: 15px; display: inline-block; box-shadow: 0 4px 10px rgba(2, 132, 199, 0.3);">View Detailed Proposal & KYC &rarr;</a>
+            </div>
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">This quote is valid for 15 days from dispatch. Final issuance is subject to carrier underwriting approval and medical documentation if applicable.</p>
+            """
+    );
+
+    /**
+     * Interpolates {{variable}} or ${variable} tokens inside a string with tolerant fallbacks.
+     */
+    public String interpolateTokens(String content, Map<String, Object> variables) {
+        if (content == null) return "";
+        String result = content;
         if (variables != null) {
-            context.setVariables(variables);
+            for (Map.Entry<String, Object> entry : variables.entrySet()) {
+                String val = entry.getValue() != null ? String.valueOf(entry.getValue()) : "";
+                result = result.replace("{{" + entry.getKey() + "}}", val);
+                result = result.replace("${" + entry.getKey() + "}", val);
+            }
         }
-        // Always inject system defaults if not explicitly passed
-        if (!context.containsVariable("mailDomain")) {
-            context.setVariable("mailDomain", mailDomain);
-        }
-        if (!context.containsVariable("supportEmail")) {
-            context.setVariable("supportEmail", "support@" + mailDomain);
-        }
-        return templateEngine.process("email/" + templateName, context);
+        return result;
     }
 
     /**
-     * Send email using a Thymeleaf template asynchronously.
+     * Render an email template into a fully formed HTML document with master branding shell.
+     * Looks up custom body content from BusinessProfile settings if present; falls back to default.
+     */
+    public String renderTemplate(String templateName, Map<String, Object> variables) {
+        String bodyContent = null;
+        if (businessProfileRepository != null) {
+            try {
+                com.aadhiraksha.insurance.model.BusinessProfile profile = businessProfileRepository.findById(1L).orElse(null);
+                if (profile != null && profile.getEmailTemplatesConfigJson() != null && !profile.getEmailTemplatesConfigJson().isBlank()) {
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    Map<String, Object> config = mapper.readValue(profile.getEmailTemplatesConfigJson(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                    if (config != null && config.containsKey(templateName)) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> item = (Map<String, Object>) config.get(templateName);
+                        if (item != null && item.get("body") != null && !((String) item.get("body")).isBlank()) {
+                            bodyContent = (String) item.get("body");
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                log.warn("Could not retrieve custom body for template '{}': {}", templateName, ex.getMessage());
+            }
+        }
+
+        if (bodyContent == null || bodyContent.isBlank()) {
+            bodyContent = DEFAULT_TEMPLATE_BODIES.getOrDefault(templateName, "<p>Notification from Aadhiraksha Insurance.</p>");
+        }
+
+        String interpolatedBody = interpolateTokens(bodyContent, variables);
+        return buildBrandedEmailTemplate("Aadhiraksha Insurance", interpolatedBody);
+    }
+
+    /**
+     * Send email using a template asynchronously.
      */
     @Async
     public void sendTemplateEmail(String to, String subject, String templateName, Map<String, Object> variables) {
         try {
+            // Check if template is enabled in configuration
+            if (businessProfileRepository != null) {
+                com.aadhiraksha.insurance.model.BusinessProfile profile = businessProfileRepository.findById(1L).orElse(null);
+                if (profile != null && profile.getEmailTemplatesConfigJson() != null && !profile.getEmailTemplatesConfigJson().isBlank()) {
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    Map<String, Object> config = mapper.readValue(profile.getEmailTemplatesConfigJson(), new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                    if (config != null && config.containsKey(templateName)) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> item = (Map<String, Object>) config.get(templateName);
+                        if (item != null && Boolean.FALSE.equals(item.get("enabled"))) {
+                            log.info("Email template '{}' is disabled by admin settings. Skipping dispatch to {}", templateName, to);
+                            return;
+                        }
+                        if (item != null && item.get("subject") != null && !((String) item.get("subject")).isBlank()) {
+                            subject = interpolateTokens((String) item.get("subject"), variables);
+                        }
+                    }
+                }
+            }
+
             String htmlContent = renderTemplate(templateName, variables);
             sendHtmlEmail(to, subject, htmlContent);
         } catch (Exception ex) {

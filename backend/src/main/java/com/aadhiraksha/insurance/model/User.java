@@ -68,6 +68,9 @@ public class User {
     @Column(name = "domain_mailbox_email", length = 150)
     private String domainMailboxEmail;
 
+    @Column(name = "domain_mailbox_aliases", columnDefinition = "TEXT")
+    private String domainMailboxAliases;
+
     @Builder.Default
     @Column(name = "mailbox_status", length = 50)
     private String mailboxStatus = "NOT_PROVISIONED";

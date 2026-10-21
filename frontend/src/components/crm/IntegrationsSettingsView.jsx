@@ -24,7 +24,11 @@ import {
   Check,
   ChevronRight,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Edit3,
+  Tag,
+  Power,
+  PowerOff
 } from 'lucide-react';
 import { portalService } from '../../services/api';
 import { useBusinessProfile } from '../../context/BusinessProfileContext';
@@ -210,10 +214,107 @@ export default function IntegrationsSettingsView() {
     }
   };
 
+  const [isSavingTemplateConfig, setIsSavingTemplateConfig] = useState(false);
+  const [editingSubjects, setEditingSubjects] = useState({});
+  const [editingBodies, setEditingBodies] = useState({});
+  const [activeTemplateTab, setActiveTemplateTab] = useState('preview'); // 'preview' | 'edit-body'
+
+  const handleSubjectChange = (templateId, val) => {
+    setEditingSubjects(prev => ({
+      ...prev,
+      [templateId]: val
+    }));
+  };
+
+  const handleBodyChange = (templateId, val) => {
+    setEditingBodies(prev => ({
+      ...prev,
+      [templateId]: val
+    }));
+  };
+
+  const handleToggleTemplate = async (templateId) => {
+    const tmpl = emailTemplates.find(t => t.id === templateId);
+    if (!tmpl) return;
+    const newStatus = tmpl.enabled === false ? true : false;
+    
+    // Optimistic UI update
+    setEmailTemplates(prev => prev.map(t => t.id === templateId ? { ...t, enabled: newStatus } : t));
+
+    try {
+      const payload = {};
+      emailTemplates.forEach(t => {
+        payload[t.id] = {
+          subject: editingSubjects[t.id] !== undefined ? editingSubjects[t.id] : t.subject,
+          body: editingBodies[t.id] !== undefined ? editingBodies[t.id] : (t.body || t.defaultBody || ''),
+          enabled: t.id === templateId ? newStatus : (t.enabled !== false)
+        };
+      });
+      await portalService.updateEmailTemplateConfig(payload);
+      toast.success(`Template ${newStatus ? 'activated' : 'deactivated'} successfully.`);
+    } catch (err) {
+      console.error('Failed to toggle template status:', err);
+      toast.error('Failed to update template trigger status.');
+      // Revert
+      setEmailTemplates(prev => prev.map(t => t.id === templateId ? { ...t, enabled: !newStatus } : t));
+    }
+  };
+
+  const handleSaveTemplateConfig = async (templateId) => {
+    setIsSavingTemplateConfig(true);
+    try {
+      const currentSubject = editingSubjects[templateId] !== undefined 
+        ? editingSubjects[templateId] 
+        : (emailTemplates.find(t => t.id === templateId)?.subject || '');
+      const currentBody = editingBodies[templateId] !== undefined 
+        ? editingBodies[templateId] 
+        : (emailTemplates.find(t => t.id === templateId)?.body || '');
+
+      const payload = {};
+      emailTemplates.forEach(t => {
+        payload[t.id] = {
+          subject: t.id === templateId ? currentSubject : (editingSubjects[t.id] !== undefined ? editingSubjects[t.id] : t.subject),
+          body: t.id === templateId ? currentBody : (editingBodies[t.id] !== undefined ? editingBodies[t.id] : (t.body || t.defaultBody || '')),
+          enabled: t.enabled !== false
+        };
+      });
+      await portalService.updateEmailTemplateConfig(payload);
+      setEmailTemplates(prev => prev.map(t => t.id === templateId ? { ...t, subject: currentSubject, body: currentBody } : t));
+      toast.success('Email template subject and body configuration saved successfully.');
+      // Refresh preview with new content
+      const tmpl = emailTemplates.find(t => t.id === templateId);
+      if (tmpl) {
+        fetchPreview(templateId, tmpl.sampleData);
+      }
+    } catch (err) {
+      console.error('Failed to save template configuration:', err);
+      toast.error('Failed to save template configuration.');
+    } finally {
+      setIsSavingTemplateConfig(false);
+    }
+  };
+
+  const handleResetTemplateBody = (templateId) => {
+    const tmpl = emailTemplates.find(t => t.id === templateId);
+    if (!tmpl) return;
+    const defaultBody = tmpl.defaultBody || '';
+    setEditingBodies(prev => ({
+      ...prev,
+      [templateId]: defaultBody
+    }));
+    toast.info('Template body reset to factory default. Click Save to persist.');
+  };
+
   const handleSelectTemplate = (templateId) => {
     setSelectedTemplateId(templateId);
     const tmpl = emailTemplates.find(t => t.id === templateId);
     if (tmpl) {
+      if (editingSubjects[tmpl.id] === undefined) {
+        setEditingSubjects(prev => ({ ...prev, [tmpl.id]: tmpl.subject }));
+      }
+      if (editingBodies[tmpl.id] === undefined) {
+        setEditingBodies(prev => ({ ...prev, [tmpl.id]: tmpl.body || tmpl.defaultBody || '' }));
+      }
       fetchPreview(tmpl.id, tmpl.sampleData);
     }
   };
@@ -1289,113 +1390,370 @@ export default function IntegrationsSettingsView() {
                   })}
                 </div>
 
-                {/* Template Info & Test Action Sub-Bar */}
-                {emailTemplates.find(t => t.id === selectedTemplateId) && (
-                  <div style={{
-                    padding: '0.85rem 1.25rem',
-                    background: '#ffffff',
-                    borderBottom: '1px solid #f1f5f9',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '12px'
-                  }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 800, background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '4px' }}>
-                          {emailTemplates.find(t => t.id === selectedTemplateId).category}
-                        </span>
-                        <strong style={{ fontSize: '0.84rem', color: '#0f172a' }}>
-                          Subject: {emailTemplates.find(t => t.id === selectedTemplateId).subject}
-                        </strong>
-                      </div>
-                      <p style={{ margin: '3px 0 0', fontSize: '0.76rem', color: '#64748b' }}>
-                        {emailTemplates.find(t => t.id === selectedTemplateId).description}
-                      </p>
-                    </div>
+                {/* Template Configuration & Action Bar */}
+                {(() => {
+                  const tmpl = emailTemplates.find(t => t.id === selectedTemplateId);
+                  if (!tmpl) return null;
+                  const currentSubject = editingSubjects[tmpl.id] !== undefined ? editingSubjects[tmpl.id] : tmpl.subject;
+                  const isEnabled = tmpl.enabled !== false;
+                  const isDirty = currentSubject !== tmpl.subject;
 
-                    <button
-                      type="button"
-                      onClick={handleDispatchTemplateTest}
-                      disabled={isDispatchingTemplate || !testEmail}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        background: '#0284c7',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '7px 14px',
-                        fontSize: '0.78rem',
-                        fontWeight: 700,
-                        cursor: (isDispatchingTemplate || !testEmail) ? 'not-allowed' : 'pointer',
-                        opacity: !testEmail ? 0.6 : 1,
-                        transition: 'all 0.15s ease'
-                      }}
-                      title={!testEmail ? 'Enter a recipient email in the test box above first' : 'Send this template live'}
-                    >
-                      {isDispatchingTemplate ? (
-                        <>
-                          <RefreshCw size={12} className="animate-spin" />
-                          <span>Dispatching Sample...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send size={12} />
-                          <span>Send Sample of This Template</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-
-                {/* Sandbox Live Viewport */}
-                <div style={{
-                  background: '#f1f5f9',
-                  padding: '1.5rem',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'flex-start',
-                  minHeight: '440px',
-                  overflow: 'auto'
-                }}>
-                  {isLoadingPreview ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', color: '#64748b', gap: '10px' }}>
-                      <RefreshCw size={24} className="animate-spin" color="#0284c7" />
-                      <span style={{ fontSize: '0.84rem', fontWeight: 600 }}>Compiling template on server engine...</span>
-                    </div>
-                  ) : (
+                  return (
                     <div style={{
-                      width: previewDevice === 'mobile' ? '375px' : '640px',
-                      maxWidth: '100%',
+                      padding: '1rem 1.25rem',
                       background: '#ffffff',
-                      borderRadius: previewDevice === 'mobile' ? '28px' : '10px',
-                      border: previewDevice === 'mobile' ? '8px solid #1e293b' : '1px solid #cbd5e1',
-                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
-                      overflow: 'hidden',
-                      transition: 'width 0.25s ease-in-out'
+                      borderBottom: '1px solid #e2e8f0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px'
                     }}>
-                      {previewDevice === 'mobile' && (
-                        <div style={{ background: '#1e293b', height: '18px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                          <div style={{ width: '40px', height: '4px', background: '#475569', borderRadius: '4px' }}></div>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '12px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 800, background: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: '6px' }}>
+                            {tmpl.category}
+                          </span>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b' }}>
+                            ID: <code style={{ color: '#0284c7' }}>{tmpl.id}</code>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleTemplate(tmpl.id)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              padding: '2px 10px',
+                              borderRadius: '12px',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              border: 'none',
+                              cursor: 'pointer',
+                              background: isEnabled ? '#dcfce7' : '#fee2e2',
+                              color: isEnabled ? '#15803d' : '#b91c1c',
+                              transition: 'all 0.15s ease'
+                            }}
+                            title={isEnabled ? 'Click to deactivate this automated trigger' : 'Click to activate this automated trigger'}
+                          >
+                            {isEnabled ? <Power size={11} /> : <PowerOff size={11} />}
+                            {isEnabled ? 'Active Trigger' : 'Disabled'}
+                          </button>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={handleDispatchTemplateTest}
+                            disabled={isDispatchingTemplate || !testEmail}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              background: '#0284c7',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '8px',
+                              padding: '7px 14px',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              cursor: (isDispatchingTemplate || !testEmail) ? 'not-allowed' : 'pointer',
+                              opacity: !testEmail ? 0.6 : 1,
+                              transition: 'all 0.15s ease'
+                            }}
+                            title={!testEmail ? 'Enter a recipient email in the test box above first' : 'Send this template live'}
+                          >
+                            {isDispatchingTemplate ? (
+                              <>
+                                <RefreshCw size={12} className="animate-spin" />
+                                <span>Dispatching Sample...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Send size={12} />
+                                <span>Send Sample Live</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Subject Editor Line */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        background: '#f8fafc',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', fontSize: '0.78rem', fontWeight: 700, minWidth: '90px' }}>
+                          <Edit3 size={13} color="#0284c7" />
+                          <span>Subject Line:</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={currentSubject}
+                          onChange={(e) => handleSubjectChange(tmpl.id, e.target.value)}
+                          placeholder="Email subject line..."
+                          style={{
+                            flex: 1,
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '6px',
+                            padding: '6px 10px',
+                            fontSize: '0.82rem',
+                            color: '#0f172a',
+                            background: '#ffffff',
+                            fontWeight: 600
+                          }}
+                        />
+                        {(currentSubject !== tmpl.subject || (editingBodies[tmpl.id] !== undefined && editingBodies[tmpl.id] !== tmpl.body)) && (
+                          <button
+                            type="button"
+                            onClick={() => handleSaveTemplateConfig(tmpl.id)}
+                            disabled={isSavingTemplateConfig}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              background: '#059669',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '6px 14px',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              cursor: isSavingTemplateConfig ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            <Save size={12} />
+                            <span>{isSavingTemplateConfig ? 'Saving...' : 'Save Changes'}</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Supported Dynamic Placeholder Tokens */}
+                      {tmpl.sampleData && Object.keys(tmpl.sampleData).length > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Tag size={11} /> Placeholders:
+                          </span>
+                          {Object.keys(tmpl.sampleData).map(k => (
+                            <button
+                              key={k}
+                              type="button"
+                              onClick={() => {
+                                const placeholder = `{{${k}}}`;
+                                if (activeTemplateTab === 'edit-body') {
+                                  const currBody = editingBodies[tmpl.id] !== undefined ? editingBodies[tmpl.id] : (tmpl.body || tmpl.defaultBody || '');
+                                  handleBodyChange(tmpl.id, currBody + ' ' + placeholder);
+                                } else {
+                                  const nextSubject = (currentSubject || '') + ' ' + placeholder;
+                                  handleSubjectChange(tmpl.id, nextSubject);
+                                }
+                              }}
+                              style={{
+                                border: '1px dashed #cbd5e1',
+                                background: '#f8fafc',
+                                borderRadius: '4px',
+                                padding: '1px 6px',
+                                fontSize: '0.7rem',
+                                color: '#0369a1',
+                                fontFamily: 'monospace',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                              title={`Click to insert {{${k}}}`}
+                            >
+                              &#123;&#123;{k}&#125;&#125;
+                            </button>
+                          ))}
                         </div>
                       )}
-                      <iframe
-                        title="Email Template Render Preview"
-                        srcDoc={templatePreviewHtml}
-                        style={{
-                          width: '100%',
-                          height: '520px',
-                          border: 'none',
-                          display: 'block'
-                        }}
-                        sandbox="allow-same-origin"
-                      />
+
+                      {/* View & Edit Tabs */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginTop: '4px',
+                        borderTop: '1px solid #f1f5f9',
+                        paddingTop: '8px'
+                      }}>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTemplateTab('preview')}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: '6px',
+                              border: activeTemplateTab === 'preview' ? '1px solid #0284c7' : '1px solid #e2e8f0',
+                              background: activeTemplateTab === 'preview' ? '#e0f2fe' : '#ffffff',
+                              color: activeTemplateTab === 'preview' ? '#0369a1' : '#64748b',
+                              fontSize: '0.76rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Live Sandbox Preview
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTemplateTab('edit-body')}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: '6px',
+                              border: activeTemplateTab === 'edit-body' ? '1px solid #0284c7' : '1px solid #e2e8f0',
+                              background: activeTemplateTab === 'edit-body' ? '#e0f2fe' : '#ffffff',
+                              color: activeTemplateTab === 'edit-body' ? '#0369a1' : '#64748b',
+                              fontSize: '0.76rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Edit HTML Template Body
+                          </button>
+                        </div>
+
+                        {activeTemplateTab === 'edit-body' && (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleResetTemplateBody(tmpl.id)}
+                              style={{
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                border: '1px solid #cbd5e1',
+                                background: '#f8fafc',
+                                color: '#475569',
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Reset to Factory Default
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveTemplateConfig(tmpl.id)}
+                              disabled={isSavingTemplateConfig}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                background: '#059669',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '4px 12px',
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                cursor: isSavingTemplateConfig ? 'not-allowed' : 'pointer'
+                              }}
+                            >
+                              <Save size={11} />
+                              <span>{isSavingTemplateConfig ? 'Saving...' : 'Save Template'}</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
+
+                {/* Main Content Area: Either Live Sandbox Viewport OR HTML Body Editor */}
+                {activeTemplateTab === 'edit-body' ? (
+                  <div style={{ padding: '1rem 1.25rem', background: '#0f172a' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '0.74rem', color: '#94a3b8', fontFamily: 'monospace' }}>
+                        Custom Body HTML (Rendered inside the global Aadhiraksha responsive layout wrapper)
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: '#38bdf8' }}>
+                        Supports HTML tags (&lt;p&gt;, &lt;h2&gt;, &lt;table&gt;, &lt;a&gt;) and &#123;&#123;variable&#125;&#125; placeholders
+                      </span>
+                    </div>
+                    {(() => {
+                      const tmpl = emailTemplates.find(t => t.id === selectedTemplateId);
+                      if (!tmpl) return null;
+                      const currBody = editingBodies[tmpl.id] !== undefined 
+                        ? editingBodies[tmpl.id] 
+                        : (tmpl.body || tmpl.defaultBody || '');
+
+                      return (
+                        <textarea
+                          rows={18}
+                          value={currBody}
+                          onChange={(e) => handleBodyChange(tmpl.id, e.target.value)}
+                          placeholder="HTML template body..."
+                          style={{
+                            width: '100%',
+                            fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                            fontSize: '0.82rem',
+                            lineHeight: 1.5,
+                            background: '#1e293b',
+                            color: '#f8fafc',
+                            border: '1px solid #334155',
+                            borderRadius: '8px',
+                            padding: '12px',
+                            resize: 'vertical',
+                            outline: 'none',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <div style={{
+                    background: '#f1f5f9',
+                    padding: '1.5rem',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'flex-start',
+                    minHeight: '440px',
+                    overflow: 'auto'
+                  }}>
+                    {isLoadingPreview ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', color: '#64748b', gap: '10px' }}>
+                        <RefreshCw size={24} className="animate-spin" color="#0284c7" />
+                        <span style={{ fontSize: '0.84rem', fontWeight: 600 }}>Compiling template on server engine...</span>
+                      </div>
+                    ) : (
+                      <div style={{
+                        width: previewDevice === 'mobile' ? '375px' : '640px',
+                        maxWidth: '100%',
+                        background: '#ffffff',
+                        borderRadius: previewDevice === 'mobile' ? '28px' : '10px',
+                        border: previewDevice === 'mobile' ? '8px solid #1e293b' : '1px solid #cbd5e1',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+                        overflow: 'hidden',
+                        transition: 'width 0.25s ease-in-out'
+                      }}>
+                        {previewDevice === 'mobile' && (
+                          <div style={{ background: '#1e293b', height: '18px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                            <div style={{ width: '40px', height: '4px', background: '#475569', borderRadius: '4px' }}></div>
+                          </div>
+                        )}
+                        <iframe
+                          title="Email Template Render Preview"
+                          srcDoc={templatePreviewHtml}
+                          style={{
+                            width: '100%',
+                            height: '520px',
+                            border: 'none',
+                            display: 'block'
+                          }}
+                          sandbox="allow-same-origin"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
