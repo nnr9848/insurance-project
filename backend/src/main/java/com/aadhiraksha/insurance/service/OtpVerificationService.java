@@ -20,6 +20,7 @@ public class OtpVerificationService {
     private static final String DEV_MASTER_OTP = "123456";
 
     private final TwilioSmsService twilioSmsService;
+    private final TwilioVerifyService twilioVerifyService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     // Map: normalized phone -> OtpSession
@@ -32,12 +33,27 @@ public class OtpVerificationService {
     public record TokenSession(String phoneNumber, Instant expiresAt) {}
 
     public String generateAndSendOtp(String rawPhone) {
+        return generateAndSendOtp(rawPhone, "sms");
+    }
+
+    public String generateAndSendOtp(String rawPhone, String channel) {
         String phone = normalizePhone(rawPhone);
         if (phone.length() != 10) {
             throw new IllegalArgumentException("Mobile number must be a valid 10-digit Indian phone number.");
         }
 
-        // Generate 6-digit cryptographic OTP
+        // If Twilio Verify Service SID is configured, dispatch directly via Twilio Verify
+        if (twilioVerifyService.isVerifyEnabled()) {
+            TwilioVerifyService.VerifyDispatchResult result = twilioVerifyService.sendVerification("+91" + phone, channel);
+            if (result.success()) {
+                log.info("[OTP SERVICE] Dispatched OTP to +91 {} via Twilio Verify ({})", phone, channel);
+                return "OTP sent successfully to +91 " + phone;
+            }
+            log.error("[OTP SERVICE] Twilio Verify dispatch failed: {} ({})", result.errorMessage(), result.errorCode());
+            throw new IllegalStateException(result.errorMessage());
+        }
+
+        // Generate 6-digit cryptographic OTP fallback
         int code = 100000 + secureRandom.nextInt(900000);
         String otp = String.valueOf(code);
 
@@ -65,6 +81,19 @@ public class OtpVerificationService {
         // 1. Allow Dev Master OTP for quick testing
         if (DEV_MASTER_OTP.equals(sanitizedOtp)) {
             return createVerificationToken(phone);
+        }
+
+        // 2. Check via Twilio Verify if enabled
+        if (twilioVerifyService.isVerifyEnabled()) {
+            boolean approved = twilioVerifyService.checkVerificationOtp("+91" + phone, sanitizedOtp);
+            if (approved) {
+                otpStorage.remove(phone);
+                return createVerificationToken(phone);
+            }
+            // If Twilio explicitly returned false, check if there was a local session fallback
+            if (!otpStorage.containsKey(phone)) {
+                throw new IllegalArgumentException("Invalid or expired OTP code. Please check and try again.");
+            }
         }
 
         OtpSession session = otpStorage.get(phone);

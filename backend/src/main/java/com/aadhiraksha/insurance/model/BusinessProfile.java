@@ -114,6 +114,9 @@ public class BusinessProfile {
     @Column(name = "twilio_from_number", length = 50)
     private String twilioFromNumber;
 
+    @Column(name = "twilio_verify_service_sid", length = 100)
+    private String twilioVerifyServiceSid;
+
     // Twilio WhatsApp Messaging & Promotional Broadcast Settings
     @Builder.Default
     @Column(name = "twilio_whatsapp_enabled")

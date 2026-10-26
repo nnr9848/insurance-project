@@ -33,6 +33,7 @@ import {
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import ActionDropdown from '../common/ActionDropdown';
+import ConfirmationModal from '../common/ConfirmationModal';
 import { CrmTablePaginationBar, CrmTopMiniPager } from './common/CrmTablePaginationBar';
 
 export default function UserManagementView({ initialSegment = 'STAFF' }) {
@@ -133,6 +134,18 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
   const [showProvisionPassword, setShowProvisionPassword] = useState(false);
   const [newAliasHandle, setNewAliasHandle] = useState('');
   const [aliasActionLoading, setAliasActionLoading] = useState(false);
+
+  // Custom Confirmation Modal state (replacing native window.confirm)
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    cancelLabel: 'Cancel',
+    variant: 'warning', // 'warning' | 'danger' | 'primary'
+    isLoading: false,
+    onConfirm: () => {}
+  });
 
   const [editUserForm, setEditUserForm] = useState({
     fullName: '',
@@ -318,18 +331,31 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
     }
   };
 
-  const handleResetMailboxPasswordNow = async () => {
+  const handleResetMailboxPasswordNow = () => {
     if (!mailboxModalUser) return;
-    if (!window.confirm(`Generate new secure password for ${mailboxModalUser.domainMailboxEmail}?`)) return;
-    setMailboxActionLoading(true);
-    try {
-      const res = await crmService.resetMailboxPassword(mailboxModalUser.id);
-      setMailboxSuccessInfo(res);
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to reset mailbox password.');
-    } finally {
-      setMailboxActionLoading(false);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Generate New Mailbox Password',
+      message: `Are you sure you want to generate a new secure password for ${mailboxModalUser.domainMailboxEmail}? The employee will need the new password to access Webmail, IMAP, and SMTP.`,
+      confirmLabel: 'Generate Password',
+      cancelLabel: 'Cancel',
+      variant: 'warning',
+      isLoading: false,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isLoading: true }));
+        setMailboxActionLoading(true);
+        try {
+          const res = await crmService.resetMailboxPassword(mailboxModalUser.id);
+          setMailboxSuccessInfo(res);
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, isLoading: false }));
+        } catch (err) {
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          alert(err.response?.data?.message || 'Failed to reset mailbox password.');
+        } finally {
+          setMailboxActionLoading(false);
+        }
+      }
+    });
   };
 
   const handleAddAliasNow = async (e) => {
@@ -350,41 +376,66 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
     }
   };
 
-  const handleRemoveAliasNow = async (aliasEmail) => {
+  const handleRemoveAliasNow = (aliasEmail) => {
     if (!mailboxModalUser) return;
-    if (!window.confirm(`Remove alias ${aliasEmail}? Inbound emails to this handle will no longer deliver.`)) return;
-    setAliasActionLoading(true);
-    try {
-      await crmService.removeMailboxAlias(mailboxModalUser.id, aliasEmail);
-      const settings = await crmService.getMailboxSettings(mailboxModalUser.id);
-      setMailboxSettings(settings);
-      loadData();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to remove alias.');
-    } finally {
-      setAliasActionLoading(false);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Remove Alternate Email Alias',
+      message: `Remove alias "${aliasEmail}" from ${mailboxModalUser.fullName}'s mailbox? Inbound emails sent to this handle will no longer be delivered.`,
+      confirmLabel: 'Remove Alias',
+      cancelLabel: 'Keep Alias',
+      variant: 'danger',
+      isLoading: false,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isLoading: true }));
+        setAliasActionLoading(true);
+        try {
+          await crmService.removeMailboxAlias(mailboxModalUser.id, aliasEmail);
+          const settings = await crmService.getMailboxSettings(mailboxModalUser.id);
+          setMailboxSettings(settings);
+          loadData();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, isLoading: false }));
+        } catch (err) {
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          alert(err.response?.data?.message || 'Failed to remove alias.');
+        } finally {
+          setAliasActionLoading(false);
+        }
+      }
+    });
   };
 
-  const handleSetPrimaryEmailNow = async (newPrimary) => {
+  const handleSetPrimaryEmailNow = (newPrimary) => {
     if (!mailboxModalUser) return;
-    if (!window.confirm(`Set ${newPrimary} as the primary address? ${mailboxModalUser.domainMailboxEmail} will be retained as an alias so no emails are lost.`)) return;
-    setAliasActionLoading(true);
-    try {
-      await crmService.setPrimaryMailboxEmail(mailboxModalUser.id, newPrimary);
-      // Update modal user state
-      setMailboxModalUser(prev => ({
-        ...prev,
-        domainMailboxEmail: newPrimary
-      }));
-      const settings = await crmService.getMailboxSettings(mailboxModalUser.id);
-      setMailboxSettings(settings);
-      loadData();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to set primary email.');
-    } finally {
-      setAliasActionLoading(false);
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Set as Primary Email Address',
+      message: `Make "${newPrimary}" the primary corporate email for ${mailboxModalUser.fullName}? The previous primary address (${mailboxModalUser.domainMailboxEmail}) will be retained as an alias so no existing emails or communications are lost.`,
+      confirmLabel: 'Promote to Primary',
+      cancelLabel: 'Cancel',
+      variant: 'primary',
+      isLoading: false,
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isLoading: true }));
+        setAliasActionLoading(true);
+        try {
+          await crmService.setPrimaryMailboxEmail(mailboxModalUser.id, newPrimary);
+          setMailboxModalUser(prev => ({
+            ...prev,
+            domainMailboxEmail: newPrimary
+          }));
+          const settings = await crmService.getMailboxSettings(mailboxModalUser.id);
+          setMailboxSettings(settings);
+          loadData();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, isLoading: false }));
+        } catch (err) {
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          alert(err.response?.data?.message || 'Failed to set primary email.');
+        } finally {
+          setAliasActionLoading(false);
+        }
+      }
+    });
   };
 
   const handleEditSubmit = async (e) => {
@@ -2138,11 +2189,12 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                       const pwd = mailboxSuccessInfo.mailboxPassword || mailboxSuccessInfo.newPassword || '(as specified)';
                       const text = `Corporate Email Credentials:\nEmail: ${mailboxSuccessInfo.domainEmail}\nPassword: ${pwd}\nWebmail: https://mail.aadhirakshainsurance.com\nIncoming (IMAP): mail.aadhirakshainsurance.com:993 (SSL)\nOutgoing (SMTP): mail.aadhirakshainsurance.com:465 (SSL)`;
                       navigator.clipboard.writeText(text);
-                      alert('Copied all mailbox setup credentials to clipboard!');
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2500);
                     }}
                     style={{
                       marginTop: '8px',
-                      background: '#059669',
+                      background: copied ? '#047857' : '#059669',
                       color: '#ffffff',
                       border: 'none',
                       padding: '5px 12px',
@@ -2152,10 +2204,12 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '5px'
+                      gap: '5px',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <Copy size={12} /> Copy All Credentials for Employee
+                    {copied ? <Check size={12} /> : <Copy size={12} />}
+                    <span>{copied ? 'Credentials Copied to Clipboard!' : 'Copy All Credentials for Employee'}</span>
                   </button>
                 </div>
               )}
@@ -2638,6 +2692,19 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
           </div>
         </div>
       )}
+
+      {/* Enterprise Confirmation Modal (replacing native window.confirm) */}
+      <ConfirmationModal
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmLabel={confirmDialog.confirmLabel}
+        cancelLabel={confirmDialog.cancelLabel}
+        variant={confirmDialog.variant}
+        isLoading={confirmDialog.isLoading}
+      />
 
     </div>
   );

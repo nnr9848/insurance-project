@@ -28,7 +28,18 @@ import {
   Edit3,
   Tag,
   Power,
-  PowerOff
+  PowerOff,
+  Trash2,
+  Shield,
+  Search,
+  Filter,
+  History,
+  Clock,
+  AlertTriangle,
+  ArrowUpDown,
+  Copy,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { portalService } from '../../services/api';
 import { useBusinessProfile } from '../../context/BusinessProfileContext';
@@ -57,6 +68,7 @@ export default function IntegrationsSettingsView() {
     twilioApiKeySid: '',
     twilioApiKeySecret: '',
     twilioFromNumber: '',
+    twilioVerifyServiceSid: '',
 
     // Twilio WhatsApp Messaging Settings (Agent Broadcasts, Launches & Offers)
     twilioWhatsappEnabled: false,
@@ -86,6 +98,90 @@ export default function IntegrationsSettingsView() {
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isDispatchingTemplate, setIsDispatchingTemplate] = useState(false);
 
+  // Delivery & OTP Logs State
+  const [logs, setLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsTotal, setLogsTotal] = useState(0);
+  const [logsPage, setLogsPage] = useState(0);
+  const [logsChannel, setLogsChannel] = useState('');
+  const [logsStatus, setLogsStatus] = useState('');
+  const [logsSearch, setLogsSearch] = useState('');
+  const [showPurgeModal, setShowPurgeModal] = useState(false);
+  const [purgeOption, setPurgeOption] = useState('7_days'); // '7_days' | '30_days' | 'all'
+  const [purgeConfirmText, setPurgeConfirmText] = useState('');
+  const [isPurging, setIsPurging] = useState(false);
+  const [selectedLogForDrawer, setSelectedLogForDrawer] = useState(null);
+
+  const copyLogText = (text, label = 'diagnostic message') => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    toast.success(`Copied ${label} to clipboard!`);
+  };
+
+  const fetchLogs = async (page = 0) => {
+    setLogsLoading(true);
+    try {
+      const params = {
+        page,
+        size: 15
+      };
+      if (logsChannel) params.channel = logsChannel;
+      if (logsStatus) params.status = logsStatus;
+      if (logsSearch?.trim()) params.search = logsSearch.trim();
+
+      const res = await portalService.getCommunicationLogs(params);
+      if (res && res.content) {
+        setLogs(res.content);
+        setLogsTotal(res.totalElements || 0);
+        setLogsPage(res.number || 0);
+      } else if (Array.isArray(res)) {
+        setLogs(res);
+        setLogsTotal(res.length);
+        setLogsPage(0);
+      }
+    } catch (err) {
+      console.error('Failed to load delivery logs:', err);
+      toast.error('Failed to retrieve delivery logs: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubTab === 'delivery-logs') {
+      fetchLogs(0);
+    }
+  }, [activeSubTab, logsChannel, logsStatus]);
+
+  const handleExecutePurge = async () => {
+    if (purgeOption === 'all' && purgeConfirmText.trim() !== 'PURGE ALL') {
+      toast.error('Please type PURGE ALL to confirm clearing all communication logs.');
+      return;
+    }
+
+    setIsPurging(true);
+    try {
+      let days = 7;
+      let purgeAll = false;
+      if (purgeOption === '30_days') days = 30;
+      if (purgeOption === 'all') {
+        purgeAll = true;
+        days = 0;
+      }
+
+      const res = await portalService.purgeCommunicationLogs(days, purgeAll);
+      toast.success(res.message || 'Communication logs purged successfully.');
+      setShowPurgeModal(false);
+      setPurgeConfirmText('');
+      fetchLogs(0);
+    } catch (err) {
+      console.error('Failed to purge communication logs:', err);
+      toast.error('Purge failed: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
   useEffect(() => {
     if (businessProfile) {
       setFormData(prev => ({
@@ -96,6 +192,7 @@ export default function IntegrationsSettingsView() {
         twilioApiKeySid: businessProfile.twilioApiKeySid || '',
         twilioApiKeySecret: businessProfile.twilioApiKeySecret || '',
         twilioFromNumber: businessProfile.twilioFromNumber || '',
+        twilioVerifyServiceSid: businessProfile.twilioVerifyServiceSid || '',
 
         // Twilio WhatsApp Settings
         twilioWhatsappEnabled: businessProfile.twilioWhatsappEnabled ?? false,
@@ -123,14 +220,20 @@ export default function IntegrationsSettingsView() {
     setDirtyTabs(prev => ({ ...prev, [activeSubTab]: true }));
   };
 
+  const [testTwilioChannel, setTestTwilioChannel] = useState('sms');
+
   const handleTestTwilio = async () => {
     const cleanPhone = (testTwilioPhone || '').trim();
     if (!cleanPhone) {
-      toast.error('Please enter a valid 10-digit mobile number to receive the test SMS.');
+      toast.error('Please enter a valid 10-digit mobile number to receive the test OTP.');
       return;
     }
-    if (!formData.twilioAccountSid?.trim() || !formData.twilioApiKeySid?.trim() || !formData.twilioApiKeySecret?.trim() || !formData.twilioFromNumber?.trim()) {
-      toast.error('Please configure Twilio Account SID, API Key SID (SK...), API Key Secret, and From Number before testing.');
+    if (!formData.twilioAccountSid?.trim() || !formData.twilioApiKeySid?.trim() || !formData.twilioApiKeySecret?.trim()) {
+      toast.error('Please configure Twilio Account SID, API Key SID (SK...), and API Key Secret before testing.');
+      return;
+    }
+    if (!formData.twilioVerifyServiceSid?.trim() && !formData.twilioFromNumber?.trim()) {
+      toast.error('Please configure either a Twilio Verify Service SID (VA...) or From Number before testing.');
       return;
     }
 
@@ -139,15 +242,15 @@ export default function IntegrationsSettingsView() {
       await portalService.updateBusinessProfile(formData);
       await refreshBusinessProfile();
 
-      const res = await portalService.testTwilioSms(cleanPhone);
+      const res = await portalService.testTwilioSms(cleanPhone, testTwilioChannel);
       if (res.success) {
-        toast.success(`Success! Live test SMS dispatched via Twilio to ${cleanPhone}. Check your phone SMS!`);
+        toast.success(res.message || `Success! Live test OTP dispatched via Twilio to ${cleanPhone}.`);
       } else {
-        toast.error(res.message || 'Failed to dispatch Twilio test SMS. Verify credentials.');
+        toast.error(res.message || 'Failed to dispatch Twilio test OTP. Verify credentials.');
       }
     } catch (err) {
       console.error('Twilio Test error:', err);
-      toast.error(err.response?.data?.message || 'Failed to dispatch Twilio SMS. Check Account SID, API Key SID, and API Key Secret.');
+      toast.error(err.response?.data?.message || 'Failed to dispatch Twilio OTP. Check Account SID, API Key SID, and API Key Secret.');
     } finally {
       setIsTestingTwilio(false);
     }
@@ -422,6 +525,17 @@ export default function IntegrationsSettingsView() {
       badgeBg: '#dbeafe',
       iconColor: '#2563eb',
       iconBg: '#eff6ff'
+    },
+    {
+      id: 'delivery-logs',
+      name: 'Delivery & OTP Logs',
+      subtitle: 'Audit trail, retries & live status',
+      icon: History,
+      badge: logsTotal > 0 ? `${logsTotal} events` : 'Audit Log',
+      badgeColor: '#4f46e5',
+      badgeBg: '#eef2ff',
+      iconColor: '#6366f1',
+      iconBg: '#eef2ff'
     }
   ];
 
@@ -752,9 +866,43 @@ export default function IntegrationsSettingsView() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Twilio From Number / Sender ID
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
+                      Twilio Verify Service SID (VA...)
+                    </label>
+                    <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700, background: '#ecfdf5', padding: '1px 6px', borderRadius: '4px' }}>
+                      Recommended for India (+91) OTPs
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    name="twilioVerifyServiceSid"
+                    value={formData.twilioVerifyServiceSid}
+                    onChange={handleChange}
+                    placeholder="VAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.88rem',
+                      fontFamily: 'monospace'
+                    }}
+                  />
+                  <p style={{ margin: '4px 0 0', fontSize: '0.74rem', color: '#64748b' }}>
+                    Created under Twilio Console &gt; Verify &gt; Services. Direct high-delivery route without DLT blocks.
+                  </p>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
+                      Twilio From Number / Sender ID
+                    </label>
+                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                      Required for Programmable SMS
+                    </span>
+                  </div>
                   <input
                     type="text"
                     name="twilioFromNumber"
@@ -770,6 +918,9 @@ export default function IntegrationsSettingsView() {
                       fontFamily: 'monospace'
                     }}
                   />
+                  <p style={{ margin: '4px 0 0', fontSize: '0.74rem', color: '#64748b' }}>
+                    Twilio phone number used for general transactional SMS and fallback messaging.
+                  </p>
                 </div>
               </div>
 
@@ -795,6 +946,42 @@ export default function IntegrationsSettingsView() {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  {/* Channel Selector: SMS or WhatsApp */}
+                  <div style={{ display: 'flex', background: '#ffffff', borderRadius: '8px', border: '1px solid #fda4af', padding: '2px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setTestTwilioChannel('sms')}
+                      style={{
+                        padding: '6px 10px',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        background: testTwilioChannel === 'sms' ? '#e11d48' : 'transparent',
+                        color: testTwilioChannel === 'sms' ? '#ffffff' : '#64748b'
+                      }}
+                    >
+                      SMS
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTestTwilioChannel('whatsapp')}
+                      style={{
+                        padding: '6px 10px',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        background: testTwilioChannel === 'whatsapp' ? '#25d366' : 'transparent',
+                        color: testTwilioChannel === 'whatsapp' ? '#ffffff' : '#64748b'
+                      }}
+                    >
+                      WhatsApp
+                    </button>
+                  </div>
+
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <span style={{ position: 'absolute', left: '10px', fontSize: '0.85rem', fontWeight: 700, color: '#9f1239' }}>
                       🇮🇳 +91
@@ -1758,8 +1945,875 @@ export default function IntegrationsSettingsView() {
             </div>
           )}
 
+          {/* SUB-TAB 4: DELIVERY & OTP LOGS */}
+          {activeSubTab === 'delivery-logs' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              
+              {/* Header card with Filters and Actions */}
+              <div style={{
+                background: '#ffffff',
+                borderRadius: '16px',
+                border: '1px solid #e2e8f0',
+                padding: '1.25rem 1.5rem',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <History size={20} color="#4f46e5" />
+                      Communication & OTP Delivery Logs
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '0.84rem', color: '#64748b' }}>
+                      Real-time delivery diagnostics across Twilio SMS, Twilio WhatsApp, and Twilio Verify channels.
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={() => fetchLogs(logsPage)}
+                      disabled={logsLoading}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 14px',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        color: '#475569',
+                        cursor: logsLoading ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <RefreshCw size={14} className={logsLoading ? 'animate-spin' : ''} />
+                      Refresh
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowPurgeModal(true);
+                        setPurgeOption('7_days');
+                        setPurgeConfirmText('');
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 14px',
+                        background: '#fef2f2',
+                        border: '1px solid #fecaca',
+                        borderRadius: '8px',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        color: '#b91c1c',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <Trash2 size={14} />
+                      Purge Logs
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filter Toolbar */}
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  paddingTop: '0.75rem',
+                  borderTop: '1px solid #f1f5f9'
+                }}>
+                  {/* Search Input */}
+                  <div style={{ position: 'relative', flex: '1 1 240px', minWidth: '200px' }}>
+                    <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                    <input
+                      type="text"
+                      placeholder="Search recipient phone..."
+                      value={logsSearch}
+                      onChange={(e) => setLogsSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') fetchLogs(0);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px 8px 36px',
+                        fontSize: '0.82rem',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        background: '#ffffff',
+                        color: '#1e293b',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  {/* Channel Filter */}
+                  <select
+                    value={logsChannel}
+                    onChange={(e) => setLogsChannel(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      fontSize: '0.82rem',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#334155',
+                      fontWeight: 500,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="">All Channels</option>
+                    <option value="TWILIO_VERIFY_SMS">Twilio Verify SMS</option>
+                    <option value="TWILIO_SMS">Twilio Programmable SMS</option>
+                    <option value="TWILIO_WHATSAPP">Twilio WhatsApp</option>
+                  </select>
+
+                  {/* Status Filter */}
+                  <select
+                    value={logsStatus}
+                    onChange={(e) => setLogsStatus(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      fontSize: '0.82rem',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#334155',
+                      fontWeight: 500,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="">All Statuses</option>
+                    <option value="DELIVERED">Delivered</option>
+                    <option value="BLOCKED_BY_PROVIDER">Blocked By Provider</option>
+                    <option value="FAILED">Failed</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => fetchLogs(0)}
+                    style={{
+                      padding: '8px 14px',
+                      background: '#3b82f6',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Apply Filter
+                  </button>
+                </div>
+              </div>
+
+              {/* Logs Table Card */}
+              <div style={{
+                background: '#ffffff',
+                borderRadius: '16px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                overflow: 'hidden'
+              }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: 600 }}>
+                        <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Timestamp</th>
+                        <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Channel</th>
+                        <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Recipient</th>
+                        <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Status</th>
+                        <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Code</th>
+                        <th style={{ padding: '10px 14px' }}>Diagnostic Summary</th>
+                        <th style={{ padding: '10px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {logsLoading ? (
+                        <tr>
+                          <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                            <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 8px auto', display: 'block', color: '#3b82f6' }} />
+                            <span>Loading communication logs...</span>
+                          </td>
+                        </tr>
+                      ) : logs.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                            <History size={32} style={{ margin: '0 auto 8px auto', display: 'block', opacity: 0.5 }} />
+                            <span>No communication delivery logs found matching the filter criteria.</span>
+                          </td>
+                        </tr>
+                      ) : (
+                        logs.map((log) => {
+                          const isSuccess = log.status === 'DELIVERED';
+                          const isBlocked = log.status === 'BLOCKED_BY_PROVIDER';
+                          
+                          let statusBg = '#f1f5f9';
+                          let statusColor = '#475569';
+                          if (isSuccess) {
+                            statusBg = '#dcfce7';
+                            statusColor = '#15803d';
+                          } else if (isBlocked) {
+                            statusBg = '#fef3c7';
+                            statusColor = '#b45309';
+                          } else {
+                            statusBg = '#fee2e2';
+                            statusColor = '#b91c1c';
+                          }
+
+                          let channelBg = '#eff6ff';
+                          let channelColor = '#1d4ed8';
+                          if (log.channel?.includes('WHATSAPP')) {
+                            channelBg = '#ecfdf5';
+                            channelColor = '#047857';
+                          } else if (log.channel?.includes('VERIFY')) {
+                            channelBg = '#eef2ff';
+                            channelColor = '#4338ca';
+                          }
+
+                          const rawFailureReason = log.failureReason || log.errorMessage || 'Dispatch failed or restricted by provider';
+
+                          return (
+                            <tr
+                              key={log.id}
+                              onClick={() => setSelectedLogForDrawer(log)}
+                              style={{
+                                borderBottom: '1px solid #f1f5f9',
+                                cursor: 'pointer',
+                                transition: 'background 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <td style={{ padding: '10px 14px', color: '#64748b', whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
+                                {log.createdAt ? new Date(log.createdAt).toLocaleString('en-IN', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : 'N/A'}
+                              </td>
+                              <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
+                                <span style={{
+                                  display: 'inline-block',
+                                  padding: '2px 7px',
+                                  borderRadius: '6px',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 600,
+                                  background: channelBg,
+                                  color: channelColor
+                                }}>
+                                  {log.channel}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 14px', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
+                                {log.recipient || log.recipientPhone || 'N/A'}
+                              </td>
+                              <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '2px 7px',
+                                  borderRadius: '6px',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 600,
+                                  background: statusBg,
+                                  color: statusColor
+                                }}>
+                                  {isSuccess && <CheckCircle2 size={11} />}
+                                  {isBlocked && <AlertTriangle size={11} />}
+                                  {!isSuccess && !isBlocked && <AlertCircle size={11} />}
+                                  {log.status}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 14px', color: '#64748b', fontFamily: 'monospace', fontSize: '0.74rem', whiteSpace: 'nowrap' }}>
+                                {log.providerCode ? `HTTP ${log.providerCode}` : (log.providerSid || 'N/A')}
+                              </td>
+                              <td style={{ padding: '10px 14px', color: isSuccess ? '#166534' : isBlocked ? '#b45309' : '#b91c1c', maxWidth: '320px' }}>
+                                <div style={{
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  fontSize: '0.78rem'
+                                }}>
+                                  {isSuccess ? 'Verification OTP dispatched successfully' : rawFailureReason}
+                                </div>
+                              </td>
+                              <td style={{ padding: '10px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedLogForDrawer(log);
+                                  }}
+                                  style={{
+                                    padding: '3px 9px',
+                                    borderRadius: '6px',
+                                    border: '1px solid #cbd5e1',
+                                    background: '#ffffff',
+                                    color: '#2563eb',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  Inspect
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination footer */}
+                <div style={{
+                  padding: '12px 16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: '#f8fafc',
+                  borderTop: '1px solid #e2e8f0',
+                  fontSize: '0.82rem',
+                  color: '#64748b'
+                }}>
+                  <div>
+                    Showing <strong>{logs.length}</strong> of <strong>{logsTotal}</strong> log entries
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      disabled={logsPage <= 0 || logsLoading}
+                      onClick={() => fetchLogs(logsPage - 1)}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        background: '#ffffff',
+                        fontSize: '0.8rem',
+                        cursor: logsPage <= 0 ? 'not-allowed' : 'pointer',
+                        color: logsPage <= 0 ? '#94a3b8' : '#334155'
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      disabled={(logsPage + 1) * 15 >= logsTotal || logsLoading}
+                      onClick={() => fetchLogs(logsPage + 1)}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        background: '#ffffff',
+                        fontSize: '0.8rem',
+                        cursor: (logsPage + 1) * 15 >= logsTotal ? 'not-allowed' : 'pointer',
+                        color: (logsPage + 1) * 15 >= logsTotal ? '#94a3b8' : '#334155'
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+
         </main>
       </div>
+
+      {/* SAFE PURGE LOGS MODAL (Crisp UX standard: no frosted backdrop blur) */}
+      {showPurgeModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'none',
+          WebkitBackdropFilter: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '1rem'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '16px',
+            maxWidth: '520px',
+            width: '100%',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#fff1f2'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#ffe4e6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e11d48' }}>
+                  <Trash2 size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#9f1239' }}>Purge Communication Logs</h3>
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#be123c' }}>Audit compliance and storage hygiene control</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPurgeModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#9f1239',
+                  fontSize: '1.2rem',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '10px',
+                padding: '1rem',
+                fontSize: '0.82rem',
+                color: '#475569',
+                lineHeight: 1.5
+              }}>
+                <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Shield size={15} color="#3b82f6" />
+                  Compliance Standard
+                </div>
+                Industry best practices recommend retaining recent delivery attempts for regulatory audit trails. Choose an archival retention window below:
+              </div>
+
+              {/* Options */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  border: `1.5px solid ${purgeOption === '7_days' ? '#3b82f6' : '#e2e8f0'}`,
+                  background: purgeOption === '7_days' ? '#eff6ff' : '#ffffff',
+                  cursor: 'pointer'
+                }}>
+                  <input
+                    type="radio"
+                    name="purgeOption"
+                    value="7_days"
+                    checked={purgeOption === '7_days'}
+                    onChange={() => setPurgeOption('7_days')}
+                    style={{ marginTop: '3px' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.86rem', color: '#1e293b' }}>
+                      Prune logs older than 7 days (Recommended)
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                      Retains the current week of verification diagnostics while clearing historical database records.
+                    </div>
+                  </div>
+                </label>
+
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  border: `1.5px solid ${purgeOption === '30_days' ? '#3b82f6' : '#e2e8f0'}`,
+                  background: purgeOption === '30_days' ? '#eff6ff' : '#ffffff',
+                  cursor: 'pointer'
+                }}>
+                  <input
+                    type="radio"
+                    name="purgeOption"
+                    value="30_days"
+                    checked={purgeOption === '30_days'}
+                    onChange={() => setPurgeOption('30_days')}
+                    style={{ marginTop: '3px' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.86rem', color: '#1e293b' }}>
+                      Prune logs older than 30 days
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                      Keeps 1 month of delivery logs for monthly reconciliation and client inquiries.
+                    </div>
+                  </div>
+                </label>
+
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  border: `1.5px solid ${purgeOption === 'all' ? '#ef4444' : '#e2e8f0'}`,
+                  background: purgeOption === 'all' ? '#fef2f2' : '#ffffff',
+                  cursor: 'pointer'
+                }}>
+                  <input
+                    type="radio"
+                    name="purgeOption"
+                    value="all"
+                    checked={purgeOption === 'all'}
+                    onChange={() => setPurgeOption('all')}
+                    style={{ marginTop: '3px' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.86rem', color: '#b91c1c' }}>
+                      Purge All Logs (Danger Zone)
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                      Instantly truncates all delivery history across all channels.
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              {/* Guarded typing check if Purge All is selected */}
+              {purgeOption === 'all' && (
+                <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '8px', padding: '12px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#9f1239', marginBottom: '6px' }}>
+                    Type <code style={{ background: '#ffe4e6', padding: '2px 4px', borderRadius: '4px' }}>PURGE ALL</code> to confirm:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="PURGE ALL"
+                    value={purgeConfirmText}
+                    onChange={(e) => setPurgeConfirmText(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      fontSize: '0.84rem',
+                      borderRadius: '6px',
+                      border: '1px solid #fda4af',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '1rem 1.5rem',
+              background: '#f8fafc',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '10px'
+            }}>
+              <button
+                type="button"
+                onClick={() => setShowPurgeModal(false)}
+                disabled={isPurging}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  fontSize: '0.84rem',
+                  fontWeight: 600,
+                  color: '#475569',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecutePurge}
+                disabled={isPurging || (purgeOption === 'all' && purgeConfirmText.trim() !== 'PURGE ALL')}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: purgeOption === 'all' ? '#dc2626' : '#2563eb',
+                  color: '#ffffff',
+                  fontSize: '0.84rem',
+                  fontWeight: 600,
+                  cursor: isPurging || (purgeOption === 'all' && purgeConfirmText.trim() !== 'PURGE ALL') ? 'not-allowed' : 'pointer',
+                  opacity: isPurging || (purgeOption === 'all' && purgeConfirmText.trim() !== 'PURGE ALL') ? 0.6 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                {isPurging ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                {purgeOption === 'all' ? 'Confirm Purge All' : 'Execute Retention Purge'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SLIDE-OVER INSPECTION DRAWER (Stripe / Datadog Standard) */}
+      {selectedLogForDrawer && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.45)',
+          backdropFilter: 'none',
+          WebkitBackdropFilter: 'none',
+          display: 'flex',
+          justifyContent: 'flex-end',
+          zIndex: 9999
+        }}>
+          <div style={{
+            background: '#ffffff',
+            width: '100%',
+            maxWidth: '480px',
+            height: '100%',
+            boxShadow: '-4px 0 25px rgba(0, 0, 0, 0.15)',
+            display: 'flex',
+            flexDirection: 'column',
+            animation: 'slideInRight 0.2s ease-out'
+          }}>
+            {/* Drawer Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#f8fafc'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <History size={18} color="#4f46e5" />
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>Delivery Event Diagnostic</h3>
+                </div>
+                <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>
+                  ID #{selectedLogForDrawer.id} • {selectedLogForDrawer.createdAt ? new Date(selectedLogForDrawer.createdAt).toLocaleString('en-IN') : 'N/A'}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedLogForDrawer(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.2rem',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: '6px'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Drawer Body */}
+            <div style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1 }}>
+              {/* Status Banner */}
+              <div style={{
+                padding: '12px 14px',
+                borderRadius: '10px',
+                border: selectedLogForDrawer.status === 'DELIVERED' ? '1px solid #bbf7d0' : selectedLogForDrawer.status === 'BLOCKED_BY_PROVIDER' ? '1px solid #fde68a' : '1px solid #fecaca',
+                background: selectedLogForDrawer.status === 'DELIVERED' ? '#f0fdf4' : selectedLogForDrawer.status === 'BLOCKED_BY_PROVIDER' ? '#fffbeb' : '#fef2f2',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {selectedLogForDrawer.status === 'DELIVERED' ? <CheckCircle2 size={18} color="#16a34a" /> : <AlertTriangle size={18} color="#d97706" />}
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.86rem', color: selectedLogForDrawer.status === 'DELIVERED' ? '#15803d' : '#b45309' }}>
+                      {selectedLogForDrawer.status}
+                    </div>
+                    <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                      {selectedLogForDrawer.purpose || 'TRANSACTIONAL_OTP'}
+                    </div>
+                  </div>
+                </div>
+                <span style={{
+                  padding: '3px 8px',
+                  borderRadius: '6px',
+                  fontSize: '0.72rem',
+                  fontFamily: 'monospace',
+                  fontWeight: 700,
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  color: '#334155'
+                }}>
+                  {selectedLogForDrawer.providerCode ? `HTTP ${selectedLogForDrawer.providerCode}` : 'HTTP 200'}
+                </span>
+              </div>
+
+              {/* Channel & Recipient Summary Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                  <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Channel</div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#1e293b', marginTop: '2px' }}>
+                    {selectedLogForDrawer.channel}
+                  </div>
+                </div>
+                <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                  <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Recipient</div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#1e293b', marginTop: '2px' }}>
+                    {selectedLogForDrawer.recipient || selectedLogForDrawer.recipientPhone}
+                  </div>
+                </div>
+              </div>
+
+              {/* Diagnostic Message Block */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155' }}>Diagnostic Analysis</span>
+                  <button
+                    type="button"
+                    onClick={() => copyLogText(selectedLogForDrawer.failureReason || 'Dispatched successfully', 'diagnostic')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: 'none',
+                      border: 'none',
+                      color: '#2563eb',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Copy size={12} />
+                    Copy
+                  </button>
+                </div>
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  fontSize: '0.8rem',
+                  lineHeight: 1.5,
+                  color: selectedLogForDrawer.status === 'DELIVERED' ? '#166534' : '#b45309'
+                }}>
+                  {selectedLogForDrawer.failureReason || 'Verification request created and dispatched successfully to carrier gateway.'}
+                </div>
+              </div>
+
+              {/* Raw Provider Payload Section */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155' }}>Raw Twilio Gateway Response</span>
+                  {selectedLogForDrawer.payloadSummary && (
+                    <button
+                      type="button"
+                      onClick={() => copyLogText(selectedLogForDrawer.payloadSummary, 'raw payload')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        background: 'none',
+                        border: 'none',
+                        color: '#2563eb',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Copy size={12} />
+                      Copy JSON
+                    </button>
+                  )}
+                </div>
+                <div style={{
+                  background: '#0f172a',
+                  color: '#e2e8f0',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  fontSize: '0.76rem',
+                  fontFamily: 'monospace',
+                  lineHeight: 1.45,
+                  wordBreak: 'break-all',
+                  maxHeight: '180px',
+                  overflowY: 'auto'
+                }}>
+                  {selectedLogForDrawer.payloadSummary || 'No raw response body captured (Standard HTTP 200 OK)'}
+                </div>
+              </div>
+
+              {/* Recommended Remediation Guidance */}
+              {selectedLogForDrawer.status === 'BLOCKED_BY_PROVIDER' && (
+                <div style={{
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '10px',
+                  padding: '12px',
+                  fontSize: '0.78rem',
+                  color: '#1e40af',
+                  lineHeight: 1.45
+                }}>
+                  <div style={{ fontWeight: 700, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <Shield size={14} color="#2563eb" />
+                    How to Resolve in Twilio Console:
+                  </div>
+                  <ol style={{ margin: '4px 0 0 16px', padding: 0 }}>
+                    <li>Log into <strong>Twilio Console &gt; Verify &gt; Services</strong>.</li>
+                    <li>Select Service SID: <code style={{ background: '#dbeafe', padding: '1px 4px', borderRadius: '4px' }}>VAef8643...</code></li>
+                    <li>Navigate to <strong>Fraud Guard</strong> and whitelist India (+91) or lower SMS protection threshold.</li>
+                    <li>Or test using <strong>WhatsApp Channel</strong> which bypasses SMS carrier filtering.</li>
+                  </ol>
+                </div>
+              )}
+            </div>
+
+            {/* Drawer Footer */}
+            <div style={{
+              padding: '1rem 1.5rem',
+              borderTop: '1px solid #e2e8f0',
+              background: '#f8fafc',
+              display: 'flex',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                type="button"
+                onClick={() => setSelectedLogForDrawer(null)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  background: '#334155',
+                  color: '#ffffff',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Close Drawer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

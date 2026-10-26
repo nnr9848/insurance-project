@@ -42,8 +42,9 @@ export default function GatedOtpModal({
 
   const cleanPhone = (phoneNumber || '').replace(/\D/g, '').slice(-10);
 
-  const handleTriggerSendOtp = async () => {
+  const handleTriggerSendOtp = async (channel = 'sms') => {
     setErrorMsg('');
+    setOtpSentMsg('');
     setIsSending(true);
     setOtpDigits(['', '', '', '', '', '']);
     try {
@@ -54,7 +55,8 @@ export default function GatedOtpModal({
         if (inputRefs.current[0]) inputRefs.current[0].focus();
       }, 100);
     } catch (err) {
-      setErrorMsg(err.response?.data?.message || 'Failed to dispatch verification OTP. Please try again.');
+      const serverMsg = err.response?.data?.message;
+      setErrorMsg(serverMsg || 'Unable to deliver SMS OTP to this number right now. Please verify your mobile number or try again.');
     } finally {
       setIsSending(false);
     }
@@ -276,7 +278,7 @@ export default function GatedOtpModal({
               marginBottom: '1rem'
             }}>
               <CheckCircle2 size={14} />
-              <span>{otpSentMsg} (Demo / Dev Master: 123456)</span>
+              <span>{otpSentMsg}</span>
             </div>
           )}
 

@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import com.aadhiraksha.insurance.service.TwilioVerifyService;
 
 import java.time.LocalDateTime;
 
@@ -24,9 +25,11 @@ public class BusinessProfileController {
     private final BusinessProfileRepository repository;
     private final com.aadhiraksha.insurance.service.FileStorageService fileStorageService;
     private final com.aadhiraksha.insurance.service.TwilioSmsService twilioSmsService;
+    private final com.aadhiraksha.insurance.service.TwilioVerifyService twilioVerifyService;
     private final com.aadhiraksha.insurance.service.TwilioWhatsAppService twilioWhatsAppService;
     private final com.aadhiraksha.insurance.repository.BroadcastCampaignLogRepository broadcastCampaignLogRepository;
     private final com.aadhiraksha.insurance.service.EmailService emailService;
+    private final com.aadhiraksha.insurance.repository.CommunicationDeliveryLogRepository deliveryLogRepository;
 
     /**
      * Public endpoint: retrieve canonical company contact, hotline, and communication address
@@ -342,6 +345,9 @@ public class BusinessProfileController {
         if (updateReq.getTwilioFromNumber() != null) {
             profile.setTwilioFromNumber(updateReq.getTwilioFromNumber().trim());
         }
+        if (updateReq.getTwilioVerifyServiceSid() != null) {
+            profile.setTwilioVerifyServiceSid(updateReq.getTwilioVerifyServiceSid().trim());
+        }
 
         // Twilio WhatsApp Integration
         if (updateReq.getTwilioWhatsappEnabled() != null) {
@@ -412,7 +418,27 @@ public class BusinessProfileController {
             ));
         }
 
-        // Standard verification format matching Twilio trial template whitelist
+        String channel = requestBody.getOrDefault("channel", "sms");
+
+        // Check if Twilio Verify Service SID is configured
+        if (twilioVerifyService.isVerifyEnabled()) {
+            TwilioVerifyService.VerifyDispatchResult result = twilioVerifyService.sendVerification(testPhone.trim(), channel);
+            if (result.success()) {
+                String targetDisplay = channel.equalsIgnoreCase("whatsapp") ? "WhatsApp message" : "SMS";
+                return ResponseEntity.ok(java.util.Map.of(
+                    "success", true,
+                    "message", "Live OTP dispatched successfully via Twilio Verify Service! Please check your mobile phone (" + testPhone.trim() + ") for the " + targetDisplay + "."
+                ));
+            } else {
+                return ResponseEntity.status(400).body(java.util.Map.of(
+                    "success", false,
+                    "message", result.errorMessage() != null ? result.errorMessage() : "Failed to dispatch OTP via Twilio Verify.",
+                    "errorCode", result.errorCode() != null ? result.errorCode() : "TWILIO_ERROR"
+                ));
+            }
+        }
+
+        // Standard Programmable Messaging verification format fallback
         String message = "Your Aadhiraksha verification code is: 123456. Valid for 5 minutes.";
 
         boolean dispatched = twilioSmsService.sendSms(testPhone.trim(), message);
@@ -835,6 +861,58 @@ public class BusinessProfileController {
                 "message", "Dispatch failed: " + ex.getMessage()
             ));
         }
+    }
+
+    /**
+     * Admin endpoint: Retrieve paginated communication and OTP delivery logs
+     */
+    @GetMapping("/admin/communication-logs")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
+    @Operation(summary = "Get Communication Delivery Logs", description = "Returns real-time SMS, WhatsApp, and OTP dispatch delivery logs")
+    public ResponseEntity<org.springframework.data.domain.Page<com.aadhiraksha.insurance.model.CommunicationDeliveryLog>> getCommunicationLogs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search) {
+        
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        
+        if (search != null && !search.trim().isEmpty()) {
+            return ResponseEntity.ok(deliveryLogRepository.findByRecipientContainingIgnoreCaseOrderByCreatedAtDesc(search.trim(), pageable));
+        }
+        if (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("ALL")) {
+            return ResponseEntity.ok(deliveryLogRepository.findByStatusOrderByCreatedAtDesc(status.trim().toUpperCase(), pageable));
+        }
+        return ResponseEntity.ok(deliveryLogRepository.findAllByOrderByCreatedAtDesc(pageable));
+    }
+
+    /**
+     * Super Admin endpoint: Purge communication delivery logs (Older than X days or Purge All)
+     */
+    @DeleteMapping("/admin/communication-logs/purge")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Purge Communication Delivery Logs", description = "Safe retention cleanup: Purge logs older than X days or all logs")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<java.util.Map<String, Object>> purgeCommunicationLogs(
+            @RequestParam(defaultValue = "7") int olderThanDays,
+            @RequestParam(defaultValue = "false") boolean purgeAll) {
+        
+        int deletedCount;
+        if (purgeAll) {
+            deletedCount = (int) deliveryLogRepository.count();
+            deliveryLogRepository.deleteAll();
+            log.info("[COMMUNICATION LOGS] Super Admin purged all {} delivery logs.", deletedCount);
+        } else {
+            java.time.LocalDateTime cutoff = java.time.LocalDateTime.now().minusDays(olderThanDays);
+            deletedCount = deliveryLogRepository.deleteLogsOlderThan(cutoff);
+            log.info("[COMMUNICATION LOGS] Super Admin pruned {} delivery logs older than {} days.", deletedCount, olderThanDays);
+        }
+
+        return ResponseEntity.ok(java.util.Map.of(
+            "success", true,
+            "deletedCount", deletedCount,
+            "message", "Successfully purged " + deletedCount + " delivery log record(s)."
+        ));
     }
 }
 

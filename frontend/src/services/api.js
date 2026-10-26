@@ -513,8 +513,18 @@ export const portalService = {
     const res = await api.get('/admin/broadcasts/history');
     return res.data;
   },
-  testTwilioSms: async (testPhone) => {
-    const res = await api.post('/admin/settings/twilio/test', { testPhone });
+  testTwilioSms: async (testPhone, channel = 'sms') => {
+    const res = await api.post('/admin/settings/twilio/test', { testPhone, channel });
+    return res.data;
+  },
+  getCommunicationLogs: async (params = {}) => {
+    const res = await api.get('/admin/communication-logs', { params });
+    return res.data;
+  },
+  purgeCommunicationLogs: async (olderThanDays = 7, purgeAll = false) => {
+    const res = await api.delete('/admin/communication-logs/purge', {
+      params: { olderThanDays, purgeAll }
+    });
     return res.data;
   },
   testEmailDelivery: async (targetEmail) => {
