@@ -84,6 +84,7 @@ services:
       - "8888:8888"   # SnappyMail internal web server (accessible via Nginx reverse proxy)
     volumes:
       - aadhiraksha_snappymail_data:/var/lib/snappymail
+      - ./deploy/mail/snappymail/domains/aadhirakshainsurance.com.json:/var/lib/snappymail/_data_/_default_/domains/aadhirakshainsurance.com.json:ro
     depends_on:
       - mailserver
     networks:

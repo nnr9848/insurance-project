@@ -1,0 +1,84 @@
+{
+    "IMAP": {
+        "host": "mailserver",
+        "port": 993,
+        "type": 1,
+        "timeout": 300,
+        "shortLogin": false,
+        "lowerLogin": true,
+        "sasl": [
+            "SCRAM-SHA3-512",
+            "SCRAM-SHA-512",
+            "SCRAM-SHA-256",
+            "SCRAM-SHA-1",
+            "PLAIN",
+            "LOGIN"
+        ],
+        "ssl": {
+            "verify_peer": false,
+            "verify_peer_name": false,
+            "allow_self_signed": false,
+            "SNI_enabled": true,
+            "disable_compression": true,
+            "security_level": 1
+        },
+        "disabled_capabilities": [
+            "METADATA",
+            "OBJECTID",
+            "PREVIEW",
+            "STATUS=SIZE"
+        ]
+    },
+    "SMTP": {
+        "host": "mailserver",
+        "port": 465,
+        "type": 1,
+        "timeout": 60,
+        "shortLogin": false,
+        "lowerLogin": true,
+        "sasl": [
+            "SCRAM-SHA3-512",
+            "SCRAM-SHA-512",
+            "SCRAM-SHA-256",
+            "SCRAM-SHA-1",
+            "PLAIN",
+            "LOGIN"
+        ],
+        "ssl": {
+            "verify_peer": false,
+            "verify_peer_name": false,
+            "allow_self_signed": false,
+            "SNI_enabled": true,
+            "disable_compression": true,
+            "security_level": 1
+        },
+        "useAuth": true,
+        "setSender": true,
+        "usePhpMail": false
+    },
+    "Sieve": {
+        "host": "mailserver",
+        "port": 4190,
+        "type": 1,
+        "timeout": 10,
+        "shortLogin": false,
+        "lowerLogin": true,
+        "sasl": [
+            "SCRAM-SHA3-512",
+            "SCRAM-SHA-512",
+            "SCRAM-SHA-256",
+            "SCRAM-SHA-1",
+            "PLAIN",
+            "LOGIN"
+        ],
+        "ssl": {
+            "verify_peer": false,
+            "verify_peer_name": false,
+            "allow_self_signed": false,
+            "SNI_enabled": true,
+            "disable_compression": true,
+            "security_level": 1
+        }
+    },
+    "whiteList": ""
+}
