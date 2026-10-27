@@ -99,6 +99,7 @@ import CustomerReviewsAdminView from '../components/crm/CustomerReviewsAdminView
 import PospPartnerPortalView from '../components/crm/PospPartnerPortalView';
 import BlogManagementView from '../components/crm/BlogManagementView';
 import SalesContestsManagerView from '../components/crm/SalesContestsManagerView';
+import RolesAndPermissionsView from '../components/crm/RolesAndPermissionsView';
 
 export default function AdminDashboard() {
   const { 
@@ -293,6 +294,13 @@ export default function AdminDashboard() {
           category: 'Operations & Management',
           subtitle: 'Zero-tamper record of all field modifications, stage transitions, and advisor activities.',
           icon: <ShieldCheck size={18} color="#f59e0b" />
+        };
+      case 'roles':
+        return {
+          title: 'Roles & Access Control (RBAC)',
+          category: 'Security & Governance',
+          subtitle: 'Define granular permissions, configure custom dynamic roles, and manage capability matrix.',
+          icon: <ShieldCheck size={18} color="#4f46e5" />
         };
       case 'users':
         return {
@@ -562,7 +570,10 @@ export default function AdminDashboard() {
     ...((isSuperAdmin || isManager) ? [
       { id: 'approvals', label: 'Approvals', icon: <CheckSquare size={19} />, count: null }
     ] : []),
-    ...(canManageUsers ? [{ id: 'users', label: 'Team', icon: <Users size={19} />, count: null }] : []),
+    ...(canManageUsers ? [
+      { id: 'users', label: 'Team', icon: <Users size={19} />, count: null },
+      ...(isSuperAdmin ? [{ id: 'roles', label: 'Roles & Access', icon: <ShieldCheck size={19} color="#4f46e5" />, count: null, badgeColor: '#4f46e5' }] : [])
+    ] : []),
     { id: 'posp', label: 'POSP Network', icon: <UserCheck size={19} />, count: pospList.filter(p => p.status === 'PENDING').length, badgeColor: '#d97706' },
     ...((isSuperAdmin || isManager) ? [
       { id: 'partners', label: 'Partners', icon: <Globe size={19} />, count: null }
@@ -1590,6 +1601,11 @@ export default function AdminDashboard() {
           {/* VIEW: USER MANAGEMENT */}
           {activeView === 'users' && (
             <UserManagementView initialSegment="STAFF" />
+          )}
+
+          {/* VIEW: RBAC ROLES & PERMISSIONS */}
+          {activeView === 'roles' && (
+            <RolesAndPermissionsView />
           )}
 
           {/* VIEW: AUDIT TRAIL & COMPLIANCE */}

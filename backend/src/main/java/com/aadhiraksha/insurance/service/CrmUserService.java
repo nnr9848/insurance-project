@@ -418,8 +418,8 @@ public class CrmUserService {
 
             CrmUserDto.RoleOption option = CrmUserDto.RoleOption.builder()
                     .code(roleName)
-                    .label(formatRoleLabel(roleName))
-                    .description(getRoleDescription(roleName))
+                    .label(formatRoleLabel(r))
+                    .description(getRoleDescription(r))
                     .category(getRoleCategory(roleName))
                     .build();
 
@@ -429,7 +429,11 @@ public class CrmUserService {
         return roleOptions;
     }
 
-    private String formatRoleLabel(String roleName) {
+    private String formatRoleLabel(Role role) {
+        if (role.getDisplayName() != null && !role.getDisplayName().isBlank()) {
+            return role.getDisplayName();
+        }
+        String roleName = role.getName();
         switch (roleName) {
             case "ROLE_SUPER_ADMIN": return "Super Admin (Full Global Access)";
             case "ROLE_ADMIN": return "Administrator";
@@ -437,11 +441,15 @@ public class CrmUserService {
             case "ROLE_ADVISOR": return "Insurance Advisor / Employee";
             case "ROLE_POSP_AGENT": return "POSP Agent Partner";
             case "ROLE_STAFF": return "Operations / Support Staff";
-            default: return roleName.replace("ROLE_", "");
+            default: return roleName.replace("ROLE_", "").replace("_", " ");
         }
     }
 
-    private String getRoleDescription(String roleName) {
+    private String getRoleDescription(Role role) {
+        if (role.getDescription() != null && !role.getDescription().isBlank()) {
+            return role.getDescription();
+        }
+        String roleName = role.getName();
         switch (roleName) {
             case "ROLE_SUPER_ADMIN": return "Full global oversight, team governance, credential resets, hospital network management";
             case "ROLE_ADMIN": return "Administrative operations and user management";
@@ -449,7 +457,7 @@ public class CrmUserService {
             case "ROLE_ADVISOR": return "Manages assigned client portfolio, schedules calls, creates policies";
             case "ROLE_POSP_AGENT": return "External certified insurance agent partner";
             case "ROLE_STAFF": return "Operational back-office support";
-            default: return "System Role";
+            default: return "Custom Role";
         }
     }
 

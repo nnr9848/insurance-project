@@ -43,6 +43,31 @@ export const crmService = {
     const res = await api.get('/crm/users/roles');
     return res.data;
   },
+  // RBAC & Dynamic Roles
+  getPermissionsCatalog: async () => {
+    const res = await api.get('/crm/roles/permissions/catalog');
+    return res.data;
+  },
+  getRbacRoles: async () => {
+    const res = await api.get('/crm/roles/manage');
+    return res.data;
+  },
+  getRbacRoleById: async (id) => {
+    const res = await api.get(`/crm/roles/manage/${id}`);
+    return res.data;
+  },
+  createRbacRole: async (data) => {
+    const res = await api.post('/crm/roles/manage', data);
+    return res.data;
+  },
+  updateRbacRole: async (id, data) => {
+    const res = await api.put(`/crm/roles/manage/${id}`, data);
+    return res.data;
+  },
+  deleteRbacRole: async (id) => {
+    const res = await api.delete(`/crm/roles/manage/${id}`);
+    return res.data;
+  },
   getManagers: async () => {
     const res = await api.get('/crm/users/managers');
     return res.data;

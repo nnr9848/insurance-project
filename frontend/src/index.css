@@ -5633,6 +5633,159 @@ h1, h2, h3, h4, h5, h6 {
   text-decoration: underline;
 }
 
+/* ==========================================================================
+   ENTERPRISE NATIVE UX SYSTEM: DUAL-PANE & MOBILE MASTER-DETAIL STANDARD
+   ========================================================================== */
+
+/* Universal Responsive Master-Detail Grid */
+.crm-master-detail-container {
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) 1fr;
+  gap: 1.5rem;
+  align-items: start;
+  width: 100%;
+}
+
+@media (max-width: 1023px) {
+  .crm-master-detail-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    width: 100%;
+  }
+
+  .crm-master-list-pane,
+  .crm-detail-pane {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* Master List Pane */
+.crm-master-list-pane {
+  background: var(--color-bg-surface, #ffffff);
+  border-radius: 16px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Detail Inspection Pane */
+.crm-detail-pane {
+  background: var(--color-bg-surface, #ffffff);
+  border-radius: 16px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  .crm-master-list-pane {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+
+  .crm-detail-pane {
+    padding: 1.25rem 1rem;
+    border-radius: 12px;
+  }
+}
+
+/* Native Modal & Mobile Bottom-Sheet Standard */
+.native-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.native-modal-dialog {
+  background: var(--color-bg-surface, #ffffff);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 820px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (max-width: 767px) {
+  .native-modal-backdrop {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .native-modal-dialog {
+    border-radius: 20px 20px 0 0;
+    max-height: 92vh;
+    animation: sheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+.native-sheet-drag-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  margin: 0.5rem auto 0 auto;
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes sheetSlideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Touch-optimized button states */
+.native-touch-target {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+.native-touch-target:active {
+  transform: scale(0.98);
+}
+
+
 
 
 

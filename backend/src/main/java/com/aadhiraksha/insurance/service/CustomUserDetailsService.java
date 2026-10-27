@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +28,16 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .or(() -> userRepository.findByEmployeeCode(trimmed.toUpperCase()))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with identifier: " + identifier));
 
+        Set<org.springframework.security.core.GrantedAuthority> authorities = new java.util.HashSet<>();
+        for (com.aadhiraksha.insurance.model.Role role : user.getRoles()) {
+            authorities.add(new SimpleGrantedAuthority(role.getName()));
+            if (role.getPermissions() != null) {
+                for (com.aadhiraksha.insurance.model.Permission perm : role.getPermissions()) {
+                    authorities.add(new SimpleGrantedAuthority(perm.getCode()));
+                }
+            }
+        }
+
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
                 user.getPassword(),
@@ -34,9 +45,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 true,
                 true,
                 true,
-                user.getRoles().stream()
-                        .map(role -> new SimpleGrantedAuthority(role.getName()))
-                        .collect(Collectors.toList())
+                authorities
         );
     }
 }
