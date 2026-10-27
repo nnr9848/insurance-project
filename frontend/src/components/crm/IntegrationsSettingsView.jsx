@@ -734,7 +734,7 @@ export default function IntegrationsSettingsView() {
             <div style={{
               background: '#ffffff',
               borderRadius: '16px',
-              border: formData.twilioSmsEnabled ? '2px solid #ef4444' : '1px solid #e2e8f0',
+              border: formData.twilioSmsEnabled ? '1px solid #86efac' : '1px solid #e2e8f0',
               padding: '1.5rem',
               boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
               display: 'flex',
@@ -761,12 +761,12 @@ export default function IntegrationsSettingsView() {
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span>Twilio Programmable SMS (Mobile OTP Engine)</span>
                       {formData.twilioSmsEnabled ? (
-                        <span style={{ fontSize: '0.72rem', background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
-                          ● Active (Real SMS Dispatch)
+                        <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                          ● Active (Live SMS Dispatch)
                         </span>
                       ) : (
                         <span style={{ fontSize: '0.72rem', background: '#f1f5f9', color: '#64748b', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
-                          ○ Inactive (Dev Mock Mode: Master OTP 123456)
+                          ○ Inactive (Dev Mock Mode)
                         </span>
                       )}
                     </h3>
@@ -776,15 +776,26 @@ export default function IntegrationsSettingsView() {
                   </div>
                 </div>
 
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none', background: '#f8fafc', padding: '6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <label style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  background: formData.twilioSmsEnabled ? '#f0fdf4' : '#f8fafc',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  border: formData.twilioSmsEnabled ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
+                  transition: 'all 0.15s ease'
+                }}>
                   <input
                     type="checkbox"
                     name="twilioSmsEnabled"
                     checked={formData.twilioSmsEnabled}
                     onChange={handleChange}
-                    style={{ width: '18px', height: '18px', accentColor: '#ef4444', cursor: 'pointer' }}
+                    style={{ width: '18px', height: '18px', accentColor: '#16a34a', cursor: 'pointer' }}
                   />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: formData.twilioSmsEnabled ? '#15803d' : '#475569' }}>
                     Enable Twilio SMS OTPs
                   </span>
                 </label>
@@ -1011,7 +1022,7 @@ export default function IntegrationsSettingsView() {
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '6px',
-                      background: '#e11d48',
+                      background: '#2563eb',
                       color: '#ffffff',
                       border: 'none',
                       borderRadius: '8px',
@@ -1019,7 +1030,7 @@ export default function IntegrationsSettingsView() {
                       fontSize: '0.85rem',
                       fontWeight: 700,
                       cursor: isTestingTwilio ? 'not-allowed' : 'pointer',
-                      boxShadow: '0 2px 6px rgba(225, 29, 72, 0.25)',
+                      boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
                       transition: 'all 0.15s ease'
                     }}
                   >
@@ -1098,7 +1109,7 @@ export default function IntegrationsSettingsView() {
             <div style={{
               background: '#ffffff',
               borderRadius: '16px',
-              border: formData.twilioWhatsappEnabled ? '2px solid #059669' : '1px solid #e2e8f0',
+              border: formData.twilioWhatsappEnabled ? '1px solid #86efac' : '1px solid #e2e8f0',
               padding: '1.5rem',
               boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
               display: 'flex',

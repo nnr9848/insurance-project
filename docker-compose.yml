@@ -75,6 +75,20 @@ services:
     networks:
       - aadhiraksha_network
 
+  # 5. Lightweight SnappyMail Webmail Client (~30MB RAM Alpine container)
+  webmail:
+    image: djmaze/snappymail:latest
+    container_name: aadhiraksha_webmail
+    restart: unless-stopped
+    ports:
+      - "8888:8888"   # SnappyMail internal web server (accessible via Nginx reverse proxy)
+    volumes:
+      - aadhiraksha_snappymail_data:/snappymail/data
+    depends_on:
+      - mailserver
+    networks:
+      - aadhiraksha_network
+
 networks:
   aadhiraksha_network:
     name: aadhiraksha_network
@@ -87,3 +101,5 @@ volumes:
     name: aadhiraksha_document_uploads
   aadhiraksha_mail_data:
     name: aadhiraksha_mail_data
+  aadhiraksha_snappymail_data:
+    name: aadhiraksha_snappymail_data
