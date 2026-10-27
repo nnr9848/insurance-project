@@ -83,7 +83,7 @@ services:
     ports:
       - "8888:8888"   # SnappyMail internal web server (accessible via Nginx reverse proxy)
     volumes:
-      - aadhiraksha_snappymail_data:/snappymail/data
+      - aadhiraksha_snappymail_data:/var/lib/snappymail
     depends_on:
       - mailserver
     networks:
