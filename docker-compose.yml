@@ -89,6 +89,7 @@ services:
       - aadhiraksha_snappymail_data:/var/lib/snappymail
       - ./deploy/mail/snappymail/domains/aadhirakshainsurance.com.json:/var/lib/snappymail/_data_/_default_/domains/aadhirakshainsurance.com.json
       - ./deploy/mail/snappymail/domains/aadhirakshainsurance.com.json:/var/lib/snappymail/_data_/_default_/domains/default.json
+      - ./deploy/mail/snappymail/configs/application.ini:/var/lib/snappymail/_data_/_default_/configs/application.ini
     depends_on:
       - mailserver
     networks:
