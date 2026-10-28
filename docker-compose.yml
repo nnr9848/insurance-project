@@ -61,20 +61,12 @@ services:
     image: stalwartlabs/stalwart:latest
     container_name: aadhiraksha_mailserver
     restart: unless-stopped
+    network_mode: host
     environment:
       - STALWART_ADMIN_SECRET=${STALWART_ADMIN_SECRET:-AadhirakshaMailSecret2026!}
       - STALWART_HOSTNAME=${STALWART_HOSTNAME:-mail.aadhirakshainsurance.com}
-      - STALWART_HTTP_LISTEN=0.0.0.0:8080
-    ports:
-      - "25:25"       # Inbound SMTP
-      - "587:587"     # Outbound Submission SMTP (TLS)
-      - "465:465"     # Outbound SMTPS
-      - "993:993"     # IMAP over TLS
-      - "8085:8080"   # Management REST API & Webmail (mapped to 8085 to avoid collision)
     volumes:
       - aadhiraksha_mail_data:/opt/stalwart-mail
-    networks:
-      - aadhiraksha_network
 
   # 5. Lightweight SnappyMail Webmail Client (~30MB RAM Alpine container)
   webmail:
