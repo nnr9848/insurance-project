@@ -73,19 +73,16 @@ services:
     image: djmaze/snappymail:latest
     container_name: aadhiraksha_webmail
     restart: unless-stopped
+    network_mode: host
     environment:
       - SNAPPYMAIL_LOGIN_DEFAULT_DOMAIN=aadhirakshainsurance.com
       - SNAPPYMAIL_LOGIN_DETERMINE_USER_DOMAIN=aadhirakshainsurance.com
-    ports:
-      - "8888:8888"   # SnappyMail internal web server (accessible via Nginx reverse proxy)
     volumes:
       - aadhiraksha_snappymail_data:/var/lib/snappymail
       - ./deploy/mail/snappymail/domains/aadhirakshainsurance.com.json:/var/lib/snappymail/_data_/_default_/domains/aadhirakshainsurance.com.json
       - ./deploy/mail/snappymail/domains/aadhirakshainsurance.com.json:/var/lib/snappymail/_data_/_default_/domains/default.json
     depends_on:
       - mailserver
-    networks:
-      - aadhiraksha_network
 
 networks:
   aadhiraksha_network:
