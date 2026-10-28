@@ -85,6 +85,7 @@ services:
     volumes:
       - aadhiraksha_snappymail_data:/var/lib/snappymail
       - ./deploy/mail/snappymail/domains/aadhirakshainsurance.com.json:/var/lib/snappymail/_data_/_default_/domains/aadhirakshainsurance.com.json
+      - ./deploy/mail/snappymail/domains/aadhirakshainsurance.com.json:/var/lib/snappymail/_data_/_default_/domains/default.json
     depends_on:
       - mailserver
     networks:
