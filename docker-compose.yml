@@ -39,6 +39,8 @@ services:
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-*}"
     volumes:
       - aadhiraksha_document_uploads:/app/uploads
+    extra_hosts:
+      - "mailserver:host-gateway"
     networks:
       - aadhiraksha_network
 
