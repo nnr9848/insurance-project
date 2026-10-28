@@ -64,6 +64,7 @@ services:
     environment:
       - STALWART_ADMIN_SECRET=${STALWART_ADMIN_SECRET:-AadhirakshaMailSecret2026!}
       - STALWART_HOSTNAME=${STALWART_HOSTNAME:-mail.aadhirakshainsurance.com}
+      - STALWART_HTTP_LISTEN=0.0.0.0:8080
     ports:
       - "25:25"       # Inbound SMTP
       - "587:587"     # Outbound Submission SMTP (TLS)
