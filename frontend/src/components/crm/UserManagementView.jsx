@@ -320,6 +320,12 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
       };
       const res = await crmService.provisionMailbox(mailboxModalUser.id, payload);
       setMailboxSuccessInfo(res);
+      setMailboxModalUser(prev => ({
+        ...prev,
+        hasDomainMailbox: true,
+        domainMailboxEmail: res.domainEmail || prev?.domainMailboxEmail,
+        mailboxStatus: res.status || 'ACTIVE'
+      }));
       loadData();
       // Refresh settings
       const settings = await crmService.getMailboxSettings(mailboxModalUser.id);

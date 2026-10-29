@@ -37,6 +37,7 @@ services:
       SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-mailserver}
       SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-465}
       MAILSERVER_API_URL: ${MAILSERVER_API_URL:-http://mailserver:8080/api}
+      MAILSERVER_API_SECRET: ${MAILSERVER_API_SECRET:-QUDklLc81aY3qVc3}
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-*}"
     volumes:
       - aadhiraksha_document_uploads:/app/uploads
