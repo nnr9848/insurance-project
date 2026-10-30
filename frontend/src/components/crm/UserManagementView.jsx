@@ -291,12 +291,17 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
     setShowMailboxModal(true);
     setMailboxActionLoading(true);
     setMailboxSuccessInfo(null);
-    // Pre-fill smart default username (e.g. rajesh.kumar or rajesh)
-    const defaultAlias = (user.fullName || '')
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\s.]/g, '')
-      .replace(/\s+/g, '.');
+    // Pre-fill smart default username from existing email handle if present, else fullName
+    let defaultAlias = '';
+    if (user.domainMailboxEmail && user.domainMailboxEmail.includes('@')) {
+      defaultAlias = user.domainMailboxEmail.split('@')[0];
+    } else {
+      defaultAlias = (user.fullName || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s.]/g, '')
+        .replace(/\s+/g, '.');
+    }
     setProvisionUsername(defaultAlias);
     setProvisionPasswordMode('AUTO');
     setProvisionCustomPassword('');
@@ -2235,46 +2240,80 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
               )}
 
               {/* Status Card */}
-              <div style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '12px',
-                padding: '14px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>Mailbox Status:</span>
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    padding: '3px 8px',
-                    borderRadius: '999px',
-                    fontSize: '0.74rem',
-                    fontWeight: 700,
-                    background: mailboxModalUser.hasDomainMailbox ? '#ecfdf5' : '#fef2f2',
-                    color: mailboxModalUser.hasDomainMailbox ? '#059669' : '#dc2626',
-                    border: `1px solid ${mailboxModalUser.hasDomainMailbox ? '#a7f3d0' : '#fecaca'}`
+              {(() => {
+                const isLiveSynced = mailboxModalUser.hasDomainMailbox && mailboxSettings?.isSynchronized === true;
+                const isUnsynced = mailboxModalUser.hasDomainMailbox && mailboxSettings && mailboxSettings.isSynchronized === false;
+
+                let badgeBg = '#fef2f2';
+                let badgeColor = '#dc2626';
+                let badgeBorder = '#fecaca';
+                let badgeText = 'Not Provisioned Yet';
+                let badgeIcon = <AlertCircle size={12} />;
+
+                if (isLiveSynced) {
+                  badgeBg = '#ecfdf5';
+                  badgeColor = '#059669';
+                  badgeBorder = '#a7f3d0';
+                  badgeText = 'Verified Active on Stalwart';
+                  badgeIcon = <CheckCircle2 size={12} />;
+                } else if (isUnsynced) {
+                  badgeBg = '#fefce8';
+                  badgeColor = '#b45309';
+                  badgeBorder = '#fef08a';
+                  badgeText = 'Unsynchronized (Missing on Stalwart)';
+                  badgeIcon = <AlertCircle size={12} />;
+                }
+
+                return (
+                  <div style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '14px'
                   }}>
-                    {mailboxModalUser.hasDomainMailbox ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
-                    {mailboxModalUser.hasDomainMailbox ? 'Provisioned & Active' : 'Not Provisioned Yet'}
-                  </span>
-                </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>Mail Server Status:</span>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '3px 8px',
+                        borderRadius: '999px',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        background: badgeBg,
+                        color: badgeColor,
+                        border: `1px solid ${badgeBorder}`
+                      }}>
+                        {badgeIcon}
+                        {badgeText}
+                      </span>
+                    </div>
 
-                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f2b48' }}>
-                  {mailboxModalUser.domainMailboxEmail || (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <span style={{ color: '#059669' }}>{provisionUsername || 'username'}</span>
-                      <span style={{ color: '#64748b' }}>@aadhirakshainsurance.com</span>
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '4px' }}>
-                  Storage Quota: 5 GB • Server: Hostinger VPS (mail.aadhirakshainsurance.com)
-                </div>
-              </div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f2b48' }}>
+                      {isLiveSynced ? (
+                        mailboxModalUser.domainMailboxEmail
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ color: '#059669' }}>{provisionUsername || 'username'}</span>
+                          <span style={{ color: '#64748b' }}>@aadhirakshainsurance.com</span>
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '4px' }}>
+                      Storage Quota: 5 GB • Server: Hostinger VPS (mail.aadhirakshainsurance.com)
+                    </div>
+                    {isUnsynced && (
+                      <div style={{ marginTop: '8px', padding: '8px 10px', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fef3c7', fontSize: '0.74rem', color: '#92400e', lineHeight: 1.5 }}>
+                        <strong>⚠ Attention:</strong> This mailbox is registered in the CRM database ({mailboxModalUser.domainMailboxEmail}) but has not yet been synchronized/created on Stalwart Mail Server. You can edit the username handle and password below before pushing to Stalwart.
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
-              {/* Customizable Provisioning Form (When Not Provisioned Yet) */}
-              {!mailboxModalUser.hasDomainMailbox && (
+              {/* Customizable Provisioning / Synchronization Form (When Not Provisioned OR Unsynchronized) */}
+              {(!mailboxModalUser.hasDomainMailbox || (mailboxSettings && mailboxSettings.isSynchronized === false)) && (
                 <div style={{
                   background: '#ffffff',
                   border: '1px solid #e2e8f0',
@@ -2714,26 +2753,31 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
 
               {/* Action Buttons */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {!mailboxModalUser.hasDomainMailbox ? (
+                {(!mailboxModalUser.hasDomainMailbox || (mailboxSettings && mailboxSettings.isSynchronized === false)) ? (
                   <button
                     onClick={handleProvisionMailboxNow}
-                    disabled={mailboxActionLoading}
+                    disabled={mailboxActionLoading || !provisionUsername.trim()}
                     style={{
                       padding: '11px',
                       borderRadius: '10px',
                       border: 'none',
-                      background: '#059669',
+                      background: mailboxActionLoading || !provisionUsername.trim() ? '#94a3b8' : '#059669',
                       color: '#ffffff',
                       fontWeight: 700,
-                      cursor: mailboxActionLoading ? 'not-allowed' : 'pointer',
+                      cursor: mailboxActionLoading || !provisionUsername.trim() ? 'not-allowed' : 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '8px'
+                      gap: '8px',
+                      boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)'
                     }}
                   >
                     <AtSign size={16} />
-                    {mailboxActionLoading ? 'Provisioning Mailbox...' : 'Provision Domain Mailbox Now'}
+                    {mailboxActionLoading 
+                      ? 'Creating on Stalwart Mail Server...' 
+                      : (mailboxSettings && mailboxSettings.isSynchronized === false 
+                          ? '⚡ Push & Sync to Stalwart Mail Server' 
+                          : 'Provision Domain Mailbox Now')}
                   </button>
                 ) : (
                   <button

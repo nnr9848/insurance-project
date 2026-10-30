@@ -460,25 +460,89 @@ public class MailboxProvisioningService {
     }
 
     /**
-     * Returns server connection parameters for Outlook / Apple Mail / Android setup.
+     * Check live ground-truth status in Stalwart via JMAP x:Account/query
+     */
+    public String checkStalwartAccountExists(String username) {
+        if (!mailServerEnabled || username == null || username.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(mailServerApiSecret.trim());
+
+            Map<String, Object> filter = Map.of("name", username.trim().toLowerCase());
+            Map<String, Object> queryParams = Map.of("filter", filter);
+            Map<String, Object> jmapBody = Map.of(
+                    "using", List.of("urn:ietf:params:jmap:core", "urn:stalwart:jmap"),
+                    "methodCalls", List.of(List.of("x:Account/query", queryParams, "c1"))
+            );
+
+            String jmapUrl = mailServerApiUrl.replaceAll("/api/?$", "") + "/jmap";
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(jmapBody, headers);
+            ResponseEntity<Map> response = restTemplate.postForEntity(jmapUrl, requestEntity, Map.class);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                List<?> responses = (List<?>) response.getBody().get("methodResponses");
+                if (responses != null && !responses.isEmpty()) {
+                    List<?> firstCall = (List<?>) responses.get(0);
+                    if (firstCall.size() > 1 && firstCall.get(1) instanceof Map) {
+                        Map<?, ?> callResult = (Map<?, ?>) firstCall.get(1);
+                        List<?> ids = (List<?>) callResult.get("ids");
+                        if (ids != null && !ids.isEmpty()) {
+                            return ids.get(0).toString();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Stalwart live account check failed for {}: {}", username, e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Returns server connection parameters with live Stalwart ground-truth status.
      */
     public Map<String, Object> getMailboxSettings(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
 
         Map<String, Object> settings = new HashMap<>();
-        settings.put("domainEmail", user.getDomainMailboxEmail());
+        String domainEmail = user.getDomainMailboxEmail();
+        settings.put("domainEmail", domainEmail);
         settings.put("aliases", getAliasesList(user));
         settings.put("hasMailbox", Boolean.TRUE.equals(user.getHasDomainMailbox()));
-        settings.put("status", user.getMailboxStatus());
         settings.put("quotaMb", user.getMailboxQuotaMb());
         settings.put("webmailUrl", webmailUrl);
         settings.put("imapServer", "mail." + mailDomain);
         settings.put("imapPort", 993);
         settings.put("imapSecurity", "SSL/TLS");
         settings.put("smtpServer", "mail." + mailDomain);
-        settings.put("smtpPort", 587);
-        settings.put("smtpSecurity", "STARTTLS");
+        settings.put("smtpPort", 465);
+        settings.put("smtpSecurity", "SSL/TLS");
+
+        // Ground-Truth Stalwart check
+        if (domainEmail != null && domainEmail.contains("@")) {
+            String username = domainEmail.split("@")[0].trim().toLowerCase();
+            String stalwartId = checkStalwartAccountExists(username);
+            boolean isLiveInStalwart = (stalwartId != null);
+            settings.put("isSynchronized", isLiveInStalwart);
+            settings.put("stalwartId", stalwartId);
+            settings.put("status", isLiveInStalwart ? "ACTIVE" : "UNSYNCHRONIZED");
+
+            // Reconcile DB status if inconsistent
+            String targetDbStatus = isLiveInStalwart ? "ACTIVE" : "UNSYNCHRONIZED";
+            if (!targetDbStatus.equalsIgnoreCase(user.getMailboxStatus())) {
+                user.setMailboxStatus(targetDbStatus);
+                userRepository.save(user);
+            }
+        } else {
+            settings.put("isSynchronized", false);
+            settings.put("stalwartId", null);
+            settings.put("status", "NOT_PROVISIONED");
+        }
+
         return settings;
     }
 }
