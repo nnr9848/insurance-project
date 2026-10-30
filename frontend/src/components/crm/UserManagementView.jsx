@@ -134,6 +134,7 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
   const [showProvisionPassword, setShowProvisionPassword] = useState(false);
   const [newAliasHandle, setNewAliasHandle] = useState('');
   const [aliasActionLoading, setAliasActionLoading] = useState(false);
+  const [showAliasesAccordion, setShowAliasesAccordion] = useState(false);
 
   // Custom Confirmation Modal state (replacing native window.confirm)
   const [confirmDialog, setConfirmDialog] = useState({
@@ -2111,17 +2112,22 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
             background: '#ffffff',
             borderRadius: '20px',
             width: '100%',
-            maxWidth: '520px',
+            maxWidth: '560px',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
             overflow: 'hidden'
           }}>
+            {/* Sticky Modal Header */}
             <div style={{
               background: '#ffffff',
               padding: '1.25rem 1.5rem',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              borderBottom: '1px solid #e2e8f0'
+              borderBottom: '1px solid #e2e8f0',
+              flexShrink: 0
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{
@@ -2162,7 +2168,15 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
               </button>
             </div>
 
-            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {/* Scrollable Modal Content with clean scroll styling */}
+            <div style={{
+              padding: '1.5rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+              overflowY: 'auto',
+              flex: 1
+            }}>
               {mailboxSuccessInfo && (
                 <div style={{
                   background: '#ecfdf5',
@@ -2501,170 +2515,200 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                 </div>
               )}
 
-              {/* Email Aliases (Google Workspace / Microsoft 365 Standard) */}
+              {/* Email Aliases (Google Workspace / Microsoft 365 Standard Collapsible Section) */}
               {mailboxModalUser.hasDomainMailbox && (
                 <div style={{
                   background: '#ffffff',
                   border: '1px solid #e2e8f0',
                   borderRadius: '12px',
-                  padding: '14px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px'
+                  overflow: 'hidden'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {/* Collapsible Accordion Header */}
+                  <button
+                    type="button"
+                    onClick={() => setShowAliasesAccordion(prev => !prev)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '12px 14px',
+                      background: showAliasesAccordion ? '#f8fafc' : '#ffffff',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                  >
                     <div>
-                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f2b48' }}>
-                        Email Aliases (Alternate Addresses)
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f2b48', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>Alternate Email Aliases</span>
+                        <span style={{
+                          fontSize: '0.68rem',
+                          background: mailboxSettings?.aliases?.length ? '#e0f2fe' : '#f1f5f9',
+                          color: mailboxSettings?.aliases?.length ? '#0369a1' : '#64748b',
+                          padding: '2px 7px',
+                          borderRadius: '10px',
+                          fontWeight: 700
+                        }}>
+                          {mailboxSettings?.aliases?.length || 0} Optional
+                        </span>
                       </div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                        Inbound messages sent to any of these handles deliver directly into this inbox.
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                        Secondary handles delivering to this mailbox (Optional)
                       </div>
                     </div>
-                  </div>
+                    <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 800 }}>
+                      {showAliasesAccordion ? '▲' : '▼'}
+                    </span>
+                  </button>
 
-                  {/* Existing Aliases List */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {mailboxSettings && mailboxSettings.aliases && mailboxSettings.aliases.length > 0 ? (
-                      mailboxSettings.aliases.map((alias) => (
-                        <div
-                          key={alias}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            background: '#f8fafc',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '8px',
+                  {/* Expanded Accordion Body */}
+                  {showAliasesAccordion && (
+                    <div style={{ padding: '12px 14px', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '10px', background: '#fafafa' }}>
+                      {/* Existing Aliases List */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {mailboxSettings && mailboxSettings.aliases && mailboxSettings.aliases.length > 0 ? (
+                          mailboxSettings.aliases.map((alias) => (
+                            <div
+                              key={alias}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                background: '#ffffff',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                padding: '6px 10px',
+                                fontSize: '0.78rem'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{
+                                  width: '6px',
+                                  height: '6px',
+                                  borderRadius: '50%',
+                                  background: '#059669'
+                                }} />
+                                <strong style={{ color: '#0f2b48' }}>{alias}</strong>
+                                <span style={{
+                                  fontSize: '0.68rem',
+                                  background: '#e0f2fe',
+                                  color: '#0369a1',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  fontWeight: 700
+                                }}>
+                                  Alias
+                                </span>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetPrimaryEmailNow(alias)}
+                                  disabled={aliasActionLoading}
+                                  title="Make this the primary login email address (current primary becomes an alias)"
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#0284c7',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    textDecoration: 'underline'
+                                  }}
+                                >
+                                  Make Primary
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveAliasNow(alias)}
+                                  disabled={aliasActionLoading}
+                                  title="Remove alias"
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#dc2626',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                    padding: '2px 4px'
+                                  }}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic', padding: '4px 0' }}>
+                            No alternate aliases assigned yet.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Add New Alias Input */}
+                      <form onSubmit={handleAddAliasNow} style={{ display: 'flex', gap: '6px', marginTop: '4px', margin: 0 }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          background: '#ffffff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          flex: 1,
+                          overflow: 'hidden'
+                        }}>
+                          <input
+                            type="text"
+                            value={newAliasHandle}
+                            onChange={(e) => setNewAliasHandle(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
+                            placeholder="new.alias"
+                            disabled={aliasActionLoading}
+                            style={{
+                              flex: 1,
+                              border: 'none',
+                              background: 'transparent',
+                              padding: '6px 8px',
+                              fontSize: '0.8rem',
+                              fontWeight: 700,
+                              color: '#0f2b48',
+                              outline: 'none'
+                            }}
+                          />
+                          <span style={{
                             padding: '6px 10px',
-                            fontSize: '0.78rem'
+                            background: '#f1f5f9',
+                            color: '#475569',
+                            fontSize: '0.74rem',
+                            fontWeight: 700,
+                            borderLeft: '1px solid #cbd5e1',
+                            userSelect: 'none'
+                          }}>
+                            @aadhirakshainsurance.com
+                          </span>
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={aliasActionLoading || !newAliasHandle.trim()}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: aliasActionLoading || !newAliasHandle.trim() ? '#94a3b8' : '#059669',
+                            color: '#ffffff',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            cursor: aliasActionLoading || !newAliasHandle.trim() ? 'not-allowed' : 'pointer',
+                            whiteSpace: 'nowrap'
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{
-                              width: '6px',
-                              height: '6px',
-                              borderRadius: '50%',
-                              background: '#059669'
-                            }} />
-                            <strong style={{ color: '#0f2b48' }}>{alias}</strong>
-                            <span style={{
-                              fontSize: '0.68rem',
-                              background: '#e0f2fe',
-                              color: '#0369a1',
-                              padding: '1px 6px',
-                              borderRadius: '4px',
-                              fontWeight: 700
-                            }}>
-                              Alias
-                            </span>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleSetPrimaryEmailNow(alias)}
-                              disabled={aliasActionLoading}
-                              title="Make this the primary login email address (current primary becomes an alias)"
-                              style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: '#0284c7',
-                                fontSize: '0.7rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                textDecoration: 'underline'
-                              }}
-                            >
-                              Make Primary
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveAliasNow(alias)}
-                              disabled={aliasActionLoading}
-                              title="Remove alias"
-                              style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: '#dc2626',
-                                fontSize: '0.78rem',
-                                fontWeight: 800,
-                                cursor: 'pointer',
-                                padding: '2px 4px'
-                              }}
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic', padding: '4px 0' }}>
-                        No alternate aliases assigned yet.
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Add New Alias Input */}
-                  <form onSubmit={handleAddAliasNow} style={{ display: 'flex', gap: '6px', marginTop: '4px', margin: 0 }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      background: '#f8fafc',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '8px',
-                      flex: 1,
-                      overflow: 'hidden'
-                    }}>
-                      <input
-                        type="text"
-                        value={newAliasHandle}
-                        onChange={(e) => setNewAliasHandle(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
-                        placeholder="new.alias"
-                        disabled={aliasActionLoading}
-                        style={{
-                          flex: 1,
-                          border: 'none',
-                          background: 'transparent',
-                          padding: '6px 8px',
-                          fontSize: '0.8rem',
-                          fontWeight: 700,
-                          color: '#0f2b48',
-                          outline: 'none'
-                        }}
-                      />
-                      <span style={{
-                        padding: '6px 10px',
-                        background: '#e2e8f0',
-                        color: '#475569',
-                        fontSize: '0.74rem',
-                        fontWeight: 700,
-                        borderLeft: '1px solid #cbd5e1',
-                        userSelect: 'none'
-                      }}>
-                        @aadhirakshainsurance.com
-                      </span>
+                          {aliasActionLoading ? 'Adding...' : '+ Add Alias'}
+                        </button>
+                      </form>
                     </div>
-
-                    <button
-                      type="submit"
-                      disabled={aliasActionLoading || !newAliasHandle.trim()}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: aliasActionLoading || !newAliasHandle.trim() ? '#94a3b8' : '#059669',
-                        color: '#ffffff',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        cursor: aliasActionLoading || !newAliasHandle.trim() ? 'not-allowed' : 'pointer',
-                        whiteSpace: 'nowrap'
-                      }}
-                    >
-                      {aliasActionLoading ? 'Adding...' : '+ Add Alias'}
-                    </button>
-                  </form>
+                  )}
                 </div>
               )}
 
