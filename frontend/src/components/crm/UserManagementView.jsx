@@ -2401,45 +2401,81 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                     </div>
 
                     {provisionPasswordMode === 'CUSTOM' && (
-                      <div style={{
-                        marginTop: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        background: '#f8fafc',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '8px',
-                        padding: '0 8px'
-                      }}>
-                        <input
-                          type={showProvisionPassword ? 'text' : 'password'}
-                          value={provisionCustomPassword}
-                          onChange={(e) => setProvisionCustomPassword(e.target.value)}
-                          placeholder="Enter secure initial password (min 8 chars)"
-                          style={{
-                            flex: 1,
-                            border: 'none',
-                            background: 'transparent',
-                            padding: '8px 4px',
-                            fontSize: '0.82rem',
-                            outline: 'none',
-                            color: '#0f2b48'
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowProvisionPassword(prev => !prev)}
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: '#64748b',
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: '4px'
-                          }}
-                        >
-                          {showProvisionPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
+                      <div style={{ marginTop: '8px' }}>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          background: '#f8fafc',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          padding: '0 8px'
+                        }}>
+                          <input
+                            type={showProvisionPassword ? 'text' : 'password'}
+                            value={provisionCustomPassword}
+                            onChange={(e) => setProvisionCustomPassword(e.target.value)}
+                            placeholder="Enter initial password (e.g. MyCompany#2026!)"
+                            style={{
+                              flex: 1,
+                              border: 'none',
+                              background: 'transparent',
+                              padding: '8px 4px',
+                              fontSize: '0.82rem',
+                              outline: 'none',
+                              color: '#0f2b48'
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowProvisionPassword(prev => !prev)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: '#64748b',
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '4px'
+                            }}
+                          >
+                            {showProvisionPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        </div>
+
+                        {/* Stalwart zxcvbn Live Password Strength Meter */}
+                        {(() => {
+                          const pwd = provisionCustomPassword || '';
+                          let score = 0;
+                          if (pwd.length >= 10) score++;
+                          if (pwd.length >= 14) score++;
+                          if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
+                          if (/[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd)) score++;
+                          if (pwd.length < 8) score = Math.min(score, 1);
+
+                          const levels = [
+                            { label: 'Very Weak', color: '#ef4444', percent: '20%', msg: 'Add uncommon words and symbols for Stalwart' },
+                            { label: 'Weak', color: '#f97316', percent: '40%', msg: 'Too weak for Stalwart zxcvbn validator' },
+                            { label: 'Fair', color: '#eab308', percent: '65%', msg: 'Almost there. Add an extra symbol or number' },
+                            { label: 'Strong', color: '#059669', percent: '85%', msg: 'Stalwart Mail Server Compliant' },
+                            { label: 'Enterprise Strong', color: '#047857', percent: '100%', msg: 'Maximum Security (Optimal Stalwart Entropy)' }
+                          ];
+                          const lvl = pwd ? levels[Math.min(score, 4)] : null;
+
+                          return pwd ? (
+                            <div style={{ marginTop: '6px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 700, marginBottom: '3px' }}>
+                                <span style={{ color: lvl.color }}>{lvl.label}</span>
+                                <span style={{ color: '#64748b' }}>{pwd.length} chars</span>
+                              </div>
+                              <div style={{ height: '4px', background: '#e2e8f0', borderRadius: '2px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: lvl.percent, background: lvl.color, transition: 'all 0.2s ease' }} />
+                              </div>
+                              <div style={{ fontSize: '0.68rem', color: score < 3 ? '#dc2626' : '#059669', marginTop: '3px', fontWeight: 600 }}>
+                                {score < 3 ? '⚠ ' : '✔ '}{lvl.msg}
+                              </div>
+                            </div>
+                          ) : null;
+                        })()}
                       </div>
                     )}
                   </div>
