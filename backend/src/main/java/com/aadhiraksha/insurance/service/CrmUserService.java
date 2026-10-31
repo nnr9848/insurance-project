@@ -77,8 +77,14 @@ public class CrmUserService {
 
     @Transactional
     public Map<String, Object> createUser(CrmUserDto.CreateUserRequest request, User performedBy) {
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("User with email " + request.getEmail() + " already exists.");
+        if (request.getEmail() != null && userRepository.existsByEmail(request.getEmail().trim())) {
+            throw new IllegalArgumentException("User with email " + request.getEmail().trim() + " already exists.");
+        }
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty() && userRepository.existsByPhoneNumber(request.getPhoneNumber().trim())) {
+            throw new IllegalArgumentException("User with phone number " + request.getPhoneNumber().trim() + " already exists.");
+        }
+        if (request.getEmployeeCode() != null && !request.getEmployeeCode().trim().isEmpty() && userRepository.existsByEmployeeCode(request.getEmployeeCode().trim())) {
+            throw new IllegalArgumentException("Employee code " + request.getEmployeeCode().trim() + " is already in use.");
         }
 
         String targetRoleName = request.getRole() != null ? request.getRole() : "ROLE_ADVISOR";
@@ -266,8 +272,16 @@ public class CrmUserService {
             }
         }
 
-        if (request.getFullName() != null) user.setFullName(request.getFullName());
-        if (request.getPhoneNumber() != null) user.setPhoneNumber(request.getPhoneNumber());
+        if (request.getFullName() != null) user.setFullName(request.getFullName().trim());
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
+            String newPhone = request.getPhoneNumber().trim();
+            userRepository.findByPhoneNumber(newPhone).ifPresent(existing -> {
+                if (!existing.getId().equals(user.getId())) {
+                    throw new IllegalArgumentException("User with phone number " + newPhone + " already exists.");
+                }
+            });
+            user.setPhoneNumber(newPhone);
+        }
         if (request.getDesignation() != null) user.setDesignation(request.getDesignation());
         if (request.getDepartment() != null) user.setDepartment(request.getDepartment());
         if (request.getIsActive() != null) user.setIsActive(request.getIsActive());

@@ -1,6 +1,7 @@
 package com.aadhiraksha.insurance.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -17,11 +18,42 @@ import java.util.Map;
 /**
  * Enterprise Global Exception Handler.
  * Intercepts uncaught exceptions and maps them to standard, clean HTTP responses
- * (400, 401, 403, 404, 500) preventing ugly server stack trace dumps.
+ * (400, 401, 403, 404, 409, 500) preventing ugly server stack trace dumps.
  */
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(
+            DataIntegrityViolationException ex, WebRequest request) {
+
+        String rawMsg = ex.getMessage() != null ? ex.getMessage() : "";
+        String userFriendlyMsg = "A record with this information already exists in the system.";
+
+        if (rawMsg.contains("users_phone_number_key") || rawMsg.contains("phone_number")) {
+            userFriendlyMsg = "This mobile number is already registered to another user.";
+        } else if (rawMsg.contains("users_email_key") || rawMsg.contains("email")) {
+            userFriendlyMsg = "This email address is already registered to another user.";
+        } else if (rawMsg.contains("users_employee_code_key") || rawMsg.contains("employee_code")) {
+            userFriendlyMsg = "This employee code is already in use by another team member.";
+        } else if (rawMsg.contains("client_code")) {
+            userFriendlyMsg = "This client code is already assigned to another client.";
+        } else if (rawMsg.contains("policy_number")) {
+            userFriendlyMsg = "A policy with this policy number already exists.";
+        }
+
+        log.warn("[DATA INTEGRITY WARN] Database constraint violation: {} -> {}", rawMsg, userFriendlyMsg);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", HttpStatus.CONFLICT.value());
+        body.put("error", HttpStatus.CONFLICT.getReasonPhrase());
+        body.put("message", userFriendlyMsg);
+        body.put("success", false);
+
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(
