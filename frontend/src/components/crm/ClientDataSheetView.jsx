@@ -48,6 +48,7 @@ import { formatWhatsAppNumber, calculateCustomerTouchpoints } from '../../utils/
 import WhatsAppIcon from '../common/WhatsAppIcon';
 import InsurerLogoBadge from '../common/InsurerLogoBadge';
 import ScheduleActivityModal from './ScheduleActivityModal';
+import WhatsAppBroadcastModal from './WhatsAppBroadcastModal';
 import { getStageBadge, STAGE_OPTIONS } from '../../utils/crmStageConstants';
 
 export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: propSetQuotes, onOpenClient360, onOpenCallModal, onOpenMeetingModal }) {
@@ -75,6 +76,7 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
   const [bulkTargetAdvisorId, setBulkTargetAdvisorId] = useState('');
   const [bulkReassignReason, setBulkReassignReason] = useState('');
   const [bulkReassigning, setBulkReassigning] = useState(false);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
 
   // Single Quick Reassign Modal state
   const [quickReassignLead, setQuickReassignLead] = useState(null);
@@ -870,6 +872,31 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
               title="Export sheet to Excel (.xlsx)"
             >
               <Download size={14} /> Export
+            </button>
+
+            {/* Twilio WhatsApp Broadcast Hub Button */}
+            <button
+              type="button"
+              onClick={() => setShowBroadcastModal(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#16a34a',
+                border: 'none',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                color: '#ffffff',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)',
+                transition: 'all 0.15s ease'
+              }}
+              title="Launch targeted Twilio WhatsApp Promotional Broadcast to Clients"
+            >
+              <WhatsAppIcon size={14} color="#ffffff" />
+              <span>Broadcast ({selectedLeadIds.length > 0 ? `${selectedLeadIds.length} Selected` : 'All'})</span>
             </button>
 
             {/* Mobile Actions Overflow Trigger */}
@@ -4303,6 +4330,21 @@ export default function ClientDataSheetView({ quotes: propQuotes, setQuotes: pro
           onSuccess={() => {
             loadLeads();
             toast.success('Activity scheduled successfully!');
+          }}
+        />
+      )}
+
+      {/* Twilio WhatsApp Promotional Broadcast Hub Modal */}
+      {showBroadcastModal && (
+        <WhatsAppBroadcastModal
+          isOpen={showBroadcastModal}
+          onClose={() => setShowBroadcastModal(false)}
+          defaultTarget={selectedLeadIds.length > 0 ? 'SELECTED' : 'CLIENTS'}
+          clientsList={leads}
+          selectedPhones={leads.filter(l => selectedLeadIds.includes(l.id)).map(l => l.whatsappNumber || l.phoneNumber).filter(Boolean)}
+          onBroadcastSuccess={(res) => {
+            toast.success(res.message || 'WhatsApp promotional broadcast successfully dispatched!');
+            setShowBroadcastModal(false);
           }}
         />
       )}

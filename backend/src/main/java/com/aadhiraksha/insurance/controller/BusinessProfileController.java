@@ -494,6 +494,48 @@ public class BusinessProfileController {
     }
 
     /**
+     * Advisor / Admin endpoint: Dispatch 1-on-1 direct advisory WhatsApp message via Twilio Gateway
+     */
+    @PostMapping("/admin/outreach/whatsapp/send")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'ADVISOR', 'STAFF')")
+    @Operation(summary = "Send 1-on-1 WhatsApp Message", description = "Dispatches a single advisory message directly via Twilio WhatsApp Gateway")
+    public ResponseEntity<java.util.Map<String, Object>> sendDirectWhatsAppMessage(
+            @RequestBody java.util.Map<String, String> requestBody,
+            org.springframework.security.core.Authentication authentication) {
+
+        String recipientPhone = requestBody.get("recipientPhone");
+        String messageBody = requestBody.get("messageBody");
+
+        if (recipientPhone == null || recipientPhone.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                "success", false,
+                "message", "Recipient phone number is required"
+            ));
+        }
+        if (messageBody == null || messageBody.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                "success", false,
+                "message", "Message body cannot be empty"
+            ));
+        }
+
+        boolean dispatched = twilioWhatsAppService.sendWhatsAppMessage(recipientPhone.trim(), messageBody.trim());
+
+        if (dispatched) {
+            return ResponseEntity.ok(java.util.Map.of(
+                "success", true,
+                "message", "WhatsApp message delivered to " + recipientPhone.trim() + " via Twilio Gateway."
+            ));
+        } else {
+            return ResponseEntity.status(400).body(java.util.Map.of(
+                "success", false,
+                "message", "Failed to dispatch WhatsApp message via Twilio. Ensure Twilio credentials and WhatsApp Sender are configured."
+            ));
+        }
+    }
+
+
+    /**
      * Admin endpoint: Broadcast promotional announcement / new offer to POSP agents or client groups via Twilio WhatsApp
      */
     @PostMapping("/admin/broadcasts/whatsapp")

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import WhatsAppIcon from '../common/WhatsAppIcon';
 import { formatWhatsAppNumber } from '../../utils/crmDeduplication';
+import { portalService } from '../../services/api';
 
 /**
  * Enterprise WhatsApp Templates for Insurance Advisory
@@ -111,6 +112,8 @@ export default function WhatsAppComposeModal({
   });
 
   const [copied, setCopied] = useState(false);
+  const [isSendingTwilio, setIsSendingTwilio] = useState(false);
+  const [twilioStatus, setTwilioStatus] = useState(null);
 
   const handleSelectTemplate = (template) => {
     setSelectedTemplateId(template.id);
@@ -143,11 +146,43 @@ export default function WhatsAppComposeModal({
       onMessageSent({
         templateLabel: templateObj?.label || 'Custom Message',
         messageText: customMessage.trim(),
-        recipientPhone: cleanPhone
+        recipientPhone: cleanPhone,
+        channel: 'WHATSAPP_WEB'
       });
     }
 
     onClose();
+  };
+
+  const handleSendViaTwilioApi = async () => {
+    if (!cleanPhone) {
+      alert('Client does not have a valid WhatsApp or mobile phone number.');
+      return;
+    }
+    setIsSendingTwilio(true);
+    setTwilioStatus(null);
+    try {
+      const res = await portalService.sendDirectWhatsAppMessage(cleanPhone, customMessage.trim());
+      if (res.success) {
+        setTwilioStatus({ success: true, message: res.message || 'Delivered via Twilio!' });
+        if (onMessageSent) {
+          const templateObj = WHATSAPP_TEMPLATES.find(t => t.id === selectedTemplateId);
+          onMessageSent({
+            templateLabel: templateObj?.label || 'Custom Message',
+            messageText: customMessage.trim(),
+            recipientPhone: cleanPhone,
+            channel: 'TWILIO_WHATSAPP_GATEWAY'
+          });
+        }
+        setTimeout(() => onClose(), 1500);
+      } else {
+        setTwilioStatus({ success: false, message: res.message || 'Failed to dispatch via Twilio.' });
+      }
+    } catch (err) {
+      setTwilioStatus({ success: false, message: err.response?.data?.message || err.message || 'Twilio Gateway dispatch failed.' });
+    } finally {
+      setIsSendingTwilio(false);
+    }
   };
 
   return (
@@ -311,16 +346,36 @@ export default function WhatsAppComposeModal({
             />
           </div>
 
+          {/* Twilio Status Feedback */}
+          {twilioStatus && (
+            <div style={{
+              padding: '8px 12px',
+              borderRadius: '8px',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: twilioStatus.success ? '#ecfdf5' : '#fef2f2',
+              color: twilioStatus.success ? '#047857' : '#b91c1c',
+              border: `1px solid ${twilioStatus.success ? '#a7f3d0' : '#fecaca'}`
+            }}>
+              {twilioStatus.success ? <Check size={14} /> : <X size={14} />}
+              <span>{twilioStatus.message}</span>
+            </div>
+          )}
+
           {/* Action Footer */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '4px', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
               * Automatically logs to client audit timeline
             </div>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={onClose}
+                disabled={isSendingTwilio}
                 style={{
                   padding: '7px 14px',
                   borderRadius: '7px',
@@ -329,7 +384,7 @@ export default function WhatsAppComposeModal({
                   color: '#475569',
                   fontSize: '0.78rem',
                   fontWeight: 600,
-                  cursor: 'pointer'
+                  cursor: isSendingTwilio ? 'not-allowed' : 'pointer'
                 }}
               >
                 Cancel
@@ -338,7 +393,32 @@ export default function WhatsAppComposeModal({
               <button
                 type="button"
                 onClick={handleSendWhatsApp}
-                disabled={!cleanPhone || !customMessage.trim()}
+                disabled={!cleanPhone || !customMessage.trim() || isSendingTwilio}
+                title="Opens WhatsApp Web or Desktop App (Free)"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '7px',
+                  border: '1px solid #16a34a',
+                  background: '#ffffff',
+                  color: '#16a34a',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: !cleanPhone || !customMessage.trim() || isSendingTwilio ? 'not-allowed' : 'pointer',
+                  opacity: !cleanPhone || !customMessage.trim() || isSendingTwilio ? 0.6 : 1
+                }}
+              >
+                <WhatsAppIcon size={14} color="#16a34a" />
+                <span>Open in WhatsApp</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSendViaTwilioApi}
+                disabled={!cleanPhone || !customMessage.trim() || isSendingTwilio}
+                title="Dispatches directly via Twilio Cloud WhatsApp Gateway API"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -346,17 +426,17 @@ export default function WhatsAppComposeModal({
                   padding: '7px 16px',
                   borderRadius: '7px',
                   border: 'none',
-                  background: '#22c55e',
+                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
                   color: '#ffffff',
                   fontSize: '0.78rem',
                   fontWeight: 700,
-                  cursor: !cleanPhone || !customMessage.trim() ? 'not-allowed' : 'pointer',
-                  opacity: !cleanPhone || !customMessage.trim() ? 0.6 : 1,
-                  boxShadow: '0 2px 6px rgba(34, 197, 94, 0.3)'
+                  cursor: !cleanPhone || !customMessage.trim() || isSendingTwilio ? 'not-allowed' : 'pointer',
+                  opacity: !cleanPhone || !customMessage.trim() || isSendingTwilio ? 0.6 : 1,
+                  boxShadow: '0 2px 6px rgba(5, 150, 105, 0.3)'
                 }}
               >
-                <WhatsAppIcon size={14} color="#ffffff" />
-                <span>Open in WhatsApp</span>
+                <Send size={13} color="#ffffff" />
+                <span>{isSendingTwilio ? 'Dispatching...' : '⚡ Send via Twilio API'}</span>
               </button>
             </div>
           </div>

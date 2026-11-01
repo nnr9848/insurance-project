@@ -530,6 +530,10 @@ export const portalService = {
     const res = await api.post('/admin/settings/twilio-whatsapp/test', { testPhone });
     return res.data;
   },
+  sendDirectWhatsAppMessage: async (recipientPhone, messageBody) => {
+    const res = await api.post('/admin/outreach/whatsapp/send', { recipientPhone, messageBody });
+    return res.data;
+  },
   broadcastWhatsAppOffers: async (payload) => {
     const res = await api.post('/admin/broadcasts/whatsapp', payload);
     return res.data;
