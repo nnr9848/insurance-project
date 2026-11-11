@@ -713,21 +713,21 @@ export default function LegalCompliance() {
         </div>
       </div>
 
-      {/* Full-Screen Certificate Lightbox Modal (Rule 10 Compliant: Crisp zero-blur overlay) */}
+      {/* Full-Screen Certificate Lightbox Modal (WhatsApp & macOS QuickLook Style) */}
       {isCertificateLightboxOpen && (
         <div 
           onClick={() => setIsCertificateLightboxOpen(false)}
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.85)',
+            background: 'rgba(15, 23, 42, 0.88)',
             backdropFilter: 'none',
             WebkitBackdropFilter: 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 9999,
-            padding: '1.5rem'
+            padding: '1rem'
           }}
         >
           <div 
@@ -736,30 +736,46 @@ export default function LegalCompliance() {
               position: 'relative',
               background: '#ffffff',
               borderRadius: '16px',
-              maxWidth: '680px',
-              width: '100%',
-              maxHeight: '92vh',
+              width: 'fit-content',
+              maxWidth: '92vw',
+              maxHeight: '94vh',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.45)',
-              overflow: 'hidden'
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.55)',
+              overflow: 'hidden',
+              border: '1px solid rgba(255, 255, 255, 0.15)'
             }}
           >
-            {/* Modal Header */}
+            {/* Minimalist Floating Toolbar (Hugs Document Width) */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '1rem 1.5rem',
+              gap: '1.5rem',
+              padding: '0.75rem 1.25rem',
               borderBottom: '1px solid #e2e8f0',
               background: '#f8fafc'
             }}>
-              <div>
-                <div style={{ fontWeight: 800, color: 'var(--primary-navy)', fontSize: '1.05rem' }}>
-                  IRDAI Certificate of Registration
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '6px',
+                  background: '#ecfdf5',
+                  border: '1px solid #a7f3d0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <CheckCircle2 size={15} color="#059669" />
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                  Registration No: <strong>{businessProfile?.irdaiRegistrationNo || 'IMF11120720260994'}</strong>
+                <div>
+                  <div style={{ fontWeight: 800, color: 'var(--primary-navy)', fontSize: '0.92rem', lineHeight: 1.2 }}>
+                    IRDAI Registration Certificate
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                    Reg No: <strong style={{ color: '#0284c7' }}>{businessProfile?.irdaiRegistrationNo || 'IMF11120720260994'}</strong>
+                  </div>
                 </div>
               </div>
 
@@ -768,20 +784,21 @@ export default function LegalCompliance() {
                   href={irdaiCertificateImg}
                   download="AADHIRAKSHA_IRDAI_IMF_LICENCE.jpg"
                   style={{
-                    padding: '6px 12px',
+                    padding: '6px 14px',
                     borderRadius: '8px',
                     border: '1px solid #cbd5e1',
                     background: '#ffffff',
-                    color: '#334155',
-                    fontSize: '0.78rem',
+                    color: '#1e293b',
+                    fontSize: '0.76rem',
                     fontWeight: 700,
                     textDecoration: 'none',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    gap: '5px',
+                    transition: 'background 0.15s'
                   }}
                 >
-                  <Download size={14} />
+                  <Download size={13} />
                   <span>Download</span>
                 </a>
 
@@ -789,44 +806,44 @@ export default function LegalCompliance() {
                   type="button"
                   onClick={() => setIsCertificateLightboxOpen(false)}
                   style={{
-                    width: '32px',
-                    height: '32px',
+                    width: '30px',
+                    height: '30px',
                     borderRadius: '8px',
                     border: 'none',
                     background: '#e2e8f0',
-                    color: '#475569',
+                    color: '#334155',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    transition: 'background 0.15s'
                   }}
+                  title="Close (Esc)"
                 >
-                  <X size={18} />
+                  <X size={17} />
                 </button>
               </div>
             </div>
 
-            {/* Modal Image Body with true document aspect ratio preservation */}
+            {/* Document Viewer Body (Zero wasted margin, preserves true A4 ratio) */}
             <div style={{
-              padding: '1.25rem',
               overflowY: 'auto',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              background: '#f1f5f9'
+              background: '#f8fafc',
+              padding: 0
             }}>
               <img 
                 src={irdaiCertificateImg} 
                 alt="Aadhiraksha IRDAI License Certificate" 
                 style={{
-                  maxWidth: '100%',
-                  maxHeight: 'calc(92vh - 120px)',
+                  display: 'block',
+                  maxHeight: 'calc(94vh - 65px)',
+                  maxWidth: '92vw',
                   width: 'auto',
                   height: 'auto',
-                  objectFit: 'contain',
-                  borderRadius: '6px',
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                  display: 'block'
+                  objectFit: 'contain'
                 }}
               />
             </div>
