@@ -473,7 +473,10 @@ export default function LegalCompliance() {
                     border: '2px solid #e2e8f0',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
                     background: '#ffffff',
-                    maxHeight: '260px',
+                    height: '280px',
+                    width: '100%',
+                    maxWidth: '320px',
+                    margin: '0 auto',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
@@ -485,8 +488,9 @@ export default function LegalCompliance() {
                     style={{
                       width: '100%',
                       height: '100%',
-                      objectFit: 'cover',
-                      display: 'block'
+                      objectFit: 'contain',
+                      display: 'block',
+                      background: '#f8fafc'
                     }}
                   />
                   <div style={{
@@ -732,7 +736,7 @@ export default function LegalCompliance() {
               position: 'relative',
               background: '#ffffff',
               borderRadius: '16px',
-              maxWidth: '900px',
+              maxWidth: '680px',
               width: '100%',
               maxHeight: '92vh',
               display: 'flex',
@@ -802,22 +806,27 @@ export default function LegalCompliance() {
               </div>
             </div>
 
-            {/* Modal Image Body */}
+            {/* Modal Image Body with true document aspect ratio preservation */}
             <div style={{
-              padding: '1rem',
+              padding: '1.25rem',
               overflowY: 'auto',
               display: 'flex',
               justifyContent: 'center',
-              background: '#0f172a'
+              alignItems: 'center',
+              background: '#f1f5f9'
             }}>
               <img 
                 src={irdaiCertificateImg} 
                 alt="Aadhiraksha IRDAI License Certificate" 
                 style={{
                   maxWidth: '100%',
+                  maxHeight: 'calc(92vh - 120px)',
+                  width: 'auto',
                   height: 'auto',
+                  objectFit: 'contain',
                   borderRadius: '6px',
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+                  display: 'block'
                 }}
               />
             </div>
