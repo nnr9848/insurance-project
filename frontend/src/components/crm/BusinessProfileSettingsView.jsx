@@ -393,7 +393,7 @@ export default function BusinessProfileSettingsView() {
                 name="irdaiRegistrationNo"
                 value={formData.irdaiRegistrationNo}
                 onChange={handleChange}
-                placeholder="e.g. IRDAI/IMF/TS/2026/00482"
+                placeholder="e.g. IMF11120720260994"
                 style={{
                   width: '100%',
                   padding: '8px 12px',

@@ -11,8 +11,12 @@ import {
   Mail, 
   MapPin,
   CheckCircle2,
-  ChevronRight
+  ChevronRight,
+  Download,
+  Eye,
+  X
 } from 'lucide-react';
+import irdaiCertificateImg from '../assets/docs/Licence Copy AADHIRAKSHA IMF  FINANCIAL SERVICES PRIVATE LIMITED.jpg';
 import { useBusinessProfile } from '../context/BusinessProfileContext';
 import { useAuth } from '../context/AuthContext';
 import InContextPageEditorModal, { InContextAdminBar, SectionEditTrigger } from '../components/common/InContextPageEditorModal';
@@ -92,6 +96,7 @@ export default function LegalCompliance() {
   };
 
   const [activeTab, setActiveTab] = useState(getTabFromPath());
+  const [isCertificateLightboxOpen, setIsCertificateLightboxOpen] = useState(false);
 
   useEffect(() => {
     setActiveTab(getTabFromPath());
@@ -444,6 +449,174 @@ export default function LegalCompliance() {
 
               <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '1.25rem 0 1.5rem' }} />
 
+              {/* Official IRDAI Registration Certificate Showcase Card */}
+              <div style={{
+                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                border: '1.5px solid #cbd5e1',
+                borderRadius: '16px',
+                padding: 'clamp(1.25rem, 2.5vw, 1.75rem)',
+                marginBottom: '2rem',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                gap: '1.5rem',
+                alignItems: 'center',
+                boxShadow: '0 2px 8px rgba(15, 43, 72, 0.04)'
+              }}>
+                {/* Certificate Preview Frame with Click-to-Zoom */}
+                <div 
+                  onClick={() => setIsCertificateLightboxOpen(true)}
+                  style={{
+                    position: 'relative',
+                    cursor: 'pointer',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    border: '2px solid #e2e8f0',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+                    background: '#ffffff',
+                    maxHeight: '260px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <img 
+                    src={irdaiCertificateImg} 
+                    alt="IRDAI Registration Certificate - Aadhiraksha" 
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block'
+                    }}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(15, 23, 42, 0.45)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    transition: 'background 0.2s'
+                  }}>
+                    <div style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      background: 'rgba(255, 255, 255, 0.95)',
+                      color: 'var(--primary-navy)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Eye size={20} />
+                    </div>
+                    <span>Click to View Full Certificate</span>
+                  </div>
+                </div>
+
+                {/* Certificate Details & Actions */}
+                <div>
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    background: '#ecfdf5',
+                    border: '1px solid #a7f3d0',
+                    color: '#065f46',
+                    fontSize: '0.74rem',
+                    fontWeight: 800,
+                    marginBottom: '8px'
+                  }}>
+                    <CheckCircle2 size={13} color="#059669" />
+                    <span>IRDAI AUTHORIZED INTERMEDIARY</span>
+                  </div>
+
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--primary-navy)', margin: '0 0 6px 0' }}>
+                    Certificate of Registration
+                  </h3>
+
+                  <div style={{ fontSize: '0.82rem', color: '#475569', marginBottom: '1rem', lineHeight: 1.55 }}>
+                    Issued under Section 3 of Insurance Regulatory and Development Authority of India (Insurance Marketing Firm) Regulations, 2015.
+                  </div>
+
+                  <div style={{
+                    background: '#ffffff',
+                    borderRadius: '10px',
+                    padding: '10px 14px',
+                    border: '1px solid #e2e8f0',
+                    marginBottom: '1.25rem',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                    gap: '10px'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Registration No</div>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#0284c7', letterSpacing: '0.3px', marginTop: '2px' }}>
+                        {businessProfile?.irdaiRegistrationNo || 'IMF11120720260994'}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Intermediary Category</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', marginTop: '2px' }}>
+                        Insurance Marketing Firm (IMF)
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsCertificateLightboxOpen(true)}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '9px',
+                        border: 'none',
+                        background: 'var(--primary-navy)',
+                        color: '#ffffff',
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Eye size={15} />
+                      <span>Inspect Certificate</span>
+                    </button>
+
+                    <a
+                      href={irdaiCertificateImg}
+                      download="AADHIRAKSHA_IRDAI_IMF_LICENCE.jpg"
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '9px',
+                        border: '1.5px solid #cbd5e1',
+                        background: '#ffffff',
+                        color: '#334155',
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        textDecoration: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Download size={15} />
+                      <span>Download Copy</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+
               <div 
                 className="legal-document-content"
                 dangerouslySetInnerHTML={{ __html: businessProfile?.legalDisclaimerDocumentHtml || DEFAULT_DISCLAIMER_HTML }}
@@ -535,6 +708,122 @@ export default function LegalCompliance() {
 
         </div>
       </div>
+
+      {/* Full-Screen Certificate Lightbox Modal (Rule 10 Compliant: Crisp zero-blur overlay) */}
+      {isCertificateLightboxOpen && (
+        <div 
+          onClick={() => setIsCertificateLightboxOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.85)',
+            backdropFilter: 'none',
+            WebkitBackdropFilter: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '1.5rem'
+          }}
+        >
+          <div 
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              background: '#ffffff',
+              borderRadius: '16px',
+              maxWidth: '900px',
+              width: '100%',
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.45)',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '1rem 1.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              background: '#f8fafc'
+            }}>
+              <div>
+                <div style={{ fontWeight: 800, color: 'var(--primary-navy)', fontSize: '1.05rem' }}>
+                  IRDAI Certificate of Registration
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  Registration No: <strong>{businessProfile?.irdaiRegistrationNo || 'IMF11120720260994'}</strong>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <a
+                  href={irdaiCertificateImg}
+                  download="AADHIRAKSHA_IRDAI_IMF_LICENCE.jpg"
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#334155',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Download size={14} />
+                  <span>Download</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => setIsCertificateLightboxOpen(false)}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: '#e2e8f0',
+                    color: '#475569',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Image Body */}
+            <div style={{
+              padding: '1rem',
+              overflowY: 'auto',
+              display: 'flex',
+              justifyContent: 'center',
+              background: '#0f172a'
+            }}>
+              <img 
+                src={irdaiCertificateImg} 
+                alt="Aadhiraksha IRDAI License Certificate" 
+                style={{
+                  maxWidth: '100%',
+                  height: 'auto',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

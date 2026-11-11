@@ -78,7 +78,7 @@ export default function About() {
   const email = businessProfile?.supportEmail || 'info@aadhirakshainsurance.com';
   const address1 = businessProfile?.officeAddressLine1 || 'Plot No.1, 2nd Floor, Sarva Sukhi Colony,';
   const address2 = businessProfile?.officeAddressLine2 || 'West Marredpally, Hyderabad, Telangana. 500026';
-  const irdaiNo = businessProfile?.irdaiRegistrationNo || 'IRDAI/IMF/TS/2026/00482';
+  const irdaiNo = businessProfile?.irdaiRegistrationNo || 'IMF11120720260994';
 
   // Dynamic Gallery items with fallback to curated high-resolution imagery
   const defaultGalleryItems = [

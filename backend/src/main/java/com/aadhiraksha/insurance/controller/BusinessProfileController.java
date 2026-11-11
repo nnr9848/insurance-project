@@ -52,7 +52,7 @@ public class BusinessProfileController {
             fallback.setState("Telangana");
             fallback.setPostalCode("500026");
             fallback.setBusinessHours("Mon - Sat, 9:30 AM to 6:30 PM");
-            fallback.setIrdaiRegistrationNo("IRDAI/IMF/TS/2026/00482");
+            fallback.setIrdaiRegistrationNo("IMF11120720260994");
             fallback.setLinkedinUrl("https://www.linkedin.com/in/aadhiraksha-insurance-b45215410/");
             return repository.save(fallback);
         });

@@ -17,7 +17,7 @@ const defaultBusinessProfile = {
   state: 'Telangana',
   postalCode: '500026',
   businessHours: 'Mon - Sat, 9:30 AM to 6:30 PM',
-  irdaiRegistrationNo: 'IRDAI/IMF/TS/2026/00482',
+  irdaiRegistrationNo: 'IMF11120720260994',
   googleMapsUrl: 'https://maps.google.com/?q=Plot+No.1+Sarva+Sukhi+Colony+West+Marredpally+Hyderabad+500026',
   googleReviewUrl: 'https://maps.google.com/?q=Aadhiraksha+Insurance+Marketing+West+Marredpally+Hyderabad',
   linkedinUrl: 'https://www.linkedin.com/in/aadhiraksha-insurance-b45215410/',
