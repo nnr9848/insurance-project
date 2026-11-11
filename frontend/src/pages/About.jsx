@@ -76,8 +76,8 @@ export default function About() {
   const phone = businessProfile?.primaryPhone || '+91 8367415156';
   const cleanPhone = phone.replace(/\s+/g, '');
   const email = businessProfile?.supportEmail || 'info@aadhirakshainsurance.com';
-  const address1 = businessProfile?.officeAddressLine1 || '4th Floor, Mytri Constructions,';
-  const address2 = businessProfile?.officeAddressLine2 || 'Opp: ECIL Busstop, ECIL, Hyderabad.';
+  const address1 = businessProfile?.officeAddressLine1 || 'Plot No.1, 2nd Floor, Sarva Sukhi Colony,';
+  const address2 = businessProfile?.officeAddressLine2 || 'West Marredpally, Hyderabad, Telangana. 500026';
   const irdaiNo = businessProfile?.irdaiRegistrationNo || 'IRDAI/IMF/TS/2026/00482';
 
   // Dynamic Gallery items with fallback to curated high-resolution imagery
@@ -86,7 +86,7 @@ export default function About() {
       id: 1,
       category: 'office',
       title: 'Corporate Headquarters & Advisory Suite',
-      subtitle: 'ECIL, Hyderabad - 4th Floor Mytri Constructions',
+      subtitle: 'West Marredpally, Hyderabad - Plot No.1, 2nd Floor, Sarva Sukhi Colony',
       image: businessHero,
       tag: 'Headquarters'
     },
@@ -129,7 +129,7 @@ export default function About() {
     {
       id: 'album-hq',
       title: 'Corporate Headquarters & Advisory Suites',
-      subtitle: 'ECIL, Hyderabad - 4th Floor Mytri Constructions',
+      subtitle: 'West Marredpally, Hyderabad - Plot No.1, 2nd Floor, Sarva Sukhi Colony',
       category: 'office',
       tag: 'Headquarters',
       coverImage: businessHero,
@@ -364,14 +364,14 @@ export default function About() {
           {
             name: 'officeAddressLine1',
             label: 'Office Suite & Building',
-            defaultValue: '4th Floor, Mytri Constructions,',
-            placeholder: 'e.g. 4th Floor, Mytri Constructions,'
+            defaultValue: 'Plot No.1, 2nd Floor, Sarva Sukhi Colony,',
+            placeholder: 'e.g. Plot No.1, 2nd Floor, Sarva Sukhi Colony,'
           },
           {
             name: 'officeAddressLine2',
             label: 'Street, City & Pincode',
-            defaultValue: 'Opp: ECIL Busstop, ECIL, Hyderabad.',
-            placeholder: 'e.g. Opp: ECIL Busstop, ECIL, Hyderabad.'
+            defaultValue: 'West Marredpally, Hyderabad, Telangana. 500026',
+            placeholder: 'e.g. West Marredpally, Hyderabad, Telangana. 500026'
           },
           {
             name: 'primaryPhone',
@@ -605,7 +605,7 @@ export default function About() {
               {
                 icon: <Building2 size={24} color="#7c3aed" />,
                 title: 'Physical Brick-and-Mortar Presence',
-                desc: 'Centrally located at ECIL Hyderabad with open walk-in desks for policy servicing, claims verification, and loan advisory.'
+                desc: 'Centrally located at West Marredpally, Hyderabad with open walk-in desks for policy servicing, claims verification, and loan advisory.'
               }
             ].map((pillar, idx) => (
               <div 

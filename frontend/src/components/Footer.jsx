@@ -43,8 +43,8 @@ export default function Footer() {
   const phone = businessProfile?.primaryPhone || '+91 8367415156';
   const cleanPhone = phone.replace(/\s+/g, '');
   const email = businessProfile?.supportEmail || 'info@aadhirakshainsurance.com';
-  const addressLine1 = businessProfile?.officeAddressLine1 || '4th Floor, Mytri Constructions,';
-  const addressLine2 = businessProfile?.officeAddressLine2 || 'Opp: ECIL Busstop, ECIL, Hyderabad.';
+  const addressLine1 = businessProfile?.officeAddressLine1 || 'Plot No.1, 2nd Floor, Sarva Sukhi Colony,';
+  const addressLine2 = businessProfile?.officeAddressLine2 || 'West Marredpally, Hyderabad, Telangana. 500026';
   const irdaiNo = businessProfile?.irdaiRegistrationNo || 'IRDAI/IMF/TS/2026/00482';
   const mapsLink = businessProfile?.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(`${addressLine1} ${addressLine2}`)}`;
 

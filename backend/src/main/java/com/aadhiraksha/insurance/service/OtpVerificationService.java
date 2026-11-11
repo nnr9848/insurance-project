@@ -63,9 +63,17 @@ public class OtpVerificationService {
         log.info("[OTP SERVICE] Generated OTP for +91 {}: {} (Expires in 5 minutes. Dev Master: {})", 
                 phone, otp, DEV_MASTER_OTP);
 
-        // Dispatch via Twilio SMS Service (or mock fallback if credentials not configured)
+        // Dispatch via Twilio SMS Service
         String smsBody = String.format("Your Aadhiraksha Insurance verification code is %s. Valid for 5 minutes. Please do not share this OTP with anyone.", otp);
-        twilioSmsService.sendSms("+91" + phone, smsBody);
+        TwilioSmsService.SmsDispatchResult dispatchResult = twilioSmsService.sendSmsDetailed("+91" + phone, smsBody);
+
+        if (!dispatchResult.success()) {
+            log.error("[OTP SERVICE] SMS dispatch failed: {} ({})", dispatchResult.errorMessage(), dispatchResult.errorCode());
+            // If Twilio is explicitly configured and rejects the dispatch, fail fast with true provider status
+            if (twilioSmsService.isTwilioEnabled()) {
+                throw new IllegalStateException(dispatchResult.errorMessage());
+            }
+        }
 
         return "OTP sent successfully to +91 " + phone;
     }

@@ -149,7 +149,7 @@ export default function BusinessProfileSettingsView() {
         id: 1,
         category: 'office',
         title: 'Corporate Headquarters & Advisory Suite',
-        subtitle: 'ECIL, Hyderabad - 4th Floor Mytri Constructions',
+        subtitle: 'West Marredpally, Hyderabad - Plot No.1, 2nd Floor, Sarva Sukhi Colony',
         imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
         tag: 'Headquarters'
       },
@@ -614,7 +614,7 @@ export default function BusinessProfileSettingsView() {
                 name="officeAddressLine1"
                 value={formData.officeAddressLine1}
                 onChange={handleChange}
-                placeholder="4th Floor, Mytri Constructions,"
+                placeholder="Plot No.1, 2nd Floor, Sarva Sukhi Colony,"
                 required
                 style={{
                   width: '100%',
@@ -635,7 +635,7 @@ export default function BusinessProfileSettingsView() {
                 name="officeAddressLine2"
                 value={formData.officeAddressLine2}
                 onChange={handleChange}
-                placeholder="Opp: ECIL Busstop, ECIL, Hyderabad."
+                placeholder="West Marredpally, Hyderabad, Telangana."
                 required
                 style={{
                   width: '100%',
@@ -696,7 +696,7 @@ export default function BusinessProfileSettingsView() {
                 name="postalCode"
                 value={formData.postalCode}
                 onChange={handleChange}
-                placeholder="500062"
+                placeholder="500026"
                 style={{
                   width: '100%',
                   padding: '8px 12px',
@@ -732,7 +732,7 @@ export default function BusinessProfileSettingsView() {
                 name="googleMapsUrl"
                 value={formData.googleMapsUrl}
                 onChange={handleChange}
-                placeholder="https://maps.google.com/?q=Mytri+Constructions+ECIL+Hyderabad"
+                placeholder="https://maps.google.com/?q=Plot+No.1+Sarva+Sukhi+Colony+West+Marredpally+Hyderabad+500026"
                 style={{
                   width: '100%',
                   padding: '8px 12px',
@@ -755,7 +755,7 @@ export default function BusinessProfileSettingsView() {
                 name="googleReviewUrl"
                 value={formData.googleReviewUrl}
                 onChange={handleChange}
-                placeholder="https://maps.google.com/?q=Aadhiraksha+Insurance+Marketing+ECIL+Hyderabad"
+                placeholder="https://maps.google.com/?q=Aadhiraksha+Insurance+Marketing+West+Marredpally+Hyderabad"
                 style={{
                   width: '100%',
                   padding: '8px 12px',
@@ -794,7 +794,7 @@ export default function BusinessProfileSettingsView() {
                 name="linkedinUrl"
                 value={formData.linkedinUrl}
                 onChange={handleChange}
-                placeholder="https://www.linkedin.com/company/aadhiraksha-insurance/"
+                placeholder="https://www.linkedin.com/in/aadhiraksha-insurance-b45215410/"
                 style={{
                   width: '100%',
                   padding: '8px 12px',

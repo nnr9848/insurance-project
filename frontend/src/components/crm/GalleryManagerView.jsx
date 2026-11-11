@@ -90,7 +90,7 @@ export default function GalleryManagerView() {
               {
                 id: 'album-hq',
                 title: 'Headquarters & Advisory Suites',
-                subtitle: 'ECIL, Hyderabad - 4th Floor Mytri Constructions',
+                subtitle: 'West Marredpally, Hyderabad - Plot No.1, 2nd Floor, Sarva Sukhi Colony',
                 category: 'office',
                 tag: 'Headquarters',
                 photos: raw.filter(p => p.category === 'office')
@@ -147,7 +147,7 @@ export default function GalleryManagerView() {
         {
           id: 'album-hq',
           title: 'Corporate Headquarters & Advisory Suites',
-          subtitle: 'ECIL, Hyderabad - 4th Floor Mytri Constructions',
+          subtitle: 'West Marredpally, Hyderabad - Plot No.1, 2nd Floor, Sarva Sukhi Colony',
           category: 'office',
           tag: 'Headquarters',
           photos: [
@@ -257,7 +257,7 @@ export default function GalleryManagerView() {
       {
         id: 'album-hq',
         title: 'Corporate Headquarters & Advisory Suites',
-        subtitle: 'ECIL, Hyderabad - 4th Floor Mytri Constructions',
+        subtitle: 'West Marredpally, Hyderabad - Plot No.1, 2nd Floor, Sarva Sukhi Colony',
         category: 'office',
         tag: 'Headquarters',
         photos: [

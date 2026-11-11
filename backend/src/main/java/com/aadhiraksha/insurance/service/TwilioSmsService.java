@@ -37,15 +37,24 @@ public class TwilioSmsService {
     @Value("${twilio.enabled:false}")
     private boolean envTwilioEnabled;
 
+    public record SmsDispatchResult(boolean success, String errorMessage, String errorCode) {}
+
     /**
      * Sends an SMS message to recipientPhone using Twilio Programmable Messaging API.
      * Uses enterprise API Key SID (SK...) and API Key Secret for HTTP Basic Authentication on behalf of Account SID.
      */
     public boolean sendSms(String recipientPhone, String messageBody) {
+        return sendSmsDetailed(recipientPhone, messageBody).success();
+    }
+
+    /**
+     * Sends an SMS message and returns detailed status with provider feedback.
+     */
+    public SmsDispatchResult sendSmsDetailed(String recipientPhone, String messageBody) {
         String cleanPhone = sanitizePhoneNumber(recipientPhone);
         if (cleanPhone.isEmpty()) {
             log.warn("[Twilio SMS] Cannot send SMS to blank or invalid phone number.");
-            return false;
+            return new SmsDispatchResult(false, "Cannot send SMS to blank or invalid phone number", "INVALID_PHONE");
         }
 
         String accountSid = getAccountSid();
@@ -57,7 +66,7 @@ public class TwilioSmsService {
         if (!isEnabled || accountSid.isBlank() || apiKeySid.isBlank() || apiKeySecret.isBlank() || fromNumber.isBlank()) {
             log.info("[Twilio SMS MOCK] Twilio not enabled or API Key credentials blank. Message to {}: {}", 
                     cleanPhone, messageBody);
-            return false;
+            return new SmsDispatchResult(false, "SMS provider is not configured or disabled in system settings.", "PROVIDER_NOT_CONFIGURED");
         }
 
         String destinationPhone = cleanPhone.startsWith("+") ? cleanPhone : "+91" + cleanPhone;
@@ -86,10 +95,10 @@ public class TwilioSmsService {
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 log.info("[Twilio SMS SUCCESS] Dispatched SMS to {} (HTTP {})", destinationPhone, response.getStatusCode());
-                return true;
+                return new SmsDispatchResult(true, null, null);
             } else {
                 log.error("[Twilio SMS ERROR] Twilio returned status {}: {}", response.getStatusCode(), response.getBody());
-                return false;
+                return new SmsDispatchResult(false, "Twilio dispatch returned status " + response.getStatusCode(), "TWILIO_ERROR");
             }
 
         } catch (org.springframework.web.client.HttpStatusCodeException ex) {
@@ -100,13 +109,38 @@ public class TwilioSmsService {
             if (errorBody != null && errorBody.contains("572006") && !messageBody.equals("sms_appointment_reminders")) {
                 log.warn("[Twilio SMS TRIAL NOTICE] Account is in Twilio Trial mode (Error 572006). "
                         + "Automatically retrying with Twilio trial template 'sms_appointment_reminders' to ensure phone delivery.");
-                return dispatchTwilioHttpRequest(accountSid, apiKeySid, apiKeySecret, fromNumber, destinationPhone, "sms_appointment_reminders");
+                boolean retrySuccess = dispatchTwilioHttpRequest(accountSid, apiKeySid, apiKeySecret, fromNumber, destinationPhone, "sms_appointment_reminders");
+                if (retrySuccess) {
+                    return new SmsDispatchResult(true, null, null);
+                }
             }
 
-            return false;
+            String humanMsg = "SMS delivery blocked by provider: ";
+            String errCode = "TWILIO_" + ex.getStatusCode().value();
+
+            if (errorBody != null && (errorBody.contains("21211") || errorBody.contains("invalid 'To' Phone Number"))) {
+                humanMsg += "The recipient phone number is invalid or not accepted by Twilio.";
+                errCode = "TWILIO_21211_INVALID_NUMBER";
+            } else if (errorBody != null && (errorBody.contains("21608") || errorBody.contains("unverified"))) {
+                humanMsg += "Trial account restriction: This phone number is not verified in your Twilio Console.";
+                errCode = "TWILIO_21608_UNVERIFIED_NUMBER";
+            } else if (errorBody != null && (errorBody.contains("21408") || errorBody.contains("Permission to send an SMS has not been enabled"))) {
+                humanMsg += "Geo-permissions blocked: Twilio SMS to India (+91) is not enabled in your Twilio Console.";
+                errCode = "TWILIO_21408_GEO_RESTRICTED";
+            } else if (errorBody != null && errorBody.contains("60238")) {
+                humanMsg += "Twilio Fraud Guard has blocked SMS to this destination.";
+                errCode = "TWILIO_60238_FRAUD_RESTRICTED";
+            } else if (errorBody != null && errorBody.contains("message")) {
+                // Extract Twilio message field if available
+                humanMsg += "Twilio rejected message dispatch (HTTP " + ex.getStatusCode().value() + ").";
+            } else {
+                humanMsg += "HTTP " + ex.getStatusCode().value();
+            }
+
+            return new SmsDispatchResult(false, humanMsg, errCode);
         } catch (Exception ex) {
             log.error("[Twilio SMS EXCEPTION] Error dispatching SMS via Twilio to {}: {}", destinationPhone, ex.getMessage());
-            return false;
+            return new SmsDispatchResult(false, "Error dispatching SMS: " + ex.getMessage(), "DISPATCH_EXCEPTION");
         }
     }
 

@@ -46,13 +46,14 @@ public class BusinessProfileController {
             fallback.setSupportEmail("info@aadhirakshainsurance.com");
             fallback.setClaimsEmail("claims@aadhirakshainsurance.com");
             fallback.setWebsiteUrl("https://www.aadhirakshainsurance.com");
-            fallback.setOfficeAddressLine1("4th Floor, Mytri Constructions,");
-            fallback.setOfficeAddressLine2("Opp: ECIL Busstop, ECIL, Hyderabad.");
+            fallback.setOfficeAddressLine1("Plot No.1, 2nd Floor, Sarva Sukhi Colony,");
+            fallback.setOfficeAddressLine2("West Marredpally, Hyderabad, Telangana.");
             fallback.setCity("Hyderabad");
             fallback.setState("Telangana");
-            fallback.setPostalCode("500062");
+            fallback.setPostalCode("500026");
             fallback.setBusinessHours("Mon - Sat, 9:30 AM to 6:30 PM");
             fallback.setIrdaiRegistrationNo("IRDAI/IMF/TS/2026/00482");
+            fallback.setLinkedinUrl("https://www.linkedin.com/in/aadhiraksha-insurance-b45215410/");
             return repository.save(fallback);
         });
         return ResponseEntity.ok(profile);

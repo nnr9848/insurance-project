@@ -223,8 +223,8 @@ export default function LegalCompliance() {
             label: 'Level 1: Physical Redressal Office Suite',
             type: 'textarea',
             rows: 2,
-            defaultValue: '4th Floor, Mytri Constructions, Opp: ECIL Busstop, ECIL, Hyderabad.',
-            placeholder: 'e.g. 4th Floor, Mytri Constructions, Opp: ECIL Busstop, ECIL, Hyderabad.'
+            defaultValue: 'Plot No.1, 2nd Floor, Sarva Sukhi Colony, West Marredpally, Hyderabad, Telangana. 500026',
+            placeholder: 'e.g. Plot No.1, 2nd Floor, Sarva Sukhi Colony, West Marredpally, Hyderabad, Telangana. 500026'
           }
         ]}
       />
@@ -520,7 +520,7 @@ export default function LegalCompliance() {
                 <div style={{ gridColumn: '1 / -1' }}>
                   <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Registered Redressal Office</div>
                   <div style={{ color: '#334155', marginTop: '2px' }}>
-                    {businessProfile?.legalGrievanceAddress || businessProfile?.registeredOfficeAddress || '4th Floor, Mytri Constructions, Opp: ECIL Busstop, ECIL, Hyderabad.'}
+                    {businessProfile?.legalGrievanceAddress || businessProfile?.registeredOfficeAddress || 'Plot No.1, 2nd Floor, Sarva Sukhi Colony, West Marredpally, Hyderabad, Telangana. 500026'}
                   </div>
                 </div>
               </div>

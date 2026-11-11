@@ -137,15 +137,16 @@ public class BusinessProfile {
     // Google Maps & Reviews Links
     @Builder.Default
     @Column(name = "google_maps_url", columnDefinition = "TEXT")
-    private String googleMapsUrl = "https://maps.google.com/?q=Mytri+Constructions+ECIL+Hyderabad";
+    private String googleMapsUrl = "https://maps.google.com/?q=Plot+No.1+Sarva+Sukhi+Colony+West+Marredpally+Hyderabad+500026";
 
     @Builder.Default
     @Column(name = "google_review_url", columnDefinition = "TEXT")
-    private String googleReviewUrl = "https://maps.google.com/?q=Aadhiraksha+Insurance+Marketing+ECIL+Hyderabad";
+    private String googleReviewUrl = "https://maps.google.com/?q=Aadhiraksha+Insurance+Marketing+West+Marredpally+Hyderabad";
 
     // Social Media Links
+    @Builder.Default
     @Column(name = "linkedin_url")
-    private String linkedinUrl;
+    private String linkedinUrl = "https://www.linkedin.com/in/aadhiraksha-insurance-b45215410/";
 
     @Column(name = "youtube_url")
     private String youtubeUrl;
@@ -228,7 +229,7 @@ public class BusinessProfile {
 
     @Builder.Default
     @Column(name = "legal_grievance_address", columnDefinition = "TEXT")
-    private String legalGrievanceAddress = "4th Floor, Mytri Constructions, Opp: ECIL Busstop, ECIL, Hyderabad.";
+    private String legalGrievanceAddress = "Plot No.1, 2nd Floor, Sarva Sukhi Colony, West Marredpally, Hyderabad, Telangana. 500026";
 
     @Builder.Default
     @Column(name = "legal_grievance_timing", length = 100)
