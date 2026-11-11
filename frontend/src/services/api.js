@@ -368,8 +368,8 @@ export const portalService = {
     const res = await api.get('/categories');
     return res.data;
   },
-  sendOtp: async (phoneNumber) => {
-    const res = await api.post('/portal/otp/send', { phoneNumber });
+  sendOtp: async (phoneNumber, channel = 'sms') => {
+    const res = await api.post('/portal/otp/send', { phoneNumber, channel });
     return res.data;
   },
   verifyOtp: async (phoneNumber, otp) => {

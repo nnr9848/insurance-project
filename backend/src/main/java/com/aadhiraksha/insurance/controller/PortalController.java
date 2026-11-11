@@ -38,11 +38,12 @@ public class PortalController {
 
     // Public OTP Verification Endpoints
     @PostMapping("/portal/otp/send")
-    @Operation(summary = "Send 6-digit verification OTP to mobile number")
+    @Operation(summary = "Send 6-digit verification OTP to mobile number via SMS or WhatsApp")
     public ResponseEntity<Map<String, Object>> sendOtp(@RequestBody Map<String, String> body) {
         String phoneNumber = body.get("phoneNumber");
-        String message = otpVerificationService.generateAndSendOtp(phoneNumber);
-        return ResponseEntity.ok(Map.of("success", true, "message", message));
+        String channel = body.getOrDefault("channel", "sms");
+        String message = otpVerificationService.generateAndSendOtp(phoneNumber, channel);
+        return ResponseEntity.ok(Map.of("success", true, "message", message, "channel", channel));
     }
 
     @PostMapping("/portal/otp/verify")

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShieldCheck, Phone, RefreshCw, X, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Phone, RefreshCw, X, ArrowRight, AlertCircle, CheckCircle2, MessageSquare } from 'lucide-react';
+import WhatsAppIcon from './WhatsAppIcon';
 import { portalService } from '../../services/api';
 
 /**
@@ -23,9 +24,11 @@ export default function GatedOtpModal({
   const [otpSentMsg, setOtpSentMsg] = useState('');
   const inputRefs = useRef([]);
 
+  const [activeChannel, setActiveChannel] = useState('sms');
+
   useEffect(() => {
     if (isOpen && phoneNumber) {
-      handleTriggerSendOtp();
+      handleTriggerSendOtp('sms');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, phoneNumber]);
@@ -45,10 +48,11 @@ export default function GatedOtpModal({
   const handleTriggerSendOtp = async (channel = 'sms') => {
     setErrorMsg('');
     setOtpSentMsg('');
+    setActiveChannel(channel);
     setIsSending(true);
     setOtpDigits(['', '', '', '', '', '']);
     try {
-      const res = await portalService.sendOtp(cleanPhone);
+      const res = await portalService.sendOtp(cleanPhone, channel);
       setOtpSentMsg(res.message || `OTP sent to +91 ${cleanPhone}`);
       setCountdown(60);
       setTimeout(() => {
@@ -56,7 +60,7 @@ export default function GatedOtpModal({
       }, 100);
     } catch (err) {
       const serverMsg = err.response?.data?.message;
-      setErrorMsg(serverMsg || 'Unable to deliver SMS OTP to this number right now. Please verify your mobile number or try again.');
+      setErrorMsg(serverMsg || `Unable to deliver ${channel === 'whatsapp' ? 'WhatsApp' : 'SMS'} OTP to this number right now. Please verify your mobile number or try again.`);
     } finally {
       setIsSending(false);
     }
@@ -319,20 +323,17 @@ export default function GatedOtpModal({
             )}
           </button>
 
-          {/* Resend Action & Validity Info */}
+          {/* Resend Action & WhatsApp Alternative */}
           <div style={{ textAlign: 'center', fontSize: '0.78rem', color: '#64748b' }}>
             {countdown > 0 ? (
-              <div>
+              <div style={{ marginBottom: '0.75rem' }}>
                 <span>Resend code in <strong>{countdown >= 60 ? `${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, '0')}` : `${countdown}s`}</strong></span>
-                <span style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', marginTop: '4px' }}>
-                  Code is valid for 5 minutes
-                </span>
               </div>
             ) : (
-              <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
                 <button
                   type="button"
-                  onClick={handleTriggerSendOtp}
+                  onClick={() => handleTriggerSendOtp('sms')}
                   disabled={isSending}
                   style={{
                     background: 'none',
@@ -340,16 +341,73 @@ export default function GatedOtpModal({
                     color: '#0284c7',
                     fontWeight: 700,
                     cursor: isSending ? 'not-allowed' : 'pointer',
-                    padding: 0
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
                   }}
                 >
-                  {isSending ? 'Sending new code...' : 'Resend Code Now'}
+                  <MessageSquare size={13} />
+                  <span>{isSending && activeChannel === 'sms' ? 'Sending SMS...' : 'Resend via SMS'}</span>
                 </button>
-                <span style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', marginTop: '4px' }}>
-                  Code is valid for 5 minutes
-                </span>
+
+                <span style={{ color: '#cbd5e1' }}>|</span>
+
+                <button
+                  type="button"
+                  onClick={() => handleTriggerSendOtp('whatsapp')}
+                  disabled={isSending}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#16a34a',
+                    fontWeight: 700,
+                    cursor: isSending ? 'not-allowed' : 'pointer',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <WhatsAppIcon size={14} color="#16a34a" />
+                  <span>{isSending && activeChannel === 'whatsapp' ? 'Sending WhatsApp...' : 'Get via WhatsApp'}</span>
+                </button>
               </div>
             )}
+
+            {/* Instant WhatsApp Fallback Button (visible even if error occurred or timer running) */}
+            {errorMsg && (
+              <div style={{ marginTop: '0.5rem', marginBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => handleTriggerSendOtp('whatsapp')}
+                  disabled={isSending}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 1rem',
+                    borderRadius: '10px',
+                    border: '1.5px solid #86efac',
+                    background: '#f0fdf4',
+                    color: '#15803d',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: isSending ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <WhatsAppIcon size={16} color="#15803d" />
+                  <span>{isSending && activeChannel === 'whatsapp' ? 'Dispatching to WhatsApp...' : 'Instant Fix: Send OTP via WhatsApp Instead'}</span>
+                </button>
+              </div>
+            )}
+
+            <span style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8' }}>
+              Code is valid for 5 minutes
+            </span>
           </div>
         </div>
       </div>
