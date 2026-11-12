@@ -44,9 +44,12 @@ import {
   AtSign,
   Users,
   Database,
-  RotateCw
+  RotateCw,
+  X,
+  Key,
+  Plus
 } from 'lucide-react';
-import { portalService } from '../../services/api';
+import { portalService, crmService } from '../../services/api';
 import { useBusinessProfile } from '../../context/BusinessProfileContext';
 import { useToast } from '../../context/ToastContext';
 
@@ -186,6 +189,108 @@ export default function IntegrationsSettingsView() {
   const [copiedMailboxEmail, setCopiedMailboxEmail] = useState(null);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [syncingUserId, setSyncingUserId] = useState(null);
+
+  // In-Context Mailbox Management Drawer State
+  const [managingMailbox, setManagingMailbox] = useState(null);
+  const [drawerSettings, setDrawerSettings] = useState(null);
+  const [drawerLoading, setDrawerLoading] = useState(false);
+  const [newAliasInput, setNewAliasInput] = useState('');
+  const [aliasSaving, setAliasSaving] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState(null);
+
+  const openMailboxDrawer = async (mailbox) => {
+    setManagingMailbox(mailbox);
+    setDrawerSettings(null);
+    setGeneratedPassword(null);
+    setNewAliasInput('');
+    setDrawerLoading(true);
+    try {
+      const settings = await crmService.getMailboxSettings(mailbox.id);
+      setDrawerSettings(settings);
+    } catch (err) {
+      console.error('Failed to load mailbox settings:', err);
+      toast.error('Failed to load mailbox settings: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setDrawerLoading(false);
+    }
+  };
+
+  const closeMailboxDrawer = () => {
+    setManagingMailbox(null);
+    setDrawerSettings(null);
+    setGeneratedPassword(null);
+    setNewAliasInput('');
+  };
+
+  const handleDrawerResetPassword = async () => {
+    if (!managingMailbox) return;
+    setResettingPassword(true);
+    try {
+      const res = await crmService.resetMailboxPassword(managingMailbox.id);
+      setGeneratedPassword(res.newPassword);
+      toast.success('Generated new secure password for ' + managingMailbox.domainMailboxEmail);
+    } catch (err) {
+      console.error('Password reset failed:', err);
+      toast.error('Failed to reset password: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
+  const handleDrawerAddAlias = async (e) => {
+    if (e) e.preventDefault();
+    if (!managingMailbox || !newAliasInput.trim()) return;
+    setAliasSaving(true);
+    try {
+      await crmService.addMailboxAlias(managingMailbox.id, newAliasInput.trim());
+      setNewAliasInput('');
+      const updated = await crmService.getMailboxSettings(managingMailbox.id);
+      setDrawerSettings(updated);
+      await fetchMailboxes();
+      toast.success('Alias added successfully');
+    } catch (err) {
+      console.error('Failed to add alias:', err);
+      toast.error('Failed to add alias: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setAliasSaving(false);
+    }
+  };
+
+  const handleDrawerRemoveAlias = async (aliasEmail) => {
+    if (!managingMailbox) return;
+    setAliasSaving(true);
+    try {
+      await crmService.removeMailboxAlias(managingMailbox.id, aliasEmail);
+      const updated = await crmService.getMailboxSettings(managingMailbox.id);
+      setDrawerSettings(updated);
+      await fetchMailboxes();
+      toast.success('Alias removed');
+    } catch (err) {
+      console.error('Failed to remove alias:', err);
+      toast.error('Failed to remove alias: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setAliasSaving(false);
+    }
+  };
+
+  const handleDrawerSetPrimary = async (newPrimary) => {
+    if (!managingMailbox) return;
+    setAliasSaving(true);
+    try {
+      await crmService.setPrimaryMailboxEmail(managingMailbox.id, newPrimary);
+      setManagingMailbox(prev => ({ ...prev, domainMailboxEmail: newPrimary }));
+      const updated = await crmService.getMailboxSettings(managingMailbox.id);
+      setDrawerSettings(updated);
+      await fetchMailboxes();
+      toast.success(`Primary email updated to ${newPrimary}`);
+    } catch (err) {
+      console.error('Failed to set primary email:', err);
+      toast.error('Failed to update primary email: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setAliasSaving(false);
+    }
+  };
 
   const fetchMailboxes = async () => {
     setMailboxLoading(true);
@@ -2688,8 +2793,8 @@ export default function IntegrationsSettingsView() {
 
                                   <button
                                     type="button"
-                                    onClick={() => navigate('/admin?tab=users')}
-                                    title="Manage user in Team"
+                                    onClick={() => openMailboxDrawer(mb)}
+                                    title="Manage credentials, aliases & server settings"
                                     style={{
                                       padding: '4px 8px',
                                       borderRadius: '6px',
@@ -3591,6 +3696,432 @@ export default function IntegrationsSettingsView() {
                 Close Drawer
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* IN-CONTEXT MAILBOX MANAGEMENT DRAWER (SLIDE-OVER PANEL) */}
+      {/* ========================================================================= */}
+      {managingMailbox && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'none',
+          WebkitBackdropFilter: 'none',
+          zIndex: 9999,
+          display: 'flex',
+          justifyContent: 'flex-end',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            width: '100%',
+            maxWidth: '520px',
+            background: '#ffffff',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '-8px 0 32px rgba(0, 0, 0, 0.18)',
+            animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}>
+            
+            {/* Header */}
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#f8fafc'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: '#ecfdf5',
+                  color: '#059669',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <AtSign size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f2b48' }}>
+                    {managingMailbox.fullName}
+                  </h3>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                    Corporate Mailbox Manager • {managingMailbox.designation || 'Staff'}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeMailboxDrawer}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  background: '#ffffff',
+                  color: '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{
+              padding: '1.5rem',
+              overflowY: 'auto',
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.25rem'
+            }}>
+
+              {/* Primary Address & Status Card */}
+              <div style={{
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '12px',
+                padding: '14px'
+              }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase', marginBottom: '4px' }}>
+                  Primary Email Address
+                </div>
+                <div style={{ fontSize: '0.96rem', fontWeight: 800, color: '#14532d', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>{managingMailbox.domainMailboxEmail}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(managingMailbox.domainMailboxEmail);
+                      toast.success('Copied corporate email to clipboard');
+                    }}
+                    title="Copy Email"
+                    style={{
+                      background: '#dcfce7',
+                      border: '1px solid #86efac',
+                      borderRadius: '6px',
+                      padding: '4px 8px',
+                      color: '#15803d',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Copy size={12} />
+                    Copy
+                  </button>
+                </div>
+                <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    background: '#dcfce7',
+                    color: '#15803d'
+                  }}>
+                    ● Operational (Stalwart)
+                  </span>
+                  <span style={{ fontSize: '0.74rem', color: '#166534' }}>
+                    Quota: {Math.round((managingMailbox.mailboxQuotaMb || 5120) / 1024)} GB (5,120 MB)
+                  </span>
+                </div>
+              </div>
+
+              {/* Password Generator / Reset Section */}
+              <div style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.86rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Key size={16} color="#2563eb" />
+                    Mailbox Access Credentials
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDrawerResetPassword}
+                    disabled={resettingPassword}
+                    style={{
+                      background: '#eff6ff',
+                      color: '#2563eb',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '6px',
+                      padding: '5px 10px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: resettingPassword ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {resettingPassword ? 'Generating...' : 'Generate New Password'}
+                  </button>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.74rem', color: '#64748b', lineHeight: 1.4 }}>
+                  Use this password to log in to Webmail, Outlook, Apple Mail, or Thunderbird.
+                </p>
+
+                {generatedPassword && (
+                  <div style={{
+                    background: '#fef3c7',
+                    border: '1px solid #fde68a',
+                    borderRadius: '8px',
+                    padding: '10px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '10px'
+                  }}>
+                    <div style={{ minWidth: 0 }}>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#92400e', textTransform: 'uppercase', display: 'block' }}>
+                        Temporary Generated Password:
+                      </span>
+                      <code style={{ fontSize: '0.92rem', fontWeight: 800, color: '#78350f', fontFamily: 'monospace' }}>
+                        {generatedPassword}
+                      </code>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedPassword);
+                        toast.success('Password copied to clipboard!');
+                      }}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        padding: '4px 8px',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        color: '#78350f'
+                      }}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Alternate Aliases Manager */}
+              <div style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}>
+                <div style={{ fontWeight: 800, fontSize: '0.86rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Tag size={16} color="#059669" />
+                  Email Aliases & Alternate Handles
+                </div>
+                <p style={{ margin: 0, fontSize: '0.74rem', color: '#64748b' }}>
+                  Emails sent to aliases are delivered to this mailbox with zero quota duplication.
+                </p>
+
+                {/* Add Alias Input */}
+                <form onSubmit={handleDrawerAddAlias} style={{ display: 'flex', gap: '6px' }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <input
+                      type="text"
+                      placeholder="e.g. nagaraju or support"
+                      value={newAliasInput}
+                      onChange={(e) => setNewAliasInput(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '6px 10px',
+                        fontSize: '0.78rem',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={aliasSaving || !newAliasInput.trim()}
+                    style={{
+                      background: '#059669',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '6px 12px',
+                      fontSize: '0.76rem',
+                      fontWeight: 700,
+                      cursor: (aliasSaving || !newAliasInput.trim()) ? 'not-allowed' : 'pointer',
+                      opacity: (aliasSaving || !newAliasInput.trim()) ? 0.6 : 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Plus size={13} />
+                    Add Alias
+                  </button>
+                </form>
+
+                {/* Aliases List */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                  {drawerSettings?.aliases && drawerSettings.aliases.length > 0 ? (
+                    drawerSettings.aliases.map((alias, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '6px 10px',
+                          borderRadius: '8px',
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          fontSize: '0.78rem'
+                        }}
+                      >
+                        <span style={{ fontWeight: 600, color: '#334155' }}>{alias}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleDrawerSetPrimary(alias)}
+                            disabled={aliasSaving}
+                            style={{
+                              background: '#eff6ff',
+                              color: '#2563eb',
+                              border: '1px solid #bfdbfe',
+                              borderRadius: '4px',
+                              padding: '2px 6px',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Set Primary
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDrawerRemoveAlias(alias)}
+                            disabled={aliasSaving}
+                            title="Remove alias"
+                            style={{
+                              background: '#fef2f2',
+                              color: '#ef4444',
+                              border: '1px solid #fecaca',
+                              borderRadius: '4px',
+                              padding: '2px 6px',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ fontSize: '0.74rem', color: '#94a3b8', fontStyle: 'italic', padding: '4px 0' }}>
+                      No alternate aliases configured yet.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Client Connection Settings (IMAP / SMTP) */}
+              <div style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                <div style={{ fontWeight: 800, fontSize: '0.84rem', color: '#0f172a' }}>
+                  Desktop & Mobile Connection Setup
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.74rem' }}>
+                  <div style={{ background: '#ffffff', padding: '8px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontWeight: 700, color: '#2563eb' }}>IMAP (Incoming)</div>
+                    <div>Host: <code>mail.aadhirakshainsurance.com</code></div>
+                    <div>Port: <code>993 (SSL/TLS)</code></div>
+                  </div>
+                  <div style={{ background: '#ffffff', padding: '8px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontWeight: 700, color: '#059669' }}>SMTP (Outgoing)</div>
+                    <div>Host: <code>mail.aadhirakshainsurance.com</code></div>
+                    <div>Port: <code>465 (SSL/TLS)</code></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '1rem 1.5rem',
+              borderTop: '1px solid #e2e8f0',
+              background: '#f8fafc',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <button
+                type="button"
+                onClick={() => window.open(managingMailbox.webmailUrl || 'https://mail.aadhirakshainsurance.com', '_blank', 'noopener,noreferrer')}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  color: '#2563eb',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <ExternalLink size={14} />
+                Open Webmail Client
+              </button>
+
+              <button
+                type="button"
+                onClick={closeMailboxDrawer}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  background: '#334155',
+                  color: '#ffffff',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                Done
+              </button>
+            </div>
+
           </div>
         </div>
       )}
