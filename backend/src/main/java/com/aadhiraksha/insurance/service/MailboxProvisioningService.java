@@ -57,6 +57,21 @@ public class MailboxProvisioningService {
     }
 
     /**
+     * Build HTTP headers supporting both RFC 7617 Basic Auth and Bearer Token for Stalwart Admin API.
+     */
+    private HttpHeaders createAuthHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        String secret = (mailServerApiSecret != null) ? mailServerApiSecret.trim() : "";
+        if (secret.startsWith("API_") || secret.startsWith("ey")) {
+            headers.setBearerAuth(secret);
+        } else {
+            headers.setBasicAuth("admin", secret);
+        }
+        return headers;
+    }
+
+    /**
      * Generate standard username for employee (e.g. "ramesh.kumar" or custom alias)
      */
     public String sanitizeMailboxUsername(String fullName, String customAlias) {
@@ -143,9 +158,7 @@ public class MailboxProvisioningService {
      */
     private String resolveStalwartDomainId() {
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(mailServerApiSecret.trim());
+            HttpHeaders headers = createAuthHeaders();
 
             Map<String, Object> payload = new HashMap<>();
             payload.put("using", List.of("urn:ietf:params:jmap:core", "urn:stalwart:jmap"));
@@ -178,9 +191,7 @@ public class MailboxProvisioningService {
      * Create user in Stalwart via native JMAP x:Account/set
      */
     private String createStalwartJmapUser(String username, String domainId, String password, String fullName, String designation) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(mailServerApiSecret.trim());
+        HttpHeaders headers = createAuthHeaders();
 
         Map<String, Object> userFields = new HashMap<>();
         userFields.put("@type", "User");
@@ -481,9 +492,7 @@ public class MailboxProvisioningService {
             return null;
         }
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(mailServerApiSecret.trim());
+            HttpHeaders headers = createAuthHeaders();
 
             Map<String, Object> filter = Map.of("name", username.trim().toLowerCase());
             Map<String, Object> queryParams = Map.of("filter", filter);

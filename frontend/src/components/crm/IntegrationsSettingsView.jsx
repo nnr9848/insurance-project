@@ -223,7 +223,7 @@ export default function IntegrationsSettingsView() {
       } else if (res.total === 0) {
         toast.info('All mailboxes are already synchronized and active.');
       } else {
-        toast.warn(`Processed ${res.total} mailboxes: ${res.synced} active, ${res.failed} failed.`);
+        toast.error(`Processed ${res.total} mailboxes: ${res.synced} active, ${res.failed} failed.`);
       }
       await fetchMailboxes();
     } catch (err) {
