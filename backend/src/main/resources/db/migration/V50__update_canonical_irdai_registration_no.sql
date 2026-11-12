@@ -7,3 +7,4 @@ WHERE id = 1;
 
 ALTER TABLE business_profile 
     ALTER COLUMN irdai_registration_no SET DEFAULT 'IMF11120720260994';
+

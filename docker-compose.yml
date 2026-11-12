@@ -70,7 +70,8 @@ services:
       - STALWART_ADMIN_SECRET=${STALWART_ADMIN_SECRET:-AadhirakshaMailSecret2026!}
       - STALWART_HOSTNAME=${STALWART_HOSTNAME:-mail.aadhirakshainsurance.com}
     volumes:
-      - aadhiraksha_mail_data:/opt/stalwart-mail
+      - ./data/stalwart/etc:/etc/stalwart
+      - ./data/stalwart/data:/var/lib/stalwart
 
   # 5. Lightweight SnappyMail Webmail Client (~30MB RAM Alpine container)
   webmail:
@@ -98,7 +99,5 @@ volumes:
     name: aadhiraksha_insurance_pgdata
   aadhiraksha_document_uploads:
     name: aadhiraksha_document_uploads
-  aadhiraksha_mail_data:
-    name: aadhiraksha_mail_data
   aadhiraksha_snappymail_data:
     name: aadhiraksha_snappymail_data

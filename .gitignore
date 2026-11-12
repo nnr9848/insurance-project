@@ -41,6 +41,7 @@ Thumbs.db
 # Local uploads
 uploads/
 backend/uploads/
+data/
 
 # Binaries & Tooling
 cloudflared
