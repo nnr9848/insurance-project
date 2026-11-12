@@ -279,29 +279,27 @@ public class MailboxProvisioningService {
 
         String password = (newPassword != null && !newPassword.trim().isEmpty())
                 ? newPassword.trim()
-                : CrmUserService.generateRandomPassword(12);
+                : generateStalwartCompliantPassword();
 
-        String username = user.getDomainMailboxEmail().split("@")[0];
+        String domainEmail = user.getDomainMailboxEmail().trim().toLowerCase();
+        String username = domainEmail.split("@")[0].trim();
 
-        try {
-            if (mailServerEnabled) {
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_JSON);
-                headers.setBearerAuth(mailServerApiSecret);
-
-                Map<String, Object> payload = new HashMap<>();
-                payload.put("secret", password);
-
-                HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
-                try {
-                    restTemplate.put(mailServerApiUrl + "/account/" + username + "@" + mailDomain + "/secret", requestEntity);
-                } catch (Exception ex) {
-                    log.warn("Remote mailserver password update warning: {}", ex.getMessage());
-                }
+        if (mailServerEnabled) {
+            String accountId = checkStalwartAccountExists(username);
+            if (accountId == null) {
+                // If account does not exist in Stalwart yet, provision it now
+                String domainId = resolveStalwartDomainId();
+                createStalwartJmapUser(username, domainId, password, user.getFullName(), user.getDesignation());
+                log.info("Provisioned missing Stalwart account for {} during password reset", domainEmail);
+            } else {
+                // Native Stalwart JMAP update: x:Account/set
+                updateStalwartPassword(accountId, password);
+                log.info("Updated password for Stalwart account ID: {} ({}) via JMAP", accountId, domainEmail);
             }
-        } catch (Exception e) {
-            log.error("Failed to update password on mail server container: {}", e.getMessage());
         }
+
+        user.setMailboxStatus("ACTIVE");
+        userRepository.save(user);
 
         Map<String, Object> res = new HashMap<>();
         res.put("success", true);
@@ -618,6 +616,51 @@ public class MailboxProvisioningService {
             }
         } catch (Exception ex) {
             log.error("Failed to delete Stalwart account ID {}: {}", accountId, ex.getMessage());
+        }
+    }
+
+    /**
+     * Update password for an existing account in Stalwart via JMAP x:Account/set
+     */
+    private void updateStalwartPassword(String accountId, String newPassword) {
+        HttpHeaders headers = createAuthHeaders();
+
+        Map<String, Object> updateFields = Map.of(
+                "credentials", Map.of("0", Map.of("@type", "Password", "secret", newPassword))
+        );
+
+        Map<String, Object> setParams = Map.of("update", Map.of(accountId, updateFields));
+        Map<String, Object> jmapBody = Map.of(
+                "using", List.of("urn:ietf:params:jmap:core", "urn:stalwart:jmap"),
+                "methodCalls", List.of(List.of("x:Account/set", setParams, "c1"))
+        );
+
+        String jmapUrl = getJmapEndpointUrl();
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(jmapBody, headers);
+        ResponseEntity<Map> response = restTemplate.postForEntity(jmapUrl, requestEntity, Map.class);
+
+        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+            throw new IllegalArgumentException("Stalwart returned HTTP " + response.getStatusCode() + " on password update.");
+        }
+
+        List<?> methodResponses = (List<?>) response.getBody().get("methodResponses");
+        if (methodResponses == null || methodResponses.isEmpty()) {
+            throw new IllegalArgumentException("Invalid response from Stalwart Mail Server on password update.");
+        }
+
+        List<?> callResult = (List<?>) methodResponses.get(0);
+        if (callResult.size() < 2 || !(callResult.get(1) instanceof Map)) {
+            throw new IllegalArgumentException("Malformed response from Stalwart Mail Server on password update.");
+        }
+
+        Map<?, ?> resultData = (Map<?, ?>) callResult.get(1);
+        if (resultData.containsKey("notUpdated")) {
+            Map<?, ?> notUpdated = (Map<?, ?>) resultData.get("notUpdated");
+            if (notUpdated.containsKey(accountId)) {
+                Map<?, ?> errInfo = (Map<?, ?>) notUpdated.get(accountId);
+                String desc = (String) errInfo.get("description");
+                throw new IllegalArgumentException("Stalwart Mail Server Error: " + (desc != null ? desc : "Password could not be updated."));
+            }
         }
     }
 
