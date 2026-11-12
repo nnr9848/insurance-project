@@ -369,26 +369,9 @@ public class MailboxProvisioningService {
         user.setDomainMailboxAliases(String.join(",", currentAliases));
         userRepository.save(user);
 
-        // Remote Stalwart account alias sync
-        try {
-            if (mailServerEnabled) {
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_JSON);
-                headers.setBearerAuth(mailServerApiSecret);
-
-                Map<String, Object> payload = new HashMap<>();
-                payload.put("alias", fullAliasEmail);
-                HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
-
-                try {
-                    String primaryUser = user.getDomainMailboxEmail().split("@")[0];
-                    restTemplate.postForEntity(mailServerApiUrl + "/account/" + primaryUser + "@" + mailDomain + "/alias", requestEntity, String.class);
-                } catch (Exception ex) {
-                    log.warn("Remote mailserver alias sync note: {}", ex.getMessage());
-                }
-            }
-        } catch (Exception e) {
-            log.error("Failed to sync alias with mailserver container: {}", e.getMessage());
+        // Remote Stalwart account alias sync via pure JMAP
+        if (mailServerEnabled) {
+            syncStalwartAliases(user.getDomainMailboxEmail(), currentAliases);
         }
 
         log.info("Added alias {} to user ID: {} by admin: {}", fullAliasEmail, user.getId(), performedBy != null ? performedBy.getFullName() : "SYSTEM");
@@ -418,21 +401,9 @@ public class MailboxProvisioningService {
         user.setDomainMailboxAliases(String.join(",", currentAliases));
         userRepository.save(user);
 
-        // Remote Stalwart alias deletion
-        try {
-            if (mailServerEnabled) {
-                HttpHeaders headers = new HttpHeaders();
-                headers.setBearerAuth(mailServerApiSecret);
-                HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
-                try {
-                    String primaryUser = user.getDomainMailboxEmail().split("@")[0];
-                    restTemplate.exchange(mailServerApiUrl + "/account/" + primaryUser + "@" + mailDomain + "/alias/" + aliasEmail.trim(), HttpMethod.DELETE, requestEntity, String.class);
-                } catch (Exception ex) {
-                    log.warn("Remote mailserver alias deletion warning: {}", ex.getMessage());
-                }
-            }
-        } catch (Exception e) {
-            log.error("Failed to delete alias on mailserver container: {}", e.getMessage());
+        // Remote Stalwart alias deletion via pure JMAP
+        if (mailServerEnabled) {
+            syncStalwartAliases(user.getDomainMailboxEmail(), currentAliases);
         }
 
         log.info("Removed alias {} from user ID: {} by admin: {}", aliasEmail, user.getId(), performedBy != null ? performedBy.getFullName() : "SYSTEM");
@@ -661,6 +632,50 @@ public class MailboxProvisioningService {
                 String desc = (String) errInfo.get("description");
                 throw new IllegalArgumentException("Stalwart Mail Server Error: " + (desc != null ? desc : "Password could not be updated."));
             }
+        }
+    }
+
+    /**
+     * Synchronize email aliases with Stalwart via JMAP x:Account/set update
+     */
+    private void syncStalwartAliases(String primaryEmail, List<String> aliases) {
+        try {
+            String username = primaryEmail.split("@")[0].trim().toLowerCase();
+            String accountId = checkStalwartAccountExists(username);
+            if (accountId == null) {
+                log.warn("Cannot sync aliases: Stalwart account not found for {}", primaryEmail);
+                return;
+            }
+
+            HttpHeaders headers = createAuthHeaders();
+
+            // All valid emails for this mailbox = primary + aliases
+            List<String> allEmails = new ArrayList<>();
+            allEmails.add(primaryEmail.trim().toLowerCase());
+            for (String alias : aliases) {
+                String clean = alias.trim().toLowerCase();
+                if (!allEmails.contains(clean)) {
+                    allEmails.add(clean);
+                }
+            }
+
+            Map<String, Object> updateFields = Map.of("emails", allEmails);
+            Map<String, Object> setParams = Map.of("update", Map.of(accountId, updateFields));
+            Map<String, Object> jmapBody = Map.of(
+                    "using", List.of("urn:ietf:params:jmap:core", "urn:stalwart:jmap"),
+                    "methodCalls", List.of(List.of("x:Account/set", setParams, "c1"))
+            );
+
+            String jmapUrl = getJmapEndpointUrl();
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(jmapBody, headers);
+            ResponseEntity<Map> response = restTemplate.postForEntity(jmapUrl, requestEntity, Map.class);
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                log.warn("Stalwart alias sync returned HTTP {}", response.getStatusCode());
+            } else {
+                log.info("Synchronized aliases for Stalwart account ID {}: {}", accountId, allEmails);
+            }
+        } catch (Exception ex) {
+            log.error("Failed to sync aliases with Stalwart: {}", ex.getMessage());
         }
     }
 
