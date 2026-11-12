@@ -192,6 +192,27 @@ public class CrmUserController {
         return ResponseEntity.ok(mailboxProvisioningService.syncMailbox(id, performedBy));
     }
 
+    @PostMapping("/{id}/mailbox/rename")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    @Operation(summary = "Rename / change employee primary mailbox handle (e.g. replacing test email with real handle)")
+    public ResponseEntity<Map<String, Object>> renameMailbox(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            Authentication auth) {
+        User performedBy = getAuthenticatedUser(auth);
+        String newHandle = body != null ? (String) body.get("newUsernameHandle") : null;
+        boolean keepOldAsAlias = body != null && Boolean.TRUE.equals(body.get("keepOldAsAlias"));
+        return ResponseEntity.ok(mailboxProvisioningService.renameMailbox(id, newHandle, keepOldAsAlias, performedBy));
+    }
+
+    @DeleteMapping("/{id}/mailbox")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    @Operation(summary = "Deprovision / delete an employee corporate mailbox (frees quota, removes from Stalwart)")
+    public ResponseEntity<Map<String, Object>> deprovisionMailbox(@PathVariable Long id, Authentication auth) {
+        User performedBy = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(mailboxProvisioningService.deprovisionMailbox(id, performedBy));
+    }
+
     @PostMapping("/mailboxes/sync")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
     @Operation(summary = "Batch synchronize all queued/unsynchronized employee mailboxes with Stalwart Mail Server")

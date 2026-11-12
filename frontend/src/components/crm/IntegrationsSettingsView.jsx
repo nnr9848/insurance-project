@@ -199,6 +199,14 @@ export default function IntegrationsSettingsView() {
   const [resettingPassword, setResettingPassword] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState(null);
 
+  // Rename & Deprovision State
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameHandleInput, setRenameHandleInput] = useState('');
+  const [renameKeepOldAlias, setRenameKeepOldAlias] = useState(true);
+  const [renameSaving, setRenameSaving] = useState(false);
+  const [deprovisionConfirmOpen, setDeprovisionConfirmOpen] = useState(false);
+  const [deprovisionLoading, setDeprovisionLoading] = useState(false);
+
   const openMailboxDrawer = async (mailbox) => {
     setManagingMailbox(mailbox);
     setDrawerSettings(null);
@@ -221,6 +229,54 @@ export default function IntegrationsSettingsView() {
     setDrawerSettings(null);
     setGeneratedPassword(null);
     setNewAliasInput('');
+    setIsRenaming(false);
+    setRenameHandleInput('');
+    setDeprovisionConfirmOpen(false);
+  };
+
+  const handleExecuteRename = async (e) => {
+    if (e) e.preventDefault();
+    if (!managingMailbox || !renameHandleInput.trim()) return;
+    setRenameSaving(true);
+    try {
+      const res = await portalService.renameMailbox(
+        managingMailbox.id, 
+        renameHandleInput.trim(), 
+        renameKeepOldAlias
+      );
+      setManagingMailbox(prev => ({ ...prev, domainMailboxEmail: res.domainEmail }));
+      if (res.mailboxPassword) {
+        setGeneratedPassword(res.mailboxPassword);
+      }
+      setIsRenaming(false);
+      setRenameHandleInput('');
+      const updated = await crmService.getMailboxSettings(managingMailbox.id);
+      setDrawerSettings(updated);
+      await fetchMailboxes();
+      toast.success(res.message || 'Corporate email successfully renamed');
+    } catch (err) {
+      console.error('Failed to rename mailbox:', err);
+      toast.error('Rename failed: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setRenameSaving(false);
+    }
+  };
+
+  const handleExecuteDeprovision = async () => {
+    if (!managingMailbox) return;
+    setDeprovisionLoading(true);
+    try {
+      const res = await portalService.deprovisionMailbox(managingMailbox.id);
+      toast.success(res.message || 'Mailbox deprovisioned successfully');
+      closeMailboxDrawer();
+      await fetchMailboxes();
+    } catch (err) {
+      console.error('Failed to deprovision mailbox:', err);
+      toast.error('Deprovisioning failed: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setDeprovisionLoading(false);
+      setDeprovisionConfirmOpen(false);
+    }
   };
 
   const handleDrawerResetPassword = async () => {
@@ -3840,6 +3896,115 @@ export default function IntegrationsSettingsView() {
                     Quota: {Math.round((managingMailbox.mailboxQuotaMb || 5120) / 1024)} GB (5,120 MB)
                   </span>
                 </div>
+
+                {/* Rename Primary Handle Action Box */}
+                {!isRenaming ? (
+                  <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.74rem', color: '#166534' }}>
+                      Wrong handle or test email?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRenaming(true);
+                        const currentHandle = managingMailbox.domainMailboxEmail.split('@')[0];
+                        setRenameHandleInput(currentHandle);
+                      }}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #86efac',
+                        borderRadius: '6px',
+                        padding: '3px 8px',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        color: '#15803d',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <Edit3 size={11} />
+                      Rename / Change Handle
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleExecuteRename} style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #bbf7d0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#166534' }}>
+                      Enter real / new email handle:
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <input
+                          type="text"
+                          placeholder="e.g. nagaraju.n"
+                          value={renameHandleInput}
+                          onChange={(e) => setRenameHandleInput(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '6px 10px',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            borderRadius: '6px',
+                            border: '1px solid #86efac',
+                            background: '#ffffff',
+                            color: '#0f2b48',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                      <span style={{ fontSize: '0.74rem', color: '#166534', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                        @aadhirakshainsurance.com
+                      </span>
+                    </div>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: '#166534', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={renameKeepOldAlias}
+                        onChange={(e) => setRenameKeepOldAlias(e.target.checked)}
+                      />
+                      <span>Keep previous email as an alias (preserves inbound mail)</span>
+                    </label>
+
+                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', marginTop: '2px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsRenaming(false);
+                          setRenameHandleInput('');
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          background: '#ffffff',
+                          color: '#64748b',
+                          fontSize: '0.72rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={renameSaving || !renameHandleInput.trim()}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: '#15803d',
+                          color: '#ffffff',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          cursor: (renameSaving || !renameHandleInput.trim()) ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        {renameSaving ? 'Updating...' : 'Save & Update on Server'}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
 
               {/* Password Generator / Reset Section */}
@@ -4070,6 +4235,91 @@ export default function IntegrationsSettingsView() {
                     <div>Port: <code>465 (SSL/TLS)</code></div>
                   </div>
                 </div>
+              </div>
+
+              {/* Danger Zone: Deprovision / Delete Test Mailbox */}
+              <div style={{
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '12px',
+                padding: '14px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#991b1b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <AlertTriangle size={15} color="#dc2626" />
+                  Deprovision Mailbox (Free Quota & Cleanup)
+                </div>
+                <p style={{ margin: 0, fontSize: '0.74rem', color: '#7f1d1d', lineHeight: 1.4 }}>
+                  If this is a test email or no longer needed, deprovisioning removes the mailbox from Stalwart and frees the 5GB quota. The employee’s CRM account and data remain safe.
+                </p>
+
+                {!deprovisionConfirmOpen ? (
+                  <button
+                    type="button"
+                    onClick={() => setDeprovisionConfirmOpen(true)}
+                    style={{
+                      alignSelf: 'flex-start',
+                      background: '#ffffff',
+                      color: '#dc2626',
+                      border: '1px solid #f87171',
+                      borderRadius: '6px',
+                      padding: '5px 12px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      marginTop: '4px'
+                    }}
+                  >
+                    <Trash2 size={13} />
+                    Delete & Deprovision Mailbox...
+                  </button>
+                ) : (
+                  <div style={{ background: '#ffffff', border: '1px solid #fca5a5', borderRadius: '8px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                    <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#991b1b' }}>
+                      Are you sure? This permanently deletes {managingMailbox.domainMailboxEmail} on the mail server.
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        onClick={() => setDeprovisionConfirmOpen(false)}
+                        disabled={deprovisionLoading}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          background: '#ffffff',
+                          color: '#64748b',
+                          fontSize: '0.72rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleExecuteDeprovision}
+                        disabled={deprovisionLoading}
+                        style={{
+                          padding: '4px 12px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: '#dc2626',
+                          color: '#ffffff',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          cursor: deprovisionLoading ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        {deprovisionLoading ? 'Deleting...' : 'Confirm Deprovision'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>

@@ -487,6 +487,141 @@ public class MailboxProvisioningService {
     }
 
     /**
+     * Rename / Reassign primary email handle (e.g. rename test email or fix typo)
+     * Recreates or updates the account in Stalwart Mail Server via JMAP.
+     */
+    @Transactional
+    public Map<String, Object> renameMailbox(Long userId, String newUsernameHandle, boolean keepOldAsAlias, User performedBy) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+
+        if (!Boolean.TRUE.equals(user.getHasDomainMailbox()) || user.getDomainMailboxEmail() == null) {
+            throw new IllegalArgumentException("User does not have an active domain mailbox.");
+        }
+
+        String sanitizedHandle = sanitizeMailboxUsername(null, newUsernameHandle);
+        String newPrimaryEmail = sanitizedHandle + "@" + mailDomain;
+        String oldPrimaryEmail = user.getDomainMailboxEmail();
+
+        if (oldPrimaryEmail.equalsIgnoreCase(newPrimaryEmail)) {
+            throw new IllegalArgumentException("New email handle is identical to current handle.");
+        }
+
+        // Check conflicts across CRM
+        userRepository.findAll().stream()
+                .filter(u -> !u.getId().equals(user.getId()) && newPrimaryEmail.equalsIgnoreCase(u.getDomainMailboxEmail()))
+                .findFirst()
+                .ifPresent(c -> {
+                    throw new IllegalArgumentException("Address " + newPrimaryEmail + " is already in use by " + c.getFullName());
+                });
+
+        String oldUsername = oldPrimaryEmail.split("@")[0].trim().toLowerCase();
+        String stalwartOldId = checkStalwartAccountExists(oldUsername);
+
+        // Delete old account from Stalwart if it exists
+        if (stalwartOldId != null) {
+            deleteStalwartAccountById(stalwartOldId);
+        }
+
+        // Create new account in Stalwart
+        String tempPassword = generateStalwartCompliantPassword();
+        String domainId = resolveStalwartDomainId();
+        String newStalwartId = createStalwartJmapUser(sanitizedHandle, domainId, tempPassword, user.getFullName(), user.getDesignation());
+
+        List<String> aliases = getAliasesList(user);
+        if (keepOldAsAlias) {
+            aliases.add(oldPrimaryEmail);
+        }
+        // Remove new handle from aliases if it was previously an alias
+        aliases.removeIf(a -> a.equalsIgnoreCase(newPrimaryEmail));
+
+        user.setDomainMailboxEmail(newPrimaryEmail);
+        user.setDomainMailboxAliases(String.join(",", aliases));
+        user.setMailboxStatus("ACTIVE");
+        userRepository.save(user);
+
+        log.info("Renamed mailbox from {} to {} for user ID: {} by admin: {}", 
+                oldPrimaryEmail, newPrimaryEmail, user.getId(), performedBy != null ? performedBy.getFullName() : "SYSTEM");
+
+        Map<String, Object> res = new HashMap<>();
+        res.put("success", true);
+        res.put("domainEmail", newPrimaryEmail);
+        res.put("oldEmail", oldPrimaryEmail);
+        res.put("mailboxPassword", tempPassword);
+        res.put("aliases", aliases);
+        res.put("message", "Mailbox renamed successfully to " + newPrimaryEmail);
+        return res;
+    }
+
+    /**
+     * Deprovision / Delete corporate mailbox (e.g. remove test accounts, unassign email, reclaim quota).
+     */
+    @Transactional
+    public Map<String, Object> deprovisionMailbox(Long userId, User performedBy) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+
+        if (!Boolean.TRUE.equals(user.getHasDomainMailbox()) || user.getDomainMailboxEmail() == null) {
+            throw new IllegalArgumentException("User does not have an active corporate domain mailbox.");
+        }
+
+        String domainEmail = user.getDomainMailboxEmail();
+        String username = domainEmail.split("@")[0].trim().toLowerCase();
+
+        // 1. Delete account from Stalwart Mail Server via JMAP destroy
+        if (mailServerEnabled) {
+            try {
+                String accountId = checkStalwartAccountExists(username);
+                if (accountId != null) {
+                    deleteStalwartAccountById(accountId);
+                    log.info("Deleted Stalwart mailbox account ID: {} ({})", accountId, domainEmail);
+                }
+            } catch (Exception ex) {
+                log.warn("Could not delete Stalwart account for {}: {}", domainEmail, ex.getMessage());
+            }
+        }
+
+        // 2. Reset user's domain mailbox fields in CRM
+        user.setHasDomainMailbox(false);
+        user.setDomainMailboxEmail(null);
+        user.setDomainMailboxAliases(null);
+        user.setMailboxStatus("NOT_PROVISIONED");
+        user.setMailboxCreatedAt(null);
+        userRepository.save(user);
+
+        log.info("Deprovisioned corporate mailbox {} for user ID: {} ({}) by admin: {}", 
+                domainEmail, user.getId(), user.getFullName(), performedBy != null ? performedBy.getFullName() : "SYSTEM");
+
+        Map<String, Object> res = new HashMap<>();
+        res.put("success", true);
+        res.put("message", "Corporate mailbox " + domainEmail + " successfully deprovisioned and deleted from mail server.");
+        res.put("userId", user.getId());
+        return res;
+    }
+
+    /**
+     * Delete an account from Stalwart via JMAP x:Account/set destroy
+     */
+    private void deleteStalwartAccountById(String accountId) {
+        try {
+            HttpHeaders headers = createAuthHeaders();
+            Map<String, Object> setParams = Map.of("destroy", List.of(accountId));
+            Map<String, Object> jmapBody = Map.of(
+                    "using", List.of("urn:ietf:params:jmap:core", "urn:stalwart:jmap"),
+                    "methodCalls", List.of(List.of("x:Account/set", setParams, "c1"))
+            );
+            String jmapUrl = getJmapEndpointUrl();
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(jmapBody, headers);
+            ResponseEntity<Map> response = restTemplate.postForEntity(jmapUrl, requestEntity, Map.class);
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                log.warn("Stalwart destroy account returned HTTP {}", response.getStatusCode());
+            }
+        } catch (Exception ex) {
+            log.error("Failed to delete Stalwart account ID {}: {}", accountId, ex.getMessage());
+        }
+    }
+
+    /**
      * Check live ground-truth status in Stalwart via JMAP x:Account/query
      */
     public String checkStalwartAccountExists(String username) {

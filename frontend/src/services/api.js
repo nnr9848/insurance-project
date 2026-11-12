@@ -568,6 +568,14 @@ export const portalService = {
     const res = await api.post(`/crm/users/${userId}/mailbox/sync`);
     return res.data;
   },
+  renameMailbox: async (userId, newUsernameHandle, keepOldAsAlias = false) => {
+    const res = await api.post(`/crm/users/${userId}/mailbox/rename`, { newUsernameHandle, keepOldAsAlias });
+    return res.data;
+  },
+  deprovisionMailbox: async (userId) => {
+    const res = await api.delete(`/crm/users/${userId}/mailbox`);
+    return res.data;
+  },
   syncAllQueuedMailboxes: async () => {
     const res = await api.post('/crm/users/mailboxes/sync');
     return res.data;
