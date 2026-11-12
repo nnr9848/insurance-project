@@ -545,4 +545,29 @@ public class MailboxProvisioningService {
 
         return settings;
     }
+
+    /**
+     * Retrieve all corporate mailboxes across the organization with stats and user info.
+     */
+    public List<Map<String, Object>> getMailboxDirectory() {
+        List<User> users = userRepository.findByHasDomainMailboxTrueOrderByFullNameAsc();
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (User u : users) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", u.getId());
+            item.put("fullName", u.getFullName());
+            item.put("personalEmail", u.getEmail());
+            item.put("phoneNumber", u.getPhoneNumber());
+            item.put("designation", u.getDesignation());
+            item.put("employeeCode", u.getEmployeeCode());
+            item.put("domainMailboxEmail", u.getDomainMailboxEmail());
+            item.put("mailboxStatus", u.getMailboxStatus() != null ? u.getMailboxStatus() : "ACTIVE");
+            item.put("mailboxQuotaMb", u.getMailboxQuotaMb() != null ? u.getMailboxQuotaMb() : 5120);
+            item.put("mailboxCreatedAt", u.getMailboxCreatedAt());
+            item.put("aliases", getAliasesList(u));
+            item.put("webmailUrl", webmailUrl);
+            list.add(item);
+        }
+        return list;
+    }
 }

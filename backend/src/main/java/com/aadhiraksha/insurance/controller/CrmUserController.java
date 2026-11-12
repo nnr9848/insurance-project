@@ -110,6 +110,13 @@ public class CrmUserController {
         return ResponseEntity.ok(crmUserService.getTeamMembers(managerId));
     }
 
+    @GetMapping("/mailboxes")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Get all provisioned employee corporate mailboxes across the organization")
+    public ResponseEntity<List<Map<String, Object>>> getMailboxDirectory() {
+        return ResponseEntity.ok(mailboxProvisioningService.getMailboxDirectory());
+    }
+
     @PostMapping("/{id}/mailbox/provision")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
     @Operation(summary = "Provision a domain-based mailbox for an employee (e.g. name@aadhirakshainsurance.com)")

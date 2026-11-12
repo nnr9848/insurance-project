@@ -20,6 +20,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByManagerId(Long managerId);
 
+    List<User> findByHasDomainMailboxTrueOrderByFullNameAsc();
+
     @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName ORDER BY u.fullName ASC")
     List<User> findByRoleName(@Param("roleName") String roleName);
 

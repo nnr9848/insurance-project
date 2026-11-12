@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   Cpu, 
   MessageSquare, 
@@ -39,7 +39,10 @@ import {
   ArrowUpDown,
   Copy,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  AtSign,
+  Users,
+  Database
 } from 'lucide-react';
 import { portalService } from '../../services/api';
 import { useBusinessProfile } from '../../context/BusinessProfileContext';
@@ -48,6 +51,7 @@ import { useToast } from '../../context/ToastContext';
 export default function IntegrationsSettingsView() {
   const { businessProfile, refreshBusinessProfile } = useBusinessProfile();
   const toast = useToast();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Navigation tabs state: 'twilio-sms' | 'twilio-whatsapp' | 'email-smtp'
@@ -152,6 +156,30 @@ export default function IntegrationsSettingsView() {
       fetchLogs(0);
     }
   }, [activeSubTab, logsChannel, logsStatus]);
+
+  const [mailboxList, setMailboxList] = useState([]);
+  const [mailboxLoading, setMailboxLoading] = useState(false);
+  const [mailboxSearch, setMailboxSearch] = useState('');
+  const [copiedMailboxEmail, setCopiedMailboxEmail] = useState(null);
+
+  const fetchMailboxes = async () => {
+    setMailboxLoading(true);
+    try {
+      const data = await portalService.getMailboxDirectory();
+      setMailboxList(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load mailbox directory:', err);
+      toast.error('Failed to retrieve corporate mailboxes: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setMailboxLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubTab === 'mailboxes') {
+      fetchMailboxes();
+    }
+  }, [activeSubTab]);
 
   const handleExecutePurge = async () => {
     if (purgeOption === 'all' && purgeConfirmText.trim() !== 'PURGE ALL') {
@@ -517,14 +545,25 @@ export default function IntegrationsSettingsView() {
     },
     {
       id: 'email-smtp',
-      name: 'Corporate Mail & Templates',
-      subtitle: 'Stalwart SMTP + Thymeleaf Studio',
+      name: 'Corporate Mail Server',
+      subtitle: 'Stalwart SMTP + Templates',
       icon: Mail,
       badge: 'Operational',
       badgeColor: '#1e40af',
       badgeBg: '#dbeafe',
       iconColor: '#2563eb',
       iconBg: '#eff6ff'
+    },
+    {
+      id: 'mailboxes',
+      name: 'Employee Mailboxes',
+      subtitle: 'Corporate accounts & directory',
+      icon: AtSign,
+      badge: mailboxList.length > 0 ? `${mailboxList.length} accounts` : 'Directory',
+      badgeColor: '#047857',
+      badgeBg: '#ecfdf5',
+      iconColor: '#059669',
+      iconBg: '#ecfdf5'
     },
     {
       id: 'delivery-logs',
@@ -1956,7 +1995,488 @@ export default function IntegrationsSettingsView() {
             </div>
           )}
 
-          {/* SUB-TAB 4: DELIVERY & OTP LOGS */}
+          {/* ===================================================================== */}
+          {/* TAB 4: EMPLOYEE MAILBOX DIRECTORY */}
+          {/* ===================================================================== */}
+          {activeSubTab === 'mailboxes' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              
+              {/* Header card with Actions */}
+              <div style={{
+                background: '#ffffff',
+                borderRadius: '16px',
+                border: '1px solid #e2e8f0',
+                padding: '1.25rem 1.5rem',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '12px',
+                      background: '#ecfdf5',
+                      border: '1px solid #a7f3d0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#059669'
+                    }}>
+                      <AtSign size={22} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', margin: '0 0 2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        Corporate Employee Mailboxes Directory
+                      </h3>
+                      <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
+                        Centrally audited corporate domain accounts (<code>@aadhirakshainsurance.com</code>) active on Stalwart Mail Server.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={fetchMailboxes}
+                      disabled={mailboxLoading}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 14px',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        color: '#475569',
+                        cursor: mailboxLoading ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <RefreshCw size={14} className={mailboxLoading ? 'animate-spin' : ''} />
+                      Refresh
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => window.open('https://mail.aadhirakshainsurance.com', '_blank', 'noopener,noreferrer')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 14px',
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: '8px',
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        color: '#1d4ed8',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <ExternalLink size={14} />
+                      Open Webmail
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => navigate('/admin?tab=users')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 14px',
+                        background: '#059669',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        color: '#ffffff',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <Users size={14} />
+                      Manage Team Mailboxes
+                    </button>
+                  </div>
+                </div>
+
+                {/* KPI Overview Cards */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: '12px',
+                  paddingTop: '0.5rem'
+                }}>
+                  <div style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    padding: '12px 14px'
+                  }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '4px' }}>
+                      Total Mailboxes
+                    </span>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f2b48' }}>
+                      {mailboxList.length}
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>
+                      Provisioned on VPS
+                    </span>
+                  </div>
+
+                  <div style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    padding: '12px 14px'
+                  }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '4px' }}>
+                      Active Status
+                    </span>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#16a34a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <CheckCircle2 size={18} />
+                      {mailboxList.filter(m => m.mailboxStatus === 'ACTIVE').length} Active
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                      Ready for Webmail/IMAP
+                    </span>
+                  </div>
+
+                  <div style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    padding: '12px 14px'
+                  }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '4px' }}>
+                      Default Storage Quota
+                    </span>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0284c7' }}>
+                      5 GB
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                      5,120 MB per corporate inbox
+                    </span>
+                  </div>
+
+                  <div style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    padding: '12px 14px'
+                  }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', display: 'block', marginBottom: '4px' }}>
+                      Corporate Domain
+                    </span>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f2b48', wordBreak: 'break-all' }}>
+                      aadhirakshainsurance.com
+                    </div>
+                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                      Stalwart v0.16 Engine
+                    </span>
+                  </div>
+                </div>
+
+                {/* Filter Toolbar */}
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  alignItems: 'center',
+                  paddingTop: '0.5rem',
+                  borderTop: '1px solid #f1f5f9'
+                }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                    <input
+                      type="text"
+                      placeholder="Search by employee name, corporate email, personal email, or role..."
+                      value={mailboxSearch}
+                      onChange={(e) => setMailboxSearch(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px 8px 36px',
+                        fontSize: '0.82rem',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        background: '#ffffff',
+                        color: '#1e293b',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Mailbox Table Card */}
+              <div style={{
+                background: '#ffffff',
+                borderRadius: '16px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                overflow: 'hidden'
+              }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: 600 }}>
+                        <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Employee</th>
+                        <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Corporate Domain Email</th>
+                        <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Personal Contact</th>
+                        <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Quota</th>
+                        <th style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>Status</th>
+                        <th style={{ padding: '10px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mailboxLoading ? (
+                        <tr>
+                          <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                            <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 8px auto', display: 'block', color: '#059669' }} />
+                            <span>Loading corporate mailboxes...</span>
+                          </td>
+                        </tr>
+                      ) : mailboxList.filter((m) => {
+                        if (!mailboxSearch.trim()) return true;
+                        const q = mailboxSearch.toLowerCase();
+                        return (
+                          (m.fullName && m.fullName.toLowerCase().includes(q)) ||
+                          (m.domainMailboxEmail && m.domainMailboxEmail.toLowerCase().includes(q)) ||
+                          (m.personalEmail && m.personalEmail.toLowerCase().includes(q)) ||
+                          (m.designation && m.designation.toLowerCase().includes(q)) ||
+                          (m.employeeCode && m.employeeCode.toLowerCase().includes(q))
+                        );
+                      }).length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                            <AtSign size={32} style={{ margin: '0 auto 8px auto', display: 'block', opacity: 0.5 }} />
+                            <span>No corporate employee mailboxes found matching your search.</span>
+                          </td>
+                        </tr>
+                      ) : (
+                        mailboxList.filter((m) => {
+                          if (!mailboxSearch.trim()) return true;
+                          const q = mailboxSearch.toLowerCase();
+                          return (
+                            (m.fullName && m.fullName.toLowerCase().includes(q)) ||
+                            (m.domainMailboxEmail && m.domainMailboxEmail.toLowerCase().includes(q)) ||
+                            (m.personalEmail && m.personalEmail.toLowerCase().includes(q)) ||
+                            (m.designation && m.designation.toLowerCase().includes(q)) ||
+                            (m.employeeCode && m.employeeCode.toLowerCase().includes(q))
+                          );
+                        }).map((mb) => {
+                          const initials = mb.fullName
+                            ? mb.fullName.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
+                            : 'EM';
+
+                          const isCopied = copiedMailboxEmail === mb.domainMailboxEmail;
+
+                          return (
+                            <tr
+                              key={mb.id}
+                              style={{
+                                borderBottom: '1px solid #f1f5f9',
+                                transition: 'background 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              {/* Employee column */}
+                              <td style={{ padding: '12px 14px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <div style={{
+                                    width: '34px',
+                                    height: '34px',
+                                    borderRadius: '50%',
+                                    background: '#ecfdf5',
+                                    color: '#047857',
+                                    border: '1px solid #a7f3d0',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 800,
+                                    flexShrink: 0
+                                  }}>
+                                    {initials}
+                                  </div>
+                                  <div>
+                                    <div style={{ fontWeight: 700, color: '#0f2b48', fontSize: '0.85rem' }}>
+                                      {mb.fullName || 'Unnamed Employee'}
+                                    </div>
+                                    <div style={{ fontSize: '0.74rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <span>{mb.designation || 'Staff'}</span>
+                                      {mb.employeeCode && (
+                                        <>
+                                          <span>•</span>
+                                          <code>{mb.employeeCode}</code>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Corporate Email Address */}
+                              <td style={{ padding: '12px 14px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                  <div style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    background: '#f0fdf4',
+                                    color: '#166534',
+                                    border: '1px solid #bbf7d0',
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 700
+                                  }}>
+                                    <AtSign size={13} color="#16a34a" />
+                                    <span>{mb.domainMailboxEmail}</span>
+                                    <button
+                                      type="button"
+                                      title="Copy corporate email"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(mb.domainMailboxEmail);
+                                        setCopiedMailboxEmail(mb.domainMailboxEmail);
+                                        setTimeout(() => setCopiedMailboxEmail(null), 2000);
+                                      }}
+                                      style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        padding: '2px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        color: '#166534'
+                                      }}
+                                    >
+                                      {isCopied ? <Check size={12} color="#16a34a" /> : <Copy size={12} />}
+                                    </button>
+                                  </div>
+
+                                  {/* Aliases if any */}
+                                  {mb.aliases && mb.aliases.length > 0 && (
+                                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                      {mb.aliases.map((alias, idx) => (
+                                        <span
+                                          key={idx}
+                                          style={{
+                                            fontSize: '0.68rem',
+                                            color: '#64748b',
+                                            background: '#f1f5f9',
+                                            padding: '1px 5px',
+                                            borderRadius: '4px',
+                                            border: '1px solid #e2e8f0'
+                                          }}
+                                        >
+                                          alias: {alias}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Personal Contact */}
+                              <td style={{ padding: '12px 14px', color: '#475569', fontSize: '0.78rem' }}>
+                                <div>{mb.personalEmail || 'No personal email'}</div>
+                                {mb.phoneNumber && <div style={{ color: '#64748b', fontSize: '0.72rem' }}>{mb.phoneNumber}</div>}
+                              </td>
+
+                              {/* Quota */}
+                              <td style={{ padding: '12px 14px', whiteSpace: 'nowrap', fontSize: '0.78rem', color: '#475569' }}>
+                                <span style={{ fontWeight: 600 }}>{Math.round((mb.mailboxQuotaMb || 5120) / 1024)} GB</span>
+                                <span style={{ color: '#94a3b8', fontSize: '0.72rem', display: 'block' }}>({mb.mailboxQuotaMb || 5120} MB)</span>
+                              </td>
+
+                              {/* Status */}
+                              <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '2px 8px',
+                                  borderRadius: '6px',
+                                  fontSize: '0.74rem',
+                                  fontWeight: 700,
+                                  background: mb.mailboxStatus === 'ACTIVE' ? '#dcfce7' : '#fef3c7',
+                                  color: mb.mailboxStatus === 'ACTIVE' ? '#15803d' : '#b45309'
+                                }}>
+                                  {mb.mailboxStatus === 'ACTIVE' ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
+                                  {mb.mailboxStatus || 'ACTIVE'}
+                                </span>
+                              </td>
+
+                              {/* Actions */}
+                              <td style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => window.open(mb.webmailUrl || 'https://mail.aadhirakshainsurance.com', '_blank', 'noopener,noreferrer')}
+                                    title="Open Webmail client"
+                                    style={{
+                                      padding: '4px 8px',
+                                      borderRadius: '6px',
+                                      border: '1px solid #cbd5e1',
+                                      background: '#ffffff',
+                                      color: '#2563eb',
+                                      fontSize: '0.74rem',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                  >
+                                    <ExternalLink size={12} />
+                                    Webmail
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => navigate('/admin?tab=users')}
+                                    title="Manage user in Team"
+                                    style={{
+                                      padding: '4px 8px',
+                                      borderRadius: '6px',
+                                      border: '1px solid #cbd5e1',
+                                      background: '#f8fafc',
+                                      color: '#334155',
+                                      fontSize: '0.74rem',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                  >
+                                    <Edit3 size={12} />
+                                    Manage
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* SUB-TAB 5: DELIVERY & OTP LOGS */}
           {activeSubTab === 'delivery-logs' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               

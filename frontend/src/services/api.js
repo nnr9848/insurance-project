@@ -560,6 +560,10 @@ export const portalService = {
     const res = await api.post('/admin/settings/email/test', { targetEmail });
     return res.data;
   },
+  getMailboxDirectory: async () => {
+    const res = await api.get('/crm/users/mailboxes');
+    return res.data;
+  },
   getEmailTemplates: async () => {
     const res = await api.get('/admin/settings/email/templates');
     return res.data;
