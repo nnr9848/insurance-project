@@ -58,6 +58,7 @@ public class MailboxProvisioningService {
 
     /**
      * Build HTTP headers supporting both RFC 7617 Basic Auth and Bearer Token for Stalwart Admin API.
+     * In Stalwart post-bootstrap mode, accounts are domain principals (e.g. admin@aadhirakshainsurance.com).
      */
     private HttpHeaders createAuthHeaders() {
         HttpHeaders headers = new HttpHeaders();
@@ -66,7 +67,8 @@ public class MailboxProvisioningService {
         if (secret.startsWith("API_") || secret.startsWith("ey")) {
             headers.setBearerAuth(secret);
         } else {
-            headers.setBasicAuth("admin", secret);
+            String adminUser = "admin@" + (mailDomain != null ? mailDomain.trim() : "aadhirakshainsurance.com");
+            headers.setBasicAuth(adminUser, secret);
         }
         return headers;
     }
