@@ -564,6 +564,14 @@ export const portalService = {
     const res = await api.get('/crm/users/mailboxes');
     return res.data;
   },
+  syncUserMailbox: async (userId) => {
+    const res = await api.post(`/crm/users/${userId}/mailbox/sync`);
+    return res.data;
+  },
+  syncAllQueuedMailboxes: async () => {
+    const res = await api.post('/crm/users/mailboxes/sync');
+    return res.data;
+  },
   getEmailTemplates: async () => {
     const res = await api.get('/admin/settings/email/templates');
     return res.data;

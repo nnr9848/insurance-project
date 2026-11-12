@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -544,6 +545,120 @@ public class MailboxProvisioningService {
         }
 
         return settings;
+    }
+
+    /**
+     * Synchronize a specific user's domain mailbox with Stalwart Mail Server.
+     */
+    @Transactional
+    public Map<String, Object> syncMailbox(Long userId, User performedBy) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+
+        if (!Boolean.TRUE.equals(user.getHasDomainMailbox()) || user.getDomainMailboxEmail() == null) {
+            throw new IllegalArgumentException("User does not have an assigned corporate domain mailbox.");
+        }
+
+        String domainEmail = user.getDomainMailboxEmail().trim().toLowerCase();
+        String username = domainEmail.split("@")[0];
+
+        // First check if it already exists in Stalwart
+        String existingId = checkStalwartAccountExists(username);
+        if (existingId != null) {
+            user.setMailboxStatus("ACTIVE");
+            userRepository.save(user);
+            log.info("Mailbox {} verified active in Stalwart (ID: {}) during sync", domainEmail, existingId);
+            return Map.of(
+                    "success", true,
+                    "status", "ACTIVE",
+                    "domainEmail", domainEmail,
+                    "message", "Mailbox already verified and active on Stalwart mail server.",
+                    "stalwartId", existingId
+            );
+        }
+
+        // Account does not exist in Stalwart yet: create it now
+        String tempPassword = generateStalwartCompliantPassword();
+        try {
+            String domainId = resolveStalwartDomainId();
+            String createdId = createStalwartJmapUser(username, domainId, tempPassword, user.getFullName(), user.getDesignation());
+            user.setMailboxStatus("ACTIVE");
+            userRepository.save(user);
+
+            log.info("Successfully provisioned Stalwart mailbox for {} (user ID: {}) via manual/cron sync", domainEmail, user.getId());
+            return Map.of(
+                    "success", true,
+                    "status", "ACTIVE",
+                    "domainEmail", domainEmail,
+                    "mailboxPassword", tempPassword,
+                    "message", "Mailbox successfully created and active on mail." + mailDomain,
+                    "stalwartId", createdId != null ? createdId : "active"
+            );
+        } catch (Exception ex) {
+            log.error("Failed to sync mailbox {} with Stalwart: {}", domainEmail, ex.getMessage());
+            user.setMailboxStatus("QUEUED");
+            userRepository.save(user);
+            throw new IllegalArgumentException("Stalwart Sync Failed: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * Batch sync all queued/unsynchronized mailboxes with Stalwart.
+     */
+    @Transactional
+    public Map<String, Object> syncAllQueuedMailboxes(User performedBy) {
+        List<User> queuedUsers = userRepository.findByHasDomainMailboxTrueAndMailboxStatusIgnoreCase("QUEUED");
+        int total = queuedUsers.size();
+        int synced = 0;
+        int failed = 0;
+        List<String> failedEmails = new ArrayList<>();
+
+        for (User u : queuedUsers) {
+            try {
+                syncMailbox(u.getId(), performedBy);
+                synced++;
+            } catch (Exception ex) {
+                failed++;
+                failedEmails.add(u.getDomainMailboxEmail() + " (" + ex.getMessage() + ")");
+            }
+        }
+
+        log.info("Batch mailbox sync completed: {} total, {} synced, {} failed by {}", 
+                total, synced, failed, performedBy != null ? performedBy.getFullName() : "SYSTEM");
+
+        Map<String, Object> res = new HashMap<>();
+        res.put("total", total);
+        res.put("synced", synced);
+        res.put("failed", failed);
+        res.put("failedEmails", failedEmails);
+        res.put("message", String.format("Processed %d mailboxes: %d active, %d failed.", total, synced, failed));
+        return res;
+    }
+
+    /**
+     * Background self-healing job: reconciles queued mailboxes every 5 minutes.
+     */
+    @Scheduled(cron = "0 */5 * * * *")
+    public void selfHealingMailboxReconciliation() {
+        if (!mailServerEnabled) {
+            return;
+        }
+        try {
+            List<User> queued = userRepository.findByHasDomainMailboxTrueAndMailboxStatusIgnoreCase("QUEUED");
+            if (queued.isEmpty()) {
+                return;
+            }
+            log.info("Running background self-healing mailbox reconciliation for {} queued mailboxes...", queued.size());
+            for (User u : queued) {
+                try {
+                    syncMailbox(u.getId(), null);
+                } catch (Exception e) {
+                    log.warn("Self-healing reconciliation deferred for {}: {}", u.getDomainMailboxEmail(), e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error running selfHealingMailboxReconciliation: {}", e.getMessage());
+        }
     }
 
     /**

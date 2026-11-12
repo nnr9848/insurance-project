@@ -183,4 +183,20 @@ public class CrmUserController {
         String newPrimaryEmail = body != null ? body.get("newPrimaryEmail") : null;
         return ResponseEntity.ok(mailboxProvisioningService.setPrimaryEmail(id, newPrimaryEmail, performedBy));
     }
+
+    @PostMapping("/{id}/mailbox/sync")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    @Operation(summary = "Synchronize a specific employee mailbox with Stalwart Mail Server")
+    public ResponseEntity<Map<String, Object>> syncMailbox(@PathVariable Long id, Authentication auth) {
+        User performedBy = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(mailboxProvisioningService.syncMailbox(id, performedBy));
+    }
+
+    @PostMapping("/mailboxes/sync")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    @Operation(summary = "Batch synchronize all queued/unsynchronized employee mailboxes with Stalwart Mail Server")
+    public ResponseEntity<Map<String, Object>> syncAllQueuedMailboxes(Authentication auth) {
+        User performedBy = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(mailboxProvisioningService.syncAllQueuedMailboxes(performedBy));
+    }
 }

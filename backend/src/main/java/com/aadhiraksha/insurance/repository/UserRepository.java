@@ -22,6 +22,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByHasDomainMailboxTrueOrderByFullNameAsc();
 
+    List<User> findByHasDomainMailboxTrueAndMailboxStatusIgnoreCase(String mailboxStatus);
+
     @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName ORDER BY u.fullName ASC")
     List<User> findByRoleName(@Param("roleName") String roleName);
 

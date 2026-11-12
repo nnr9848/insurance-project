@@ -43,7 +43,8 @@ import {
   ChevronUp,
   AtSign,
   Users,
-  Database
+  Database,
+  RotateCw
 } from 'lucide-react';
 import { portalService } from '../../services/api';
 import { useBusinessProfile } from '../../context/BusinessProfileContext';
@@ -183,6 +184,8 @@ export default function IntegrationsSettingsView() {
   const [mailboxLoading, setMailboxLoading] = useState(false);
   const [mailboxSearch, setMailboxSearch] = useState('');
   const [copiedMailboxEmail, setCopiedMailboxEmail] = useState(null);
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const [syncingUserId, setSyncingUserId] = useState(null);
 
   const fetchMailboxes = async () => {
     setMailboxLoading(true);
@@ -194,6 +197,40 @@ export default function IntegrationsSettingsView() {
       toast.error('Failed to retrieve corporate mailboxes: ' + (err.response?.data?.message || err.message));
     } finally {
       setMailboxLoading(false);
+    }
+  };
+
+  const handleSyncSingleMailbox = async (userId, employeeName) => {
+    setSyncingUserId(userId);
+    try {
+      const res = await portalService.syncUserMailbox(userId);
+      toast.success(res.message || `Mailbox synchronized for ${employeeName}`);
+      await fetchMailboxes();
+    } catch (err) {
+      console.error('Failed to sync mailbox:', err);
+      toast.error('Sync failed: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSyncingUserId(null);
+    }
+  };
+
+  const handleSyncAllQueuedMailboxes = async () => {
+    setIsSyncingAll(true);
+    try {
+      const res = await portalService.syncAllQueuedMailboxes();
+      if (res.synced > 0) {
+        toast.success(`Successfully synchronized ${res.synced} mailbox(es) with Stalwart!`);
+      } else if (res.total === 0) {
+        toast.info('All mailboxes are already synchronized and active.');
+      } else {
+        toast.warn(`Processed ${res.total} mailboxes: ${res.synced} active, ${res.failed} failed.`);
+      }
+      await fetchMailboxes();
+    } catch (err) {
+      console.error('Failed to batch sync mailboxes:', err);
+      toast.error('Batch sync failed: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsSyncingAll(false);
     }
   };
 
@@ -2294,6 +2331,73 @@ export default function IntegrationsSettingsView() {
                   </div>
                 </div>
 
+                {/* Self-Healing / Queued Mailboxes Alert Banner */}
+                {(() => {
+                  const queuedCount = mailboxList.filter(m => m.mailboxStatus === 'QUEUED' || m.mailboxStatus === 'UNSYNCHRONIZED').length;
+                  if (queuedCount === 0) return null;
+                  return (
+                    <div style={{
+                      background: '#fffbeb',
+                      border: '1px solid #fde68a',
+                      borderRadius: '12px',
+                      padding: '12px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '12px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          background: '#fef3c7',
+                          color: '#b45309',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <AlertTriangle size={18} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.84rem', fontWeight: 800, color: '#92400e' }}>
+                            {queuedCount} Mailbox{queuedCount > 1 ? 'es' : ''} Awaiting Server Provisioning
+                          </div>
+                          <div style={{ fontSize: '0.74rem', color: '#b45309' }}>
+                            These accounts are registered in CRM. Self-healing scheduler auto-provisions them every 5 mins, or you can sync all now.
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleSyncAllQueuedMailboxes}
+                        disabled={isSyncingAll}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: '#b45309',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '7px 14px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: isSyncingAll ? 'not-allowed' : 'pointer',
+                          opacity: isSyncingAll ? 0.7 : 1,
+                          boxShadow: '0 2px 4px rgba(180, 83, 9, 0.2)'
+                        }}
+                      >
+                        <RotateCw size={13} className={isSyncingAll ? 'animate-spin' : ''} />
+                        <span>{isSyncingAll ? 'Syncing with Stalwart...' : `Sync All ${queuedCount} Mailboxes`}</span>
+                      </button>
+                    </div>
+                  );
+                })()}
+
                 {/* Filter Toolbar */}
                 <div style={{
                   display: 'flex',
@@ -2509,20 +2613,52 @@ export default function IntegrationsSettingsView() {
 
                               {/* Status */}
                               <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                                <span style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  padding: '2px 8px',
-                                  borderRadius: '6px',
-                                  fontSize: '0.74rem',
-                                  fontWeight: 700,
-                                  background: mb.mailboxStatus === 'ACTIVE' ? '#dcfce7' : '#fef3c7',
-                                  color: mb.mailboxStatus === 'ACTIVE' ? '#15803d' : '#b45309'
-                                }}>
-                                  {mb.mailboxStatus === 'ACTIVE' ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
-                                  {mb.mailboxStatus || 'ACTIVE'}
-                                </span>
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                  <span 
+                                    title={mb.mailboxStatus === 'ACTIVE' 
+                                      ? 'Mailbox operational on Stalwart mail server' 
+                                      : 'Account registered in CRM; awaiting server provisioning sync'}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      padding: '2px 8px',
+                                      borderRadius: '6px',
+                                      fontSize: '0.74rem',
+                                      fontWeight: 700,
+                                      background: mb.mailboxStatus === 'ACTIVE' ? '#dcfce7' : '#fef3c7',
+                                      color: mb.mailboxStatus === 'ACTIVE' ? '#15803d' : '#b45309'
+                                    }}
+                                  >
+                                    {mb.mailboxStatus === 'ACTIVE' ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
+                                    {mb.mailboxStatus || 'ACTIVE'}
+                                  </span>
+
+                                  {/* Row-level quick sync button if queued */}
+                                  {(mb.mailboxStatus === 'QUEUED' || mb.mailboxStatus === 'UNSYNCHRONIZED') && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSyncSingleMailbox(mb.id, mb.fullName)}
+                                      disabled={syncingUserId === mb.id}
+                                      title="Sync this mailbox with mail server now"
+                                      style={{
+                                        width: '24px',
+                                        height: '24px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #fde68a',
+                                        background: '#fffbeb',
+                                        color: '#b45309',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: syncingUserId === mb.id ? 'not-allowed' : 'pointer',
+                                        padding: 0
+                                      }}
+                                    >
+                                      <RotateCw size={12} className={syncingUserId === mb.id ? 'animate-spin' : ''} />
+                                    </button>
+                                  )}
+                                </div>
                               </td>
 
                               {/* Actions */}
