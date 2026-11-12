@@ -44,6 +44,19 @@ public class MailboxProvisioningService {
     private String webmailUrl;
 
     /**
+     * Resolves the canonical JMAP endpoint URI regardless of trailing slashes or subpaths in configuration.
+     */
+    public String getJmapEndpointUrl() {
+        if (mailServerApiUrl == null || mailServerApiUrl.trim().isEmpty()) {
+            return "http://mailserver:8080/jmap";
+        }
+        String clean = mailServerApiUrl.trim()
+                .replaceAll("/(api|jmap)/?$", "")
+                .replaceAll("/+$", "");
+        return clean + "/jmap";
+    }
+
+    /**
      * Generate standard username for employee (e.g. "ramesh.kumar" or custom alias)
      */
     public String sanitizeMailboxUsername(String fullName, String customAlias) {
@@ -139,7 +152,7 @@ public class MailboxProvisioningService {
             payload.put("methodCalls", List.of(List.of("x:Domain/query", Map.of(), "c1")));
 
             HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
-            String jmapUrl = mailServerApiUrl.replaceAll("/api/?$", "") + "/jmap";
+            String jmapUrl = getJmapEndpointUrl();
             ResponseEntity<Map> response = restTemplate.postForEntity(jmapUrl, requestEntity, Map.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
@@ -182,7 +195,7 @@ public class MailboxProvisioningService {
                 "methodCalls", List.of(List.of("x:Account/set", setParams, "c1"))
         );
 
-        String jmapUrl = mailServerApiUrl.replaceAll("/api/?$", "") + "/jmap";
+        String jmapUrl = getJmapEndpointUrl();
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(jmapBody, headers);
         ResponseEntity<Map> response = restTemplate.postForEntity(jmapUrl, requestEntity, Map.class);
 
@@ -479,7 +492,7 @@ public class MailboxProvisioningService {
                     "methodCalls", List.of(List.of("x:Account/query", queryParams, "c1"))
             );
 
-            String jmapUrl = mailServerApiUrl.replaceAll("/api/?$", "") + "/jmap";
+            String jmapUrl = getJmapEndpointUrl();
             HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(jmapBody, headers);
             ResponseEntity<Map> response = restTemplate.postForEntity(jmapUrl, requestEntity, Map.class);
 

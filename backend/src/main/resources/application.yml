@@ -65,7 +65,7 @@ cors:
 mailserver:
   enabled: ${MAILSERVER_ENABLED:true}
   domain: ${MAILSERVER_DOMAIN:aadhirakshainsurance.com}
-  api-url: ${MAILSERVER_API_URL:http://mailserver:8080/api}
+  api-url: ${MAILSERVER_API_URL:http://mailserver:8080}
   api-secret: ${MAILSERVER_API_SECRET:AadhirakshaMailSecret2026!}
   webmail-url: ${MAILSERVER_WEBMAIL_URL:https://mail.aadhirakshainsurance.com}
 
