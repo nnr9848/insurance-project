@@ -23,6 +23,7 @@ import {
   Smartphone as DeviceMobile,
   Check,
   ChevronRight,
+  ChevronLeft,
   Sparkles,
   ArrowRight,
   Edit3,
@@ -82,6 +83,27 @@ export default function IntegrationsSettingsView() {
 
   // Track if current sub-tab has unsaved modifications
   const [dirtyTabs, setDirtyTabs] = useState({});
+
+  // Collapsible Sub-Sidebar (Icon Rail vs Expanded)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('crm_integrations_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('crm_integrations_sidebar_collapsed', String(next));
+      } catch (err) {
+        console.warn('Could not persist sidebar collapse state', err);
+      }
+      return next;
+    });
+  };
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -655,13 +677,14 @@ export default function IntegrationsSettingsView() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 2-COLUMN ENTERPRISE LAYOUT: SUB-SIDEBAR RAIL + ACTIVE PANEL */}
+      {/* 2-COLUMN ENTERPRISE LAYOUT: COLLAPSIBLE SUB-SIDEBAR RAIL + ACTIVE PANEL */}
       {/* ========================================================================= */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '280px minmax(0, 1fr)',
+        gridTemplateColumns: isSidebarCollapsed ? '68px minmax(0, 1fr)' : '280px minmax(0, 1fr)',
         gap: '1.25rem',
-        alignItems: 'flex-start'
+        alignItems: 'flex-start',
+        transition: 'grid-template-columns 0.22s cubic-bezier(0.4, 0, 0.2, 1)'
       }}>
         
         {/* ======================================================================= */}
@@ -671,18 +694,60 @@ export default function IntegrationsSettingsView() {
           background: '#ffffff',
           borderRadius: '16px',
           border: '1px solid #e2e8f0',
-          padding: '0.75rem',
+          padding: isSidebarCollapsed ? '0.6rem 0.4rem' : '0.75rem',
           boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.4rem',
           position: 'sticky',
-          top: '80px'
+          top: '80px',
+          transition: 'all 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+          overflow: 'hidden'
         }}>
-          <div style={{ padding: '0.5rem 0.75rem 0.25rem' }}>
-            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Communication Channels
-            </span>
+          {/* Header & Toggle */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: isSidebarCollapsed ? 'center' : 'space-between',
+            padding: isSidebarCollapsed ? '0.25rem 0 0.5rem' : '0.4rem 0.5rem 0.4rem 0.75rem',
+            borderBottom: isSidebarCollapsed ? '1px solid #f1f5f9' : 'none',
+            marginBottom: isSidebarCollapsed ? '0.25rem' : '0'
+          }}>
+            {!isSidebarCollapsed && (
+              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Communication Channels
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={toggleSidebarCollapse}
+              title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse to compact rail'}
+              aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse to compact rail'}
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                background: '#f8fafc',
+                color: '#64748b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                flexShrink: 0
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#e2e8f0';
+                e.currentTarget.style.color = '#0f172a';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#f8fafc';
+                e.currentTarget.style.color = '#64748b';
+              }}
+            >
+              {isSidebarCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+            </button>
           </div>
 
           {navItems.map((item) => {
@@ -693,69 +758,113 @@ export default function IntegrationsSettingsView() {
                 key={item.id}
                 type="button"
                 onClick={() => setSubTab(item.id)}
+                title={isSidebarCollapsed ? `${item.name} (${item.badge})` : undefined}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 12px',
+                  justifyContent: isSidebarCollapsed ? 'center' : 'space-between',
+                  padding: isSidebarCollapsed ? '10px 0' : '10px 12px',
                   borderRadius: '12px',
                   border: isCurrent ? '1px solid #bfdbfe' : '1px solid transparent',
                   background: isCurrent ? 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)' : 'transparent',
                   cursor: 'pointer',
                   textAlign: 'left',
-                  transition: 'all 0.15s ease'
+                  transition: 'all 0.15s ease',
+                  position: 'relative'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isCurrent) e.currentTarget.style.background = '#f8fafc';
+                }}
+                onMouseLeave={(e) => {
+                  if (!isCurrent) e.currentTarget.style.background = 'transparent';
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                   <div style={{
-                    width: '34px',
-                    height: '34px',
-                    borderRadius: '9px',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
                     background: item.iconBg,
                     color: item.iconColor,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    flexShrink: 0
+                    flexShrink: 0,
+                    position: 'relative'
                   }}>
                     <Icon size={18} />
+                    {/* Collapsed dot indicators */}
+                    {isSidebarCollapsed && dirtyTabs[item.id] && (
+                      <span 
+                        title="Unsaved modifications"
+                        style={{
+                          position: 'absolute',
+                          top: '-2px',
+                          right: '-2px',
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          background: '#f59e0b',
+                          border: '2px solid #ffffff'
+                        }} 
+                      />
+                    )}
+                    {isSidebarCollapsed && (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          bottom: '-2px',
+                          right: '-2px',
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          background: item.badgeColor,
+                          border: '2px solid #ffffff'
+                        }}
+                      />
+                    )}
                   </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '0.84rem', fontWeight: isCurrent ? 800 : 700, color: isCurrent ? '#1e3a8a' : '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <span>{item.name}</span>
-                      {dirtyTabs[item.id] && (
-                        <span 
-                          title="Unsaved modifications"
-                          style={{
-                            width: '6px',
-                            height: '6px',
-                            borderRadius: '50%',
-                            background: '#f59e0b',
-                            display: 'inline-block',
-                            flexShrink: 0
-                          }} 
-                        />
-                      )}
+                  
+                  {!isSidebarCollapsed && (
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '0.84rem', fontWeight: isCurrent ? 800 : 700, color: isCurrent ? '#1e3a8a' : '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span>{item.name}</span>
+                        {dirtyTabs[item.id] && (
+                          <span 
+                            title="Unsaved modifications"
+                            style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              background: '#f59e0b',
+                              display: 'inline-block',
+                              flexShrink: 0
+                            }} 
+                          />
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.subtitle}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {item.subtitle}
-                    </div>
-                  </div>
+                  )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, marginLeft: '6px' }}>
-                  <span style={{
-                    fontSize: '0.68rem',
-                    fontWeight: 700,
-                    padding: '2px 7px',
-                    borderRadius: '10px',
-                    background: item.badgeBg,
-                    color: item.badgeColor
-                  }}>
-                    {item.badge}
-                  </span>
-                  {isCurrent && <ChevronRight size={14} color="#2563eb" />}
-                </div>
+                {!isSidebarCollapsed && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, marginLeft: '6px' }}>
+                    <span style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      padding: '2px 7px',
+                      borderRadius: '10px',
+                      background: item.badgeBg,
+                      color: item.badgeColor
+                    }}>
+                      {item.badge}
+                    </span>
+                    {isCurrent && <ChevronRight size={14} color="#2563eb" />}
+                  </div>
+                )}
               </button>
             );
           })}
