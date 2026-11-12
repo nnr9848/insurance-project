@@ -293,7 +293,12 @@ public class MailboxProvisioningService {
                 log.info("Provisioned missing Stalwart account for {} during password reset", domainEmail);
             } else {
                 // Native Stalwart JMAP update: x:Account/set
-                updateStalwartPassword(accountId, password);
+                updateStalwartPassword(accountId, password, domainEmail);
+                // Also ensure all existing aliases are synchronized
+                List<String> currentAliases = getAliasesList(user);
+                if (!currentAliases.isEmpty()) {
+                    syncStalwartAliases(domainEmail, currentAliases);
+                }
                 log.info("Updated password for Stalwart account ID: {} ({}) via JMAP", accountId, domainEmail);
             }
         }
@@ -509,6 +514,11 @@ public class MailboxProvisioningService {
         user.setMailboxStatus("ACTIVE");
         userRepository.save(user);
 
+        // Synchronize all aliases to the new Stalwart account
+        if (mailServerEnabled && !aliases.isEmpty()) {
+            syncStalwartAliases(newPrimaryEmail, aliases);
+        }
+
         log.info("Renamed mailbox from {} to {} for user ID: {} by admin: {}", 
                 oldPrimaryEmail, newPrimaryEmail, user.getId(), performedBy != null ? performedBy.getFullName() : "SYSTEM");
 
@@ -593,12 +603,14 @@ public class MailboxProvisioningService {
     /**
      * Update password for an existing account in Stalwart via JMAP x:Account/set
      */
-    private void updateStalwartPassword(String accountId, String newPassword) {
+    private void updateStalwartPassword(String accountId, String newPassword, String primaryEmail) {
         HttpHeaders headers = createAuthHeaders();
 
-        Map<String, Object> updateFields = Map.of(
-                "credentials", Map.of("0", Map.of("@type", "Password", "secret", newPassword))
-        );
+        Map<String, Object> updateFields = new HashMap<>();
+        updateFields.put("credentials", Map.of("0", Map.of("@type", "Password", "secret", newPassword)));
+        if (primaryEmail != null && primaryEmail.contains("@")) {
+            updateFields.put("emails", List.of(primaryEmail.trim().toLowerCase()));
+        }
 
         Map<String, Object> setParams = Map.of("update", Map.of(accountId, updateFields));
         Map<String, Object> jmapBody = Map.of(
