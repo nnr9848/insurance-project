@@ -18,6 +18,10 @@ public interface CommunicationDeliveryLogRepository extends JpaRepository<Commun
 
     Page<CommunicationDeliveryLog> findByStatusOrderByCreatedAtDesc(String status, Pageable pageable);
 
+    Page<CommunicationDeliveryLog> findByChannelOrderByCreatedAtDesc(String channel, Pageable pageable);
+
+    Page<CommunicationDeliveryLog> findByChannelAndStatusOrderByCreatedAtDesc(String channel, String status, Pageable pageable);
+
     Page<CommunicationDeliveryLog> findByRecipientContainingIgnoreCaseOrderByCreatedAtDesc(String recipient, Pageable pageable);
 
     @Modifying

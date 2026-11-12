@@ -85,11 +85,14 @@ public class EmailService {
 
             mailSender.send(message);
             log.info("Transactional email successfully dispatched to {} | Subject: '{}'", to, subject);
+            recordEmailDeliveryLog(to, subject, "DELIVERED", "250_OK", null);
 
         } catch (MessagingException me) {
             log.error("MessagingException dispatching email to {}: {}", to, me.getMessage());
+            recordEmailDeliveryLog(to, subject, "FAILED", "SMTP_MESSAGING_ERROR", me.getMessage());
         } catch (Exception ex) {
             log.error("Failed to send transactional email to {}: {}", to, ex.getMessage());
+            recordEmailDeliveryLog(to, subject, "FAILED", "SMTP_ERROR", ex.getMessage());
         }
     }
 
@@ -118,12 +121,52 @@ public class EmailService {
                 : buildBrandedEmailTemplate(subject, htmlContent);
         helper.setText(finalBody, true);
 
-        mailSender.send(message);
-        log.info("Direct test email successfully dispatched via SMTP to {}", to);
+        try {
+            mailSender.send(message);
+            log.info("Direct test email successfully dispatched via SMTP to {}", to);
+            recordEmailDeliveryLog(to, subject, "DELIVERED", "250_OK", null);
+        } catch (Exception ex) {
+            recordEmailDeliveryLog(to, subject, "FAILED", "SMTP_ERROR", ex.getMessage());
+            throw ex;
+        }
     }
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.aadhiraksha.insurance.repository.BusinessProfileRepository businessProfileRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.aadhiraksha.insurance.repository.CommunicationDeliveryLogRepository deliveryLogRepository;
+
+    private void recordEmailDeliveryLog(String to, String subject, String status, String providerCode, String failureReason) {
+        if (deliveryLogRepository == null) return;
+        try {
+            String purpose = extractPurposeFromSubject(subject);
+            String summary = subject != null ? (subject.length() > 250 ? subject.substring(0, 247) + "..." : subject) : "Transactional Email";
+            com.aadhiraksha.insurance.model.CommunicationDeliveryLog logEntry = com.aadhiraksha.insurance.model.CommunicationDeliveryLog.builder()
+                    .channel("SMTP_EMAIL")
+                    .recipient(to != null ? to.trim() : "unknown")
+                    .purpose(purpose)
+                    .status(status)
+                    .providerCode(providerCode)
+                    .failureReason(failureReason)
+                    .payloadSummary(summary)
+                    .build();
+            deliveryLogRepository.save(logEntry);
+        } catch (Exception ex) {
+            log.warn("[EmailService] Failed to record email delivery audit log: {}", ex.getMessage());
+        }
+    }
+
+    private String extractPurposeFromSubject(String subject) {
+        if (subject == null) return "EMAIL_DISPATCH";
+        String lower = subject.toLowerCase();
+        if (lower.contains("diagnostic") || lower.contains("ping")) return "SMTP_DIAGNOSTIC";
+        if (lower.contains("welcome") || lower.contains("credentials")) return "WELCOME_CREDENTIALS";
+        if (lower.contains("enquiry") || lower.contains("receipt")) return "CUSTOMER_ENQUIRY";
+        if (lower.contains("proposal") || lower.contains("quotation") || lower.contains("quote")) return "POLICY_PROPOSAL";
+        if (lower.contains("claim")) return "CLAIM_SUPPORT";
+        return "TRANSACTIONAL_EMAIL";
+    }
 
     /**
      * Default body contents for the registered templates (before shell wrapping).

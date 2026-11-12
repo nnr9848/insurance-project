@@ -1978,7 +1978,7 @@ export default function IntegrationsSettingsView() {
                       Communication & OTP Delivery Logs
                     </h3>
                     <p style={{ margin: 0, fontSize: '0.84rem', color: '#64748b' }}>
-                      Real-time delivery diagnostics across Twilio SMS, Twilio WhatsApp, and Twilio Verify channels.
+                      Real-time delivery diagnostics across Corporate Email (SMTP), Twilio SMS, WhatsApp, and Twilio Verify channels.
                     </p>
                   </div>
 
@@ -2048,7 +2048,7 @@ export default function IntegrationsSettingsView() {
                     <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                     <input
                       type="text"
-                      placeholder="Search recipient phone..."
+                      placeholder="Search recipient phone or email..."
                       value={logsSearch}
                       onChange={(e) => setLogsSearch(e.target.value)}
                       onKeyDown={(e) => {
@@ -2083,6 +2083,7 @@ export default function IntegrationsSettingsView() {
                     }}
                   >
                     <option value="">All Channels</option>
+                    <option value="SMTP_EMAIL">Corporate Email (SMTP)</option>
                     <option value="TWILIO_VERIFY_SMS">Twilio Verify SMS</option>
                     <option value="TWILIO_SMS">Twilio Programmable SMS</option>
                     <option value="TWILIO_WHATSAPP">Twilio WhatsApp</option>
@@ -2190,6 +2191,9 @@ export default function IntegrationsSettingsView() {
                           } else if (log.channel?.includes('VERIFY')) {
                             channelBg = '#eef2ff';
                             channelColor = '#4338ca';
+                          } else if (log.channel?.includes('EMAIL')) {
+                            channelBg = '#f0fdf4';
+                            channelColor = '#15803d';
                           }
 
                           const rawFailureReason = log.failureReason || log.errorMessage || 'Dispatch failed or restricted by provider';

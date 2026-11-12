@@ -915,6 +915,7 @@ public class BusinessProfileController {
     public ResponseEntity<org.springframework.data.domain.Page<com.aadhiraksha.insurance.model.CommunicationDeliveryLog>> getCommunicationLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String channel,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String search) {
         
@@ -923,9 +924,18 @@ public class BusinessProfileController {
         if (search != null && !search.trim().isEmpty()) {
             return ResponseEntity.ok(deliveryLogRepository.findByRecipientContainingIgnoreCaseOrderByCreatedAtDesc(search.trim(), pageable));
         }
-        if (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("ALL")) {
+        
+        boolean hasChannel = channel != null && !channel.trim().isEmpty() && !channel.equalsIgnoreCase("ALL");
+        boolean hasStatus = status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("ALL");
+        
+        if (hasChannel && hasStatus) {
+            return ResponseEntity.ok(deliveryLogRepository.findByChannelAndStatusOrderByCreatedAtDesc(channel.trim().toUpperCase(), status.trim().toUpperCase(), pageable));
+        } else if (hasChannel) {
+            return ResponseEntity.ok(deliveryLogRepository.findByChannelOrderByCreatedAtDesc(channel.trim().toUpperCase(), pageable));
+        } else if (hasStatus) {
             return ResponseEntity.ok(deliveryLogRepository.findByStatusOrderByCreatedAtDesc(status.trim().toUpperCase(), pageable));
         }
+        
         return ResponseEntity.ok(deliveryLogRepository.findAllByOrderByCreatedAtDesc(pageable));
     }
 
