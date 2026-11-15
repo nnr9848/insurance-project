@@ -1,6 +1,6 @@
 {
     "IMAP": {
-        "host": "127.0.0.1",
+        "host": "mailserver",
         "port": 993,
         "type": 1,
         "timeout": 300,
@@ -30,7 +30,7 @@
         ]
     },
     "SMTP": {
-        "host": "127.0.0.1",
+        "host": "mailserver",
         "port": 465,
         "type": 1,
         "timeout": 60,
@@ -57,7 +57,7 @@
         "usePhpMail": false
     },
     "Sieve": {
-        "host": "127.0.0.1",
+        "host": "mailserver",
         "port": 4190,
         "type": 1,
         "timeout": 10,

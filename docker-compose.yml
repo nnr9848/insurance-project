@@ -41,8 +41,6 @@ services:
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-*}"
     volumes:
       - aadhiraksha_document_uploads:/app/uploads
-    extra_hosts:
-      - "mailserver:host-gateway"
     networks:
       - aadhiraksha_network
 
@@ -65,20 +63,29 @@ services:
     image: stalwartlabs/stalwart:latest
     container_name: aadhiraksha_mailserver
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - "25:25"       # SMTP
+      - "465:465"     # SMTPS (Implicit TLS)
+      - "587:587"     # Submission (STARTTLS)
+      - "993:993"     # IMAPS (Implicit TLS)
+      - "4190:4190"   # ManageSieve
+      - "8080:8080"   # HTTP Management / JMAP / Admin Web Console
     environment:
       - STALWART_ADMIN_SECRET=${STALWART_ADMIN_SECRET:-AadhirakshaMailSecret2026!}
       - STALWART_HOSTNAME=${STALWART_HOSTNAME:-mail.aadhirakshainsurance.com}
     volumes:
       - ./data/stalwart/etc:/etc/stalwart
       - ./data/stalwart/data:/var/lib/stalwart
+    networks:
+      - aadhiraksha_network
 
   # 5. Lightweight SnappyMail Webmail Client (~30MB RAM Alpine container)
   webmail:
     image: djmaze/snappymail:latest
     container_name: aadhiraksha_webmail
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - "${SNAPPYMAIL_PORT:-8888}:8888"
     environment:
       - SNAPPYMAIL_LOGIN_DEFAULT_DOMAIN=aadhirakshainsurance.com
       - SNAPPYMAIL_LOGIN_DETERMINE_USER_DOMAIN=aadhirakshainsurance.com
@@ -86,8 +93,11 @@ services:
       - aadhiraksha_snappymail_data:/var/lib/snappymail
       - ./deploy/mail/snappymail/domains/aadhirakshainsurance.com.json:/var/lib/snappymail/_data_/_default_/domains/aadhirakshainsurance.com.json
       - ./deploy/mail/snappymail/domains/aadhirakshainsurance.com.json:/var/lib/snappymail/_data_/_default_/domains/default.json
+      - ./deploy/mail/snappymail/configs/application.ini:/var/lib/snappymail/_data_/_default_/configs/application.ini
     depends_on:
       - mailserver
+    networks:
+      - aadhiraksha_network
 
 networks:
   aadhiraksha_network:
