@@ -30,7 +30,10 @@ import {
   Eye,
   EyeOff,
   Trash2,
-  Send
+  Send,
+  Sparkles,
+  User as UserIcon,
+  Briefcase
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -123,6 +126,8 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
     createDomainMailbox: true,
     customMailboxUsername: ''
   });
+  const [createPasswordMode, setCreatePasswordMode] = useState('AUTO'); // 'AUTO' | 'CUSTOM'
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
 
   // Mailbox Management Modals
   const [showMailboxModal, setShowMailboxModal] = useState(false);
@@ -247,9 +252,11 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
     try {
       const finalDepartment = isCustomCreateDept ? customCreateDeptText : createUserForm.department;
       const finalDesignation = isCustomCreateDesig ? customCreateDesigText : createUserForm.designation;
+      const finalPassword = createPasswordMode === 'CUSTOM' && createUserForm.password?.trim() ? createUserForm.password.trim() : null;
 
       const payload = {
         ...createUserForm,
+        password: finalPassword,
         department: finalDepartment,
         designation: finalDesignation,
         managerId: createUserForm.managerId ? Number(createUserForm.managerId) : null
@@ -1580,7 +1587,7 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
         />
       </div>
 
-      {/* 1. Modal: Add New Employee / Manager */}
+      {/* 1. Modal: Add New Employee / Manager (Enterprise Provisioning Overhaul) */}
       {showCreateModal && (
         <div style={{
           position: 'fixed',
@@ -1590,41 +1597,48 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '16px'
+          padding: '20px'
         }}>
           <div style={{
             background: '#ffffff',
             borderRadius: '20px',
             width: '100%',
-            maxWidth: '560px',
+            maxWidth: '680px',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            maxHeight: '92vh',
+            display: 'flex',
+            flexDirection: 'column',
             overflow: 'hidden'
           }}>
+            {/* Modal Header */}
             <div style={{
               background: '#ffffff',
-              padding: '1.25rem 1.5rem',
+              padding: '1.25rem 1.75rem',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              borderBottom: '1px solid #e2e8f0'
+              borderBottom: '1px solid #e2e8f0',
+              flexShrink: 0
             }}>
               <div>
-                <h3 style={{ fontSize: '1.18rem', fontWeight: 700, margin: 0, color: '#0f2b48', letterSpacing: '-0.2px' }}>
-                  Add New Employee / Manager
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: '#0f2b48', letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <UserPlus size={20} color="var(--accent-emerald)" />
+                  Add Team Member & Provision Access
                 </h3>
-                <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-                  Generate username and temporary login credentials
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.84rem', color: '#64748b' }}>
+                  Create employee profile, configure corporate mailbox, and dispatch welcome credentials.
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setShowCreateModal(false)}
                 style={{ 
                   background: '#f8fafc', 
                   border: '1px solid #e2e8f0', 
                   color: '#64748b', 
                   cursor: 'pointer',
-                  borderRadius: '8px',
-                  padding: '6px',
+                  borderRadius: '10px',
+                  padding: '8px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1637,314 +1651,539 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
               </button>
             </div>
 
-            <form onSubmit={handleCreateSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {errorMsg && (
-                <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem' }}>
-                  {errorMsg}
-                </div>
-              )}
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Ramesh Kumar"
-                    value={createUserForm.fullName}
-                    onChange={(e) => setCreateUserForm({ ...createUserForm, fullName: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Employee Code
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. EMP105 (auto if blank)"
-                    value={createUserForm.employeeCode}
-                    onChange={(e) => setCreateUserForm({ ...createUserForm, employeeCode: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Personal / Contact Email *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="e.g. employee@gmail.com"
-                    value={createUserForm.email}
-                    onChange={(e) => setCreateUserForm({ ...createUserForm, email: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                  />
-                  <span style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '3px', display: 'block' }}>
-                    ✉️ Welcome credentials & login details will be dispatched here.
-                  </span>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Mobile Number *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="e.g. +91 9848012345"
-                    value={createUserForm.phoneNumber}
-                    onChange={(e) => setCreateUserForm({ ...createUserForm, phoneNumber: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    System Role *
-                  </label>
-                  <select
-                    value={createUserForm.role}
-                    onChange={(e) => setCreateUserForm({ ...createUserForm, role: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
-                  >
-                    {assignableRoles.length > 0 ? (
-                      assignableRoles
-                        .filter(r => {
-                          if (!canCreateAdmins && (r.code === 'ROLE_SUPER_ADMIN' || r.code === 'ROLE_ADMIN')) return false;
-                          if (!canCreateManagers && r.code === 'ROLE_MANAGER') return false;
-                          return true;
-                        })
-                        .map(r => (
-                          <option key={r.code} value={r.code}>
-                            {r.code === 'ROLE_SUPER_ADMIN' ? '👑 ' : r.code === 'ROLE_MANAGER' ? '👔 ' : r.code === 'ROLE_ADVISOR' ? '🎯 ' : r.code === 'ROLE_POSP_AGENT' ? '🤝 ' : '💼 '}
-                            {r.label}
-                          </option>
-                        ))
-                    ) : (
-                      isManager ? (
-                        <>
-                          <option value="ROLE_ADVISOR">🎯 Insurance Advisor / Employee</option>
-                          <option value="ROLE_POSP_AGENT">🤝 POSP Agent Partner</option>
-                        </>
-                      ) : (
-                        <>
-                          <option value="ROLE_ADVISOR">🎯 Insurance Advisor / Employee</option>
-                          <option value="ROLE_MANAGER">👔 Branch Manager</option>
-                          <option value="ROLE_SUPER_ADMIN">👑 Super Admin (Full Global Access)</option>
-                          <option value="ROLE_POSP_AGENT">🤝 POSP Agent Partner</option>
-                        </>
-                      )
-                    )}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Reporting Manager
-                  </label>
-                  {!isSuperAdmin ? (
-                    <div style={{
-                      padding: '9px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.88rem',
-                      background: '#f8fafc',
-                      color: '#0f2b48',
-                      fontWeight: 600
-                    }}>
-                      {authUser?.fullName || 'You (Current User)'} (Auto-Assigned)
-                    </div>
-                  ) : (
-                    <select
-                      value={createUserForm.managerId}
-                      onChange={(e) => setCreateUserForm({ ...createUserForm, managerId: e.target.value })}
-                      disabled={createUserForm.role === 'ROLE_SUPER_ADMIN'}
-                      style={{ 
-                        width: '100%', 
-                        padding: '9px 12px', 
-                        borderRadius: '8px', 
-                        border: '1px solid #cbd5e1', 
-                        fontSize: '0.88rem', 
-                        background: createUserForm.role === 'ROLE_SUPER_ADMIN' ? '#f1f5f9' : '#ffffff',
-                        cursor: createUserForm.role === 'ROLE_SUPER_ADMIN' ? 'not-allowed' : 'pointer'
-                      }}
-                    >
-                      <option value="">Direct / None</option>
-                      {managers.map(m => (
-                        <option key={m.id} value={m.id}>{m.fullName} ({m.email})</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </div>
-
-              {createUserForm.role === 'ROLE_SUPER_ADMIN' && (
-                <div style={{
-                  background: '#fef3c7',
-                  border: '1px solid #fde68a',
-                  borderRadius: '10px',
-                  padding: '10px 12px',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '8px',
-                  fontSize: '0.78rem',
-                  color: '#92400e'
-                }}>
-                  <ShieldCheck size={16} color="#d97706" style={{ marginTop: '2px', flexShrink: 0 }} />
-                  <div>
-                    <strong>Super Admin Access Notice:</strong> This user will have unrestricted global governance over all branch financials, pipelines, cashless hospitals, and team credentials.
-                  </div>
-                </div>
-              )}
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Department
-                  </label>
-                  <select
-                    value={isCustomCreateDept ? '__CUSTOM__' : createUserForm.department}
-                    onChange={(e) => {
-                      if (e.target.value === '__CUSTOM__') {
-                        setIsCustomCreateDept(true);
-                      } else {
-                        setIsCustomCreateDept(false);
-                        setCreateUserForm({ ...createUserForm, department: e.target.value });
-                      }
-                    }}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
-                  >
-                    {departments.map(dept => (
-                      <option key={dept.code || dept.name} value={dept.name}>
-                        {dept.name}
-                      </option>
-                    ))}
-                    <option value="__CUSTOM__">✏️ + Custom / Other Department...</option>
-                  </select>
-
-                  {isCustomCreateDept && (
-                    <input
-                      type="text"
-                      required
-                      placeholder="Type custom department name..."
-                      value={customCreateDeptText}
-                      onChange={(e) => setCustomCreateDeptText(e.target.value)}
-                      style={{ width: '100%', marginTop: '6px', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #0284c7', fontSize: '0.85rem' }}
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Designation
-                  </label>
-                  <select
-                    value={isCustomCreateDesig ? '__CUSTOM__' : createUserForm.designation}
-                    onChange={(e) => {
-                      if (e.target.value === '__CUSTOM__') {
-                        setIsCustomCreateDesig(true);
-                      } else {
-                        setIsCustomCreateDesig(false);
-                        setCreateUserForm({ ...createUserForm, designation: e.target.value });
-                      }
-                    }}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
-                  >
-                    {designations.map(desig => (
-                      <option key={desig.code || desig.name} value={desig.name}>
-                        {desig.name}
-                      </option>
-                    ))}
-                    <option value="__CUSTOM__">✏️ + Custom / Other Designation...</option>
-                  </select>
-
-                  {isCustomCreateDesig && (
-                    <input
-                      type="text"
-                      required
-                      placeholder="Type custom designation title..."
-                      value={customCreateDesigText}
-                      onChange={(e) => setCustomCreateDesigText(e.target.value)}
-                      style={{ width: '100%', marginTop: '6px', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #0284c7', fontSize: '0.85rem' }}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Domain Corporate Email Provisioning Toggle */}
-              <div style={{
-                background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                borderRadius: '10px',
-                padding: '12px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px'
-              }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>
-                  <input
-                    type="checkbox"
-                    checked={createUserForm.createDomainMailbox}
-                    onChange={(e) => setCreateUserForm({ ...createUserForm, createDomainMailbox: e.target.checked })}
-                    style={{ width: '16px', height: '16px', accentColor: '#16a34a' }}
-                  />
-                  <span>Provision Corporate Domain Email (@aadhirakshainsurance.com)</span>
-                </label>
-                {createUserForm.createDomainMailbox && (
-                  <div style={{ marginTop: '2px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden' }}>
-                      <input
-                        type="text"
-                        placeholder={createUserForm.fullName ? createUserForm.fullName.toLowerCase().replace(/\s+/g, '.') : 'employee.name'}
-                        value={createUserForm.customMailboxUsername}
-                        onChange={(e) => setCreateUserForm({ ...createUserForm, customMailboxUsername: e.target.value })}
-                        style={{ flex: 1, padding: '8px 10px', border: 'none', outline: 'none', fontSize: '0.84rem' }}
-                      />
-                      <span style={{ padding: '8px 12px', background: '#f8fafc', color: '#64748b', fontSize: '0.82rem', fontWeight: 600, borderLeft: '1px solid #e2e8f0' }}>
-                        @aadhirakshainsurance.com
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '0.72rem', color: '#15803d', marginTop: '4px', display: 'block' }}>
-                      ⚡ Creates a 5GB mailbox on the Hostinger VPS mail server with IMAP/SMTP/Webmail support.
-                    </span>
+            {/* Modal Body (Scrollable with comfortable padding) */}
+            <form onSubmit={handleCreateSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <div style={{ padding: '1.5rem 1.75rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem', flex: 1 }}>
+                {errorMsg && (
+                  <div style={{ 
+                    background: '#fef2f2', 
+                    border: '1px solid #fecaca', 
+                    color: '#991b1b', 
+                    padding: '10px 14px', 
+                    borderRadius: '10px', 
+                    fontSize: '0.86rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <AlertCircle size={16} color="#dc2626" />
+                    <span>{errorMsg}</span>
                   </div>
                 )}
+
+                {/* Section 1: Personal & Contact Information */}
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '14px',
+                  padding: '16px'
+                }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    marginBottom: '14px', 
+                    color: '#0f2b48', 
+                    fontSize: '0.86rem', 
+                    fontWeight: 800, 
+                    letterSpacing: '0.4px',
+                    textTransform: 'uppercase'
+                  }}>
+                    <UserIcon size={16} color="var(--crm-primary)" />
+                    1. Identity & Contact Information
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                        Full Name <span style={{ color: '#e11d48' }}>*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Priya Sharma"
+                        value={createUserForm.fullName}
+                        onChange={(e) => {
+                          const name = e.target.value;
+                          setCreateUserForm(prev => {
+                            // Smart suggestion for mailbox username if admin hasn't customized it yet
+                            const suggestedAlias = name.toLowerCase().trim().replace(/[^a-z0-9\s.]/g, '').replace(/\s+/g, '.');
+                            return {
+                              ...prev,
+                              fullName: name,
+                              customMailboxUsername: prev.customMailboxUsername || suggestedAlias
+                            };
+                          });
+                        }}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                        Employee Code
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Auto-assigned (e.g. ADV108)"
+                        value={createUserForm.employeeCode}
+                        onChange={(e) => setCreateUserForm({ ...createUserForm, employeeCode: e.target.value })}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                        Personal / Contact Email <span style={{ color: '#e11d48' }}>*</span>
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="e.g. priya.personal@gmail.com"
+                        value={createUserForm.email}
+                        onChange={(e) => setCreateUserForm({ ...createUserForm, email: e.target.value })}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                      />
+                      <span style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                        ✉️ Initial temporary credentials & portal link will be dispatched here.
+                      </span>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                        Mobile Phone Number <span style={{ color: '#e11d48' }}>*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="e.g. +91 9848012345"
+                        value={createUserForm.phoneNumber}
+                        onChange={(e) => setCreateUserForm({ ...createUserForm, phoneNumber: e.target.value })}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                      />
+                      <span style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                        Used for urgent alerts & 2FA login verification.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 2: Organization Hierarchy & Role Mapping */}
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '14px',
+                  padding: '16px'
+                }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    marginBottom: '14px', 
+                    color: '#0f2b48', 
+                    fontSize: '0.86rem', 
+                    fontWeight: 800, 
+                    letterSpacing: '0.4px',
+                    textTransform: 'uppercase'
+                  }}>
+                    <Briefcase size={16} color="#d97706" />
+                    2. Role & Organizational Structure
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                        System Role <span style={{ color: '#e11d48' }}>*</span>
+                      </label>
+                      <select
+                        value={createUserForm.role}
+                        onChange={(e) => setCreateUserForm({ ...createUserForm, role: e.target.value })}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff', color: '#0f2b48', fontWeight: 600 }}
+                      >
+                        {assignableRoles.length > 0 ? (
+                          assignableRoles
+                            .filter(r => {
+                              if (!canCreateAdmins && (r.code === 'ROLE_SUPER_ADMIN' || r.code === 'ROLE_ADMIN')) return false;
+                              if (!canCreateManagers && r.code === 'ROLE_MANAGER') return false;
+                              return true;
+                            })
+                            .map(r => (
+                              <option key={r.code} value={r.code}>
+                                {r.code === 'ROLE_SUPER_ADMIN' ? '👑 ' : r.code === 'ROLE_MANAGER' ? '👔 ' : r.code === 'ROLE_ADVISOR' ? '🎯 ' : r.code === 'ROLE_POSP_AGENT' ? '🤝 ' : '💼 '}
+                                {r.label}
+                              </option>
+                            ))
+                        ) : (
+                          isManager ? (
+                            <>
+                              <option value="ROLE_ADVISOR">🎯 Insurance Advisor / Employee</option>
+                              <option value="ROLE_POSP_AGENT">🤝 POSP Agent Partner</option>
+                            </>
+                          ) : (
+                            <>
+                              <option value="ROLE_ADVISOR">🎯 Insurance Advisor / Employee</option>
+                              <option value="ROLE_MANAGER">👔 Branch Manager</option>
+                              <option value="ROLE_SUPER_ADMIN">👑 Super Admin (Full Global Access)</option>
+                              <option value="ROLE_POSP_AGENT">🤝 POSP Agent Partner</option>
+                            </>
+                          )
+                        )}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                        Reporting Manager
+                      </label>
+                      {!isSuperAdmin ? (
+                        <div style={{
+                          padding: '9px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '0.88rem',
+                          background: '#f1f5f9',
+                          color: '#0f2b48',
+                          fontWeight: 600
+                        }}>
+                          {authUser?.fullName || 'You (Current User)'} (Auto-Assigned)
+                        </div>
+                      ) : (
+                        <select
+                          value={createUserForm.managerId}
+                          onChange={(e) => setCreateUserForm({ ...createUserForm, managerId: e.target.value })}
+                          disabled={createUserForm.role === 'ROLE_SUPER_ADMIN'}
+                          style={{ 
+                            width: '100%', 
+                            padding: '9px 12px', 
+                            borderRadius: '8px', 
+                            border: '1px solid #cbd5e1', 
+                            fontSize: '0.88rem', 
+                            background: createUserForm.role === 'ROLE_SUPER_ADMIN' ? '#f1f5f9' : '#ffffff',
+                            cursor: createUserForm.role === 'ROLE_SUPER_ADMIN' ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          <option value="">Direct / None (Top Level)</option>
+                          {managers.map(m => (
+                            <option key={m.id} value={m.id}>{m.fullName} ({m.email})</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
+
+                  {createUserForm.role === 'ROLE_SUPER_ADMIN' && (
+                    <div style={{
+                      background: '#fffbeb',
+                      border: '1px solid #fef3c7',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      marginBottom: '12px',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '8px',
+                      fontSize: '0.78rem',
+                      color: '#92400e'
+                    }}>
+                      <ShieldCheck size={16} color="#d97706" style={{ marginTop: '2px', flexShrink: 0 }} />
+                      <div>
+                        <strong>Super Administrator Role:</strong> Full unrestricted governance over all branch financials, user credentials, commissions, and live system policies.
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                        Department
+                      </label>
+                      <select
+                        value={isCustomCreateDept ? '__CUSTOM__' : createUserForm.department}
+                        onChange={(e) => {
+                          if (e.target.value === '__CUSTOM__') {
+                            setIsCustomCreateDept(true);
+                          } else {
+                            setIsCustomCreateDept(false);
+                            setCreateUserForm({ ...createUserForm, department: e.target.value });
+                          }
+                        }}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
+                      >
+                        {departments.map(dept => (
+                          <option key={dept.code || dept.name} value={dept.name}>
+                            {dept.name}
+                          </option>
+                        ))}
+                        <option value="__CUSTOM__">✏️ + Custom / Other Department...</option>
+                      </select>
+
+                      {isCustomCreateDept && (
+                        <input
+                          type="text"
+                          required
+                          placeholder="Type custom department..."
+                          value={customCreateDeptText}
+                          onChange={(e) => setCustomCreateDeptText(e.target.value)}
+                          style={{ width: '100%', marginTop: '6px', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid var(--crm-primary)', fontSize: '0.85rem' }}
+                        />
+                      )}
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                        Designation
+                      </label>
+                      <select
+                        value={isCustomCreateDesig ? '__CUSTOM__' : createUserForm.designation}
+                        onChange={(e) => {
+                          if (e.target.value === '__CUSTOM__') {
+                            setIsCustomCreateDesig(true);
+                          } else {
+                            setIsCustomCreateDesig(false);
+                            setCreateUserForm({ ...createUserForm, designation: e.target.value });
+                          }
+                        }}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', background: '#ffffff' }}
+                      >
+                        {designations.map(desig => (
+                          <option key={desig.code || desig.name} value={desig.name}>
+                            {desig.name}
+                          </option>
+                        ))}
+                        <option value="__CUSTOM__">✏️ + Custom / Other Designation...</option>
+                      </select>
+
+                      {isCustomCreateDesig && (
+                        <input
+                          type="text"
+                          required
+                          placeholder="Type custom designation title..."
+                          value={customCreateDesigText}
+                          onChange={(e) => setCustomCreateDesigText(e.target.value)}
+                          style={{ width: '100%', marginTop: '6px', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid var(--crm-primary)', fontSize: '0.85rem' }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 3: Access & Corporate Mailbox Provisioning */}
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '14px',
+                  padding: '16px'
+                }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    marginBottom: '14px', 
+                    color: '#0f2b48', 
+                    fontSize: '0.86rem', 
+                    fontWeight: 800, 
+                    letterSpacing: '0.4px',
+                    textTransform: 'uppercase'
+                  }}>
+                    <Lock size={16} color="var(--accent-emerald)" />
+                    3. Credentials & Corporate Mailbox
+                  </div>
+
+                  {/* Mailbox Toggle Card */}
+                  <div style={{
+                    background: createUserForm.createDomainMailbox ? '#f0fdf4' : '#ffffff',
+                    border: createUserForm.createDomainMailbox ? '1.5px solid #86efac' : '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '14px',
+                    marginBottom: '14px',
+                    transition: 'all 0.2s ease'
+                  }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={createUserForm.createDomainMailbox}
+                        onChange={(e) => setCreateUserForm({ ...createUserForm, createDomainMailbox: e.target.checked })}
+                        style={{ width: '18px', height: '18px', accentColor: '#16a34a', cursor: 'pointer' }}
+                      />
+                      <div>
+                        <span style={{ fontSize: '0.88rem', fontWeight: 800, color: createUserForm.createDomainMailbox ? '#166534' : '#334155' }}>
+                          Provision Corporate Domain Email (@aadhirakshainsurance.com)
+                        </span>
+                        <span style={{ fontSize: '0.74rem', color: '#64748b', display: 'block', marginTop: '2px' }}>
+                          Enables dedicated Hostinger VPS Stalwart mailbox with 5GB quota, IMAP/SMTP sync & Webmail portal.
+                        </span>
+                      </div>
+                    </label>
+
+                    {createUserForm.createDomainMailbox && (
+                      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed #bbf7d0' }}>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#166534', marginBottom: '5px' }}>
+                          Corporate Username / Handle:
+                        </label>
+                        <div style={{ display: 'flex', alignItems: 'center', background: '#ffffff', border: '1px solid #86efac', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                          <input
+                            type="text"
+                            placeholder="e.g. priya.sharma"
+                            value={createUserForm.customMailboxUsername}
+                            onChange={(e) => setCreateUserForm({ ...createUserForm, customMailboxUsername: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '') })}
+                            style={{ flex: 1, padding: '9px 12px', border: 'none', outline: 'none', fontSize: '0.86rem', fontWeight: 600, color: '#0f2b48' }}
+                          />
+                          <span style={{ padding: '9px 14px', background: '#f0fdf4', color: '#15803d', fontSize: '0.82rem', fontWeight: 700, borderLeft: '1px solid #bbf7d0' }}>
+                            @aadhirakshainsurance.com
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Password Mode Selector */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                      Initial Password Option
+                    </label>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCreatePasswordMode('AUTO');
+                          setCreateUserForm(prev => ({ ...prev, password: '' }));
+                        }}
+                        style={{
+                          padding: '9px 12px',
+                          borderRadius: '8px',
+                          border: createPasswordMode === 'AUTO' ? '1.5px solid var(--accent-emerald)' : '1px solid #cbd5e1',
+                          background: createPasswordMode === 'AUTO' ? '#ecfdf5' : '#ffffff',
+                          color: createPasswordMode === 'AUTO' ? '#047857' : '#475569',
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Sparkles size={14} color={createPasswordMode === 'AUTO' ? '#059669' : '#64748b'} />
+                        Auto-Generate Secure Password
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCreatePasswordMode('CUSTOM')}
+                        style={{
+                          padding: '9px 12px',
+                          borderRadius: '8px',
+                          border: createPasswordMode === 'CUSTOM' ? '1.5px solid var(--accent-emerald)' : '1px solid #cbd5e1',
+                          background: createPasswordMode === 'CUSTOM' ? '#ecfdf5' : '#ffffff',
+                          color: createPasswordMode === 'CUSTOM' ? '#047857' : '#475569',
+                          fontWeight: 700,
+                          fontSize: '0.82rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Key size={14} color={createPasswordMode === 'CUSTOM' ? '#059669' : '#64748b'} />
+                        Specify Custom Password
+                      </button>
+                    </div>
+
+                    {createPasswordMode === 'CUSTOM' ? (
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type={showCreatePassword ? "text" : "password"}
+                          placeholder="Enter temporary password (min 8 characters)..."
+                          value={createUserForm.password}
+                          onChange={(e) => setCreateUserForm({ ...createUserForm, password: e.target.value })}
+                          style={{ width: '100%', padding: '9px 40px 9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCreatePassword(!showCreatePassword)}
+                          style={{
+                            position: 'absolute',
+                            right: '10px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#64748b'
+                          }}
+                        >
+                          {showCreatePassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ 
+                        fontSize: '0.76rem', 
+                        color: '#059669', 
+                        background: '#ecfdf5', 
+                        padding: '8px 12px', 
+                        borderRadius: '8px', 
+                        border: '1px solid #a7f3d0' 
+                      }}>
+                        ⚡ High-entropy 10-character password will be auto-generated and emailed to the user upon creation.
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                  Custom Password (optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Leave blank to auto-generate"
-                  value={createUserForm.password}
-                  onChange={(e) => setCreateUserForm({ ...createUserForm, password: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', marginTop: '1rem' }}>
+              {/* Modal Footer (Sticky, Clear Hierarchy) */}
+              <div style={{
+                padding: '1.25rem 1.75rem',
+                background: '#ffffff',
+                borderTop: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                gap: '12px',
+                flexShrink: 0
+              }}>
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', fontWeight: 600, cursor: 'pointer' }}
+                  style={{
+                    padding: '10px 18px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#475569',
+                    fontSize: '0.88rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
                 >
                   Cancel
                 </button>
+
                 <button
                   type="submit"
                   disabled={submitting}
-                  style={{ flex: 2, padding: '10px', borderRadius: '8px', border: 'none', background: '#059669', color: '#ffffff', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer' }}
+                  style={{
+                    padding: '10px 22px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: 'var(--accent-emerald)',
+                    color: '#ffffff',
+                    fontSize: '0.88rem',
+                    fontWeight: 700,
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)',
+                    transition: 'all 0.15s ease'
+                  }}
                 >
-                  {submitting ? 'Generating...' : 'Create User & Generate Credentials'}
+                  <ShieldCheck size={16} />
+                  {submitting ? 'Provisioning Member...' : 'Create User & Dispatch Credentials'}
                 </button>
               </div>
             </form>
