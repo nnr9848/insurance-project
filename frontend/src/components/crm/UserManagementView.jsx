@@ -327,13 +327,14 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
     }
   };
 
-  const handleProvisionMailboxNow = async () => {
+  const handleProvisionMailboxNow = async (linkExisting = false) => {
     if (!mailboxModalUser) return;
     setMailboxActionLoading(true);
     try {
       const payload = {
         customAlias: provisionUsername.trim() || undefined,
-        initialPassword: provisionPasswordMode === 'CUSTOM' && provisionCustomPassword.trim() ? provisionCustomPassword.trim() : undefined
+        initialPassword: provisionPasswordMode === 'CUSTOM' && provisionCustomPassword.trim() ? provisionCustomPassword.trim() : undefined,
+        allowLinkExisting: Boolean(linkExisting)
       };
       const res = await crmService.provisionMailbox(mailboxModalUser.id, payload);
       setMailboxSuccessInfo(res);
@@ -3271,31 +3272,58 @@ Outgoing (SMTP): mail.aadhirakshainsurance.com:465 (TLS)`;
               {/* Action Buttons */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {(!mailboxModalUser.hasDomainMailbox || (mailboxSettings && mailboxSettings.isSynchronized === false)) ? (
-                  <button
-                    onClick={handleProvisionMailboxNow}
-                    disabled={mailboxActionLoading || !provisionUsername.trim()}
-                    style={{
-                      padding: '11px',
-                      borderRadius: '10px',
-                      border: 'none',
-                      background: mailboxActionLoading || !provisionUsername.trim() ? '#94a3b8' : '#059669',
-                      color: '#ffffff',
-                      fontWeight: 700,
-                      cursor: mailboxActionLoading || !provisionUsername.trim() ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)'
-                    }}
-                  >
-                    <AtSign size={16} />
-                    {mailboxActionLoading 
-                      ? 'Creating on Stalwart Mail Server...' 
-                      : (mailboxSettings && mailboxSettings.isSynchronized === false 
-                          ? '⚡ Push & Sync to Stalwart Mail Server' 
-                          : 'Provision Domain Mailbox Now')}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleProvisionMailboxNow(false)}
+                      disabled={mailboxActionLoading || !provisionUsername.trim()}
+                      style={{
+                        padding: '11px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        background: mailboxActionLoading || !provisionUsername.trim() ? '#94a3b8' : '#059669',
+                        color: '#ffffff',
+                        fontWeight: 700,
+                        cursor: mailboxActionLoading || !provisionUsername.trim() ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)'
+                      }}
+                    >
+                      <AtSign size={16} />
+                      {mailboxActionLoading 
+                        ? 'Contacting Stalwart Mail Server...' 
+                        : (mailboxSettings && mailboxSettings.isSynchronized === false 
+                            ? '⚡ Push & Sync to Stalwart Mail Server' 
+                            : 'Provision Domain Mailbox Now')}
+                    </button>
+
+                    {/* Secondary Link Option for Pre-existing Server Accounts (e.g. admin@aadhirakshainsurance.com) */}
+                    <button
+                      type="button"
+                      onClick={() => handleProvisionMailboxNow(true)}
+                      disabled={mailboxActionLoading || !provisionUsername.trim()}
+                      title="Link an existing mailbox that was already created on Stalwart Mail Server"
+                      style={{
+                        padding: '9px 12px',
+                        borderRadius: '10px',
+                        border: '1px solid #cbd5e1',
+                        background: '#f8fafc',
+                        color: '#0f2b48',
+                        fontWeight: 600,
+                        fontSize: '0.8rem',
+                        cursor: mailboxActionLoading || !provisionUsername.trim() ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <span>🔗 Link Existing Stalwart Mailbox ({provisionUsername ? `${provisionUsername}@aadhirakshainsurance.com` : 'handle'})</span>
+                    </button>
+                  </>
                 ) : (
                   <button
                     onClick={handleResetMailboxPasswordNow}

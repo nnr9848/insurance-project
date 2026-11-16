@@ -135,15 +135,16 @@ public class CrmUserController {
 
     @PostMapping("/{id}/mailbox/provision")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
-    @Operation(summary = "Provision a domain-based mailbox for an employee (e.g. name@aadhirakshainsurance.com)")
+    @Operation(summary = "Provision or link a domain-based mailbox for an employee (e.g. name@aadhirakshainsurance.com)")
     public ResponseEntity<Map<String, Object>> provisionMailbox(
             @PathVariable Long id,
-            @RequestBody(required = false) Map<String, String> body,
+            @RequestBody(required = false) Map<String, Object> body,
             Authentication auth) {
         User performedBy = getAuthenticatedUser(auth);
-        String customAlias = body != null ? body.get("customAlias") : null;
-        String initialPassword = body != null ? body.get("initialPassword") : null;
-        return ResponseEntity.ok(mailboxProvisioningService.provisionEmployeeMailbox(id, customAlias, initialPassword, performedBy));
+        String customAlias = body != null && body.get("customAlias") != null ? String.valueOf(body.get("customAlias")) : null;
+        String initialPassword = body != null && body.get("initialPassword") != null ? String.valueOf(body.get("initialPassword")) : null;
+        boolean allowLinkExisting = body != null && Boolean.parseBoolean(String.valueOf(body.get("allowLinkExisting")));
+        return ResponseEntity.ok(mailboxProvisioningService.provisionEmployeeMailbox(id, customAlias, initialPassword, allowLinkExisting, performedBy));
     }
 
     @PostMapping("/{id}/mailbox/reset-password")

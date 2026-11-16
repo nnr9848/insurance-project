@@ -98,27 +98,45 @@ public class MailboxProvisioningService {
      * Provisions a new domain mailbox for the given employee using native Stalwart JMAP API.
      * Uses REQUIRES_NEW propagation so mailbox failures are isolated and do not mark calling transactions as rollback-only.
      */
+    /**
+     * Provisions or links a domain mailbox for the given employee using native Stalwart JMAP API.
+     * If allowLinkExisting is true, connects an already existing Stalwart account to the CRM employee profile.
+     * Uses REQUIRES_NEW propagation so mailbox operations are isolated and do not mark calling transactions as rollback-only.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Map<String, Object> provisionEmployeeMailbox(Long userId, String customAlias, String initialPassword, User performedBy) {
+    public Map<String, Object> provisionEmployeeMailbox(Long userId, String customAlias, String initialPassword, boolean allowLinkExisting, User performedBy) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
 
         String username = sanitizeMailboxUsername(user.getFullName(), customAlias);
         String fullDomainEmail = username + "@" + mailDomain;
 
-        // Check if another employee already has this mailbox address
+        // 1. Strict CRM Collision Guard: Ensure no OTHER CRM user has this email as primary or alias
         userRepository.findAll().stream()
-                .filter(u -> !u.getId().equals(user.getId()) && fullDomainEmail.equalsIgnoreCase(u.getDomainMailboxEmail()))
-                .findFirst()
-                .ifPresent(conflict -> {
-                    throw new IllegalArgumentException("Mailbox address " + fullDomainEmail + " is already assigned to " + conflict.getFullName());
+                .filter(u -> !u.getId().equals(user.getId()))
+                .forEach(otherUser -> {
+                    if (fullDomainEmail.equalsIgnoreCase(otherUser.getDomainMailboxEmail())) {
+                        throw new IllegalArgumentException("Mailbox address " + fullDomainEmail + " is already assigned to " + otherUser.getFullName() + " (" + otherUser.getEmail() + ")");
+                    }
+                    List<String> otherAliases = getAliasesList(otherUser);
+                    for (String alias : otherAliases) {
+                        String fullAlias = alias.contains("@") ? alias.toLowerCase().trim() : (alias.toLowerCase().trim() + "@" + mailDomain);
+                        if (fullDomainEmail.equalsIgnoreCase(fullAlias)) {
+                            throw new IllegalArgumentException("Address " + fullDomainEmail + " is already assigned as an alias to " + otherUser.getFullName());
+                        }
+                    }
                 });
 
-        // Pre-check if account already exists on Stalwart Mail Server (e.g. from earlier runs or tests)
+        // 2. Check if account already exists on Stalwart Mail Server
+        boolean isExistingStalwartAccount = false;
+        String existingStalwartId = null;
         if (mailServerEnabled) {
-            String existingStalwartId = checkStalwartAccountExists(username);
+            existingStalwartId = checkStalwartAccountExists(username);
             if (existingStalwartId != null) {
-                throw new IllegalArgumentException("Mailbox account '" + username + "' already exists on the mail server. Please choose a different handle (e.g. " + username + "1) or deprovision the old account first.");
+                if (!allowLinkExisting) {
+                    throw new IllegalArgumentException("Mailbox account '" + username + "' already exists on Stalwart Mail Server. Click 'Link Existing Mailbox' to connect it to this employee, or choose a different handle.");
+                }
+                isExistingStalwartAccount = true;
             }
         }
 
@@ -128,19 +146,32 @@ public class MailboxProvisioningService {
                 : generateStalwartCompliantPassword();
 
         boolean remoteCreated = false;
-        String stalwartAccountId = null;
-        String providerMessage = "Mailbox registered in CRM directory.";
+        String stalwartAccountId = existingStalwartId;
+        String providerMessage = isExistingStalwartAccount 
+                ? "Existing Stalwart mailbox successfully linked to CRM employee profile." 
+                : "Mailbox registered in CRM directory.";
 
         if (mailServerEnabled) {
-            try {
-                String domainId = resolveStalwartDomainId();
-                stalwartAccountId = createStalwartJmapUser(username, domainId, mailboxPassword, user.getFullName(), user.getDesignation());
+            if (isExistingStalwartAccount) {
+                // If admin provided a specific custom password, sync it to the existing Stalwart account
+                if (initialPassword != null && !initialPassword.trim().isEmpty()) {
+                    try {
+                        updateStalwartPassword(existingStalwartId, mailboxPassword, fullDomainEmail);
+                    } catch (Exception ex) {
+                        log.warn("Could not update password for existing Stalwart account {}: {}", fullDomainEmail, ex.getMessage());
+                    }
+                }
                 remoteCreated = true;
-                providerMessage = "Mailbox successfully created and active on mail." + mailDomain;
-            } catch (Exception ex) {
-                log.error("Stalwart JMAP mailbox creation failed: {}", ex.getMessage());
-                // Throw clear exception so UI displays the exact failure reason instead of silent fallback
-                throw new IllegalArgumentException(ex.getMessage());
+            } else {
+                try {
+                    String domainId = resolveStalwartDomainId();
+                    stalwartAccountId = createStalwartJmapUser(username, domainId, mailboxPassword, user.getFullName(), user.getDesignation());
+                    remoteCreated = true;
+                    providerMessage = "Mailbox successfully created and active on mail." + mailDomain;
+                } catch (Exception ex) {
+                    log.error("Stalwart JMAP mailbox creation failed: {}", ex.getMessage());
+                    throw new IllegalArgumentException(ex.getMessage());
+                }
             }
         }
 
@@ -148,19 +179,26 @@ public class MailboxProvisioningService {
         user.setDomainMailboxEmail(fullDomainEmail);
         user.setMailboxStatus(remoteCreated ? "ACTIVE" : "QUEUED");
         user.setMailboxQuotaMb(5120);
-        user.setMailboxCreatedAt(LocalDateTime.now());
+        if (user.getMailboxCreatedAt() == null) {
+            user.setMailboxCreatedAt(LocalDateTime.now());
+        }
         userRepository.save(user);
 
-        log.info("Provisioned corporate domain mailbox {} for user ID: {} by admin: {}", fullDomainEmail, user.getId(), performedBy != null ? performedBy.getFullName() : "SYSTEM");
+        log.info("{} corporate domain mailbox {} for user ID: {} by admin: {}", 
+                isExistingStalwartAccount ? "Linked" : "Provisioned",
+                fullDomainEmail, user.getId(), performedBy != null ? performedBy.getFullName() : "SYSTEM");
+
         if (auditService != null) {
-            auditService.logAction("USER", user.getId(), "MAILBOX_PROVISION", "DOMAIN_MAILBOX",
+            String auditAction = isExistingStalwartAccount ? "MAILBOX_LINKED" : "MAILBOX_PROVISION";
+            auditService.logAction("USER", user.getId(), auditAction, "DOMAIN_MAILBOX",
                     null, fullDomainEmail, performedBy, null);
         }
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
+        result.put("linkedExisting", isExistingStalwartAccount);
         result.put("domainEmail", fullDomainEmail);
-        result.put("mailboxPassword", mailboxPassword);
+        result.put("mailboxPassword", isExistingStalwartAccount && (initialPassword == null || initialPassword.isBlank()) ? null : mailboxPassword);
         result.put("status", user.getMailboxStatus());
         result.put("stalwartId", stalwartAccountId);
         result.put("message", providerMessage);
@@ -168,6 +206,14 @@ public class MailboxProvisioningService {
         result.put("incomingServer", "mail." + mailDomain + " (IMAP SSL Port 993)");
         result.put("outgoingServer", "mail." + mailDomain + " (SMTP TLS Port 465)");
         return result;
+    }
+
+    /**
+     * Backward-compatible overload defaults allowLinkExisting to false.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Map<String, Object> provisionEmployeeMailbox(Long userId, String customAlias, String initialPassword, User performedBy) {
+        return provisionEmployeeMailbox(userId, customAlias, initialPassword, false, performedBy);
     }
 
     /**
