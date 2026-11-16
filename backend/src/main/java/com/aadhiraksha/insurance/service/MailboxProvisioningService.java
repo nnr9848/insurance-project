@@ -111,6 +111,14 @@ public class MailboxProvisioningService {
                     throw new IllegalArgumentException("Mailbox address " + fullDomainEmail + " is already assigned to " + conflict.getFullName());
                 });
 
+        // Pre-check if account already exists on Stalwart Mail Server (e.g. from earlier runs or tests)
+        if (mailServerEnabled) {
+            String existingStalwartId = checkStalwartAccountExists(username);
+            if (existingStalwartId != null) {
+                throw new IllegalArgumentException("Mailbox account '" + username + "' already exists on the mail server. Please choose a different handle (e.g. " + username + "1) or deprovision the old account first.");
+            }
+        }
+
         // Generate strong 16-char password matching Stalwart zxcvbn strength standards if not provided
         String mailboxPassword = (initialPassword != null && !initialPassword.trim().isEmpty())
                 ? initialPassword.trim()

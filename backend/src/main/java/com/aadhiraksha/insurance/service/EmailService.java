@@ -195,8 +195,8 @@ public class EmailService {
               <table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 14px; line-height: 1.8;">
                 <tr><td width="35%" style="color: #64748b; font-weight: 600;">CRM Portal Login:</td><td><strong style="color: #0284c7;">{{crmUsername}}</strong></td></tr>
                 <tr><td style="color: #64748b; font-weight: 600;">Temporary Password:</td><td><code style="background: #e2e8f0; padding: 3px 8px; border-radius: 4px; font-weight: bold; color: #0f172a;">{{temporaryPassword}}</code></td></tr>
-                <tr><td style="color: #64748b; font-weight: 600; padding-top: 8px;">Corporate Email:</td><td style="padding-top: 8px;"><strong style="color: #059669;">{{domainMailboxEmail}}</strong><span style="font-size: 12px; color: #64748b; display: block;">Webmail: <a href="{{webmailUrl}}" style="color: #0284c7;" target="_blank">{{webmailUrl}}</a></span></td></tr>
               </table>
+              {{corporateMailboxSection}}
             </div>
             <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; margin-bottom: 24px; font-size: 13px; color: #92400e; border-radius: 0 8px 8px 0;">
               <strong>Security Mandatory:</strong> You will be prompted to change this temporary password upon your initial login. Do not share your credentials with anyone.
@@ -330,10 +330,49 @@ public class EmailService {
     @Async
     public void sendWelcomeCredentialsEmail(String toEmail, String fullName, String temporaryPassword, String domainMailboxEmail) {
         try {
+            boolean hasCorporateMailbox = domainMailboxEmail != null && !domainMailboxEmail.isBlank() && domainMailboxEmail.contains("@");
+            String corporateMailboxSection = "";
+
+            if (hasCorporateMailbox) {
+                corporateMailboxSection = """
+                    <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+                      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 14px; line-height: 1.8;">
+                        <tr>
+                          <td width="35%" style="color: #64748b; font-weight: 600;">Corporate Work Email:</td>
+                          <td>
+                            <strong style="color: #059669;">%s</strong>
+                            <span style="font-size: 12px; color: #64748b; display: block; margin-top: 2px;">
+                              Webmail: <a href="https://mail.%s" style="color: #0284c7; text-decoration: underline;" target="_blank">https://mail.%s</a>
+                            </span>
+                          </td>
+                        </tr>
+                      </table>
+                      <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed #e2e8f0; font-size: 12px; color: #475569;">
+                        <strong style="color: #0f172a; display: block; margin-bottom: 6px;">📱 Mobile & Outlook Client Setup (IMAP / SMTP):</strong>
+                        <table width="100%" border="0" cellspacing="0" cellpadding="2" style="font-size: 12px;">
+                          <tr>
+                            <td width="38%" style="color: #64748b;">Incoming (IMAP):</td>
+                            <td><code>mail.%s</code> : <strong>993</strong> (SSL)</td>
+                          </tr>
+                          <tr>
+                            <td style="color: #64748b;">Outgoing (SMTP):</td>
+                            <td><code>mail.%s</code> : <strong>465</strong> (SSL)</td>
+                          </tr>
+                          <tr>
+                            <td style="color: #64748b;">Username:</td>
+                            <td><span>%s</span></td>
+                          </tr>
+                        </table>
+                      </div>
+                    </div>
+                    """.formatted(domainMailboxEmail, mailDomain, mailDomain, mailDomain, mailDomain, domainMailboxEmail);
+            }
+
             Map<String, Object> model = Map.of(
                     "fullName", fullName != null ? fullName : "Team Member",
                     "crmUsername", toEmail,
                     "temporaryPassword", temporaryPassword != null ? temporaryPassword : "N/A",
+                    "corporateMailboxSection", corporateMailboxSection,
                     "domainMailboxEmail", domainMailboxEmail != null ? domainMailboxEmail : "",
                     "portalLoginUrl", "https://aadhirakshainsurance.com/login",
                     "webmailUrl", "https://mail." + mailDomain

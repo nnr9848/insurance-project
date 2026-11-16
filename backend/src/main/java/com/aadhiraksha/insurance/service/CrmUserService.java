@@ -17,6 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.security.SecureRandom;
 import java.util.*;
@@ -226,15 +228,33 @@ public class CrmUserService {
             }
         }
 
-        // Asynchronously dispatch welcome credentials email to new user/staff
-        if (savedUser.getEmail() != null && savedUser.getEmail().contains("@")) {
-            String domainEmail = savedUser.getDomainMailboxEmail();
-            emailService.sendWelcomeCredentialsEmail(
-                    savedUser.getEmail(),
-                    savedUser.getFullName(),
-                    rawPassword,
-                    domainEmail
-            );
+        // Final step: Asynchronously dispatch welcome credentials email ONLY AFTER transaction commits successfully
+        final User finalCommittedUser = savedUser;
+        final String finalRawPassword = rawPassword;
+        if (finalCommittedUser.getEmail() != null && finalCommittedUser.getEmail().contains("@")) {
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        String domainEmail = finalCommittedUser.getDomainMailboxEmail();
+                        emailService.sendWelcomeCredentialsEmail(
+                                finalCommittedUser.getEmail(),
+                                finalCommittedUser.getFullName(),
+                                finalRawPassword,
+                                domainEmail
+                        );
+                    }
+                });
+            } else {
+                // Fallback for non-transactional contexts (e.g. unit tests)
+                String domainEmail = finalCommittedUser.getDomainMailboxEmail();
+                emailService.sendWelcomeCredentialsEmail(
+                        finalCommittedUser.getEmail(),
+                        finalCommittedUser.getFullName(),
+                        finalRawPassword,
+                        domainEmail
+                );
+            }
         }
 
         result.put("user", mapToResponse(savedUser));
@@ -344,14 +364,30 @@ public class CrmUserService {
         auditService.logAction("USER", user.getId(), "RESET_PASSWORD", "PASSWORD", null,
                 "Password reset for " + user.getFullName(), performedBy, null);
 
-        // Asynchronously dispatch updated credentials to user's contact email
-        if (user.getEmail() != null && user.getEmail().contains("@")) {
-            emailService.sendWelcomeCredentialsEmail(
-                    user.getEmail(),
-                    user.getFullName(),
-                    newRawPassword,
-                    user.getDomainMailboxEmail()
-            );
+        // Final step: Asynchronously dispatch updated credentials ONLY AFTER transaction commits
+        final User finalResetUser = user;
+        final String finalResetPassword = newRawPassword;
+        if (finalResetUser.getEmail() != null && finalResetUser.getEmail().contains("@")) {
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        emailService.sendWelcomeCredentialsEmail(
+                                finalResetUser.getEmail(),
+                                finalResetUser.getFullName(),
+                                finalResetPassword,
+                                finalResetUser.getDomainMailboxEmail()
+                        );
+                    }
+                });
+            } else {
+                emailService.sendWelcomeCredentialsEmail(
+                        finalResetUser.getEmail(),
+                        finalResetUser.getFullName(),
+                        finalResetPassword,
+                        finalResetUser.getDomainMailboxEmail()
+                );
+            }
         }
 
         Map<String, String> response = new HashMap<>();
@@ -389,12 +425,29 @@ public class CrmUserService {
         auditService.logAction("USER", user.getId(), "RESEND_WELCOME", "CREDENTIALS", null,
                 "Welcome credentials re-dispatched to " + user.getEmail() + " for " + user.getFullName(), performedBy, null);
 
-        emailService.sendWelcomeCredentialsEmail(
-                user.getEmail(),
-                user.getFullName(),
-                newRawPassword,
-                user.getDomainMailboxEmail()
-        );
+        // Final step: Asynchronously dispatch credentials ONLY AFTER transaction commits
+        final User finalResendUser = user;
+        final String finalResendPassword = newRawPassword;
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    emailService.sendWelcomeCredentialsEmail(
+                            finalResendUser.getEmail(),
+                            finalResendUser.getFullName(),
+                            finalResendPassword,
+                            finalResendUser.getDomainMailboxEmail()
+                    );
+                }
+            });
+        } else {
+            emailService.sendWelcomeCredentialsEmail(
+                    finalResendUser.getEmail(),
+                    finalResendUser.getFullName(),
+                    finalResendPassword,
+                    finalResendUser.getDomainMailboxEmail()
+            );
+        }
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
