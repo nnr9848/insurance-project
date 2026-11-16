@@ -71,8 +71,9 @@ services:
       - "4190:4190"   # ManageSieve
       - "8080:8080"   # HTTP Management / JMAP / Admin Web Console
     environment:
-      - STALWART_ADMIN_SECRET=${STALWART_ADMIN_SECRET:-AadhirakshaMailSecret2026!}
       - STALWART_HOSTNAME=${STALWART_HOSTNAME:-mail.aadhirakshainsurance.com}
+      - STALWART_ADMIN_SECRET=${STALWART_ADMIN_SECRET:-AadhirakshaMailSecret2026!}
+      - STALWART_RECOVERY_ADMIN=admin:${STALWART_ADMIN_SECRET:-AadhirakshaMailSecret2026!}
     volumes:
       - ./data/stalwart/etc:/etc/stalwart
       - ./data/stalwart/data:/var/lib/stalwart
@@ -86,14 +87,8 @@ services:
     restart: unless-stopped
     ports:
       - "${SNAPPYMAIL_PORT:-8888}:8888"
-    environment:
-      - SNAPPYMAIL_LOGIN_DEFAULT_DOMAIN=aadhirakshainsurance.com
-      - SNAPPYMAIL_LOGIN_DETERMINE_USER_DOMAIN=aadhirakshainsurance.com
     volumes:
       - aadhiraksha_snappymail_data:/var/lib/snappymail
-      - ./deploy/mail/snappymail/domains/aadhirakshainsurance.com.json:/var/lib/snappymail/_data_/_default_/domains/aadhirakshainsurance.com.json
-      - ./deploy/mail/snappymail/domains/aadhirakshainsurance.com.json:/var/lib/snappymail/_data_/_default_/domains/default.json
-      - ./deploy/mail/snappymail/configs/application.ini:/var/lib/snappymail/_data_/_default_/configs/application.ini
     depends_on:
       - mailserver
     networks:
