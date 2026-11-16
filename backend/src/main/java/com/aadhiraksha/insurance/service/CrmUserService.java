@@ -224,15 +224,16 @@ public class CrmUserService {
             try {
                 // Generate high-entropy 16-character password guaranteed to satisfy Stalwart zxcvbn password policy
                 provisionedMailboxPassword = MailboxProvisioningService.generateStalwartCompliantPassword();
-                Map<String, Object> mailboxRes = mailboxProvisioningService.provisionEmployeeMailbox(
-                        savedUser.getId(),
+                // Pass savedUser entity directly into provisionEmployeeMailboxForUser to prevent
+                // transaction boundary isolation visibility issues (e.g. "User not found with ID: X")
+                Map<String, Object> mailboxRes = mailboxProvisioningService.provisionEmployeeMailboxForUser(
+                        savedUser,
                         request.getCustomMailboxUsername(),
                         provisionedMailboxPassword,
+                        false,
                         performedBy
                 );
                 result.put("domainMailbox", mailboxRes);
-                // Refresh user entity state with newly assigned mailbox info
-                savedUser = userRepository.findById(savedUser.getId()).orElse(savedUser);
             } catch (Exception ex) {
                 log.warn("Automatic domain mailbox provisioning failed during user creation: {}", ex.getMessage());
                 result.put("domainMailboxError", ex.getMessage());

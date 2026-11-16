@@ -99,21 +99,33 @@ public class MailboxProvisioningService {
      * Uses REQUIRES_NEW propagation so mailbox failures are isolated and do not mark calling transactions as rollback-only.
      */
     /**
-     * Provisions or links a domain mailbox for the given employee using native Stalwart JMAP API.
-     * If allowLinkExisting is true, connects an already existing Stalwart account to the CRM employee profile.
-     * Uses REQUIRES_NEW propagation so mailbox operations are isolated and do not mark calling transactions as rollback-only.
+     * Provisions or links a domain mailbox for an existing, persisted User ID.
+     * Uses REQUIRES_NEW propagation for standalone modal invocations so errors don't taint external contexts.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Map<String, Object> provisionEmployeeMailbox(Long userId, String customAlias, String initialPassword, boolean allowLinkExisting, User performedBy) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+        return provisionEmployeeMailboxForUser(user, customAlias, initialPassword, allowLinkExisting, performedBy);
+    }
+
+    /**
+     * Core mailbox provisioning method that operates directly on a User entity instance.
+     * Can be invoked directly within createUser() before or after save without running into
+     * uncommitted transaction visibility barriers.
+     */
+    @Transactional
+    public Map<String, Object> provisionEmployeeMailboxForUser(User user, String customAlias, String initialPassword, boolean allowLinkExisting, User performedBy) {
+        if (user == null) {
+            throw new IllegalArgumentException("User entity cannot be null for mailbox provisioning.");
+        }
 
         String username = sanitizeMailboxUsername(user.getFullName(), customAlias);
         String fullDomainEmail = username + "@" + mailDomain;
 
         // 1. Strict CRM Collision Guard: Ensure no OTHER CRM user has this email as primary or alias
         userRepository.findAll().stream()
-                .filter(u -> !u.getId().equals(user.getId()))
+                .filter(u -> user.getId() == null || !user.getId().equals(u.getId()))
                 .forEach(otherUser -> {
                     if (fullDomainEmail.equalsIgnoreCase(otherUser.getDomainMailboxEmail())) {
                         throw new IllegalArgumentException("Mailbox address " + fullDomainEmail + " is already assigned to " + otherUser.getFullName() + " (" + otherUser.getEmail() + ")");
@@ -188,7 +200,7 @@ public class MailboxProvisioningService {
                 isExistingStalwartAccount ? "Linked" : "Provisioned",
                 fullDomainEmail, user.getId(), performedBy != null ? performedBy.getFullName() : "SYSTEM");
 
-        if (auditService != null) {
+        if (auditService != null && user.getId() != null) {
             String auditAction = isExistingStalwartAccount ? "MAILBOX_LINKED" : "MAILBOX_PROVISION";
             auditService.logAction("USER", user.getId(), auditAction, "DOMAIN_MAILBOX",
                     null, fullDomainEmail, performedBy, null);
