@@ -82,9 +82,17 @@ public class CrmUserService {
         if (request.getEmail() != null && userRepository.existsByEmail(request.getEmail().trim())) {
             throw new IllegalArgumentException("User with email " + request.getEmail().trim() + " already exists.");
         }
-        if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty() && userRepository.existsByPhoneNumber(request.getPhoneNumber().trim())) {
-            throw new IllegalArgumentException("User with phone number " + request.getPhoneNumber().trim() + " already exists.");
+
+        // Canonical 10-digit phone number standardization
+        String normalizedPhone = null;
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().trim().isEmpty()) {
+            String digitsOnly = request.getPhoneNumber().replaceAll("[^0-9]", "");
+            normalizedPhone = digitsOnly.length() >= 10 ? digitsOnly.substring(digitsOnly.length() - 10) : digitsOnly;
+            if (userRepository.existsByPhoneNumber(normalizedPhone) || userRepository.existsByPhoneNumber(request.getPhoneNumber().trim())) {
+                throw new IllegalArgumentException("User with phone number " + normalizedPhone + " already exists in the system.");
+            }
         }
+
         if (request.getEmployeeCode() != null && !request.getEmployeeCode().trim().isEmpty() && userRepository.existsByEmployeeCode(request.getEmployeeCode().trim())) {
             throw new IllegalArgumentException("Employee code " + request.getEmployeeCode().trim() + " is already in use.");
         }
@@ -150,8 +158,8 @@ public class CrmUserService {
         User user = User.builder()
                 .employeeCode(employeeCode)
                 .fullName(request.getFullName())
-                .email(request.getEmail())
-                .phoneNumber(request.getPhoneNumber())
+                .email(request.getEmail() != null ? request.getEmail().trim().toLowerCase() : null)
+                .phoneNumber(normalizedPhone != null ? normalizedPhone : request.getPhoneNumber())
                 .password(passwordEncoder.encode(rawPassword))
                 .designation(request.getDesignation() != null ? request.getDesignation() : ("ROLE_POSP_AGENT".equals(targetRoleName) ? "POSP Agent Partner" : "Insurance Advisor"))
                 .department(request.getDepartment() != null ? request.getDepartment() : ("ROLE_POSP_AGENT".equals(targetRoleName) ? "POSP Partner Distribution" : "Retail Sales (Health, Life & Motor)"))

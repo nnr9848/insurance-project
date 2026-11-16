@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
@@ -94,8 +95,9 @@ public class MailboxProvisioningService {
 
     /**
      * Provisions a new domain mailbox for the given employee using native Stalwart JMAP API.
+     * Uses REQUIRES_NEW propagation so mailbox failures are isolated and do not mark calling transactions as rollback-only.
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Map<String, Object> provisionEmployeeMailbox(Long userId, String customAlias, String initialPassword, User performedBy) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));

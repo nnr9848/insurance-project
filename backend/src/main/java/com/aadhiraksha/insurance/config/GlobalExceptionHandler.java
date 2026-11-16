@@ -139,6 +139,27 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body, HttpStatus.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(org.springframework.transaction.TransactionException.class)
+    public ResponseEntity<Map<String, Object>> handleTransactionException(
+            org.springframework.transaction.TransactionException ex) {
+
+        Throwable rootCause = ex.getMostSpecificCause();
+        String message = (rootCause != null && rootCause.getMessage() != null && !rootCause.getMessage().isBlank())
+                ? rootCause.getMessage()
+                : ex.getMessage();
+
+        log.warn("[TRANSACTION WARN] Transaction error handled: {}", message);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Transaction Error");
+        body.put("message", message != null ? message : "Transaction could not be completed.");
+        body.put("success", false);
+
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(
             Exception ex, WebRequest request) {

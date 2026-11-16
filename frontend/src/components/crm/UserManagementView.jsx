@@ -2061,6 +2061,19 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                             @aadhirakshainsurance.com
                           </span>
                         </div>
+                        {/* Instant Collision Warning */}
+                        {(() => {
+                          const currentHandle = createUserForm.customMailboxUsername?.trim().toLowerCase();
+                          if (!currentHandle) return null;
+                          const fullEmail = `${currentHandle}@aadhirakshainsurance.com`;
+                          const isTaken = users.some(u => u.domainMailboxEmail && u.domainMailboxEmail.toLowerCase() === fullEmail);
+                          return isTaken ? (
+                            <div style={{ fontSize: '0.74rem', color: '#dc2626', marginTop: '5px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                              <AlertCircle size={13} color="#dc2626" />
+                              Notice: '{fullEmail}' is already assigned to an existing team member.
+                            </div>
+                          ) : null;
+                        })()}
                       </div>
                     )}
                   </div>
@@ -2289,6 +2302,18 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                   </div>
                   <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>
                     Status: <strong style={{ color: '#059669' }}>{tempPasswordSuccess.domainMailbox.status}</strong> • Webmail: {tempPasswordSuccess.domainMailbox.webmailUrl}
+                  </div>
+                </div>
+              )}
+
+              {tempPasswordSuccess.domainMailboxError && (
+                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #fecaca', background: '#fef2f2', padding: '8px', borderRadius: '8px', textAlign: 'left' }}>
+                  <div style={{ fontSize: '0.76rem', color: '#dc2626', fontWeight: 700 }}>⚠️ Corporate Mailbox Notice:</div>
+                  <div style={{ fontSize: '0.74rem', color: '#991b1b', marginTop: '2px' }}>
+                    {tempPasswordSuccess.domainMailboxError}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px' }}>
+                    You can manage or sync their mailbox anytime from the <strong>Manage Domain Mailbox</strong> option in the staff list.
                   </div>
                 </div>
               )}
