@@ -535,8 +535,8 @@ public class MailboxProvisioningService {
         userRepository.save(user);
 
         if (auditService != null) {
-            auditService.logAction("USER", user.getId(), "MAILBOX_PASSWORD_RESET", "MAILBOX_PASSWORD",
-                    null, "Corporate mailbox password reset for " + domainEmail, performedBy, null);
+            auditService.logAction("USER", user.getId(), "MAILBOX_RENAME", "DOMAIN_MAILBOX",
+                    oldPrimaryEmail, "Renamed corporate mailbox to " + newPrimaryEmail, performedBy, null);
         }
 
         // Synchronize all aliases to the new Stalwart account
