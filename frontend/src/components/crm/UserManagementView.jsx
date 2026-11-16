@@ -28,7 +28,8 @@ import {
   Smartphone,
   ExternalLink,
   Eye,
-  EyeOff
+  EyeOff,
+  Trash2
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -445,6 +446,83 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
           alert(err.response?.data?.message || 'Failed to set primary email.');
         } finally {
           setAliasActionLoading(false);
+        }
+      }
+    });
+  };
+
+  const handleDeprovisionMailboxNow = (targetUser = null) => {
+    const userToDeprovision = targetUser || mailboxModalUser;
+    if (!userToDeprovision) return;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Deprovision Corporate Mailbox',
+      message: `Permanently delete corporate mailbox "${userToDeprovision.domainMailboxEmail}" for ${userToDeprovision.fullName}?`,
+      confirmLabel: 'Yes, Delete Mailbox',
+      cancelLabel: 'Keep Mailbox',
+      variant: 'danger',
+      isLoading: false,
+      entitySummary: {
+        title: userToDeprovision.fullName,
+        subtitle: userToDeprovision.domainMailboxEmail,
+        badge: 'Stalwart Purge',
+        details: 'The account will be deleted from Stalwart Mail Server and its handle freed up. All stored emails in this mailbox will be permanently removed.'
+      },
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isLoading: true }));
+        try {
+          await crmService.deprovisionMailbox(userToDeprovision.id);
+          setShowMailboxModal(false);
+          setMailboxModalUser(null);
+          loadData();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, isLoading: false }));
+        } catch (err) {
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          alert(err.response?.data?.message || 'Failed to deprovision mailbox.');
+        }
+      }
+    });
+  };
+
+  const handleDeleteUserNow = (userToDelete) => {
+    if (!userToDelete) return;
+
+    if (authUser && (authUser.id === userToDelete.id || authUser.email === userToDelete.email)) {
+      alert("⚠️ Security Protection: You cannot delete your own account.");
+      return;
+    }
+
+    if (userToDelete.assignedClientsCount && userToDelete.assignedClientsCount > 0) {
+      alert(`⚠️ Cannot Delete User: ${userToDelete.fullName} has ${userToDelete.assignedClientsCount} assigned client(s). Please reassign their clients to another advisor before deleting, or deactivate the account instead.`);
+      return;
+    }
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Permanently Delete User Account',
+      message: `Are you sure you want to permanently delete ${userToDelete.fullName} (${userToDelete.email || userToDelete.phoneNumber})? This action is irreversible.`,
+      confirmLabel: 'Permanently Delete User',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+      isLoading: false,
+      entitySummary: {
+        title: userToDelete.fullName,
+        subtitle: userToDelete.email || userToDelete.phoneNumber,
+        badge: userToDelete.designation || 'Staff',
+        details: userToDelete.hasDomainMailbox 
+          ? `Their associated corporate mailbox (${userToDelete.domainMailboxEmail}) will also be automatically deprovisioned from Stalwart Mail Server.`
+          : 'All user login access and employee profile links will be purged immediately.'
+      },
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isLoading: true }));
+        try {
+          await crmService.deleteUser(userToDelete.id);
+          loadData();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, isLoading: false }));
+        } catch (err) {
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          alert(err.response?.data?.message || 'Failed to delete user.');
         }
       }
     });
@@ -1383,11 +1461,12 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                                     close();
                                     handleToggleUserStatus(u);
                                   }}
-                                  className="crm-popover-btn danger"
+                                  className="crm-popover-btn"
+                                  style={{ color: u.isActive ? '#d97706' : 'var(--crm-success)' }}
                                 >
                                   {u.isActive ? (
                                     <>
-                                      <UserX size={14} /> Deactivate User
+                                      <UserX size={14} color="#d97706" /> Deactivate User
                                     </>
                                   ) : (
                                     <>
@@ -1395,6 +1474,22 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                                     </>
                                   )}
                                 </button>
+
+                                {isSuperAdmin && (
+                                  <>
+                                    <div style={{ height: '1px', background: 'var(--crm-border-subtle)', margin: '4px 0' }} />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        close();
+                                        handleDeleteUserNow(u);
+                                      }}
+                                      className="crm-popover-btn danger"
+                                    >
+                                      <Trash2 size={14} color="#dc2626" /> Delete User
+                                    </button>
+                                  </>
+                                )}
                               </>
                             )}
                           </ActionDropdown>
@@ -2829,6 +2924,30 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                   >
                     <Key size={15} color="#d97706" />
                     {mailboxActionLoading ? 'Updating...' : 'Generate New Mailbox Password'}
+                  </button>
+                )}
+
+                {mailboxModalUser.hasDomainMailbox && isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeprovisionMailboxNow(mailboxModalUser)}
+                    disabled={mailboxActionLoading}
+                    style={{
+                      padding: '10px',
+                      borderRadius: '10px',
+                      border: '1px solid #fecaca',
+                      background: '#fff1f2',
+                      color: '#e11d48',
+                      fontWeight: 700,
+                      cursor: mailboxActionLoading ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    <Trash2 size={15} color="#e11d48" />
+                    Deprovision & Delete Mailbox
                   </button>
                 )}
 

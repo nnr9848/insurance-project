@@ -351,6 +351,90 @@ public class CrmUserService {
         return response;
     }
 
+    /**
+     * Permanently delete a test, mistyped, or inactive user account.
+     * Enforces enterprise guardrails:
+     * - Prevents deleting self
+     * - Prevents deleting the last remaining Super Admin
+     * - Blocks deletion if user has assigned clients
+     * - Automatically cleans up staff profiles and deprovisions Stalwart mailboxes
+     */
+    @Transactional
+    public Map<String, Object> deleteUser(Long userId, User performedBy) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+
+        boolean isSuperAdmin = performedBy != null && performedBy.getRoles().stream()
+                .anyMatch(r -> "ROLE_SUPER_ADMIN".equals(r.getName()) || "ROLE_ADMIN".equals(r.getName()));
+
+        if (!isSuperAdmin) {
+            throw new IllegalArgumentException("Access Denied: Only Super Administrators can delete user accounts.");
+        }
+
+        // Guardrail 1: Self-deletion prevention
+        if (performedBy != null && performedBy.getId().equals(user.getId())) {
+            throw new IllegalStateException("Security Protection: You cannot delete your own active administrator account.");
+        }
+
+        // Guardrail 2: Last Super Admin protection
+        boolean targetIsAdmin = user.getRoles().stream().anyMatch(r -> "ROLE_SUPER_ADMIN".equals(r.getName()) || "ROLE_ADMIN".equals(r.getName()));
+        if (targetIsAdmin) {
+            long totalActiveAdmins = userRepository.findAll().stream()
+                    .filter(u -> Boolean.TRUE.equals(u.getIsActive()) && u.getRoles().stream().anyMatch(r -> "ROLE_SUPER_ADMIN".equals(r.getName()) || "ROLE_ADMIN".equals(r.getName())))
+                    .count();
+            if (totalActiveAdmins <= 1) {
+                throw new IllegalStateException("System Protection: Cannot delete the last remaining active Super Administrator.");
+            }
+        }
+
+        // Guardrail 3: Block if user has assigned clients
+        long assignedClients = clientRepository.countByAssignedAdvisorId(user.getId());
+        if (assignedClients > 0) {
+            throw new IllegalStateException(String.format(
+                    "Cannot delete %s: User has %d assigned clients. Please reassign their clients to another advisor before deleting, or deactivate the account instead.",
+                    user.getFullName(), assignedClients
+            ));
+        }
+
+        // 1. Deprovision Stalwart mailbox if one was assigned
+        if (Boolean.TRUE.equals(user.getHasDomainMailbox()) && user.getDomainMailboxEmail() != null) {
+            try {
+                mailboxProvisioningService.deprovisionMailbox(user.getId(), performedBy);
+                log.info("Deprovisioned mailbox for user ID: {} before deletion", user.getId());
+            } catch (Exception ex) {
+                log.warn("Non-fatal: could not deprovision mailbox during user deletion: {}", ex.getMessage());
+            }
+        }
+
+        // 2. Unlink any subordinate team members if target was a manager
+        List<User> subordinates = userRepository.findByManagerId(user.getId());
+        for (User sub : subordinates) {
+            sub.setManager(null);
+            userRepository.save(sub);
+        }
+
+        // 3. Remove StaffProfile and AgentProfile associations
+        staffProfileRepository.findByUserId(user.getId()).ifPresent(staffProfileRepository::delete);
+        agentProfileRepository.findByUserId(user.getId()).ifPresent(agentProfileRepository::delete);
+
+        String deletedName = user.getFullName();
+        String deletedEmail = user.getEmail();
+
+        auditService.logAction("USER", user.getId(), "DELETE", "ACCOUNT", null,
+                "Permanently deleted user: " + deletedName + " (" + deletedEmail + ")", performedBy, null);
+
+        // 4. Hard delete user record
+        userRepository.delete(user);
+
+        log.info("User ID: {} ({}) permanently deleted by admin: {}", userId, deletedName, performedBy.getFullName());
+
+        Map<String, Object> res = new HashMap<>();
+        res.put("success", true);
+        res.put("message", "User " + deletedName + " has been permanently deleted.");
+        res.put("deletedUserId", userId);
+        return res;
+    }
+
     @Transactional(readOnly = true)
     public List<CrmUserDto.UserResponse> getAllUsers(User performedBy) {
         boolean isSuperAdmin = performedBy != null && performedBy.getRoles().stream()

@@ -81,6 +81,14 @@ public class CrmUserController {
         return ResponseEntity.ok(crmUserService.resetPassword(id, customPassword, performedBy));
     }
 
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    @Operation(summary = "Permanently delete a test, mistyped, or inactive user account")
+    public ResponseEntity<Map<String, Object>> deleteUser(@PathVariable Long id, Authentication auth) {
+        User performedBy = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(crmUserService.deleteUser(id, performedBy));
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN', 'ROLE_MANAGER')")
     @Operation(summary = "Get staff directory (Super Admin gets all, Managers get only their assigned team)")

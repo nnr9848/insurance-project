@@ -130,6 +130,18 @@ export const crmService = {
     const res = await api.post(`/crm/users/${userId}/mailbox/set-primary`, { newPrimaryEmail });
     return res.data;
   },
+  renameMailbox: async (userId, newUsernameHandle, keepOldAsAlias = false) => {
+    const res = await api.post(`/crm/users/${userId}/mailbox/rename`, { newUsernameHandle, keepOldAsAlias });
+    return res.data;
+  },
+  deprovisionMailbox: async (userId) => {
+    const res = await api.delete(`/crm/users/${userId}/mailbox`);
+    return res.data;
+  },
+  deleteUser: async (userId) => {
+    const res = await api.delete(`/crm/users/${userId}`);
+    return res.data;
+  },
 
   // Clients Master (CRM)
   getClients: async () => {
