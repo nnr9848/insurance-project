@@ -611,8 +611,9 @@ public class MailboxProvisioningService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
 
-        if (!Boolean.TRUE.equals(user.getHasDomainMailbox()) || user.getDomainMailboxEmail() == null) {
-            throw new IllegalArgumentException("User does not have an active corporate domain mailbox.");
+        if ((!Boolean.TRUE.equals(user.getHasDomainMailbox()) && !"UNSYNCHRONIZED".equalsIgnoreCase(user.getMailboxStatus())) 
+                || (user.getDomainMailboxEmail() == null && !"UNSYNCHRONIZED".equalsIgnoreCase(user.getMailboxStatus()))) {
+            throw new IllegalArgumentException("User does not have an active or unsynchronized corporate domain mailbox.");
         }
 
         String domainEmail = user.getDomainMailboxEmail();
@@ -684,9 +685,6 @@ public class MailboxProvisioningService {
 
         Map<String, Object> updateFields = new HashMap<>();
         updateFields.put("credentials", Map.of("0", Map.of("@type", "Password", "secret", newPassword)));
-        if (primaryEmail != null && primaryEmail.contains("@")) {
-            updateFields.put("emails", List.of(primaryEmail.trim().toLowerCase()));
-        }
 
         Map<String, Object> setParams = Map.of("update", Map.of(accountId, updateFields));
         Map<String, Object> jmapBody = Map.of(
@@ -839,14 +837,23 @@ public class MailboxProvisioningService {
 
             // Reconcile DB status if inconsistent
             String targetDbStatus = isLiveInStalwart ? "ACTIVE" : "UNSYNCHRONIZED";
-            if (!targetDbStatus.equalsIgnoreCase(user.getMailboxStatus())) {
+            boolean statusChanged = !targetDbStatus.equalsIgnoreCase(user.getMailboxStatus());
+            boolean flagChanged = isLiveInStalwart != Boolean.TRUE.equals(user.getHasDomainMailbox());
+            if (statusChanged || flagChanged) {
                 user.setMailboxStatus(targetDbStatus);
+                // Ground-truth enforcement: only marked as having a domain mailbox if actively verified on Stalwart
+                user.setHasDomainMailbox(isLiveInStalwart);
                 userRepository.save(user);
             }
         } else {
             settings.put("isSynchronized", false);
             settings.put("stalwartId", null);
             settings.put("status", "NOT_PROVISIONED");
+            if (Boolean.TRUE.equals(user.getHasDomainMailbox()) || !"NOT_PROVISIONED".equalsIgnoreCase(user.getMailboxStatus())) {
+                user.setHasDomainMailbox(false);
+                user.setMailboxStatus("NOT_PROVISIONED");
+                userRepository.save(user);
+            }
         }
 
         return settings;
