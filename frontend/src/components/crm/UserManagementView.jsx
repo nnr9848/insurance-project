@@ -650,7 +650,20 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
 
   const handleCopyCredentials = () => {
     if (!tempPasswordSuccess) return;
-    const text = `Aadhiraksha CRM Credentials:\nUsername/Email: ${tempPasswordSuccess.email}\nTemporary Password: ${tempPasswordSuccess.temporaryPassword}\nLogin Portal: https://aadhirakshainsurance.com/login`;
+    let text = `Aadhiraksha CRM Credentials:
+Username / Email: ${tempPasswordSuccess.email}
+CRM Temporary Password: ${tempPasswordSuccess.temporaryPassword}
+CRM Login Portal: https://aadhirakshainsurance.com/login`;
+
+    if (tempPasswordSuccess.domainMailbox) {
+      text += `\n\nCorporate Work Mailbox:
+Email: ${tempPasswordSuccess.domainMailbox.domainEmail}
+Mailbox Password: ${tempPasswordSuccess.domainMailbox.mailboxPassword || tempPasswordSuccess.temporaryPassword}
+Webmail Access: ${tempPasswordSuccess.domainMailbox.webmailUrl || 'https://mail.aadhirakshainsurance.com'}
+Incoming (IMAP): mail.aadhirakshainsurance.com:993 (SSL)
+Outgoing (SMTP): mail.aadhirakshainsurance.com:465 (TLS)`;
+    }
+
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -2295,13 +2308,32 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
               </div>
 
               {tempPasswordSuccess.domainMailbox && (
-                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #cbd5e1' }}>
-                  <div style={{ fontSize: '0.78rem', color: '#166534', fontWeight: 700 }}>OFFICIAL CORPORATE MAILBOX:</div>
-                  <div style={{ fontSize: '0.9rem', color: '#0f2b48', fontWeight: 800 }}>
+                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1' }}>
+                  <div style={{ fontSize: '0.78rem', color: '#166534', fontWeight: 700, marginBottom: '4px' }}>
+                    OFFICIAL CORPORATE MAILBOX:
+                  </div>
+                  <div style={{ fontSize: '0.92rem', color: '#0f2b48', fontWeight: 800 }}>
                     {tempPasswordSuccess.domainMailbox.domainEmail}
                   </div>
-                  <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>
-                    Status: <strong style={{ color: '#059669' }}>{tempPasswordSuccess.domainMailbox.status}</strong> • Webmail: {tempPasswordSuccess.domainMailbox.webmailUrl}
+                  {tempPasswordSuccess.domainMailbox.mailboxPassword && (
+                    <div style={{ marginTop: '6px' }}>
+                      <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>MAILBOX PASSWORD: </span>
+                      <code style={{
+                        background: '#ecfdf5',
+                        border: '1px solid #a7f3d0',
+                        color: '#065f46',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontWeight: 800,
+                        fontSize: '0.85rem',
+                        fontFamily: 'monospace'
+                      }}>
+                        {tempPasswordSuccess.domainMailbox.mailboxPassword}
+                      </code>
+                    </div>
+                  )}
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '6px' }}>
+                    Status: <strong style={{ color: '#059669' }}>{tempPasswordSuccess.domainMailbox.status || 'ACTIVE'}</strong> • Webmail: <a href={tempPasswordSuccess.domainMailbox.webmailUrl || 'https://mail.aadhirakshainsurance.com'} target="_blank" rel="noreferrer" style={{ color: '#0284c7', textDecoration: 'underline' }}>{tempPasswordSuccess.domainMailbox.webmailUrl || 'https://mail.aadhirakshainsurance.com'}</a>
                   </div>
                 </div>
               )}

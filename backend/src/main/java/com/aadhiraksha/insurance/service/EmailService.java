@@ -328,12 +328,13 @@ public class EmailService {
      * Dispatches Welcome Email with credentials to newly provisioned CRM employees or POSP Agents using Thymeleaf.
      */
     @Async
-    public void sendWelcomeCredentialsEmail(String toEmail, String fullName, String temporaryPassword, String domainMailboxEmail) {
+    public void sendWelcomeCredentialsEmail(String toEmail, String fullName, String temporaryPassword, String domainMailboxEmail, String mailboxPassword) {
         try {
             boolean hasCorporateMailbox = domainMailboxEmail != null && !domainMailboxEmail.isBlank() && domainMailboxEmail.contains("@");
             String corporateMailboxSection = "";
 
             if (hasCorporateMailbox) {
+                String mailboxPassDisplay = (mailboxPassword != null && !mailboxPassword.isBlank()) ? mailboxPassword : temporaryPassword;
                 corporateMailboxSection = """
                     <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
                       <table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 14px; line-height: 1.8;">
@@ -344,6 +345,12 @@ public class EmailService {
                             <span style="font-size: 12px; color: #64748b; display: block; margin-top: 2px;">
                               Webmail: <a href="https://mail.%s" style="color: #0284c7; text-decoration: underline;" target="_blank">https://mail.%s</a>
                             </span>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style="color: #64748b; font-weight: 600;">Mailbox Password:</td>
+                          <td>
+                            <code style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 3px 8px; border-radius: 4px; font-weight: bold; color: #065f46;">%s</code>
                           </td>
                         </tr>
                       </table>
@@ -365,7 +372,7 @@ public class EmailService {
                         </table>
                       </div>
                     </div>
-                    """.formatted(domainMailboxEmail, mailDomain, mailDomain, mailDomain, mailDomain, domainMailboxEmail);
+                    """.formatted(domainMailboxEmail, mailDomain, mailDomain, mailboxPassDisplay, mailDomain, mailDomain, domainMailboxEmail);
             }
 
             Map<String, Object> model = Map.of(
@@ -374,6 +381,7 @@ public class EmailService {
                     "temporaryPassword", temporaryPassword != null ? temporaryPassword : "N/A",
                     "corporateMailboxSection", corporateMailboxSection,
                     "domainMailboxEmail", domainMailboxEmail != null ? domainMailboxEmail : "",
+                    "mailboxPassword", mailboxPassword != null ? mailboxPassword : "",
                     "portalLoginUrl", "https://aadhirakshainsurance.com/login",
                     "webmailUrl", "https://mail." + mailDomain
             );
@@ -384,6 +392,14 @@ public class EmailService {
         } catch (Exception ex) {
             log.error("Failed to dispatch welcome credentials email to {}: {}", toEmail, ex.getMessage(), ex);
         }
+    }
+
+    /**
+     * Backward-compatible overload without separate mailboxPassword.
+     */
+    @Async
+    public void sendWelcomeCredentialsEmail(String toEmail, String fullName, String temporaryPassword, String domainMailboxEmail) {
+        sendWelcomeCredentialsEmail(toEmail, fullName, temporaryPassword, domainMailboxEmail, null);
     }
 
     /**

@@ -219,12 +219,15 @@ public class CrmUserService {
         result.put("temporaryPassword", rawPassword);
 
         // Auto-provision domain mailbox if requested
+        String provisionedMailboxPassword = null;
         if (Boolean.TRUE.equals(request.getCreateDomainMailbox())) {
             try {
+                // Generate high-entropy 16-character password guaranteed to satisfy Stalwart zxcvbn password policy
+                provisionedMailboxPassword = MailboxProvisioningService.generateStalwartCompliantPassword();
                 Map<String, Object> mailboxRes = mailboxProvisioningService.provisionEmployeeMailbox(
                         savedUser.getId(),
                         request.getCustomMailboxUsername(),
-                        rawPassword,
+                        provisionedMailboxPassword,
                         performedBy
                 );
                 result.put("domainMailbox", mailboxRes);
@@ -233,12 +236,14 @@ public class CrmUserService {
             } catch (Exception ex) {
                 log.warn("Automatic domain mailbox provisioning failed during user creation: {}", ex.getMessage());
                 result.put("domainMailboxError", ex.getMessage());
+                provisionedMailboxPassword = null;
             }
         }
 
         // Final step: Asynchronously dispatch welcome credentials email ONLY AFTER transaction commits successfully
         final User finalCommittedUser = savedUser;
         final String finalRawPassword = rawPassword;
+        final String finalMailboxPassword = provisionedMailboxPassword;
         if (finalCommittedUser.getEmail() != null && finalCommittedUser.getEmail().contains("@")) {
             if (TransactionSynchronizationManager.isActualTransactionActive()) {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -249,7 +254,8 @@ public class CrmUserService {
                                 finalCommittedUser.getEmail(),
                                 finalCommittedUser.getFullName(),
                                 finalRawPassword,
-                                domainEmail
+                                domainEmail,
+                                finalMailboxPassword
                         );
                     }
                 });
@@ -260,7 +266,8 @@ public class CrmUserService {
                         finalCommittedUser.getEmail(),
                         finalCommittedUser.getFullName(),
                         finalRawPassword,
-                        domainEmail
+                        domainEmail,
+                        finalMailboxPassword
                 );
             }
         }
