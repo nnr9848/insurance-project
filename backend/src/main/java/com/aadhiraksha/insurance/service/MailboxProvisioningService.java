@@ -832,40 +832,51 @@ public class MailboxProvisioningService {
     }
 
     /**
-     * Batch sync all queued/unsynchronized mailboxes with Stalwart.
+     * Batch reconcile and synchronize all corporate mailboxes against Stalwart live ground truth.
+     * Identifies any mailbox missing on Stalwart and provisions it automatically.
      */
     @Transactional
     public Map<String, Object> syncAllQueuedMailboxes(User performedBy) {
-        List<User> queuedUsers = userRepository.findByHasDomainMailboxTrueAndMailboxStatusIgnoreCase("QUEUED");
-        int total = queuedUsers.size();
+        List<User> allMailboxUsers = userRepository.findByHasDomainMailboxTrueOrderByFullNameAsc();
+        int total = allMailboxUsers.size();
         int synced = 0;
+        int newlyProvisioned = 0;
         int failed = 0;
         List<String> failedEmails = new ArrayList<>();
+        List<String> provisionedEmails = new ArrayList<>();
 
-        for (User u : queuedUsers) {
+        for (User u : allMailboxUsers) {
             try {
-                syncMailbox(u.getId(), performedBy);
-                synced++;
+                Map<String, Object> res = syncMailbox(u.getId(), performedBy);
+                if (res != null && Boolean.TRUE.equals(res.get("success"))) {
+                    synced++;
+                    if (res.containsKey("mailboxPassword")) {
+                        newlyProvisioned++;
+                        provisionedEmails.add(u.getDomainMailboxEmail());
+                    }
+                }
             } catch (Exception ex) {
                 failed++;
                 failedEmails.add(u.getDomainMailboxEmail() + " (" + ex.getMessage() + ")");
             }
         }
 
-        log.info("Batch mailbox sync completed: {} total, {} synced, {} failed by {}", 
-                total, synced, failed, performedBy != null ? performedBy.getFullName() : "SYSTEM");
+        log.info("Batch mailbox reconciliation completed: {} total checked, {} active/verified, {} newly provisioned, {} failed by {}", 
+                total, synced, newlyProvisioned, failed, performedBy != null ? performedBy.getFullName() : "SYSTEM");
 
         Map<String, Object> res = new HashMap<>();
         res.put("total", total);
         res.put("synced", synced);
+        res.put("newlyProvisioned", newlyProvisioned);
+        res.put("provisionedEmails", provisionedEmails);
         res.put("failed", failed);
         res.put("failedEmails", failedEmails);
-        res.put("message", String.format("Processed %d mailboxes: %d active, %d failed.", total, synced, failed));
+        res.put("message", String.format("Reconciled %d mailboxes: %d verified active, %d newly provisioned, %d failed.", total, synced, newlyProvisioned, failed));
         return res;
     }
 
     /**
-     * Background self-healing job: reconciles queued mailboxes every 5 minutes.
+     * Background self-healing job: reconciles all mailboxes against Stalwart every 5 minutes.
      */
     @Scheduled(cron = "0 */5 * * * *")
     public void selfHealingMailboxReconciliation() {
@@ -873,14 +884,25 @@ public class MailboxProvisioningService {
             return;
         }
         try {
-            List<User> queued = userRepository.findByHasDomainMailboxTrueAndMailboxStatusIgnoreCase("QUEUED");
-            if (queued.isEmpty()) {
+            List<User> allMailboxUsers = userRepository.findByHasDomainMailboxTrueOrderByFullNameAsc();
+            if (allMailboxUsers.isEmpty()) {
                 return;
             }
-            log.info("Running background self-healing mailbox reconciliation for {} queued mailboxes...", queued.size());
-            for (User u : queued) {
+            for (User u : allMailboxUsers) {
                 try {
-                    syncMailbox(u.getId(), null);
+                    String domainEmail = u.getDomainMailboxEmail();
+                    if (domainEmail != null && domainEmail.contains("@")) {
+                        String username = domainEmail.split("@")[0].trim().toLowerCase();
+                        String stalwartId = checkStalwartAccountExists(username);
+                        if (stalwartId == null) {
+                            // Missing on Stalwart: automatically heal and provision
+                            syncMailbox(u.getId(), null);
+                            log.info("Self-healing: automatically provisioned missing Stalwart mailbox for {}", domainEmail);
+                        } else if (!"ACTIVE".equalsIgnoreCase(u.getMailboxStatus())) {
+                            u.setMailboxStatus("ACTIVE");
+                            userRepository.save(u);
+                        }
+                    }
                 } catch (Exception e) {
                     log.warn("Self-healing reconciliation deferred for {}: {}", u.getDomainMailboxEmail(), e.getMessage());
                 }

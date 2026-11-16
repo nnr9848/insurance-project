@@ -1151,20 +1151,20 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                       {/* Corporate Mailbox Column */}
                       <td className="crm-table-td">
                         {u.hasDomainMailbox && u.domainMailboxEmail ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
                             <div style={{
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '6px',
-                              background: '#f0fdf4',
-                              color: '#166534',
-                              border: '1px solid #bbf7d0',
+                              background: u.mailboxStatus === 'UNSYNCHRONIZED' || u.mailboxStatus === 'QUEUED' ? '#fffbeb' : '#f0fdf4',
+                              color: u.mailboxStatus === 'UNSYNCHRONIZED' || u.mailboxStatus === 'QUEUED' ? '#b45309' : '#166534',
+                              border: u.mailboxStatus === 'UNSYNCHRONIZED' || u.mailboxStatus === 'QUEUED' ? '1px solid #fde68a' : '1px solid #bbf7d0',
                               padding: '3px 8px',
                               borderRadius: '6px',
                               fontSize: '0.75rem',
                               fontWeight: 700
                             }}>
-                              <AtSign size={12} color="#16a34a" />
+                              <AtSign size={12} color={u.mailboxStatus === 'UNSYNCHRONIZED' || u.mailboxStatus === 'QUEUED' ? '#d97706' : '#16a34a'} />
                               <span>{u.domainMailboxEmail}</span>
                               <button
                                 type="button"
@@ -1182,33 +1182,63 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                                   padding: '2px',
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  color: '#166534'
+                                  color: u.mailboxStatus === 'UNSYNCHRONIZED' || u.mailboxStatus === 'QUEUED' ? '#b45309' : '#166534'
                                 }}
                               >
                                 {copiedEmail === u.domainMailboxEmail ? <Check size={11} color="#16a34a" /> : <Copy size={11} />}
                               </button>
                             </div>
-                            {canActOnUser && (
-                              <button
-                                type="button"
-                                onClick={() => openMailboxModal(u)}
-                                style={{
-                                  background: 'transparent',
-                                  border: 'none',
-                                  color: '#059669',
-                                  fontSize: '0.68rem',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                  padding: '0 2px',
-                                  textDecoration: 'underline',
+                            
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              {(u.mailboxStatus === 'UNSYNCHRONIZED' || u.mailboxStatus === 'QUEUED') ? (
+                                <span style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  gap: '3px'
-                                }}
-                              >
-                                <span>Settings / Credentials</span>
-                              </button>
-                            )}
+                                  gap: '3px',
+                                  color: '#b45309',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700,
+                                  background: '#fef3c7',
+                                  padding: '1px 5px',
+                                  borderRadius: '4px'
+                                }}>
+                                  ⚠️ Unsynced
+                                </span>
+                              ) : (
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  color: '#15803d',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700
+                                }}>
+                                  ● Active Mailbox
+                                </span>
+                              )}
+
+                              {canActOnUser && (
+                                <button
+                                  type="button"
+                                  onClick={() => openMailboxModal(u)}
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#059669',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    padding: '0 2px',
+                                    textDecoration: 'underline',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px'
+                                  }}
+                                >
+                                  <span>Settings</span>
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
