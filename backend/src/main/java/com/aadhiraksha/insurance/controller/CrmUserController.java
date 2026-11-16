@@ -81,6 +81,14 @@ public class CrmUserController {
         return ResponseEntity.ok(crmUserService.resetPassword(id, customPassword, performedBy));
     }
 
+    @PostMapping("/{id}/resend-welcome")
+    @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
+    @Operation(summary = "Resend welcome credentials email to employee's contact address (Super Admin only)")
+    public ResponseEntity<Map<String, Object>> resendWelcomeEmail(@PathVariable Long id, Authentication auth) {
+        User performedBy = getAuthenticatedUser(auth);
+        return ResponseEntity.ok(crmUserService.resendWelcomeEmail(id, performedBy));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('ROLE_SUPER_ADMIN', 'ROLE_ADMIN')")
     @Operation(summary = "Permanently delete a test, mistyped, or inactive user account")

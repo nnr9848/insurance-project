@@ -344,10 +344,63 @@ public class CrmUserService {
         auditService.logAction("USER", user.getId(), "RESET_PASSWORD", "PASSWORD", null,
                 "Password reset for " + user.getFullName(), performedBy, null);
 
+        // Asynchronously dispatch updated credentials to user's contact email
+        if (user.getEmail() != null && user.getEmail().contains("@")) {
+            emailService.sendWelcomeCredentialsEmail(
+                    user.getEmail(),
+                    user.getFullName(),
+                    newRawPassword,
+                    user.getDomainMailboxEmail()
+            );
+        }
+
         Map<String, String> response = new HashMap<>();
         response.put("email", user.getEmail());
         response.put("temporaryPassword", newRawPassword);
-        response.put("message", "Password reset successfully. User must change it on next login.");
+        response.put("message", "Password reset successfully and dispatched to " + user.getEmail() + ". User must change it on next login.");
+        return response;
+    }
+
+    /**
+     * Resend Welcome & Credentials Email to an existing employee/POSP agent.
+     * Generates a fresh temporary password and delivers it to their contact email.
+     */
+    @Transactional
+    public Map<String, Object> resendWelcomeEmail(Long userId, User performedBy) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + userId));
+
+        boolean isSuperAdmin = performedBy != null && performedBy.getRoles().stream()
+                .anyMatch(r -> "ROLE_SUPER_ADMIN".equals(r.getName()) || "ROLE_ADMIN".equals(r.getName()));
+
+        if (!isSuperAdmin) {
+            throw new IllegalArgumentException("Access Denied: Only Super Administrators can dispatch onboarding credentials.");
+        }
+
+        if (user.getEmail() == null || !user.getEmail().contains("@")) {
+            throw new IllegalArgumentException("User does not have a valid contact email address configured.");
+        }
+
+        String newRawPassword = generateRandomPassword(10);
+        user.setPassword(passwordEncoder.encode(newRawPassword));
+        user.setMustChangePassword(true);
+        userRepository.save(user);
+
+        auditService.logAction("USER", user.getId(), "RESEND_WELCOME", "CREDENTIALS", null,
+                "Welcome credentials re-dispatched to " + user.getEmail() + " for " + user.getFullName(), performedBy, null);
+
+        emailService.sendWelcomeCredentialsEmail(
+                user.getEmail(),
+                user.getFullName(),
+                newRawPassword,
+                user.getDomainMailboxEmail()
+        );
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("email", user.getEmail());
+        response.put("temporaryPassword", newRawPassword);
+        response.put("message", "Welcome credentials re-dispatched to " + user.getEmail());
         return response;
     }
 

@@ -29,7 +29,8 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
-  Trash2
+  Trash2,
+  Send
 } from 'lucide-react';
 import { crmService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -523,6 +524,52 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
         } catch (err) {
           setConfirmDialog(prev => ({ ...prev, isOpen: false, isLoading: false }));
           alert(err.response?.data?.message || 'Failed to delete user.');
+        }
+      }
+    });
+  };
+
+  const handleResendWelcomeNow = (targetUser) => {
+    if (!targetUser) return;
+    if (!targetUser.email || !targetUser.email.includes('@')) {
+      alert("⚠️ Cannot Send Email: User does not have a valid personal/contact email configured.");
+      return;
+    }
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Resend Welcome & Portal Credentials',
+      message: `A fresh temporary password will be generated and dispatched directly to ${targetUser.fullName}'s contact email (${targetUser.email}).`,
+      confirmLabel: 'Dispatch Welcome Email',
+      cancelLabel: 'Cancel',
+      variant: 'primary',
+      isLoading: false,
+      entitySummary: {
+        title: targetUser.fullName,
+        subtitle: targetUser.email,
+        badge: targetUser.designation || 'Staff',
+        details: targetUser.hasDomainMailbox 
+          ? `Will include CRM login credentials + Corporate Webmail access details (${targetUser.domainMailboxEmail}) and mobile client setup.`
+          : 'Will include CRM portal login URL and fresh temporary credentials.'
+      },
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isLoading: true }));
+        try {
+          const res = await crmService.resendWelcomeEmail(targetUser.id);
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          setTempPasswordSuccess({
+            email: res.email,
+            fullName: targetUser.fullName,
+            temporaryPassword: res.temporaryPassword,
+            domainMailbox: targetUser.hasDomainMailbox ? {
+              domainEmail: targetUser.domainMailboxEmail,
+              status: 'Active',
+              webmailUrl: 'https://mail.aadhirakshainsurance.com'
+            } : null
+          });
+        } catch (err) {
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, isLoading: false }));
+          alert(err.response?.data?.message || 'Failed to resend welcome email.');
         }
       }
     });
@@ -1442,6 +1489,19 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                                   <Key size={14} color="var(--accent-gold)" /> Reset Password
                                 </button>
 
+                                {isSuperAdmin && u.email && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      close();
+                                      handleResendWelcomeNow(u);
+                                    }}
+                                    className="crm-popover-btn"
+                                  >
+                                    <Send size={14} color="#0284c7" /> Resend Welcome Email
+                                  </button>
+                                )}
+
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1615,16 +1675,19 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Official Email *
+                    Personal / Contact Email *
                   </label>
                   <input
                     type="email"
                     required
-                    placeholder="e.g. advisor@aadhiraksha.com"
+                    placeholder="e.g. employee@gmail.com"
                     value={createUserForm.email}
                     onChange={(e) => setCreateUserForm({ ...createUserForm, email: e.target.value })}
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
                   />
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '3px', display: 'block' }}>
+                    ✉️ Welcome credentials & login details will be dispatched here.
+                  </span>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
@@ -2040,6 +2103,9 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                   onChange={(e) => setCustomPassword(e.target.value)}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
                 />
+                <span style={{ fontSize: '0.72rem', color: '#0369a1', marginTop: '4px', display: 'block' }}>
+                  ✉️ The updated password will also be automatically emailed to <strong>{selectedUser.email}</strong>.
+                </span>
               </div>
 
               <div style={{ display: 'flex', gap: '10px' }}>

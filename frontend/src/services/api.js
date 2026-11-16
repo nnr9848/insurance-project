@@ -92,6 +92,10 @@ export const crmService = {
     const res = await api.post(`/crm/users/${id}/reset-password`, { newPassword });
     return res.data;
   },
+  resendWelcomeEmail: async (id) => {
+    const res = await api.post(`/crm/users/${id}/resend-welcome`);
+    return res.data;
+  },
   resetUserPassword: async (id, newPassword) => {
     const res = await api.post(`/crm/users/${id}/reset-password`, { newPassword });
     return res.data;
