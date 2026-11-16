@@ -126,6 +126,7 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
     createDomainMailbox: true,
     customMailboxUsername: ''
   });
+  const [isMailboxUsernameCustomized, setIsMailboxUsernameCustomized] = useState(false);
   const [createPasswordMode, setCreatePasswordMode] = useState('AUTO'); // 'AUTO' | 'CUSTOM'
   const [showCreatePassword, setShowCreatePassword] = useState(false);
 
@@ -275,6 +276,7 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
       setCustomCreateDeptText('');
       setIsCustomCreateDesig(false);
       setCustomCreateDesigText('');
+      setIsMailboxUsernameCustomized(false);
       setCreateUserForm({
         employeeCode: '',
         fullName: '',
@@ -841,6 +843,7 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
               } catch (err) {
                 console.warn('Using existing assignable roles catalog', err);
               }
+              setIsMailboxUsernameCustomized(false);
               setShowCreateModal(true);
             }}
             className="crm-emerald-btn"
@@ -1706,12 +1709,12 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
                         onChange={(e) => {
                           const name = e.target.value;
                           setCreateUserForm(prev => {
-                            // Smart suggestion for mailbox username if admin hasn't customized it yet
+                            // Smart auto-derive: only auto-generate handle if user hasn't explicitly customized it
                             const suggestedAlias = name.toLowerCase().trim().replace(/[^a-z0-9\s.]/g, '').replace(/\s+/g, '.');
                             return {
                               ...prev,
                               fullName: name,
-                              customMailboxUsername: prev.customMailboxUsername || suggestedAlias
+                              customMailboxUsername: isMailboxUsernameCustomized ? prev.customMailboxUsername : suggestedAlias
                             };
                           });
                         }}
@@ -2016,15 +2019,42 @@ export default function UserManagementView({ initialSegment = 'STAFF' }) {
 
                     {createUserForm.createDomainMailbox && (
                       <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed #bbf7d0' }}>
-                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#166534', marginBottom: '5px' }}>
-                          Corporate Username / Handle:
-                        </label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                          <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#166534' }}>
+                            Corporate Username / Handle:
+                          </label>
+                          {isMailboxUsernameCustomized && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsMailboxUsernameCustomized(false);
+                                const suggested = (createUserForm.fullName || '').toLowerCase().trim().replace(/[^a-z0-9\s.]/g, '').replace(/\s+/g, '.');
+                                setCreateUserForm(prev => ({ ...prev, customMailboxUsername: suggested }));
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                fontSize: '0.74rem',
+                                color: '#0284c7',
+                                textDecoration: 'underline',
+                                cursor: 'pointer',
+                                fontWeight: 600
+                              }}
+                            >
+                              ↺ Reset to Name Sync
+                            </button>
+                          )}
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', background: '#ffffff', border: '1px solid #86efac', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                           <input
                             type="text"
                             placeholder="e.g. priya.sharma"
                             value={createUserForm.customMailboxUsername}
-                            onChange={(e) => setCreateUserForm({ ...createUserForm, customMailboxUsername: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '') })}
+                            onChange={(e) => {
+                              setIsMailboxUsernameCustomized(true);
+                              setCreateUserForm({ ...createUserForm, customMailboxUsername: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '') });
+                            }}
                             style={{ flex: 1, padding: '9px 12px', border: 'none', outline: 'none', fontSize: '0.86rem', fontWeight: 600, color: '#0f2b48' }}
                           />
                           <span style={{ padding: '9px 14px', background: '#f0fdf4', color: '#15803d', fontSize: '0.82rem', fontWeight: 700, borderLeft: '1px solid #bbf7d0' }}>
