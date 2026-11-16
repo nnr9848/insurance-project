@@ -4,7 +4,7 @@
         "port": 993,
         "type": 1,
         "timeout": 300,
-        "shortLogin": false,
+        "shortLogin": true,
         "lowerLogin": true,
         "sasl": [
             "SCRAM-SHA3-512",
@@ -34,7 +34,7 @@
         "port": 465,
         "type": 1,
         "timeout": 60,
-        "shortLogin": false,
+        "shortLogin": true,
         "lowerLogin": true,
         "sasl": [
             "SCRAM-SHA3-512",
@@ -61,7 +61,7 @@
         "port": 4190,
         "type": 1,
         "timeout": 10,
-        "shortLogin": false,
+        "shortLogin": true,
         "lowerLogin": true,
         "sasl": [
             "SCRAM-SHA3-512",
