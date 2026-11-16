@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 public class MailboxProvisioningService {
 
     private final UserRepository userRepository;
+    private final AuditService auditService;
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${mailserver.enabled:true}")
@@ -151,6 +152,10 @@ public class MailboxProvisioningService {
         userRepository.save(user);
 
         log.info("Provisioned corporate domain mailbox {} for user ID: {} by admin: {}", fullDomainEmail, user.getId(), performedBy != null ? performedBy.getFullName() : "SYSTEM");
+        if (auditService != null) {
+            auditService.logAction("USER", user.getId(), "MAILBOX_PROVISION", "DOMAIN_MAILBOX",
+                    null, fullDomainEmail, performedBy, null);
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
@@ -315,6 +320,11 @@ public class MailboxProvisioningService {
 
         user.setMailboxStatus("ACTIVE");
         userRepository.save(user);
+
+        if (auditService != null) {
+            auditService.logAction("USER", user.getId(), "MAILBOX_PASSWORD_RESET", "MAILBOX_PASSWORD",
+                    null, "Corporate mailbox password reset for " + domainEmail, performedBy, null);
+        }
 
         Map<String, Object> res = new HashMap<>();
         res.put("success", true);
@@ -524,6 +534,11 @@ public class MailboxProvisioningService {
         user.setMailboxStatus("ACTIVE");
         userRepository.save(user);
 
+        if (auditService != null) {
+            auditService.logAction("USER", user.getId(), "MAILBOX_PASSWORD_RESET", "MAILBOX_PASSWORD",
+                    null, "Corporate mailbox password reset for " + domainEmail, performedBy, null);
+        }
+
         // Synchronize all aliases to the new Stalwart account
         if (mailServerEnabled && !aliases.isEmpty()) {
             syncStalwartAliases(newPrimaryEmail, aliases);
@@ -580,6 +595,11 @@ public class MailboxProvisioningService {
 
         log.info("Deprovisioned corporate mailbox {} for user ID: {} ({}) by admin: {}", 
                 domainEmail, user.getId(), user.getFullName(), performedBy != null ? performedBy.getFullName() : "SYSTEM");
+
+        if (auditService != null) {
+            auditService.logAction("USER", user.getId(), "MAILBOX_DEPROVISION", "DOMAIN_MAILBOX",
+                    domainEmail, "Deprovisioned & Deleted from Stalwart Mail Server", performedBy, null);
+        }
 
         Map<String, Object> res = new HashMap<>();
         res.put("success", true);

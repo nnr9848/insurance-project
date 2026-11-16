@@ -29,6 +29,7 @@ export default function AuditTrailView({ onOpenClient360 }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState('ALL');
+  const [entityFilter, setEntityFilter] = useState('ALL');
   const [fieldFilter, setFieldFilter] = useState('ALL');
   const [userFilter, setUserFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
@@ -64,7 +65,24 @@ export default function AuditTrailView({ onOpenClient360 }) {
   };
 
   // Helper formatting for action types
-  const getActionBadge = (action) => {
+  const getActionBadge = (action, entityName) => {
+    if (entityName === 'USER') {
+      switch (action) {
+        case 'CREATE':
+          return { label: 'Staff Created', bg: '#e0f2fe', text: '#0369a1', icon: <UserCheck size={13} /> };
+        case 'UPDATE':
+          return { label: 'Staff Updated', bg: '#f1f5f9', text: '#334155', icon: <FileEdit size={13} /> };
+        case 'MAILBOX_PROVISION':
+          return { label: 'Mailbox Provisioned', bg: '#ecfdf5', text: '#059669', icon: <CheckCircle2 size={13} /> };
+        case 'MAILBOX_PASSWORD_RESET':
+          return { label: 'Mailbox Pass Reset', bg: '#fffbeb', text: '#d97706', icon: <ShieldCheck size={13} /> };
+        case 'MAILBOX_DEPROVISION':
+          return { label: 'Mailbox Deleted', bg: '#fef2f2', text: '#dc2626', icon: <ShieldCheck size={13} /> };
+        default:
+          return { label: action, bg: '#f1f5f9', text: '#475569', icon: <Activity size={13} /> };
+      }
+    }
+
     switch (action) {
       case 'CREATE':
         return { label: 'Created Lead', bg: '#dcfce7', text: '#15803d', icon: <CheckCircle2 size={13} /> };
@@ -78,9 +96,27 @@ export default function AuditTrailView({ onOpenClient360 }) {
         return { label: 'Call Logged', bg: '#e0f2fe', text: '#0369a1', icon: <PhoneCall size={13} /> };
       case 'MEETING_SCHEDULED':
         return { label: 'Meeting Scheduled', bg: '#fae8ff', text: '#a21caf', icon: <Video size={13} /> };
+      case 'DELETE':
+        return { label: 'Deleted Record', bg: '#fef2f2', text: '#dc2626', icon: <Activity size={13} /> };
       default:
         return { label: action, bg: '#f1f5f9', text: '#475569', icon: <Activity size={13} /> };
     }
+  };
+
+  const formatEntityTarget = (entityName, entityId) => {
+    if (!entityName || entityName === 'CLIENT' || entityName === 'CLIENT_LEAD') {
+      return `Client #${entityId}`;
+    }
+    if (entityName === 'USER') {
+      return `Staff #${entityId}`;
+    }
+    if (entityName === 'PROPOSAL' || entityName === 'QUOTE_INQUIRY') {
+      return `Proposal #${entityId}`;
+    }
+    if (entityName === 'POLICY') {
+      return `Policy #${entityId}`;
+    }
+    return `${entityName} #${entityId}`;
   };
 
   const formatTimestamp = (ts) => {
@@ -104,12 +140,17 @@ export default function AuditTrailView({ onOpenClient360 }) {
       (item.oldValue?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (item.newValue?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (item.action?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (item.entityName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       String(item.entityId || '').includes(searchTerm);
 
     const matchesAction = actionFilter === 'ALL' || item.action === actionFilter;
+    const matchesEntity = entityFilter === 'ALL' || 
+      (entityFilter === 'USER' && item.entityName === 'USER') ||
+      (entityFilter === 'CLIENT' && (item.entityName === 'CLIENT' || item.entityName === 'CLIENT_LEAD' || !item.entityName)) ||
+      (entityFilter === 'PROPOSAL' && (item.entityName === 'PROPOSAL' || item.entityName === 'QUOTE_INQUIRY'));
     const matchesUser = userFilter === 'ALL' || item.performedByName === userFilter;
     const matchesField = fieldFilter === 'ALL' || item.fieldName === fieldFilter;
-    return matchesSearch && matchesAction && matchesUser && matchesField;
+    return matchesSearch && matchesAction && matchesEntity && matchesUser && matchesField;
   });
 
   // Pagination calculation
@@ -322,12 +363,34 @@ export default function AuditTrailView({ onOpenClient360 }) {
             }}
           >
             <option value="ALL">All Actions</option>
+            <option value="CREATE">Create / Onboard</option>
             <option value="UPDATE">Field Updates</option>
             <option value="REASSIGN">Reassignments</option>
             <option value="STATUS_CHANGE">Stage Changes</option>
-            <option value="CALL_LOG">Call Logs</option>
-            <option value="MEETING_SCHEDULED">Meetings</option>
-            <option value="CREATE">New Records</option>
+            <option value="MAILBOX_PROVISION">Mailbox Provisioning</option>
+            <option value="MAILBOX_PASSWORD_RESET">Mailbox Security</option>
+            <option value="DELETE">Deletions</option>
+          </select>
+
+          {/* Entity Category Filter */}
+          <select
+            value={entityFilter}
+            onChange={(e) => setEntityFilter(e.target.value)}
+            style={{
+              padding: '7px 10px',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              fontSize: '0.82rem',
+              color: '#334155',
+              fontWeight: 600,
+              outline: 'none',
+              background: '#f8fafc'
+            }}
+          >
+            <option value="ALL">All Entities</option>
+            <option value="CLIENT">Clients & Leads</option>
+            <option value="USER">Staff & Employees</option>
+            <option value="PROPOSAL">Quotes & Proposals</option>
           </select>
 
           {/* User / Employee Filter */}
@@ -477,7 +540,8 @@ export default function AuditTrailView({ onOpenClient360 }) {
                 </thead>
                 <tbody>
                   {paginatedLogs.map((log) => {
-                  const badge = getActionBadge(log.action);
+                  const badge = getActionBadge(log.action, log.entityName);
+                  const isClientEntity = !log.entityName || log.entityName === 'CLIENT' || log.entityName === 'CLIENT_LEAD';
                   return (
                     <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }} onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.background = '#ffffff'}>
                       
@@ -525,7 +589,7 @@ export default function AuditTrailView({ onOpenClient360 }) {
                             {badge.icon} {badge.label}
                           </span>
                           <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
-                            Client #{log.entityId}
+                            {formatEntityTarget(log.entityName, log.entityId)}
                           </span>
                         </div>
                       </td>
@@ -573,7 +637,7 @@ export default function AuditTrailView({ onOpenClient360 }) {
 
                       {/* Actions */}
                       <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        {log.entityId && onOpenClient360 && (
+                        {log.entityId && onOpenClient360 && isClientEntity && (
                           <button
                             onClick={() => onOpenClient360({ id: log.entityId })}
                             style={{
