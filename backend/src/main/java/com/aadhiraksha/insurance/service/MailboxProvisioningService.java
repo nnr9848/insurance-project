@@ -67,8 +67,8 @@ public class MailboxProvisioningService {
         if (secret.startsWith("API_") || secret.startsWith("ey")) {
             headers.setBearerAuth(secret);
         } else {
-            String adminUser = "admin@" + (mailDomain != null ? mailDomain.trim() : "aadhirakshainsurance.com");
-            headers.setBasicAuth(adminUser, secret);
+            // Stalwart master administrator authentication username is 'admin'
+            headers.setBasicAuth("admin", secret);
         }
         return headers;
     }
