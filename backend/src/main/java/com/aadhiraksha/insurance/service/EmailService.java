@@ -337,9 +337,9 @@ public class EmailService {
                 String mailboxPassDisplay = (mailboxPassword != null && !mailboxPassword.isBlank()) ? mailboxPassword : temporaryPassword;
                 corporateMailboxSection = """
                     <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
-                      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 14px; line-height: 1.8;">
+                      <table width="100%%" border="0" cellspacing="0" cellpadding="0" style="font-size: 14px; line-height: 1.8;">
                         <tr>
-                          <td width="35%" style="color: #64748b; font-weight: 600;">Corporate Work Email:</td>
+                          <td width="35%%" style="color: #64748b; font-weight: 600;">Corporate Work Email:</td>
                           <td>
                             <strong style="color: #059669;">%s</strong>
                             <span style="font-size: 12px; color: #64748b; display: block; margin-top: 2px;">
@@ -356,9 +356,9 @@ public class EmailService {
                       </table>
                       <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed #e2e8f0; font-size: 12px; color: #475569;">
                         <strong style="color: #0f172a; display: block; margin-bottom: 6px;">📱 Mobile & Outlook Client Setup (IMAP / SMTP):</strong>
-                        <table width="100%" border="0" cellspacing="0" cellpadding="2" style="font-size: 12px;">
+                        <table width="100%%" border="0" cellspacing="0" cellpadding="2" style="font-size: 12px;">
                           <tr>
-                            <td width="38%" style="color: #64748b;">Incoming (IMAP):</td>
+                            <td width="38%%" style="color: #64748b;">Incoming (IMAP):</td>
                             <td><code>mail.%s</code> : <strong>993</strong> (SSL)</td>
                           </tr>
                           <tr>
