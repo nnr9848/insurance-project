@@ -79,17 +79,17 @@ export default function WhatsAppBroadcastModal({
   selectedPhones = [],
   onBroadcastSuccess
 }) {
-  if (!isOpen) return null;
-
   const [broadcastTarget, setBroadcastTarget] = useState(defaultTarget);
   const [selectedTemplateId, setSelectedTemplateId] = useState('NEW_SCHEME');
   const [title, setTitle] = useState(BROADCAST_TEMPLATES[0].title);
   const [message, setMessage] = useState(BROADCAST_TEMPLATES[0].message);
-  const [customPhonesInput, setCustomPhonesInput] = useState(selectedPhones.join(', '));
+  const [customPhonesInput, setCustomPhonesInput] = useState((selectedPhones || []).join(', '));
   
   const [broadcasting, setBroadcasting] = useState(false);
   const [broadcastResult, setBroadcastResult] = useState(null);
   const [broadcastError, setBroadcastError] = useState('');
+
+  if (!isOpen) return null;
 
   // Calculate recipients dynamically
   const calculateRecipients = () => {

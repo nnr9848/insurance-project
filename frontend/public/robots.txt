@@ -1,0 +1,14 @@
+# Googlebot & Search Crawlers Configuration for Aadhiraksha Insurance
+User-agent: *
+Allow: /
+
+# Private, Authenticated & Internal Endpoints
+Disallow: /admin
+Disallow: /admin/
+Disallow: /login
+Disallow: /my-account
+Disallow: /customer-portal
+Disallow: /api/
+
+# Sitemap Location
+Sitemap: https://aadhirakshainsurance.com/sitemap.xml

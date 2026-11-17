@@ -53,8 +53,6 @@ import WhatsAppComposeModal from './WhatsAppComposeModal';
 import InsurerLogoBadge from '../common/InsurerLogoBadge';
 
 export default function Client360Drawer({ client, onClose, onOpenCallModal, onOpenMeetingModal, onLeadUpdated }) {
-  if (!client) return null;
-
   const { isSuperAdmin, isManager, user } = useAuth();
   const canReassign = isSuperAdmin || isManager;
 
@@ -74,7 +72,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
 
   // Policy Expiry / Renewal Date Editing State
   const [editingExpiry, setEditingExpiry] = useState(false);
-  const [tempExpiryDate, setTempExpiryDate] = useState(client.policyExpiryDate || '');
+  const [tempExpiryDate, setTempExpiryDate] = useState(client?.policyExpiryDate || '');
   const [isSavingExpiry, setIsSavingExpiry] = useState(false);
 
   const handleUpdateExpiryDate = async (newDate) => {
@@ -97,7 +95,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
 
   // Reassign Modal state
   const [showReassignModal, setShowReassignModal] = useState(false);
-  const [targetAdvisorId, setTargetAdvisorId] = useState(client.assignedAdvisorId ? String(client.assignedAdvisorId) : '');
+  const [targetAdvisorId, setTargetAdvisorId] = useState(client?.assignedAdvisorId ? String(client.assignedAdvisorId) : '');
   const [reassignReason, setReassignReason] = useState('');
   const [reassigning, setReassigning] = useState(false);
 
@@ -215,9 +213,10 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   };
 
   useEffect(() => {
+    if (!client) return;
     setCurrentClient(client);
     setTargetAdvisorId(client.assignedAdvisorId ? String(client.assignedAdvisorId) : '');
-    if (client?.id) {
+    if (client.id) {
       loadFullClientDetails(client.id);
       loadClientAuditLogs(client.id);
       loadClientQuotes(client.id);
@@ -364,10 +363,10 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   };
 
   useEffect(() => {
-    if (canReassign) {
+    if (client && canReassign) {
       loadAdvisors();
     }
-  }, [canReassign]);
+  }, [client, canReassign]);
 
   const loadAdvisors = async () => {
     try {
@@ -652,6 +651,7 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
   };
 
   useEffect(() => {
+    if (!client) return;
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         onClose();
@@ -659,7 +659,9 @@ export default function Client360Drawer({ client, onClose, onOpenCallModal, onOp
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [client, onClose]);
+
+  if (!client || !currentClient) return null;
 
   return (
     <div 

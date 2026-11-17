@@ -200,10 +200,16 @@ public class DocumentService {
                 null
         );
 
+        String fileUrl = doc.getFileUrl();
         clientDocumentRepository.delete(doc);
+
+        if (fileUrl != null && fileUrl.contains("/view-file/")) {
+            String storedFileName = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
+            fileStorageService.deleteFile(storedFileName);
+        }
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public DocumentDto.DocumentRequestLink generateWhatsAppDocumentRequest(Long clientId, List<String> requestedDocTypes, String userEmail) {
         Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new IllegalArgumentException("Client not found with ID: " + clientId));

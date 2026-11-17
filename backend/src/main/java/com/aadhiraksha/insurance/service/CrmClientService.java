@@ -718,9 +718,9 @@ public class CrmClientService {
                 "CREATE",
                 "Product",
                 null,
-                saved.getProductName() + " (" + saved.getCategorySlug() + ")",
+                saved.getProductName() + " (" + saved.getCategorySlug() + ") for " + client.getFullName(),
                 performedBy,
-                "Added new opportunity for client " + client.getFullName()
+                null
         );
 
         return mapToOpportunityResponse(saved);
@@ -760,9 +760,11 @@ public class CrmClientService {
                 "STAGE_CHANGE",
                 "stage",
                 oldStage,
-                newStage,
+                (request.getReason() != null && !request.getReason().isBlank())
+                        ? newStage + " (" + request.getReason().trim() + ")"
+                        : newStage,
                 performedBy,
-                request.getReason() != null ? request.getReason() : "Transitioned stage for " + saved.getProductName()
+                null
         );
 
         return mapToOpportunityResponse(saved);
@@ -805,9 +807,11 @@ public class CrmClientService {
                 "STAGE_CHANGE",
                 "stage",
                 oldStage,
-                newStage,
+                (request.getNotes() != null && !request.getNotes().isBlank())
+                        ? newStage + " (" + request.getNotes().trim() + ")"
+                        : newStage,
                 performedBy,
-                request.getNotes() != null ? request.getNotes() : "Transitioned client stage to " + newStage
+                null
         );
 
         return saved;

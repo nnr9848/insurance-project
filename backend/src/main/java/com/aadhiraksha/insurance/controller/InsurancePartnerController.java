@@ -95,7 +95,7 @@ public class InsurancePartnerController {
                 null,
                 "Created partner " + saved.getName(),
                 performedBy,
-                "Added new insurance partner via Admin Panel"
+                null
         );
 
         return ResponseEntity.ok(saved);
@@ -138,7 +138,7 @@ public class InsurancePartnerController {
                 null,
                 "Updated details & links for " + updated.getName(),
                 performedBy,
-                "Admin updated partner configuration"
+                null
         );
 
         return ResponseEntity.ok(updated);
@@ -177,7 +177,7 @@ public class InsurancePartnerController {
                 null,
                 "Uploaded brochure for " + partner.getName(),
                 performedBy,
-                "Admin attached new product brochure PDF"
+                null
         );
 
         return ResponseEntity.ok(saved);
@@ -209,7 +209,7 @@ public class InsurancePartnerController {
                 String.valueOf(!newStatus),
                 String.valueOf(newStatus),
                 performedBy,
-                (newStatus ? "Activated" : "Deactivated") + " partner " + saved.getName()
+                null
         );
 
         return ResponseEntity.ok(saved);
@@ -256,7 +256,7 @@ public class InsurancePartnerController {
                 null,
                 "Batch reordered " + toUpdate.size() + " insurance partners",
                 performedBy,
-                "Admin reordered partner cards"
+                null
         );
 
         return ResponseEntity.ok(partnerRepository.findAllByOrderByDisplayOrderAsc());
@@ -320,7 +320,7 @@ public class InsurancePartnerController {
                 null,
                 "Reset partners catalog to factory defaults",
                 performedBy,
-                "Admin executed factory reset on partner integrations"
+                null
         );
 
         return ResponseEntity.ok(partnerRepository.findAllByOrderByDisplayOrderAsc());
@@ -350,7 +350,7 @@ public class InsurancePartnerController {
                 partner.getName(),
                 null,
                 performedBy,
-                "Deleted partner " + partner.getName()
+                null
         );
 
         return ResponseEntity.ok(Map.of("message", "Partner deleted successfully"));

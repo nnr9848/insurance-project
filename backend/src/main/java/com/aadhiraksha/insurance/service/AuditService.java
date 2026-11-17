@@ -5,7 +5,6 @@ import com.aadhiraksha.insurance.model.User;
 import com.aadhiraksha.insurance.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.aadhiraksha.insurance.dto.AuditLogDto;
@@ -22,25 +21,35 @@ public class AuditService {
     private final com.aadhiraksha.insurance.repository.ClientRepository clientRepository;
     private final com.aadhiraksha.insurance.repository.QuoteInquiryRepository quoteInquiryRepository;
 
-    @Async
+    @Transactional
     public void logAction(String entityName, Long entityId, String action, String fieldName, 
                           String oldValue, String newValue, User performedBy, String ipAddress) {
         try {
+            String actorName = performedBy != null && performedBy.getFullName() != null
+                    ? performedBy.getFullName()
+                    : "SYSTEM";
             AuditLog audit = AuditLog.builder()
-                    .entityName(entityName)
-                    .entityId(entityId)
-                    .action(action)
-                    .fieldName(fieldName)
+                    .entityName(truncate(entityName != null ? entityName : "UNKNOWN", 60))
+                    .entityId(entityId != null ? entityId : 0L)
+                    .action(truncate(action != null ? action : "ACTION", 30))
+                    .fieldName(truncate(fieldName, 100))
                     .oldValue(oldValue)
                     .newValue(newValue)
                     .performedBy(performedBy)
-                    .performedByName(performedBy != null ? performedBy.getFullName() : "SYSTEM")
-                    .ipAddress(ipAddress)
+                    .performedByName(truncate(actorName, 120))
+                    .ipAddress(truncate(ipAddress, 50))
                     .build();
             auditLogRepository.save(audit);
         } catch (Exception e) {
             log.error("Failed to persist audit log for entity: {}, id: {}", entityName, entityId, e);
         }
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
     }
 
     @Transactional(readOnly = true)

@@ -68,7 +68,7 @@ public class LeadInquiryController {
                     oldStatus,
                     newStatus.toUpperCase(),
                     performedBy,
-                    "Updated web inquiry status"
+                    null
             );
             return ResponseEntity.ok(saved);
         }
@@ -109,7 +109,7 @@ public class LeadInquiryController {
                 null,
                 "Updated details for " + saved.getFullName(),
                 performedBy,
-                "Manual quick edit in CRM triage"
+                null
         );
 
         return ResponseEntity.ok(saved);

@@ -95,18 +95,13 @@ export default function WhatsAppComposeModal({
   advisorName,
   onMessageSent
 }) {
-  if (!isOpen || !client) return null;
-
-  const rawPhone = client.whatsappNumber || client.phoneNumber || '';
-  const cleanPhone = formatWhatsAppNumber(rawPhone);
-
   const [selectedTemplateId, setSelectedTemplateId] = useState('INTRO');
   const [customMessage, setCustomMessage] = useState(() => {
     const initialTpl = WHATSAPP_TEMPLATES[0];
     return initialTpl.generate({
-      clientName: client.fullName || client.name,
-      insuranceType: client.insuranceType || 'Health Insurance',
-      sumInsured: client.sumInsured,
+      clientName: client?.fullName || client?.name,
+      insuranceType: client?.insuranceType || 'Health Insurance',
+      sumInsured: client?.sumInsured,
       advisorName: advisorName || 'Advisor'
     });
   });
@@ -114,6 +109,11 @@ export default function WhatsAppComposeModal({
   const [copied, setCopied] = useState(false);
   const [isSendingTwilio, setIsSendingTwilio] = useState(false);
   const [twilioStatus, setTwilioStatus] = useState(null);
+
+  if (!isOpen || !client) return null;
+
+  const rawPhone = client.whatsappNumber || client.phoneNumber || '';
+  const cleanPhone = formatWhatsAppNumber(rawPhone);
 
   const handleSelectTemplate = (template) => {
     setSelectedTemplateId(template.id);

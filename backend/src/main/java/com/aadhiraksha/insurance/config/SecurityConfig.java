@@ -71,7 +71,10 @@ public class SecurityConfig {
                                 AntPathRequestMatcher.antMatcher("/api/blogs"),
                                 AntPathRequestMatcher.antMatcher("/api/blogs/**"),
                                 AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/settings/business-profile"),
-                                AntPathRequestMatcher.antMatcher("/api/reviews"),
+                                AntPathRequestMatcher.antMatcher(HttpMethod.POST, "/api/reviews"),
+                                AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/reviews/published"),
+                                AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/reviews/stats"),
+                                AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/contests/active"),
                                 AntPathRequestMatcher.antMatcher("/api/customer/documents/view-file/**"),
                                 AntPathRequestMatcher.antMatcher("/api/crm/documents/view-file/**"),
                                 AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/documents/view-file/**"),
@@ -80,6 +83,7 @@ public class SecurityConfig {
                                 AntPathRequestMatcher.antMatcher("/swagger-ui.html")
                         ).permitAll()
                         // Admin & Staff CRM endpoints
+                        .requestMatchers(AntPathRequestMatcher.antMatcher("/api/contests/admin/**")).hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER")
                         .requestMatchers(AntPathRequestMatcher.antMatcher("/api/admin/**")).hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER", "ROLE_ADVISOR", "ROLE_STAFF")
                         .requestMatchers(AntPathRequestMatcher.antMatcher("/api/crm/**")).hasAnyAuthority("ROLE_SUPER_ADMIN", "ROLE_ADMIN", "ROLE_MANAGER", "ROLE_ADVISOR", "ROLE_STAFF", "ROLE_POSP_AGENT")
                         // POSP Agent endpoints
