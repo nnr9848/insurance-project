@@ -1,6 +1,18 @@
 server:
   port: 8080
 
+msg91:
+  authkey: ${MSG91_AUTHKEY:592795AauF41robH6b0689d0P1}
+  otp-enabled: ${MSG91_OTP_ENABLED:true}
+  otp-template-id: ${MSG91_OTP_TEMPLATE_ID:}
+  widget-id: ${MSG91_WIDGET_ID:366b78695955393733323532}
+  widget-token: ${MSG91_WIDGET_TOKEN:592795ThlSyisg09zf6b068890P1}
+  whatsapp-enabled: ${MSG91_WHATSAPP_ENABLED:true}
+  whatsapp-integrated-number: ${MSG91_WHATSAPP_INTEGRATED_NUMBER:918184840850}
+  whatsapp-template-name: ${MSG91_WHATSAPP_TEMPLATE_NAME:aadhiraksha_welcome}
+  whatsapp-otp-template-name: ${MSG91_WHATSAPP_OTP_TEMPLATE_NAME:}
+  whatsapp-language: ${MSG91_WHATSAPP_LANGUAGE:en}
+
 spring:
   application:
     name: insurance-backend

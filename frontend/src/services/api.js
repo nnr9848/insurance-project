@@ -539,11 +539,11 @@ export const portalService = {
     return res.data;
   },
   testWhatsAppMessage: async (testPhone) => {
-    const res = await api.post('/admin/settings/twilio-whatsapp/test', { testPhone });
+    const res = await api.post('/admin/settings/msg91-whatsapp/test', { testPhone });
     return res.data;
   },
-  testTwilioWhatsApp: async (testPhone) => {
-    const res = await api.post('/admin/settings/twilio-whatsapp/test', { testPhone });
+  testMsg91WhatsApp: async (testPhone) => {
+    const res = await api.post('/admin/settings/msg91-whatsapp/test', { testPhone });
     return res.data;
   },
   sendDirectWhatsAppMessage: async (recipientPhone, messageBody) => {
@@ -558,8 +558,8 @@ export const portalService = {
     const res = await api.get('/admin/broadcasts/history');
     return res.data;
   },
-  testTwilioSms: async (testPhone, channel = 'sms') => {
-    const res = await api.post('/admin/settings/twilio/test', { testPhone, channel });
+  testMsg91Otp: async (testPhone, channel = 'sms') => {
+    const res = await api.post('/admin/settings/msg91/test', { testPhone, channel });
     return res.data;
   },
   getCommunicationLogs: async (params = {}) => {

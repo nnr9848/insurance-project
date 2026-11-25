@@ -17,14 +17,12 @@ public class OtpVerificationService {
 
     private static final int OTP_EXPIRY_SECONDS = 300; // 5 minutes
     private static final int TOKEN_EXPIRY_SECONDS = 600; // 10 minutes
-    private static final String DEV_MASTER_OTP = "123456";
-
-    private final TwilioSmsService twilioSmsService;
-    private final TwilioVerifyService twilioVerifyService;
+    private final Msg91Service msg91Service;
     private final SecureRandom secureRandom = new SecureRandom();
 
     // Map: normalized phone -> OtpSession
     private final Map<String, OtpSession> otpStorage = new ConcurrentHashMap<>();
+    private final Map<String, String> otpChannels = new ConcurrentHashMap<>();
 
     // Map: verificationToken -> TokenSession
     private final Map<String, TokenSession> verifiedTokens = new ConcurrentHashMap<>();
@@ -42,39 +40,22 @@ public class OtpVerificationService {
             throw new IllegalArgumentException("Mobile number must be a valid 10-digit Indian phone number.");
         }
 
-        // If Twilio Verify Service SID is configured, dispatch directly via Twilio Verify
-        if (twilioVerifyService.isVerifyEnabled()) {
-            TwilioVerifyService.VerifyDispatchResult result = twilioVerifyService.sendVerification("+91" + phone, channel);
-            if (result.success()) {
-                log.info("[OTP SERVICE] Dispatched OTP to +91 {} via Twilio Verify ({})", phone, channel);
-                return "OTP sent successfully to +91 " + phone;
-            }
-            log.error("[OTP SERVICE] Twilio Verify dispatch failed: {} ({})", result.errorMessage(), result.errorCode());
-            throw new IllegalStateException(result.errorMessage());
-        }
-
-        // Generate 6-digit cryptographic OTP fallback
-        int code = 100000 + secureRandom.nextInt(900000);
-        String otp = String.valueOf(code);
-
-        Instant expiresAt = Instant.now().plusSeconds(OTP_EXPIRY_SECONDS);
-        otpStorage.put(phone, new OtpSession(otp, expiresAt, 0));
-
-        log.info("[OTP SERVICE] Generated OTP for +91 {}: {} (Expires in 5 minutes. Dev Master: {})", 
-                phone, otp, DEV_MASTER_OTP);
-
-        // Dispatch via Twilio SMS Service
-        String smsBody = String.format("Your Aadhiraksha Insurance verification code is %s. Valid for 5 minutes. Please do not share this OTP with anyone.", otp);
-        TwilioSmsService.SmsDispatchResult dispatchResult = twilioSmsService.sendSmsDetailed("+91" + phone, smsBody);
-
-        if (!dispatchResult.success()) {
-            log.error("[OTP SERVICE] SMS dispatch failed: {} ({})", dispatchResult.errorMessage(), dispatchResult.errorCode());
-            // If Twilio is explicitly configured and rejects the dispatch, fail fast with true provider status
-            if (twilioSmsService.isTwilioEnabled()) {
-                throw new IllegalStateException(dispatchResult.errorMessage());
+        String targetChannel = "whatsapp".equalsIgnoreCase(channel) ? "whatsapp" : "sms";
+        String e164Phone = "+91" + phone;
+        if (targetChannel.equals("sms")) {
+            if (!msg91Service.isOtpEnabled()) throw new IllegalStateException("MSG91 OTP is not configured. Configure an Authkey and approved OTP template.");
+            msg91Service.sendSmsOtp(e164Phone);
+        } else {
+            int code = 100000 + secureRandom.nextInt(900000);
+            String otp = String.valueOf(code);
+            otpStorage.put(phone, new OtpSession(otp, Instant.now().plusSeconds(OTP_EXPIRY_SECONDS), 0));
+            if (!msg91Service.sendWhatsAppOtp(e164Phone, otp)) {
+                otpStorage.remove(phone);
+                throw new IllegalStateException("Unable to send WhatsApp OTP. Configure an approved MSG91 WhatsApp OTP template.");
             }
         }
-
+        otpChannels.put(phone, targetChannel);
+        log.info("[OTP SERVICE] OTP dispatched to +91 {} through MSG91 ({})", phone, targetChannel);
         return "OTP sent successfully to +91 " + phone;
     }
 
@@ -86,22 +67,13 @@ public class OtpVerificationService {
 
         String sanitizedOtp = inputOtp.trim();
 
-        // 1. Allow Dev Master OTP for quick testing
-        if (DEV_MASTER_OTP.equals(sanitizedOtp)) {
-            return createVerificationToken(phone);
-        }
-
-        // 2. Check via Twilio Verify if enabled
-        if (twilioVerifyService.isVerifyEnabled()) {
-            boolean approved = twilioVerifyService.checkVerificationOtp("+91" + phone, sanitizedOtp);
-            if (approved) {
-                otpStorage.remove(phone);
+        String channel = otpChannels.getOrDefault(phone, "sms");
+        if (channel.equals("sms")) {
+            if (msg91Service.verifySmsOtp("+91" + phone, sanitizedOtp)) {
+                otpChannels.remove(phone);
                 return createVerificationToken(phone);
             }
-            // If Twilio explicitly returned false, check if there was a local session fallback
-            if (!otpStorage.containsKey(phone)) {
-                throw new IllegalArgumentException("Invalid or expired OTP code. Please check and try again.");
-            }
+            throw new IllegalArgumentException("Invalid or expired OTP code. Please check and try again.");
         }
 
         OtpSession session = otpStorage.get(phone);
@@ -126,7 +98,19 @@ public class OtpVerificationService {
 
         // OTP Match: Consume session and issue verification token
         otpStorage.remove(phone);
+        otpChannels.remove(phone);
         return createVerificationToken(phone);
+    }
+
+    public String verifyWidgetToken(String rawPhone, String widgetAccessToken) {
+        String phone = normalizePhone(rawPhone);
+        if (widgetAccessToken == null || widgetAccessToken.isBlank()) {
+            throw new IllegalArgumentException("Widget access token is required.");
+        }
+        if (msg91Service.verifyWidgetToken(widgetAccessToken, phone)) {
+            return createVerificationToken(phone);
+        }
+        throw new IllegalArgumentException("Invalid or expired verification token from MSG91.");
     }
 
     public boolean isTokenValid(String token, String rawPhone) {

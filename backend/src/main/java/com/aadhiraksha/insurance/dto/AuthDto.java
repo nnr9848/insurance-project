@@ -21,8 +21,8 @@ public class AuthDto {
         @NotBlank(message = "Phone number is required")
         private String phoneNumber;
 
-        @NotBlank(message = "OTP code is required")
         private String otp;
+        private String verificationToken;
 
         private String fullName;
         private String role; // Optional: "ROLE_POSP_AGENT" or default "ROLE_USER"

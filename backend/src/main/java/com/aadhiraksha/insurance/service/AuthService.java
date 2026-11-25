@@ -31,6 +31,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final CustomUserDetailsService userDetailsService;
     private final OtpVerificationService otpVerificationService;
+    private final Msg91Service msg91Service;
     private final com.aadhiraksha.insurance.repository.ClientRepository clientRepository;
     private final AuditService auditService;
 
@@ -64,6 +65,13 @@ public class AuthService {
 
         userRepository.save(user);
 
+        // Asynchronously dispatch WhatsApp welcome message via MSG91
+        try {
+            msg91Service.sendWelcomeWhatsApp(user.getPhoneNumber(), user.getFullName());
+        } catch (Exception ex) {
+            log.warn("Could not dispatch WhatsApp welcome message for {}: {}", user.getPhoneNumber(), ex.getMessage());
+        }
+
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtUtils.generateToken(userDetails);
 
@@ -78,16 +86,24 @@ public class AuthService {
             throw new IllegalArgumentException("Phone number is required.");
         }
 
-        // Verify OTP against native OTP service (Twilio/dev master)
-        String verificationToken = otpVerificationService.verifyOtp(rawPhone, request.getOtp());
-        if (verificationToken == null) {
-            throw new BadCredentialsException("Invalid or expired OTP code.");
-        }
-
         // Clean phone number (keep last 10 digits)
         String cleanPhone = rawPhone.replaceAll("[^0-9]", "");
         if (cleanPhone.length() > 10) {
             cleanPhone = cleanPhone.substring(cleanPhone.length() - 10);
+        }
+
+        // Verify either via MSG91 widget verification token or direct OTP code
+        String verificationToken = null;
+        if (request.getVerificationToken() != null && !request.getVerificationToken().isBlank()) {
+            verificationToken = otpVerificationService.verifyWidgetToken(cleanPhone, request.getVerificationToken());
+        } else if (request.getOtp() != null && !request.getOtp().isBlank()) {
+            verificationToken = otpVerificationService.verifyOtp(rawPhone, request.getOtp());
+        } else {
+            throw new IllegalArgumentException("Either OTP code or verification token is required.");
+        }
+
+        if (verificationToken == null) {
+            throw new BadCredentialsException("Invalid or expired OTP verification.");
         }
 
         final String finalPhone = cleanPhone;
@@ -120,7 +136,13 @@ public class AuthService {
                     .roles(new HashSet<>(Collections.singletonList(role)))
                     .build();
 
-            return userRepository.save(newUser);
+            User saved = userRepository.save(newUser);
+            try {
+                msg91Service.sendWelcomeWhatsApp(saved.getPhoneNumber(), saved.getFullName());
+            } catch (Exception ex) {
+                log.warn("Could not dispatch WhatsApp welcome message for {}: {}", saved.getPhoneNumber(), ex.getMessage());
+            }
+            return saved;
         });
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());

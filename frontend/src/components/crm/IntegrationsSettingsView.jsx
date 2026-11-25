@@ -71,6 +71,14 @@ export default function IntegrationsSettingsView() {
   };
 
   const [formData, setFormData] = useState({
+    msg91OtpEnabled: false,
+    msg91Authkey: '',
+    msg91OtpTemplateId: '',
+    msg91WhatsappEnabled: false,
+    msg91WhatsappIntegratedNumber: '',
+    msg91WhatsappTemplateName: '',
+    msg91WhatsappOtpTemplateName: '',
+    msg91WhatsappLanguage: 'en',
     // Twilio Programmable Messaging Settings (SMS OTPs & WhatsApp Broadcasts)
     twilioSmsEnabled: false,
     twilioAccountSid: '',
@@ -434,6 +442,15 @@ export default function IntegrationsSettingsView() {
     if (businessProfile) {
       setFormData(prev => ({
         ...prev,
+        msg91OtpEnabled: businessProfile.msg91OtpEnabled ?? false,
+        // Authkey is write-only on the API; a blank value keeps the stored secret.
+        msg91Authkey: '',
+        msg91OtpTemplateId: businessProfile.msg91OtpTemplateId || '',
+        msg91WhatsappEnabled: businessProfile.msg91WhatsappEnabled ?? false,
+        msg91WhatsappIntegratedNumber: businessProfile.msg91WhatsappIntegratedNumber || '',
+        msg91WhatsappTemplateName: businessProfile.msg91WhatsappTemplateName || '',
+        msg91WhatsappOtpTemplateName: businessProfile.msg91WhatsappOtpTemplateName || '',
+        msg91WhatsappLanguage: businessProfile.msg91WhatsappLanguage || 'en',
         // Twilio SMS Settings
         twilioSmsEnabled: businessProfile.twilioSmsEnabled ?? false,
         twilioAccountSid: businessProfile.twilioAccountSid || '',
@@ -476,12 +493,8 @@ export default function IntegrationsSettingsView() {
       toast.error('Please enter a valid 10-digit mobile number to receive the test OTP.');
       return;
     }
-    if (!formData.twilioAccountSid?.trim() || !formData.twilioApiKeySid?.trim() || !formData.twilioApiKeySecret?.trim()) {
-      toast.error('Please configure Twilio Account SID, API Key SID (SK...), and API Key Secret before testing.');
-      return;
-    }
-    if (!formData.twilioVerifyServiceSid?.trim() && !formData.twilioFromNumber?.trim()) {
-      toast.error('Please configure either a Twilio Verify Service SID (VA...) or From Number before testing.');
+    if (!formData.msg91OtpTemplateId?.trim()) {
+      toast.error('Please configure the MSG91 OTP template ID before testing.');
       return;
     }
 
@@ -490,15 +503,15 @@ export default function IntegrationsSettingsView() {
       await portalService.updateBusinessProfile(formData);
       await refreshBusinessProfile();
 
-      const res = await portalService.testTwilioSms(cleanPhone, testTwilioChannel);
+      const res = await portalService.testMsg91Otp(cleanPhone, testTwilioChannel);
       if (res.success) {
-        toast.success(res.message || `Success! Live test OTP dispatched via Twilio to ${cleanPhone}.`);
+        toast.success(res.message || `MSG91 accepted the OTP test request for ${cleanPhone}.`);
       } else {
-        toast.error(res.message || 'Failed to dispatch Twilio test OTP. Verify credentials.');
+        toast.error(res.message || 'MSG91 rejected the OTP test request. Verify configuration.');
       }
     } catch (err) {
-      console.error('Twilio Test error:', err);
-      toast.error(err.response?.data?.message || 'Failed to dispatch Twilio OTP. Check Account SID, API Key SID, and API Key Secret.');
+      console.error('MSG91 OTP test error:', err);
+      toast.error(err.response?.data?.message || 'Failed to dispatch MSG91 OTP. Check Authkey and template configuration.');
     } finally {
       setIsTestingTwilio(false);
     }
@@ -510,8 +523,8 @@ export default function IntegrationsSettingsView() {
       toast.error('Please enter a valid 10-digit mobile number to receive the test WhatsApp message.');
       return;
     }
-    if (!formData.twilioAccountSid?.trim() || !formData.twilioApiKeySid?.trim() || !formData.twilioApiKeySecret?.trim() || !formData.twilioWhatsappFromNumber?.trim()) {
-      toast.error('Please configure Twilio Account SID, API Key SID, API Key Secret, and WhatsApp Sender before testing.');
+    if (!formData.msg91WhatsappIntegratedNumber?.trim() || !formData.msg91WhatsappTemplateName?.trim()) {
+      toast.error('Please configure the MSG91 integrated number and approved WhatsApp template before testing.');
       return;
     }
 
@@ -520,15 +533,15 @@ export default function IntegrationsSettingsView() {
       await portalService.updateBusinessProfile(formData);
       await refreshBusinessProfile();
 
-      const res = await portalService.testTwilioWhatsApp(cleanPhone);
+      const res = await portalService.testMsg91WhatsApp(cleanPhone);
       if (res.success) {
-        toast.success(`Success! Live test WhatsApp message dispatched via Twilio to ${cleanPhone}. Check your WhatsApp!`);
+        toast.success(`MSG91 accepted a WhatsApp template request for ${cleanPhone}.`);
       } else {
-        toast.error(res.message || 'Failed to dispatch Twilio test WhatsApp. Verify sandbox opt-in.');
+        toast.error(res.message || 'Failed to dispatch the MSG91 WhatsApp template. Verify template configuration.');
       }
     } catch (err) {
-      console.error('Twilio WhatsApp Test error:', err);
-      toast.error(err.response?.data?.message || 'Failed to dispatch WhatsApp message. Ensure recipient has joined Twilio Sandbox if testing in sandbox.');
+      console.error('MSG91 WhatsApp test error:', err);
+      toast.error(err.response?.data?.message || 'Failed to dispatch WhatsApp through MSG91. Check Authkey and approved template.');
     } finally {
       setIsTestingWhatsApp(false);
     }
@@ -743,23 +756,23 @@ export default function IntegrationsSettingsView() {
   const navItems = [
     {
       id: 'twilio-sms',
-      name: 'Twilio SMS OTPs',
+      name: 'MSG91 OTPs',
       subtitle: 'Public forms & mobile login',
       icon: Zap,
-      badge: formData.twilioSmsEnabled ? 'Active' : 'Inactive',
-      badgeColor: formData.twilioSmsEnabled ? '#15803d' : '#64748b',
-      badgeBg: formData.twilioSmsEnabled ? '#dcfce7' : '#f1f5f9',
+      badge: formData.msg91OtpEnabled ? 'Active' : 'Inactive',
+      badgeColor: formData.msg91OtpEnabled ? '#15803d' : '#64748b',
+      badgeBg: formData.msg91OtpEnabled ? '#dcfce7' : '#f1f5f9',
       iconColor: '#ef4444',
       iconBg: '#fef2f2'
     },
     {
       id: 'twilio-whatsapp',
-      name: 'Twilio WhatsApp',
+      name: 'MSG91 WhatsApp',
       subtitle: 'Launches, alerts & campaigns',
       icon: MessageSquare,
-      badge: formData.twilioWhatsappEnabled ? 'Active' : 'Inactive',
-      badgeColor: formData.twilioWhatsappEnabled ? '#15803d' : '#64748b',
-      badgeBg: formData.twilioWhatsappEnabled ? '#dcfce7' : '#f1f5f9',
+      badge: formData.msg91WhatsappEnabled ? 'Active' : 'Inactive',
+      badgeColor: formData.msg91WhatsappEnabled ? '#15803d' : '#64748b',
+      badgeBg: formData.msg91WhatsappEnabled ? '#dcfce7' : '#f1f5f9',
       iconColor: '#059669',
       iconBg: '#ecfdf5'
     },
@@ -1080,7 +1093,7 @@ export default function IntegrationsSettingsView() {
             <div style={{
               background: '#ffffff',
               borderRadius: '16px',
-              border: formData.twilioSmsEnabled ? '1px solid #86efac' : '1px solid #e2e8f0',
+              border: formData.msg91OtpEnabled ? '1px solid #86efac' : '1px solid #e2e8f0',
               padding: '1.5rem',
               boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
               display: 'flex',
@@ -1105,19 +1118,19 @@ export default function IntegrationsSettingsView() {
                   </div>
                   <div>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span>Twilio Programmable SMS (Mobile OTP Engine)</span>
-                      {formData.twilioSmsEnabled ? (
+                      <span>MSG91 OTP (Mobile Verification)</span>
+                      {formData.msg91OtpEnabled ? (
                         <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
                           ● Active (Live SMS Dispatch)
                         </span>
                       ) : (
                         <span style={{ fontSize: '0.72rem', background: '#f1f5f9', color: '#64748b', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
-                          ○ Inactive (Dev Mock Mode)
+                          ○ Inactive (Provider Disabled)
                         </span>
                       )}
                     </h3>
                     <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0' }}>
-                      Sends 6-digit cryptographic OTPs via Twilio SMS for Instant Quotes, Policy Renewals, Policy Porting, and Customer OTP Login.
+                      Sends and verifies OTPs through MSG91 for quote, policy, and customer login flows.
                     </p>
                   </div>
                 </div>
@@ -1128,27 +1141,37 @@ export default function IntegrationsSettingsView() {
                   gap: '8px',
                   cursor: 'pointer',
                   userSelect: 'none',
-                  background: formData.twilioSmsEnabled ? '#f0fdf4' : '#f8fafc',
+                  background: formData.msg91OtpEnabled ? '#f0fdf4' : '#f8fafc',
                   padding: '6px 12px',
                   borderRadius: '8px',
-                  border: formData.twilioSmsEnabled ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
+                  border: formData.msg91OtpEnabled ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
                   transition: 'all 0.15s ease'
                 }}>
                   <input
                     type="checkbox"
-                    name="twilioSmsEnabled"
-                    checked={formData.twilioSmsEnabled}
+                    name="msg91OtpEnabled"
+                    checked={formData.msg91OtpEnabled}
                     onChange={handleChange}
                     style={{ width: '18px', height: '18px', accentColor: '#16a34a', cursor: 'pointer' }}
                   />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: formData.twilioSmsEnabled ? '#15803d' : '#475569' }}>
-                    Enable Twilio SMS OTPs
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: formData.msg91OtpEnabled ? '#15803d' : '#475569' }}>
+                    Enable MSG91 OTP
                   </span>
                 </label>
               </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '10px' }}>
+                <label style={{ display: 'grid', gap: '4px', fontSize: '0.82rem', fontWeight: 700 }}>MSG91 Authkey
+                  <input type="password" name="msg91Authkey" value={formData.msg91Authkey} onChange={handleChange} placeholder="Enter or rotate Authkey" autoComplete="new-password" />
+                </label>
+                <label style={{ display: 'grid', gap: '4px', fontSize: '0.82rem', fontWeight: 700 }}>OTP Template ID
+                  <input type="text" name="msg91OtpTemplateId" value={formData.msg91OtpTemplateId} onChange={handleChange} placeholder="Approved MSG91 OTP template ID" />
+                </label>
+              </div>
+
+              {/* Legacy Twilio fields remain during transition; MSG91 settings above drive delivery. */}
               {/* Form Fields Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
+              <div style={{ display: 'none', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
                     Twilio Account SID
@@ -1404,7 +1427,7 @@ export default function IntegrationsSettingsView() {
                       <span>Unsaved modifications detected. Click save to commit to database.</span>
                     </>
                   ) : (
-                    <span>All Twilio SMS settings are up-to-date with PostgreSQL.</span>
+                    <span>MSG91 OTP settings are up-to-date with PostgreSQL.</span>
                   )}
                 </div>
 
@@ -1440,7 +1463,7 @@ export default function IntegrationsSettingsView() {
                   ) : (
                     <>
                       <Save size={14} />
-                      <span>Save Twilio SMS Settings</span>
+                      <span>Save MSG91 OTP Settings</span>
                     </>
                   )}
                 </button>
@@ -1455,7 +1478,7 @@ export default function IntegrationsSettingsView() {
             <div style={{
               background: '#ffffff',
               borderRadius: '16px',
-              border: formData.twilioWhatsappEnabled ? '1px solid #86efac' : '1px solid #e2e8f0',
+              border: formData.msg91WhatsappEnabled ? '1px solid #86efac' : '1px solid #e2e8f0',
               padding: '1.5rem',
               boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
               display: 'flex',
@@ -1480,10 +1503,10 @@ export default function IntegrationsSettingsView() {
                   </div>
                   <div>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f2b48', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span>Twilio WhatsApp API (Offers & Agent Broadcasts)</span>
-                      {formData.twilioWhatsappEnabled ? (
+                      <span>MSG91 WhatsApp (Messages & Broadcasts)</span>
+                      {formData.msg91WhatsappEnabled ? (
                         <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
-                          ● Active (Twilio WhatsApp)
+                          ● Active (MSG91 WhatsApp)
                         </span>
                       ) : (
                         <span style={{ fontSize: '0.72rem', background: '#f1f5f9', color: '#64748b', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
@@ -1492,7 +1515,7 @@ export default function IntegrationsSettingsView() {
                       )}
                     </h3>
                     <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0' }}>
-                      Dispatches new policy launch announcements, commission boosters, and promo alerts to POSP agents using your Twilio account.
+                      Dispatches messages and broadcasts through your approved MSG91 WhatsApp templates.
                     </p>
                   </div>
                 </div>
@@ -1500,19 +1523,20 @@ export default function IntegrationsSettingsView() {
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none', background: '#f8fafc', padding: '6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   <input
                     type="checkbox"
-                    name="twilioWhatsappEnabled"
-                    checked={formData.twilioWhatsappEnabled}
+                    name="msg91WhatsappEnabled"
+                    checked={formData.msg91WhatsappEnabled}
                     onChange={handleChange}
                     style={{ width: '18px', height: '18px', accentColor: '#059669', cursor: 'pointer' }}
                   />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: formData.twilioWhatsappEnabled ? '#059669' : '#475569' }}>
-                    Enable Twilio WhatsApp Broadcasts
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: formData.msg91WhatsappEnabled ? '#059669' : '#475569' }}>
+                    Enable MSG91 WhatsApp
                   </span>
                 </label>
               </div>
 
               {/* Note on Unified Credentials */}
               <div style={{
+                display: 'none',
                 background: '#f8fafc',
                 border: '1px solid #e2e8f0',
                 borderRadius: '12px',
@@ -1577,6 +1601,21 @@ export default function IntegrationsSettingsView() {
                 </div>
               </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '10px' }}>
+                <label style={{ display: 'grid', gap: '4px', fontSize: '0.82rem', fontWeight: 700 }}>Integrated WhatsApp number
+                  <input type="text" name="msg91WhatsappIntegratedNumber" value={formData.msg91WhatsappIntegratedNumber} onChange={handleChange} placeholder="Country code and number" />
+                </label>
+                <label style={{ display: 'grid', gap: '4px', fontSize: '0.82rem', fontWeight: 700 }}>Approved message template name
+                  <input type="text" name="msg91WhatsappTemplateName" value={formData.msg91WhatsappTemplateName} onChange={handleChange} placeholder="Template with one body variable" />
+                </label>
+                <label style={{ display: 'grid', gap: '4px', fontSize: '0.82rem', fontWeight: 700 }}>Approved OTP template name
+                  <input type="text" name="msg91WhatsappOtpTemplateName" value={formData.msg91WhatsappOtpTemplateName} onChange={handleChange} placeholder="WhatsApp OTP template" />
+                </label>
+                <label style={{ display: 'grid', gap: '4px', fontSize: '0.82rem', fontWeight: 700 }}>Template language code
+                  <input type="text" name="msg91WhatsappLanguage" value={formData.msg91WhatsappLanguage} onChange={handleChange} placeholder="en" />
+                </label>
+              </div>
+
               {/* 1-Click Live WhatsApp Test Tool */}
               <div style={{
                 background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
@@ -1591,7 +1630,7 @@ export default function IntegrationsSettingsView() {
               }}>
                 <div>
                   <h4 style={{ fontSize: '0.88rem', fontWeight: 800, color: '#065f46', margin: '0 0 2px' }}>
-                    💬 Test Twilio WhatsApp Messaging
+                    💬 Test MSG91 WhatsApp Messaging
                   </h4>
                   <p style={{ fontSize: '0.78rem', color: '#047857', margin: 0 }}>
                     Sends a live test WhatsApp message to verify your Sender configuration and ensure smooth template rendering.
@@ -3013,6 +3052,9 @@ export default function IntegrationsSettingsView() {
                     <option value="TWILIO_VERIFY_SMS">Twilio Verify SMS</option>
                     <option value="TWILIO_SMS">Twilio Programmable SMS</option>
                     <option value="TWILIO_WHATSAPP">Twilio WhatsApp</option>
+                    <option value="MSG91_OTP_SMS">MSG91 OTP SMS</option>
+                    <option value="MSG91_WHATSAPP">MSG91 WhatsApp</option>
+                    <option value="MSG91_WHATSAPP_OTP">MSG91 WhatsApp OTP</option>
                   </select>
 
                   {/* Status Filter */}

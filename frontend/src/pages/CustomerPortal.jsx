@@ -47,6 +47,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import WhatsAppIcon from '../components/common/WhatsAppIcon';
 import { formatWhatsAppNumber } from '../utils/crmDeduplication';
+import { openMsg91OtpWidget } from '../utils/msg91Otp';
 
 export default function CustomerPortal() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -2405,6 +2406,21 @@ export default function CustomerPortal() {
                   <button
                     type="button"
                     onClick={() => {
+                      if (otpModal.channel === 'WHATSAPP' || otpModal.channel === 'PHONE') {
+                        openMsg91OtpWidget({
+                          phoneNumber: otpModal.targetValue,
+                          onSuccess: () => {
+                            toast?.show(`${otpModal.channel === 'WHATSAPP' ? 'WhatsApp' : 'Phone'} verified successfully via MSG91!`, 'success');
+                            setOtpModal(prev => ({ ...prev, isOpen: false }));
+                            if (otpModal.channel === 'WHATSAPP') setWhatsappVerified(true);
+                            if (otpModal.channel === 'PHONE') setPhoneVerified(true);
+                          },
+                          onFailure: () => {
+                            toast?.show('Verification was cancelled or interrupted.', 'warning');
+                          }
+                        });
+                        return;
+                      }
                       toast?.show(`6-digit OTP sent via ${otpModal.channel} to ${otpModal.targetValue}`, 'success');
                       setOtpModal(prev => ({ ...prev, step: 'ENTER_CODE', countdown: 30 }));
                     }}
@@ -2425,11 +2441,11 @@ export default function CustomerPortal() {
                       boxShadow: 'var(--shadow-sm)'
                     }}
                   >
-                    <span>Send 6-Digit OTP</span>
+                    <span>{otpModal.channel === 'WHATSAPP' || otpModal.channel === 'PHONE' ? 'Verify via WhatsApp & SMS' : 'Send 6-Digit OTP'}</span>
                     <ArrowRight size={16} />
                   </button>
                   <p style={{ margin: 0, fontSize: '0.72rem', color: '#94a3b8', textAlign: 'center' }}>
-                    Standard carrier and messaging rates may apply. Valid for 10 minutes.
+                    Secured by MSG91 WhatsApp & Telecom Gateway.
                   </p>
                 </div>
               ) : (

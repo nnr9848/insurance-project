@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-do
 import { useAuth } from '../context/AuthContext';
 import { Lock, Mail, Phone, Shield, ArrowRight, CheckCircle2, KeyRound, Smartphone, RefreshCw, MessageSquare, Eye, EyeOff } from 'lucide-react';
 import { portalService } from '../services/api';
+import { openMsg91OtpWidget } from '../utils/msg91Otp';
 
 export default function Login({ isAdminPortal = false }) {
   const [searchParams] = useSearchParams();
@@ -98,16 +99,46 @@ export default function Login({ isAdminPortal = false }) {
 
     setLoading(true);
     try {
-      await portalService.sendOtp(rawPhone);
-      setOtpStep('verify');
-      setCountdown(60);
-      setOtpCode(['', '', '', '', '', '']);
-      setTimeout(() => {
-        otpInputRefs.current[0]?.focus();
-      }, 100);
+      openMsg91OtpWidget({
+        phoneNumber: rawPhone,
+        onSuccess: async (verifyData) => {
+          setLoading(true);
+          try {
+            const res = await otpLogin({
+              phoneNumber: rawPhone,
+              verificationToken: verifyData.token,
+              fullName: fullName || undefined,
+              role: role || 'ROLE_USER'
+            });
+            handlePostLoginRedirect(res);
+          } catch (loginErr) {
+            console.error('OTP login error:', loginErr);
+            setError(loginErr?.response?.data?.message || loginErr?.message || 'Verification succeeded, but login failed. Please retry.');
+          } finally {
+            setLoading(false);
+          }
+        },
+        onFailure: (err) => {
+          setLoading(false);
+          if (err && err !== 'closed') {
+            console.warn('MSG91 Widget error:', err);
+          }
+        }
+      });
     } catch (err) {
-      console.error('Twilio SMS Auth error:', err);
-      setError(err?.response?.data?.message || err?.message || 'Failed to send OTP via SMS. Please try again.');
+      console.error('MSG91 Widget trigger error:', err);
+      // Fallback to direct backend OTP dispatch
+      try {
+        await portalService.sendOtp(rawPhone);
+        setOtpStep('verify');
+        setCountdown(60);
+        setOtpCode(['', '', '', '', '', '']);
+        setTimeout(() => {
+          otpInputRefs.current[0]?.focus();
+        }, 100);
+      } catch (fallbackErr) {
+        setError(fallbackErr?.response?.data?.message || fallbackErr?.message || 'Failed to dispatch OTP. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -371,7 +402,7 @@ export default function Login({ isAdminPortal = false }) {
                       />
                     </div>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                      We'll send an official OTP verification code via SMS
+                      We'll send an official 4-digit OTP via WhatsApp & SMS
                     </span>
                   </div>
 
@@ -394,9 +425,9 @@ export default function Login({ isAdminPortal = false }) {
                     className="btn-submit-quote"
                     style={{ marginTop: '1.25rem', width: '100%' }}
                   >
-                    {loading ? 'Sending OTP via SMS...' : (
+                    {loading ? 'Verifying with WhatsApp & SMS...' : (
                       <>
-                        Get OTP Code <ArrowRight size={16} />
+                        Verify via WhatsApp / SMS <ArrowRight size={16} />
                       </>
                     )}
                   </button>

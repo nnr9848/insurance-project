@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
@@ -79,6 +80,7 @@ public class BusinessProfile {
     private String whatsappPhoneNumberId;
 
     @Column(name = "whatsapp_access_token", columnDefinition = "TEXT")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String whatsappAccessToken;
 
     @Column(name = "whatsapp_business_account_id", length = 100)
@@ -109,6 +111,7 @@ public class BusinessProfile {
     private String twilioApiKeySid;
 
     @Column(name = "twilio_api_key_secret", columnDefinition = "TEXT")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String twilioApiKeySecret;
 
     @Column(name = "twilio_from_number", length = 50)
@@ -128,6 +131,35 @@ public class BusinessProfile {
 
     @Column(name = "twilio_whatsapp_content_sid", length = 100)
     private String twilioWhatsappContentSid;
+
+    // MSG91 OTP and WhatsApp gateway settings
+    @Builder.Default
+    @Column(name = "msg91_otp_enabled")
+    private Boolean msg91OtpEnabled = false;
+
+    @Column(name = "msg91_authkey", columnDefinition = "TEXT")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String msg91Authkey;
+
+    @Column(name = "msg91_otp_template_id", length = 100)
+    private String msg91OtpTemplateId;
+
+    @Builder.Default
+    @Column(name = "msg91_whatsapp_enabled")
+    private Boolean msg91WhatsappEnabled = false;
+
+    @Column(name = "msg91_whatsapp_integrated_number", length = 30)
+    private String msg91WhatsappIntegratedNumber;
+
+    @Column(name = "msg91_whatsapp_template_name", length = 150)
+    private String msg91WhatsappTemplateName;
+
+    @Column(name = "msg91_whatsapp_otp_template_name", length = 150)
+    private String msg91WhatsappOtpTemplateName;
+
+    @Builder.Default
+    @Column(name = "msg91_whatsapp_language", length = 20)
+    private String msg91WhatsappLanguage = "en";
 
     // Transactional Email Templates Configuration (Custom Subjects, Trigger Toggles, Variable Overrides)
     @Column(name = "email_templates_config_json", columnDefinition = "TEXT")

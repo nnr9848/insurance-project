@@ -3,7 +3,6 @@ package com.aadhiraksha.insurance.controller;
 import com.aadhiraksha.insurance.model.SalesContest;
 import com.aadhiraksha.insurance.repository.SalesContestRepository;
 import com.aadhiraksha.insurance.service.FileStorageService;
-import com.aadhiraksha.insurance.service.TwilioWhatsAppService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +26,6 @@ public class SalesContestController {
 
     private final SalesContestRepository contestRepository;
     private final FileStorageService fileStorageService;
-    private final TwilioWhatsAppService twilioWhatsAppService;
 
     /**
      * Agent & Public Portal: Retrieve all active and currently running contests

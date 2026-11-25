@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import com.aadhiraksha.insurance.service.TwilioVerifyService;
+import com.aadhiraksha.insurance.service.Msg91Service;
 
 import java.time.LocalDateTime;
 
@@ -24,9 +24,7 @@ public class BusinessProfileController {
 
     private final BusinessProfileRepository repository;
     private final com.aadhiraksha.insurance.service.FileStorageService fileStorageService;
-    private final com.aadhiraksha.insurance.service.TwilioSmsService twilioSmsService;
-    private final com.aadhiraksha.insurance.service.TwilioVerifyService twilioVerifyService;
-    private final com.aadhiraksha.insurance.service.TwilioWhatsAppService twilioWhatsAppService;
+    private final Msg91Service msg91Service;
     private final com.aadhiraksha.insurance.repository.BroadcastCampaignLogRepository broadcastCampaignLogRepository;
     private final com.aadhiraksha.insurance.service.EmailService emailService;
     private final com.aadhiraksha.insurance.repository.CommunicationDeliveryLogRepository deliveryLogRepository;
@@ -330,7 +328,17 @@ public class BusinessProfileController {
             profile.setLegalGrievanceDocumentHtml(updateReq.getLegalGrievanceDocumentHtml());
         }
 
-        // Twilio SMS Integration
+        // MSG91 Integration
+        if (updateReq.getMsg91OtpEnabled() != null) profile.setMsg91OtpEnabled(updateReq.getMsg91OtpEnabled());
+        if (updateReq.getMsg91Authkey() != null && !updateReq.getMsg91Authkey().isBlank()) profile.setMsg91Authkey(updateReq.getMsg91Authkey().trim());
+        if (updateReq.getMsg91OtpTemplateId() != null) profile.setMsg91OtpTemplateId(updateReq.getMsg91OtpTemplateId().trim());
+        if (updateReq.getMsg91WhatsappEnabled() != null) profile.setMsg91WhatsappEnabled(updateReq.getMsg91WhatsappEnabled());
+        if (updateReq.getMsg91WhatsappIntegratedNumber() != null) profile.setMsg91WhatsappIntegratedNumber(updateReq.getMsg91WhatsappIntegratedNumber().trim());
+        if (updateReq.getMsg91WhatsappTemplateName() != null) profile.setMsg91WhatsappTemplateName(updateReq.getMsg91WhatsappTemplateName().trim());
+        if (updateReq.getMsg91WhatsappOtpTemplateName() != null) profile.setMsg91WhatsappOtpTemplateName(updateReq.getMsg91WhatsappOtpTemplateName().trim());
+        if (updateReq.getMsg91WhatsappLanguage() != null) profile.setMsg91WhatsappLanguage(updateReq.getMsg91WhatsappLanguage().trim());
+
+        // Legacy Twilio fields are retained for database compatibility during migration.
         if (updateReq.getTwilioSmsEnabled() != null) {
             profile.setTwilioSmsEnabled(updateReq.getTwilioSmsEnabled());
         }
@@ -403,11 +411,11 @@ public class BusinessProfileController {
     }
 
     /**
-     * Admin endpoint: Send instant test SMS via Twilio to verify credentials
+     * Admin endpoint: Send a live MSG91 OTP request to verify the account configuration
      */
-    @PostMapping("/admin/settings/twilio/test")
+    @PostMapping({"/admin/settings/msg91/test", "/admin/settings/twilio/test"})
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
-    @Operation(summary = "Send Test Twilio SMS", description = "Dispatches a test SMS to verify Twilio Account SID, Auth Token and From Number")
+    @Operation(summary = "Send Test MSG91 OTP", description = "Dispatches an OTP test request through MSG91")
     public ResponseEntity<java.util.Map<String, Object>> testTwilioSmsDispatch(
             @RequestBody java.util.Map<String, String> requestBody) {
         
@@ -420,49 +428,31 @@ public class BusinessProfileController {
         }
 
         String channel = requestBody.getOrDefault("channel", "sms");
-
-        // Check if Twilio Verify Service SID is configured
-        if (twilioVerifyService.isVerifyEnabled()) {
-            TwilioVerifyService.VerifyDispatchResult result = twilioVerifyService.sendVerification(testPhone.trim(), channel);
-            if (result.success()) {
-                String targetDisplay = channel.equalsIgnoreCase("whatsapp") ? "WhatsApp message" : "SMS";
-                return ResponseEntity.ok(java.util.Map.of(
-                    "success", true,
-                    "message", "Live OTP dispatched successfully via Twilio Verify Service! Please check your mobile phone (" + testPhone.trim() + ") for the " + targetDisplay + "."
-                ));
-            } else {
-                return ResponseEntity.status(400).body(java.util.Map.of(
-                    "success", false,
-                    "message", result.errorMessage() != null ? result.errorMessage() : "Failed to dispatch OTP via Twilio Verify.",
-                    "errorCode", result.errorCode() != null ? result.errorCode() : "TWILIO_ERROR"
-                ));
-            }
+        try {
+        if (channel.equalsIgnoreCase("whatsapp")) {
+            boolean sent = msg91Service.sendWhatsAppMessage(testPhone.trim(), "MSG91 WhatsApp integration test");
+            if (!sent) throw new IllegalStateException("MSG91 did not accept the WhatsApp template request.");
+        } else {
+            msg91Service.sendSmsOtp(testPhone.trim());
         }
-
-        // Standard Programmable Messaging verification format fallback
-        String message = "Your Aadhiraksha verification code is: 123456. Valid for 5 minutes.";
-
-        boolean dispatched = twilioSmsService.sendSms(testPhone.trim(), message);
-
-        if (dispatched) {
             return ResponseEntity.ok(java.util.Map.of(
                 "success", true,
-                "message", "Test SMS dispatched successfully via Twilio! Delivered to: " + testPhone
+                "message", "Test " + (channel.equalsIgnoreCase("whatsapp") ? "WhatsApp template" : "OTP") + " request accepted by MSG91 for " + testPhone.trim() + "."
             ));
-        } else {
+        } catch (RuntimeException ex) {
             return ResponseEntity.status(400).body(java.util.Map.of(
                 "success", false,
-                "message", "Failed to dispatch Twilio SMS. Please verify Account SID, API Key SID, API Key Secret, and From Number."
+                "message", ex.getMessage() == null ? "MSG91 request failed. Check provider configuration." : ex.getMessage()
             ));
         }
     }
 
     /**
-     * Admin endpoint: Send instant live test WhatsApp message via Twilio WhatsApp API
+     * Admin endpoint: Send a live MSG91 WhatsApp template test
      */
-    @PostMapping("/admin/settings/twilio-whatsapp/test")
+    @PostMapping({"/admin/settings/msg91-whatsapp/test", "/admin/settings/twilio-whatsapp/test"})
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
-    @Operation(summary = "Send Test Twilio WhatsApp Message", description = "Dispatches a live test WhatsApp message using Twilio WhatsApp API")
+    @Operation(summary = "Send Test MSG91 WhatsApp Message", description = "Dispatches an approved WhatsApp template through MSG91")
     public ResponseEntity<java.util.Map<String, Object>> testTwilioWhatsAppDispatch(
             @RequestBody java.util.Map<String, String> requestBody) {
         
@@ -474,22 +464,17 @@ public class BusinessProfileController {
             ));
         }
 
-        String message = String.format(
-            "🔔 *Aadhiraksha WhatsApp System Test*\n\nYour Twilio WhatsApp communications gateway has been successfully connected and verified!\nTimestamp: %s\n\n_Aadhiraksha Insurance Leadership Team_\nhttps://www.aadhirakshainsurance.com",
-            LocalDateTime.now()
-        );
-
-        boolean dispatched = twilioWhatsAppService.sendWhatsAppMessage(testPhone.trim(), message);
+        boolean dispatched = msg91Service.sendWhatsAppMessage(testPhone.trim(), "MSG91 WhatsApp integration test at " + LocalDateTime.now());
 
         if (dispatched) {
             return ResponseEntity.ok(java.util.Map.of(
                 "success", true,
-                "message", "Test WhatsApp message dispatched successfully via Twilio! Delivered to: " + testPhone
+                "message", "Test WhatsApp template request accepted by MSG91 for " + testPhone
             ));
         } else {
             return ResponseEntity.status(400).body(java.util.Map.of(
                 "success", false,
-                "message", "Failed to dispatch Twilio WhatsApp message. Ensure your recipient has joined the Twilio WhatsApp sandbox or verify Twilio credentials."
+                "message", "MSG91 WhatsApp request failed. Check Authkey, integrated number, and approved template configuration."
             ));
         }
     }
@@ -499,7 +484,7 @@ public class BusinessProfileController {
      */
     @PostMapping("/admin/outreach/whatsapp/send")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'ADVISOR', 'STAFF')")
-    @Operation(summary = "Send 1-on-1 WhatsApp Message", description = "Dispatches a single advisory message directly via Twilio WhatsApp Gateway")
+    @Operation(summary = "Send 1-on-1 WhatsApp Message", description = "Dispatches a single advisory message through an approved MSG91 WhatsApp template")
     public ResponseEntity<java.util.Map<String, Object>> sendDirectWhatsAppMessage(
             @RequestBody java.util.Map<String, String> requestBody,
             org.springframework.security.core.Authentication authentication) {
@@ -520,17 +505,17 @@ public class BusinessProfileController {
             ));
         }
 
-        boolean dispatched = twilioWhatsAppService.sendWhatsAppMessage(recipientPhone.trim(), messageBody.trim());
+        boolean dispatched = msg91Service.sendWhatsAppMessage(recipientPhone.trim(), messageBody.trim());
 
         if (dispatched) {
             return ResponseEntity.ok(java.util.Map.of(
                 "success", true,
-                "message", "WhatsApp message delivered to " + recipientPhone.trim() + " via Twilio Gateway."
+                "message", "WhatsApp template request accepted by MSG91 for " + recipientPhone.trim() + "."
             ));
         } else {
             return ResponseEntity.status(400).body(java.util.Map.of(
                 "success", false,
-                "message", "Failed to dispatch WhatsApp message via Twilio. Ensure Twilio credentials and WhatsApp Sender are configured."
+                "message", "MSG91 WhatsApp request failed. Ensure the approved template contains one body variable for the message text."
             ));
         }
     }
@@ -541,7 +526,7 @@ public class BusinessProfileController {
      */
     @PostMapping("/admin/broadcasts/whatsapp")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MANAGER')")
-    @Operation(summary = "Broadcast Twilio WhatsApp Offer", description = "Broadcasts a promotional announcement or offer launch to phone numbers via Twilio WhatsApp")
+    @Operation(summary = "Broadcast MSG91 WhatsApp Offer", description = "Broadcasts a promotional announcement using an approved MSG91 WhatsApp template")
     public ResponseEntity<java.util.Map<String, Object>> broadcastTwilioWhatsAppOffer(
             @RequestBody java.util.Map<String, Object> requestBody,
             org.springframework.security.core.Authentication authentication) {
@@ -572,24 +557,27 @@ public class BusinessProfileController {
 
         String dispatcher = authentication != null ? authentication.getName() : "Administrator";
 
-        // 1. Dispatch through Twilio WhatsApp service
-        twilioWhatsAppService.broadcastWhatsAppOffers(recipients, title.trim(), message.trim());
+        // Dispatch through MSG91 using the approved template configured for the account.
+        int sentCount = 0;
+        for (String recipient : recipients) {
+            if (msg91Service.sendWhatsAppMessage(recipient, title.trim() + "\n\n" + message.trim())) sentCount++;
+        }
 
         // 2. Persist audit log entry for enterprise traceability
         com.aadhiraksha.insurance.model.BroadcastCampaignLog auditLog = com.aadhiraksha.insurance.model.BroadcastCampaignLog.builder()
                 .title(title.trim())
                 .message(message.trim())
-                .channel("TWILIO_WHATSAPP")
+                .channel("MSG91_WHATSAPP")
                 .recipientsCount(recipients.size())
                 .sentBy(dispatcher)
-                .status("COMPLETED")
+                .status(sentCount == recipients.size() ? "COMPLETED" : "PARTIAL")
                 .build();
         broadcastCampaignLogRepository.save(auditLog);
 
         return ResponseEntity.ok(java.util.Map.of(
             "success", true,
-            "message", String.format("Promotional broadcast '%s' initiated for %d recipient(s) via Twilio WhatsApp.", title, recipients.size()),
-            "count", recipients.size()
+            "message", String.format("Promotional broadcast '%s': %d accepted, %d failed through MSG91 WhatsApp.", title, sentCount, recipients.size() - sentCount),
+            "count", sentCount
         ));
     }
 
