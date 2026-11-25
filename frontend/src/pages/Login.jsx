@@ -402,7 +402,7 @@ export default function Login({ isAdminPortal = false }) {
                       />
                     </div>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                      We'll send an official 4-digit OTP via WhatsApp & SMS
+                      We'll send an official 6-digit OTP via WhatsApp & SMS
                     </span>
                   </div>
 
