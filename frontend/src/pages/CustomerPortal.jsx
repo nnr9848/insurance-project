@@ -42,7 +42,7 @@ import {
   File,
   Shield
 } from 'lucide-react';
-import { customerService } from '../services/api';
+import { customerService, portalService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import WhatsAppIcon from '../components/common/WhatsAppIcon';
@@ -2405,24 +2405,15 @@ export default function CustomerPortal() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (otpModal.channel === 'WHATSAPP' || otpModal.channel === 'PHONE') {
-                        openMsg91OtpWidget({
-                          phoneNumber: otpModal.targetValue,
-                          onSuccess: () => {
-                            toast?.show(`${otpModal.channel === 'WHATSAPP' ? 'WhatsApp' : 'Phone'} verified successfully via MSG91!`, 'success');
-                            setOtpModal(prev => ({ ...prev, isOpen: false }));
-                            if (otpModal.channel === 'WHATSAPP') setWhatsappVerified(true);
-                            if (otpModal.channel === 'PHONE') setPhoneVerified(true);
-                          },
-                          onFailure: () => {
-                            toast?.show('Verification was cancelled or interrupted.', 'warning');
-                          }
-                        });
-                        return;
+                    onClick={async () => {
+                      try {
+                        const channel = otpModal.channel === 'WHATSAPP' ? 'whatsapp' : 'sms';
+                        await portalService.sendOtp(otpModal.targetValue, channel);
+                        toast?.show(`6-digit OTP sent via ${otpModal.channel} to ${otpModal.targetValue}`, 'success');
+                        setOtpModal(prev => ({ ...prev, step: 'ENTER_CODE', countdown: 30 }));
+                      } catch (err) {
+                        toast?.show(err?.response?.data?.message || 'Failed to dispatch OTP. Please check the number and retry.', 'error');
                       }
-                      toast?.show(`6-digit OTP sent via ${otpModal.channel} to ${otpModal.targetValue}`, 'success');
-                      setOtpModal(prev => ({ ...prev, step: 'ENTER_CODE', countdown: 30 }));
                     }}
                     style={{
                       width: '100%',
@@ -2441,11 +2432,11 @@ export default function CustomerPortal() {
                       boxShadow: 'var(--shadow-sm)'
                     }}
                   >
-                    <span>{otpModal.channel === 'WHATSAPP' || otpModal.channel === 'PHONE' ? 'Verify via WhatsApp & SMS' : 'Send 6-Digit OTP'}</span>
+                    <span>Send 6-Digit OTP</span>
                     <ArrowRight size={16} />
                   </button>
                   <p style={{ margin: 0, fontSize: '0.72rem', color: '#94a3b8', textAlign: 'center' }}>
-                    Secured by MSG91 WhatsApp & Telecom Gateway.
+                    Secured by official WhatsApp & Telecom Gateway.
                   </p>
                 </div>
               ) : (

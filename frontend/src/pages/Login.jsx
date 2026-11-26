@@ -99,46 +99,16 @@ export default function Login({ isAdminPortal = false }) {
 
     setLoading(true);
     try {
-      openMsg91OtpWidget({
-        phoneNumber: rawPhone,
-        onSuccess: async (verifyData) => {
-          setLoading(true);
-          try {
-            const res = await otpLogin({
-              phoneNumber: rawPhone,
-              verificationToken: verifyData.token,
-              fullName: fullName || undefined,
-              role: role || 'ROLE_USER'
-            });
-            handlePostLoginRedirect(res);
-          } catch (loginErr) {
-            console.error('OTP login error:', loginErr);
-            setError(loginErr?.response?.data?.message || loginErr?.message || 'Verification succeeded, but login failed. Please retry.');
-          } finally {
-            setLoading(false);
-          }
-        },
-        onFailure: (err) => {
-          setLoading(false);
-          if (err && err !== 'closed') {
-            console.warn('MSG91 Widget error:', err);
-          }
-        }
-      });
+      await portalService.sendOtp(rawPhone);
+      setOtpStep('verify');
+      setCountdown(30);
+      setOtpCode(['', '', '', '', '', '']);
+      setTimeout(() => {
+        otpInputRefs.current[0]?.focus();
+      }, 100);
     } catch (err) {
-      console.error('MSG91 Widget trigger error:', err);
-      // Fallback to direct backend OTP dispatch
-      try {
-        await portalService.sendOtp(rawPhone);
-        setOtpStep('verify');
-        setCountdown(60);
-        setOtpCode(['', '', '', '', '', '']);
-        setTimeout(() => {
-          otpInputRefs.current[0]?.focus();
-        }, 100);
-      } catch (fallbackErr) {
-        setError(fallbackErr?.response?.data?.message || fallbackErr?.message || 'Failed to dispatch OTP. Please try again.');
-      }
+      console.error('OTP Send error:', err);
+      setError(err?.response?.data?.message || err?.message || 'Failed to dispatch OTP. Please check mobile number and try again.');
     } finally {
       setLoading(false);
     }
@@ -425,9 +395,9 @@ export default function Login({ isAdminPortal = false }) {
                     className="btn-submit-quote"
                     style={{ marginTop: '1.25rem', width: '100%' }}
                   >
-                    {loading ? 'Verifying with WhatsApp & SMS...' : (
+                    {loading ? 'Sending 6-Digit OTP...' : (
                       <>
-                        Verify via WhatsApp / SMS <ArrowRight size={16} />
+                        Get OTP Code <ArrowRight size={16} />
                       </>
                     )}
                   </button>

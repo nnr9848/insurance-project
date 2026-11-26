@@ -41,7 +41,7 @@ public class Msg91Service {
 
     public boolean isOtpEnabled() {
         return (envOtpEnabled || profile().map(p -> Boolean.TRUE.equals(p.getMsg91OtpEnabled())).orElse(false))
-                && !authkey().isBlank() && !otpTemplateId().isBlank();
+                && !authkey().isBlank();
     }
 
     public boolean isWhatsAppEnabled() {
@@ -49,36 +49,52 @@ public class Msg91Service {
                 && !authkey().isBlank() && !whatsAppNumber().isBlank() && !whatsAppTemplate().isBlank();
     }
 
-    public void sendSmsOtp(String e164Phone) {
-        String phone = digits(e164Phone);
+    public void sendSmsOtp(String rawPhone) {
+        String phone = digits(rawPhone);
+        if (phone.length() == 10) {
+            phone = "91" + phone;
+        }
         if (phone.isBlank() || !isOtpEnabled()) throw new IllegalStateException("MSG91 OTP is not configured.");
-        String url = UriComponentsBuilder.fromHttpUrl(API_ROOT + "/otp")
-                .queryParam("template_id", otpTemplateId()).queryParam("mobile", phone).toUriString();
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(API_ROOT + "/otp")
+                .queryParam("mobile", phone)
+                .queryParam("otp_length", 6);
+        if (!otpTemplateId().isBlank()) {
+            builder.queryParam("template_id", otpTemplateId());
+        }
+        String url = builder.toUriString();
         try {
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(headers()), Map.class);
             Map<?, ?> body = response.getBody();
             if (!response.getStatusCode().is2xxSuccessful() || (body != null && "error".equalsIgnoreCase(String.valueOf(body.get("type"))))) {
-                throw new IllegalStateException("MSG91 rejected the OTP request. Check the Authkey, template, and DLT configuration.");
+                String msg = body != null ? String.valueOf(body.get("message")) : "Rejected by MSG91";
+                throw new IllegalStateException("MSG91 rejected the OTP request: " + msg);
             }
-            saveLog("MSG91_OTP_SMS", e164Phone, "OTP_VERIFICATION", "DELIVERED", "200", null, null);
+            saveLog("MSG91_OTP_SMS", phone, "OTP_VERIFICATION", "DELIVERED", "200", null, null);
+            log.info("[MSG91 OTP] Dispatched 6-digit OTP to {}", phone);
         } catch (RestClientResponseException ex) {
-            saveLog("MSG91_OTP_SMS", e164Phone, "OTP_VERIFICATION", "FAILED", String.valueOf(ex.getStatusCode().value()), "MSG91 OTP request failed", ex.getResponseBodyAsString());
-            log.warn("MSG91 OTP request failed with HTTP {}", ex.getStatusCode().value());
-            throw new IllegalStateException("Unable to send OTP through MSG91. Check MSG91 credentials and template configuration.");
+            saveLog("MSG91_OTP_SMS", phone, "OTP_VERIFICATION", "FAILED", String.valueOf(ex.getStatusCode().value()), "MSG91 OTP request failed", ex.getResponseBodyAsString());
+            log.warn("MSG91 OTP request failed with HTTP {}: {}", ex.getStatusCode().value(), ex.getResponseBodyAsString());
+            throw new IllegalStateException("Unable to send OTP through MSG91. Please verify mobile number and credentials.");
         }
     }
 
-    public boolean verifySmsOtp(String e164Phone, String otp) {
+    public boolean verifySmsOtp(String rawPhone, String otp) {
         if (otp == null || otp.isBlank() || !isOtpEnabled()) return false;
+        String phone = digits(rawPhone);
+        if (phone.length() == 10) {
+            phone = "91" + phone;
+        }
         String url = UriComponentsBuilder.fromHttpUrl(API_ROOT + "/otp/verify")
-                .queryParam("otp", otp.trim()).queryParam("mobile", digits(e164Phone)).toUriString();
+                .queryParam("otp", otp.trim()).queryParam("mobile", phone).toUriString();
         try {
             ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers()), Map.class);
             Map<?, ?> body = response.getBody();
-            return response.getStatusCode().is2xxSuccessful() && body != null
+            boolean success = response.getStatusCode().is2xxSuccessful() && body != null
                     && "success".equalsIgnoreCase(String.valueOf(body.get("type")));
+            log.info("[MSG91 OTP] Verification for {}: {}", phone, body);
+            return success;
         } catch (RestClientResponseException ex) {
-            log.warn("MSG91 OTP verification failed with HTTP {}", ex.getStatusCode().value());
+            log.warn("MSG91 OTP verification failed with HTTP {}: {}", ex.getStatusCode().value(), ex.getResponseBodyAsString());
             return false;
         }
     }
